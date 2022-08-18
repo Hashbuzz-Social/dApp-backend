@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "build": "npx ts-node build.ts",
+    "build:server": "./node_modules/.bin/ts-node build.ts",
     "lint": "eslint . --ext .ts",
     "start": "node -r module-alias/register ./dist --env=production",
     "start:dev": "nodemon",
@@ -26,7 +27,8 @@
     "@shared": "dist/shared",
     "@server": "dist/server",
     "@routes": "dist/routes",
-    "@middleware":"dist/middleware"
+    "@middleware": "dist/middleware",
+    "@controller": "dist/controller"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

@@ -4,12 +4,13 @@
  */
 
 import dotenv from 'dotenv';
-import { task } from './cronJob';
-
+import { taskEveryMinute , taskEverySixDay } from './cronJob';
 
 
 (() => {
     // Setup command line options
     dotenv.config();
-    task.start();
+    taskEveryMinute.start();
+    taskEverySixDay.start();
+    // await getAllReplies("1559560034744381442");
 })();

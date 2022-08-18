@@ -1,12 +1,12 @@
 /* eslint-disable max-len */
-import TwitterApi from "twitter-api-v2";
+import TwitterApi, { TweetSearchRecentV2Paginator, TweetV2 } from "twitter-api-v2";
 
 //Type definitions
 interface PublicMetrics {
   retweet_count: number;
   reply_count: number;
   like_count: number;
-  quote_count:number;
+  quote_count: number;
 }
 
 interface PublicMetricsObject {
@@ -80,5 +80,21 @@ export const getPublicMetrics = async (tweetIds: string | string[]) => {
 
 /****
  * @description Get all users who is commented on the twitter card.
-
  */
+
+export const getAllReplies = async (tweetID: string) => {
+  console.log("getAllReplies::start");
+  const SearchResults = await twitterClient.v2.search(`conversation_id:${tweetID}`, {
+    expansions: ["author_id", "referenced_tweets.id"],
+    "user.fields": ["username", "public_metrics", "description", "location"],
+    "tweet.fields": ["created_at", "geo", "public_metrics", "text", "conversation_id", "in_reply_to_user_id"],
+    max_results: 100,
+  });
+
+  const tweets: TweetV2[] = [];
+
+  for await (const tweet of SearchResults) {
+    tweets.push(tweet);
+  }
+ return tweets;
+};

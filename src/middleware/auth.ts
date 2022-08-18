@@ -44,7 +44,7 @@ export const isHavingValidAuthToken = (req: Request, res: Response, next: NextFu
         },
       });
       if (clientData?.user_id) {
-        res.locals.sessionUser = clientData;
+        req.currentUser = clientData;
         next();
       } else {
         throw Error(authTokenInvalidError);
