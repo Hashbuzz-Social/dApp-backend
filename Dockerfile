@@ -14,7 +14,7 @@ ENV DATABASE_URL "postgresql://doadmin:AVNS_7lAo0sEh5qUFTNCW8Ea@db-postgresql-ny
 
 ## Setup jet-logger ##
 ENV JET_LOGGER_MODE "FILE"
-ENV JET_LOGGER_FILEPATH "logs/ENV jet-logger.log"
+ENV JET_LOGGER_FILEPATH "jet-logger.log"
 ENV JET_LOGGER_TIMESTAMP "TRUE"
 ENV JET_LOGGER_FORMAT "LINE"
 
