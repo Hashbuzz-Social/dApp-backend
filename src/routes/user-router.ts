@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
-import { isAdmin } from "@middleware/admin";
+import adminMiddleWare from "@middleware/admin";
 
 import userService from "@services/user-service";
 
@@ -20,7 +20,7 @@ export const p = {
 /**
  * Get all users.
  */
-router.get(p.get, isAdmin, (_: Request, res: Response) => {
+router.get(p.get, adminMiddleWare.isAdmin, (_: Request, res: Response) => {
   (async () => {
     const users = await userService.getAll();
     return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });

@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "@shared/prisma";
+import prisma from "@shared/prisma";
 import StatusCodes from "http-status-codes";
 // Constants
 const { UNAUTHORIZED } = StatusCodes;
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
 
-export const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction) => {
+const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction) => {
   (async () => {
     try {
       // Get header token
@@ -57,7 +57,6 @@ export const isHavingValidAuthToken = (req: Request, res: Response, next: NextFu
   })();
 };
 
-//middleware example format
-// export const aMiddleware = (req: Request, res: Response, next: NextFunction) => {
-//   next();
-// };
+export default {
+  isHavingValidAuthToken,
+} as const;

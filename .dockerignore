@@ -1,6 +1,5 @@
 logs
 # Keep environment variables out of version control
 .env
-**/node_modules
-dist/
-**/**/*.log
+node_modules
+dist

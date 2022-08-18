@@ -1,7 +1,7 @@
 import twitterCardService, { TwitterStats  } from "@services/twitterCard-service";
-import { getPublicMetrics } from "@shared/twitterAPI";
+import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
-import {calculateTotalSpent} from "@shared/functions"
+import functions from "@shared/functions";
 
 const manageTwitterCardStatus = async () => {
   console.info("manageTwitterCardStatus::start");
@@ -14,7 +14,7 @@ const manageTwitterCardStatus = async () => {
   });
 
   if(allActiveCard.length > 0){
-    const publicMetrics = await getPublicMetrics(activeCardsIds);
+    const publicMetrics = await twitterAPI.getPublicMetrics(activeCardsIds);
 
   //! looping through each card
   await Promise.all(
@@ -41,7 +41,7 @@ const manageTwitterCardStatus = async () => {
         if(reply_count && reply_count !== _replyCount) campaignStats.reply_count = _replyCount;
 
         if (retweet_reward && like_reward && quote_reward && comment_reward) {
-          total_spent = calculateTotalSpent(
+          total_spent = functions.calculateTotalSpent(
             {
               like_count: _likeCount ?? 0,
               quote_count: _qoteCount ?? 0,

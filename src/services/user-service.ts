@@ -1,12 +1,12 @@
-import { prisma } from "@shared/prisma";
+import prisma from "@shared/prisma";
 
 export const getAllUser = async () => {
-	const users = await prisma.user_user.findMany({
-		orderBy:{id:"asc"}
-	});
-	return users
+  const users = await prisma.user_user.findMany({
+    orderBy: { id: "asc" },
+  });
+  return users;
 };
 
 export default {
-	getAll: getAllUser,
+  getAll: getAllUser,
 } as const;

@@ -16,10 +16,10 @@ interface PublicMetricsObject {
 const token = "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl5o8X1STsnuc6LOlecUq3lFeKw9xiVOZUWxfipds21HyxvPB4j";
 
 // Instantiate with desired auth type (here's Bearer v2 auth)
-export const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
+const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
 const roClient = twitterClient.readOnly;
 
-export const getAllUsersByEngagement = async (tweetId: string, engagement: "like" | "retweet" | "quote" | "comment") => {
+const getAllUsersByEngagement = async (tweetId: string, engagement: "like" | "retweet" | "quote" | "comment") => {
   if (engagement === "like") {
     const users = await roClient.v2.tweetLikedBy(tweetId, {
       "user.fields": ["username"],
@@ -43,7 +43,7 @@ export const getAllUsersByEngagement = async (tweetId: string, engagement: "like
   }
 };
 
-export const getEngagementOnCard = async (tweetId: string) => {
+const getEngagementOnCard = async (tweetId: string) => {
   const data = await Promise.all([
     await getAllUsersByEngagement(tweetId, "like"),
     await getAllUsersByEngagement(tweetId, "retweet"),
@@ -60,7 +60,7 @@ export const getEngagementOnCard = async (tweetId: string) => {
  * @description  This function will return total count of for a single tweetId or for a array of tweet ids.
  */
 
-export const getPublicMetrics = async (tweetIds: string | string[]) => {
+const getPublicMetrics = async (tweetIds: string | string[]) => {
   console.log("Ids:::", tweetIds);
 
   const result = await roClient.v2.tweets(tweetIds, {
@@ -82,7 +82,7 @@ export const getPublicMetrics = async (tweetIds: string | string[]) => {
  * @description Get all users who is commented on the twitter card.
  */
 
-export const getAllReplies = async (tweetID: string) => {
+const getAllReplies = async (tweetID: string) => {
   console.log("getAllReplies::start");
   const SearchResults = await twitterClient.v2.search(`conversation_id:${tweetID}`, {
     expansions: ["author_id", "referenced_tweets.id"],
@@ -96,5 +96,13 @@ export const getAllReplies = async (tweetID: string) => {
   for await (const tweet of SearchResults) {
     tweets.push(tweet);
   }
- return tweets;
+  return tweets;
 };
+
+export default {
+  getAllReplies,
+  getPublicMetrics,
+  getEngagementOnCard,
+  getAllUsersByEngagement,
+  twitterClient,
+} as const;
