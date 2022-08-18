@@ -23,7 +23,6 @@
     "exec": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./src"
   },
   "_moduleAliases": {
-    "@root": ".",
     "@services": "dist/services",
     "@shared": "dist/shared",
     "@server": "dist/server",
