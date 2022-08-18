@@ -4,8 +4,10 @@ FROM node:16-alpine as build
 # Specify where our app will live in the container
 WORKDIR /app
 
+COPY package*.json ./
+
 # Copy the node App to the container
-COPY . /app/
+COPY . .
 
 # Prepare the container for building node app
 RUN npm install
@@ -25,7 +27,7 @@ ENV PORT 4100
 ENV TWITTER_APP_USER_TOKEN "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl5o8X1STsnuc6LOlecUq3lFeKw9xiVOZUWxfipds21HyxvPB4j"
 
 # Build NPM project.
-RUN npm run build:server
+RUN npm run build
 
 EXPOSE 4100
 
