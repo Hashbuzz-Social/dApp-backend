@@ -2,10 +2,10 @@
 FROM node:16-alpine as build
 
 # Specify where our app will live in the container
-WORKDIR /app/dapp-backend
+WORKDIR /app
 
 # Copy the node App to the container
-COPY . /app/dapp-backend/
+COPY . /app/
 
 # Prepare the container for building node app
 RUN npm install
