@@ -1,13 +1,16 @@
+import adminMiddleWare from "@middleware/admin";
+import { checkWalletFormat } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
-import adminMiddleWare from "@middleware/admin";
+import { sensitizeUserData } from "@shared/helper";
 
 import userService from "@services/user-service";
+import { body, validationResult } from "express-validator";
 
 // Constants
 const router = Router();
-const { OK } = StatusCodes;
+const { OK, BAD_REQUEST } = StatusCodes;
 
 // Paths
 export const p = {
@@ -27,47 +30,23 @@ router.get(p.get, adminMiddleWare.isAdmin, (_: Request, res: Response) => {
   })();
 });
 
-/**
- * Add one user.
- */
-// router.post(p.add, async (req: Request, res: Response) => {
-//     const { user } = req.body;
-//     // Check param
-//     if (!user) {
-//         throw new ParamMissingError();
-//     }
-//     // Fetch data
-//     await userService.addOne(user);
-//     return res.status(CREATED).end();
-// });
+/***
+ * Update wallet id to for current user.
+ **/
+router.put(p.update + "/wallet", body("walletId").custom(checkWalletFormat), (req: Request, res: Response) => {
+  //check validation and return
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(BAD_REQUEST).json({ errors: errors.array() });
+  }
 
-/**
- * Update one user.
- */
-// router.put(p.update, async (req: Request, res: Response) => {
-//     const { user } = req.body;
-//     // Check param
-//     if (!user) {
-//         throw new ParamMissingError();
-//     }
-//     // Fetch data
-//     await userService.updateOne(user);
-//     return res.status(OK).end();
-// });
+  //If not error then update database
+  (async () => {
+    const walletId: string = req.body.walletId;
+    const id = req.currentUser?.user_id;
+    const updatedUser = await userService.updateWalletId(walletId, id!);
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  })();
+});
 
-/**
- * Delete one user.
- */
-// router.delete(p.delete, async (req: Request, res: Response) => {
-//     const { id } = req.params;
-//     // Check param
-//     if (!id) {
-//         throw new ParamMissingError();
-//     }
-//     // Fetch data
-//     await userService.delete(Number(id));
-//     return res.status(OK).end();
-// });
-
-// Export default
 export default router;

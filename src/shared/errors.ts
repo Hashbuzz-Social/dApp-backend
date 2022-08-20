@@ -17,8 +17,8 @@ export class ParamMissingError extends CustomError {
     public static readonly Msg = 'One or more of the required parameters was missing.';
     public static readonly HttpStatus = HttpStatusCodes.BAD_REQUEST;
 
-    constructor() {
-        super(ParamMissingError.Msg, ParamMissingError.HttpStatus);
+    constructor(msg?:string) {
+        super(msg??ParamMissingError.Msg, ParamMissingError.HttpStatus);
     }
 }
 

@@ -44,3 +44,10 @@ async function createNewTopic() {
   return newTopicId;
   //v2.0.0
 }
+
+export default {
+  hederaClient: client,
+  network,
+  operatorAccount,
+  operatorPrivateKey,
+};

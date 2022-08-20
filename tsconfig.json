@@ -71,7 +71,7 @@
       "@services/*": ["src/services/*"],
       "@routes/*": ["src/routes/*"],
       "@middleware/*": ["src/middleware/*"],
-      "@controller/*": ["src/controller/*"]
+      "@validator/*": ["src/validator/*"]
     },
     "useUnknownInCatchVariables": false
   },

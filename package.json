@@ -28,7 +28,7 @@
     "@server": "dist/server",
     "@routes": "dist/routes",
     "@middleware": "dist/middleware",
-    "@controller": "dist/controller"
+    "@validator": "dist/validator"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -77,6 +77,7 @@
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "express-async-errors": "^3.1.1",
+    "express-validator": "^6.14.2",
     "http-status-code": "^2.1.0",
     "jet-logger": "^1.2.1",
     "json-bigint": "^1.0.0",

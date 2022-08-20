@@ -7,6 +7,12 @@ export const getAllUser = async () => {
   return users;
 };
 
+const updateWalletId = async (walletId: string, userId: bigint) => {
+  const updateUserWallet = prisma.user_user.update({ data: { hedera_wallet_id: walletId }, where: { id: userId } });
+  return updateUserWallet;
+};
+
 export default {
   getAll: getAllUser,
+  updateWalletId,
 } as const;
