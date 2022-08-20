@@ -39,6 +39,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
               business_twitter_handle: true,
               consent: true,
               is_staff: true,
+              is_superuser:true
             },
           },
         },

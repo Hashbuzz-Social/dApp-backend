@@ -12,7 +12,12 @@ const updateWalletId = async (walletId: string, userId: bigint) => {
   return updateUserWallet;
 };
 
+const getUserById = async (id?: number|bigint) => {
+  return await prisma.user_user.findUnique({ where: { id } });
+};
+
 export default {
   getAll: getAllUser,
   updateWalletId,
+  getUserById
 } as const;
