@@ -28,7 +28,8 @@
     "@server": "dist/server",
     "@routes": "dist/routes",
     "@middleware": "dist/middleware",
-    "@validator": "dist/validator"
+    "@validator": "dist/validator",
+    "@smartContract":"dist/smartContract"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

@@ -78,6 +78,7 @@ contract Hashbuzz {
      * @param newCampaigner address of new campaigner
      */
     function addCampaigner(address newCampaigner) public {
+        require( balances[newCampaigner] == 0 && setAsidebalances[newCampaigner] == 0);
         emit CampaignerAdded(newCampaigner);
         balances[newCampaigner] = 0;
         setAsidebalances[newCampaigner] = 0;

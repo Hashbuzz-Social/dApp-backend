@@ -1,8 +1,12 @@
-import { Client, TopicCreateTransaction } from "@hashgraph/sdk";
+import { Client, TopicCreateTransaction , AccountId , PrivateKey } from "@hashgraph/sdk";
 
 const network = process.env.HEDERA_NETWORK;
 const operatorPrivateKey = process.env.HEDERA_PRIVATE_KEY;
 const operatorAccount = process.env.HEDERA_ACCOUNT_ID;
+
+//build key 
+const operatorId = AccountId.fromString(operatorAccount!);
+const operatorKey = PrivateKey.fromString(operatorPrivateKey!);
 
 // ===================================Set Hedera Client Details======================================
 
@@ -29,6 +33,7 @@ switch (network) {
     console.error("Invalid HEDERA_NETWORK: ${network}");
     throw new Error("Invalid HEDERA_NETWORK: ${network}");
 }
+client = client.setOperator(operatorId, operatorKey);
 
 /* create new async function */
 async function createNewTopic() {
@@ -50,4 +55,6 @@ export default {
   network,
   operatorAccount,
   operatorPrivateKey,
+  operatorId,
+  operatorKey
 };

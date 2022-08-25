@@ -1,11 +1,22 @@
 import { ParamMissingError } from "@shared/errors";
-import { CustomValidator } from "express-validator";
+import { NextFunction, Request, Response } from "express";
+import { CustomValidator, validationResult } from "express-validator";
+import statusCodes from "http-status-codes";
+
+const { BAD_REQUEST } = statusCodes;
+
+export const checkErrResponse = (_: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(_);
+  if (!errors.isEmpty()) {
+    return res.status(BAD_REQUEST).json({ errors: errors.array() });
+  } else {
+    next();
+  }
+};
 
 export const checkWalletFormat: CustomValidator = (value: string) => {
   const regex = /[0]+\.+[0]+\.+[0-9]{1,10}/gm;
   const isMatching = regex.test(value);
-  if (!isMatching) throw new ParamMissingError("Wallet id is in wrong format")
+  if (!isMatching) throw new ParamMissingError("Wallet id is in wrong format");
   return isMatching;
 };
-
-

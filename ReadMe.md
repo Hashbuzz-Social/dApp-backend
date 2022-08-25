@@ -24,3 +24,4 @@ Description of the environment variable required here for creating all the detai
     JET_LOGGER_FORMAT=LINE
 
     TWITTER_APP_USER_TOKEN=tweeter app APi auth token Auth2
+

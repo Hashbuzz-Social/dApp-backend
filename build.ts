@@ -16,6 +16,7 @@ dotenv.config();
     // Copy front-end files
     await copy("./src/public", "./dist/public");
     await copy("./src/views", "./dist/views");
+    await copy("./SmartContract/build" , "./dist/SmartContract/build")
     // Copy production env file
     // if (process.env.NODE_ENV !== "docker") {
     //   await copy(".env", "./dist/.env");
