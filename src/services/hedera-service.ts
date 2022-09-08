@@ -1,10 +1,10 @@
-import { Client, TopicCreateTransaction , AccountId , PrivateKey } from "@hashgraph/sdk";
+import { Client, TopicCreateTransaction, AccountId, PrivateKey, AccountBalanceQuery } from "@hashgraph/sdk";
 
 const network = process.env.HEDERA_NETWORK;
 const operatorPrivateKey = process.env.HEDERA_PRIVATE_KEY;
 const operatorAccount = process.env.HEDERA_ACCOUNT_ID;
 
-//build key 
+//build key
 const operatorId = AccountId.fromString(operatorAccount!);
 const operatorKey = PrivateKey.fromString(operatorPrivateKey!);
 
@@ -50,11 +50,22 @@ async function createNewTopic() {
   //v2.0.0
 }
 
+const getAccountBalances = async (accountId: string) => {
+  const ac = AccountId.fromString(accountId);
+  //Create the account balance query
+  const query = new AccountBalanceQuery().setAccountId(ac);
+
+  //Submit the query to a Hedera network
+  const accountBalance = await query.execute(client);
+  return accountBalance;
+};
+
 export default {
   hederaClient: client,
   network,
   operatorAccount,
   operatorPrivateKey,
   operatorId,
-  operatorKey
+  operatorKey,
+  getAccountBalances
 };
