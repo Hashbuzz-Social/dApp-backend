@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.11;
-
+pragma solidity ^0.8.9;
 /**
  * @title Storage
  * @dev Store & retrieve value in a variable
@@ -9,24 +8,48 @@ contract Hashbuzz {
 
     // event for EVM logging
     event OwnerSet(address owner);
-    event CampaignerAdded(address owner);
-    event FundsDeposited(address campaigner, uint amount);
-    event FundsWithdrawn(address campaigner, uint amount);
-    event InteractorPaid(address interactor, address campaigner, uint amount);
-    event InteractorPaymentSetAside(address campaigner, uint amount);
+    event CampaignerDeleted(string campaigner);
+    event CampaignerAdded(string campaigner);
+    event FundsDeposited(string campaigner, uint amount);
+    event FundsWithdrawn(string campaigner, uint amount);
+    event InteractorPaid(string interactor, string campaigner, uint amount);
+    event InteractorPaidDeferred(string interactor, string campaigner, uint amount);
+    event InteractorPaymentSetAside(string campaigner, uint amount);
     // hashbuzz address, deployer of the contract
     address private owner;
     // campaigner's addresses mapped to balances for campaigners
-    mapping(address => uint) public balances;
+    mapping(string => uint) public balances;
     // campaigner's addresses mapped to set aside balances for campaigners, in order to pay those interactors whose wallet hasn't been connected
-    mapping(address => uint) public setAsidebalances;
+    mapping(string => uint) public setAsidebalances;
+
+    //============================================ 
+    // GETTING HBAR TO THE CONTRACT
+    //============================================ 
+    receive() external payable {}
+    fallback() external payable {}
+        
+    //============================================ 
+    // GETTING HBAR FROM THE CONTRACT
+    //============================================ 
+    function transferHbar(address payable receiverAddress, uint amount) public {
+        receiverAddress.transfer(amount);
+    }
+
+    function sendHbar(address payable receiverAddress, uint amount) public {
+        require(receiverAddress.send(amount), "Failed to send Hbar");
+    }
+
+    function callHbarToPayee(address payable receiverAddress, uint amount) public {
+        (bool sent, ) = receiverAddress.call{value:amount}("");
+        require(sent, "Failed to send Hbar");
+    }
 
     /**
      * @dev update balance of the campaigner
      * @param amount amount to be updated
      * @param deposit deposit or withdrawl
      */
-    function updateBalance(address campaigner, uint amount, bool deposit) public payable {
+    function updateBalance(string memory campaigner, uint amount, bool deposit) public payable {
       if (deposit) {
         balances[campaigner] += amount;
         emit FundsDeposited(campaigner, amount);
@@ -44,7 +67,7 @@ contract Hashbuzz {
      * @param amount amount to be updated
      * @param instant instant or deferred(in case wallet not connected)
      */
-    function payInteractor(address campaigner, address payable interactor, uint amount, bool instant) public payable {
+    function payInteractor(string memory campaigner, string memory interactor, uint amount, bool instant) public {
       require(balances[campaigner] > amount);
       if (instant) {
         updateBalance(campaigner, amount, false);
@@ -56,11 +79,24 @@ contract Hashbuzz {
     }
 
     /**
+     * @dev pay to interactor from setaside balnces
+     * @param campaigner address of campaigner
+     * @param interactor address payable of interactor
+     * @param amount amount to be updated
+     */
+    function payInteractorFromAsideBalances(string memory campaigner, string memory interactor, uint amount) public {
+      require(setAsidebalances[campaigner] > amount);
+      setAsidebalances[campaigner] -= amount;
+      //payable(interactor).transfer(amount);
+      emit InteractorPaidDeferred(interactor, campaigner, amount);
+    }
+
+    /**
      * @dev set aside payments
      * @param campaigner address of campaigner
      * @param amount amount to be updated
      */
-    function setAsidePaymentsForInteractor(address campaigner, uint amount) public payable {
+    function setAsidePaymentsForInteractor(string memory campaigner, uint amount) public {
       require(balances[campaigner] > amount);
       balances[campaigner] -= amount;
       emit FundsWithdrawn(campaigner, amount);
@@ -77,14 +113,21 @@ contract Hashbuzz {
      * @dev add campaigner
      * @param newCampaigner address of new campaigner
      */
-    function addCampaigner(address newCampaigner) public {
-        require( balances[newCampaigner] == 0 && setAsidebalances[newCampaigner] == 0);
+    function addCampaigner(string memory newCampaigner) public {
+        require(balances[newCampaigner] == 0);
         emit CampaignerAdded(newCampaigner);
         balances[newCampaigner] = 0;
         setAsidebalances[newCampaigner] = 0;
     }
+    /**
+     * dangerous function, just for testing 
+     */
+    function deleteCampaigner(string memory campaigner) public {
+      //require(balances[campaigner] == 0);
+      balances[campaigner] = 0;
+    }
 
-    function getBalance(address campaigner) public view returns (uint) {
+    function getBalance(string memory campaigner) public view returns (uint) {
         return balances[campaigner];
     }
 }
