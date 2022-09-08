@@ -1,17 +1,75 @@
-import { contractByteCode } from "@smartContract";
-import { FileCreateTransaction, Hbar, ContractCreateTransaction, AccountId, ContractExecuteTransaction, ContractFunctionParameters } from "@hashgraph/sdk";
+import { contractByteCode, contractAbi } from "@smartContract";
+import {
+  FileCreateTransaction,
+  Hbar,
+  ContractCreateTransaction,
+  AccountId,
+  ContractExecuteTransaction,
+  ContractFunctionParameters,
+  Status,
+  FileAppendTransaction,
+  FileId,
+  ContractCallQuery,
+  ContractId,
+} from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import prisma from "@shared/prisma";
 // import JSONBigInt from "json-bigint";
-
 const { hederaClient, operatorKey, network } = hederaService;
 
-export const deployContract = async () => {
-  console.log(contractByteCode);
+const copyBytes = (start: number, length: number, bytes: Buffer) => {
+  console.debug("contractDeploy :: copyBytes");
 
-  // Create a file on Hedera and store the bytecode
+  const newUint = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    newUint[i] = bytes[start + i];
+  }
+  return newUint;
+};
+
+async function appendFile(fileId: string | FileId, contents: string | Uint8Array, memo = " Composer File Append") {
+  let transactionId;
+
+  try {
+    transactionId = await new FileAppendTransaction()
+      .setFileId(fileId)
+      .setContents(contents)
+      // .setMaxTransactionFee(txFee)
+      .execute(hederaClient);
+  } catch (error) {
+    transactionId = await new FileAppendTransaction()
+      .setFileId(fileId)
+      .setContents(contents)
+      // .setMaxTransactionFee(txFee)
+      .setTransactionMemo(memo)
+      .execute(hederaClient);
+  }
+
+  // FileCreateTransaction modifyMaxTransactionFee = transactionId.setMaxTransactionFee(new Hbar(2));
+
+  const response = await transactionId.getReceipt(hederaClient);
+
+  // console.verbose(response)
+  return response;
+}
+
+const uploadFile = async () => {
+  const FILE_PART_SIZE = 2800; // 3K bytes
+  const numParts = Math.floor(contractByteCode.length / FILE_PART_SIZE);
+  let remainder = contractByteCode.length % FILE_PART_SIZE;
+  let firstPartBytes = null;
+  let moreContents = false;
+
+  if (contractByteCode.length <= FILE_PART_SIZE) {
+    firstPartBytes = contractByteCode;
+    remainder = 0;
+  } else {
+    moreContents = true;
+    firstPartBytes = copyBytes(0, FILE_PART_SIZE, contractByteCode);
+  }
+
   const fileCreateTx = new FileCreateTransaction()
-    .setContents(contractByteCode)
+    .setContents(firstPartBytes)
     .setKeys([operatorKey])
     .setMaxTransactionFee(new Hbar(20))
     .setFileMemo("Hashbuzz smartcontract file.")
@@ -28,7 +86,35 @@ export const deployContract = async () => {
   const fileCreateRx = await fileCreateSubmit.getReceipt(hederaClient);
 
   //bytecodeFileId
-  const bytecodeFileId = fileCreateRx.fileId;
+  const fileId = fileCreateRx.fileId;
+
+  if (moreContents) {
+    // console.silly("Appending File")
+    if (fileCreateRx.status._code === Status.Success._code) {
+      for (let i = 1; i < numParts; i++) {
+        const partBytes = copyBytes(i * FILE_PART_SIZE, FILE_PART_SIZE, contractByteCode);
+        const fileAppendResult = await appendFile(fileId!, partBytes);
+        // console.log('File Append Result : ', i, fileAppendResult)
+        if (fileAppendResult.status._code !== Status.Success._code) {
+          throw new Error("Error Appending File");
+        }
+      }
+      if (remainder > 0) {
+        const partBytes = copyBytes(numParts * FILE_PART_SIZE, remainder, contractByteCode);
+        const fileAppendResult = await appendFile(fileId!, partBytes);
+        // console.log('Remainder File Append Result : ', fileAppendResult)
+        if (fileAppendResult.status._code !== Status.Success._code) {
+          throw new Error("Error Appending Last Chunks");
+        }
+      }
+    }
+  }
+
+  return fileCreateRx;
+};
+
+export const deployContract = async () => {
+  const bytecodeFileId = (await uploadFile()).fileId;
 
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   console.log(`- The bytecode file ID is: ${bytecodeFileId} \n`);
@@ -123,6 +209,42 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
 
   console.log("add campigner transaction response", contractExReceipt);
 
-  return { contract_id:contract_id!.toString().trim(), addedAccount_Id: accountId, receipt: contractExReceipt };
+  return { contract_id: contract_id!.toString().trim(), addedAccount_Id: accountId, receipt: contractExReceipt };
 };
 // export const addCampaigner;
+
+/****
+ * @description query balance from contract
+ ***/
+
+// const decodeFunctionResult = (functionName: string, resultAsBytes: Uint8Array) => {
+//   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+//   const functionAbi = contractAbi.find((func: { name: string }) => func.name === functionName);
+//   const functionParameters = functionAbi?.outputs;
+//   const resultHex = "0x".concat(Buffer.from(resultAsBytes).toString("hex"));
+//   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+//   const result = web3.eth.abi.decodeParameters(functionParameters, resultHex);
+//   return result;
+// };
+
+export const queryBalance = async (address: string) => {
+  // Execute the contract to check changes in state variable
+  address = AccountId.fromString(address).toString();
+
+  const { contract_id } = await provideActiveContract();
+  // console.log(address);
+  if (contract_id) {
+    const contractAddress = ContractId.fromString(contract_id.toString());
+
+    const contractCallQuery = new ContractCallQuery()
+      .setContractId(contractAddress)
+      .setGas(1000000)
+      .setFunction("getBalance", new ContractFunctionParameters().addAddress(address))
+      .setMaxQueryPayment(new Hbar(2));
+
+    const qResult = await contractCallQuery.execute(hederaClient);
+    console.log(qResult.getUint256().toNumber());
+    // return decodeFunctionResult("getBalance", qResult.bytes);
+    return qResult.getUint256().toNumber();
+  }
+};

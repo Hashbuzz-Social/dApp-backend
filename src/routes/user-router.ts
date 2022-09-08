@@ -7,6 +7,7 @@ import { sensitizeUserData } from "@shared/helper";
 
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
+import { queryBalance } from "@services/smartcontract-service";
 
 // Constants
 const router = Router();
@@ -62,6 +63,21 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
     const id = req.currentUser?.user_id;
     const updatedUser = await userService.updateWalletId(walletId, id!);
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  })();
+});
+
+router.post("/get-balances", body("accountId").custom(checkWalletFormat), (req: Request, res: Response) => {
+  //check validation and return
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(BAD_REQUEST).json({ errors: errors.array() });
+  }
+
+  const address: string = req.body.accountId;
+
+  (async () => {
+    const contractCall = await queryBalance(address);
+    return res.status(OK).json({ bal: "fetched" });
   })();
 });
 

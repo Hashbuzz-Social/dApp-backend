@@ -249,7 +249,7 @@ model user_user {
   business_twitter_handle              String?                       @db.VarChar(50)
   hedera_wallet_id                     String?                       @db.VarChar(50)
   consent                              Boolean?
-  available_budget                     Float?
+  available_budget                     Float                         @default(0)
   twitter_access_token                 String?                       @db.VarChar(200)
   twitter_access_token_secret          String?                       @db.VarChar(200)
   business_twitter_access_token        String?                       @db.VarChar(200)
