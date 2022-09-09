@@ -17,6 +17,7 @@ const getUserById = async (id?: number | bigint) => {
 };
 
 const topUp = async (id: number | bigint, amount: number, isIncrement = true) => {
+  amount = (amount - amount * 0.1) * Math.pow(10, 8);
   if (isIncrement)
     return await prisma.user_user.update({
       where: {
@@ -24,7 +25,7 @@ const topUp = async (id: number | bigint, amount: number, isIncrement = true) =>
       },
       data: {
         available_budget: {
-          increment: amount,
+          increment: parseInt(amount.toFixed(0)),
         },
       },
     });
@@ -34,7 +35,7 @@ const topUp = async (id: number | bigint, amount: number, isIncrement = true) =>
         id,
       },
       data: {
-        available_budget: amount,
+        available_budget: parseInt(amount.toFixed(0)),
       },
     });
   }

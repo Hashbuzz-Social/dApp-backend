@@ -1,31 +1,47 @@
-import { ContractExecuteTransaction, Hbar, ContractFunctionParameters, AccountId, ContractId } from "@hashgraph/sdk";
-import { provideActiveContract } from "@services/smartcontract-service";
+import { ContractExecuteTransaction, Hbar, ContractFunctionParameters, AccountId, ContractId, TransferTransaction } from "@hashgraph/sdk";
+import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 import signingService from "@services/signing-service";
+import hbarservice from "@services/hedera-service";
 
-export const createTopUpTransaction = async (payerId: string, amount: number) => {
+export const updateBalanceToContract = async (payerId: string, amount: number) => {
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
-    const address = AccountId.fromString(payerId).toString();
+    const address = "0x" + AccountId.fromString(payerId).toSolidityAddress();
     const contractAddress = ContractId.fromString(contract_id.toString());
+    const tinyAmount = parseInt(((amount - amount * 0.1) * Math.pow(10, 8)).toFixed(0));
     const deposit = true;
 
-    //initiate new contract params
-    const contractParams = new ContractFunctionParameters();
+    console.log("tinyAmount is added to contract", tinyAmount);
 
-    contractParams.addAddress(address);
-    contractParams.addUint256(amount * Math.pow(10, 8));
-    contractParams.addBool(deposit);
+    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, tinyAmount, deposit]);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(1000000)
-      .setPayableAmount(new Hbar(amount))
-      .setFunction("updateBalance", contractParams)
+      .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz balance update call")
       .setGas(100000);
+    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+    return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
+    // return signingService.signAndMakeBytes(contractExBalTx, payerId);
+  } else {
+    throw new Error("Contract id not found");
+  }
+};
 
-    return signingService.signAndMakeBytes(contractExBalTx, payerId);
+export const createTopUpTransaction = async (payerId: string, amount: number) => {
+  const { contract_id } = await provideActiveContract();
+  const amountToContract = parseFloat((amount - amount * 0.1).toFixed(8));
+  const amountToOperator = parseFloat((amount * 0.1).toFixed(8));
+  if (contract_id) {
+    const transferTx = new TransferTransaction()
+      .addHbarTransfer(payerId, -amount)
+      .addHbarTransfer(contract_id?.toString(), amountToContract)
+      .addHbarTransfer(hbarservice.operatorId, amountToOperator);
+
+    //signing and returning
+    return signingService.signAndMakeBytes(transferTx, payerId);
   } else {
     throw new Error("Contract id not found");
   }

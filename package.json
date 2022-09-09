@@ -87,7 +87,8 @@
     "morgan": "^1.10.0",
     "node-cron": "^3.0.1",
     "solc": "^0.8.16",
-    "twitter-api-v2": "^1.12.3"
+    "twitter-api-v2": "^1.12.3",
+    "web3": "^1.7.5"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.2.0",

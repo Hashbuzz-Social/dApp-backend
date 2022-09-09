@@ -8,7 +8,7 @@ import { body, validationResult } from "express-validator";
 import statusCodes from "http-status-codes";
 import prisma from "@shared/prisma";
 import { Prisma } from "@prisma/client";
-import { createTopUpTransaction } from "@services/transaction-service";
+import { createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 // import { topUpHandler } from "@controller/transaction.controller";
 
 // Constants
@@ -18,7 +18,7 @@ const { OK, CREATED, BAD_REQUEST } = statusCodes;
 
 router.post("/create-topup-transaction", body("amount").isFloat(), body("accountId").custom(checkWalletFormat), creteTopUpHandler);
 
-router.post("/top-up", body("amount").isFloat(), checkErrResponse, topUpHandler);
+router.post("/top-up", body("amount").isFloat(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 
@@ -31,10 +31,20 @@ router.post("/activeContractId", body("accountId").custom(checkWalletFormat), ch
  */
 
 async function topUpHandler(req: Request, res: Response) {
-  const amount: number = req.body.amount;
+  let amount: number = req.body.amount;
+  const accountId: string = req.body.accountId;
+
+  amount = parseFloat(amount.toFixed(8));
+
   if (req.currentUser?.user_id) {
-    const topUp = await userService.topUp(req.currentUser?.user_id, amount);
-    return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
+    try {
+      const topUp = await userService.topUp(req.currentUser?.user_id, amount);
+      await updateBalanceToContract(accountId, amount);
+      return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 }
 
@@ -74,6 +84,6 @@ async function creteTopUpHandler(req: Request, res: Response) {
   const amount: number = req.body.amount;
   const payeeId: string = req.body.accountId;
 
-  const transactionBytes = await createTopUpTransaction(payeeId, amount);
+  const transactionBytes = await createTopUpTransaction(payeeId, parseFloat(amount.toFixed(8)));
   return res.status(CREATED).json(transactionBytes);
 }

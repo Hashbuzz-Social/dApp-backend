@@ -260,7 +260,6 @@ model user_user {
   campaign_twittercard                 campaign_twittercard[]
   django_admin_log                     django_admin_log[]
   socialaccount_socialaccount          socialaccount_socialaccount[]
-  transactions                         transactions[]
   user_twitterlogintemp                user_twitterlogintemp[]
   user_user_groups                     user_user_groups[]
   user_user_user_permissions           user_user_user_permissions[]
@@ -302,17 +301,6 @@ model smartcontracts {
   created_at      DateTime? @db.Timestamptz(6)
   contractAddress String    @db.VarChar(150)
   fileId          String    @db.VarChar(50)
-}
-
-model transactions {
-  id         BigInt          @id @default(autoincrement())
-  type       transactionType
-  user_id    BigInt
-  username   String
-  network    network?
-  response   Json
-  created_at DateTime?       @db.Timestamptz(6)
-  user_user  user_user       @relation(fields: [user_id, username], references: [id, username], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum network {

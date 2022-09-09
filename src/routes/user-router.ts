@@ -76,8 +76,9 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), (req: 
   const address: string = req.body.accountId;
 
   (async () => {
-    const contractCall = await queryBalance(address);
-    return res.status(OK).json({ bal: "fetched" });
+    const balances = await queryBalance(address);
+    console.log(balances);
+    return res.status(OK).json(balances);
   })();
 });
 
