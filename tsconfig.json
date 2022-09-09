@@ -71,7 +71,8 @@
       "@services/*": ["src/services/*"],
       "@routes/*": ["src/routes/*"],
       "@middleware/*": ["src/middleware/*"],
-      "@validator/*": ["src/validator/*"]
+      "@validator/*": ["src/validator/*"],
+      "@smartContract":["src/smartContract"]
     },
     "useUnknownInCatchVariables": false
   },

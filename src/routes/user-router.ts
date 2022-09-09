@@ -7,6 +7,7 @@ import { sensitizeUserData } from "@shared/helper";
 
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
+import { queryBalance } from "@services/smartcontract-service";
 
 // Constants
 const router = Router();
@@ -23,29 +24,61 @@ export const p = {
 /**
  * Get all users.
  */
-router.get(p.get, adminMiddleWare.isAdmin, (_: Request, res: Response) => {
+router.get("/all", adminMiddleWare.isAdmin, (_: Request, res: Response) => {
   (async () => {
     const users = await userService.getAll();
     return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
   })();
 });
 
+/****
+ * get current user.
+ */
+
+router.get("/current", (red: Request, res: Response) => {
+  (async () => {
+    const currentUser = await userService.getUserById(red.currentUser?.user_id);
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser!))));
+  })();
+});
+
 /***
  * Update wallet id to for current user.
  **/
-router.put(p.update + "/wallet", body("walletId").custom(checkWalletFormat), (req: Request, res: Response) => {
+router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: Request, res: Response) => {
   //check validation and return
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(BAD_REQUEST).json({ errors: errors.array() });
   }
 
+  const walletId: string = req.body.walletId;
+
+  if (req.currentUser?.user_user.hedera_wallet_id === walletId) {
+    return res.status(OK).json({ updated: true, message: "id is same as previous one" });
+  }
+
   //If not error then update database
   (async () => {
-    const walletId: string = req.body.walletId;
     const id = req.currentUser?.user_id;
     const updatedUser = await userService.updateWalletId(walletId, id!);
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  })();
+});
+
+router.post("/get-balances", body("accountId").custom(checkWalletFormat), (req: Request, res: Response) => {
+  //check validation and return
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(BAD_REQUEST).json({ errors: errors.array() });
+  }
+
+  const address: string = req.body.accountId;
+
+  (async () => {
+    const balances = await queryBalance(address);
+    console.log(balances);
+    return res.status(OK).json(balances);
   })();
 });
 

@@ -19,6 +19,7 @@ interface UserData {
     business_twitter_handle: string | null;
     consent: boolean | null;
     is_staff: boolean | null;
+    is_superuser: boolean | null;
   }>;
 }
 

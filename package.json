@@ -28,7 +28,8 @@
     "@server": "dist/server",
     "@routes": "dist/routes",
     "@middleware": "dist/middleware",
-    "@validator": "dist/validator"
+    "@validator": "dist/validator",
+    "@smartContract": "dist/smartContract"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -85,7 +86,9 @@
     "module-alias": "^2.2.2",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.1",
-    "twitter-api-v2": "^1.12.3"
+    "solc": "^0.8.16",
+    "twitter-api-v2": "^1.12.3",
+    "web3": "^1.7.5"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.2.0",

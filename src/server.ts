@@ -15,10 +15,18 @@ import { CustomError } from "@shared/errors";
 // Constants
 const app = express();
 
+const options: cors.CorsOptions = {
+  origin: "*"
+};
+
+// Then pass these options to cors:
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+app.use(cors(options));
+
+
 // **** Middlewares **** //
 
 // Common middlewares
-app.use(cors);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
