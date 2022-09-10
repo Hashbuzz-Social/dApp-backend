@@ -16,8 +16,7 @@ const getUserById = async (id?: number | bigint) => {
   return await prisma.user_user.findUnique({ where: { id } });
 };
 
-const topUp = async (id: number | bigint, amount: number, isIncrement = true) => {
-  amount = (amount - amount * 0.1) * Math.pow(10, 8);
+const topUp = async (id: number | bigint, amounts: { topUpAmount: number; fee: number; total: number }, isIncrement = true) => {
   if (isIncrement)
     return await prisma.user_user.update({
       where: {
@@ -25,7 +24,7 @@ const topUp = async (id: number | bigint, amount: number, isIncrement = true) =>
       },
       data: {
         available_budget: {
-          increment: parseInt(amount.toFixed(0)),
+          increment: amounts.topUpAmount,
         },
       },
     });
@@ -35,7 +34,7 @@ const topUp = async (id: number | bigint, amount: number, isIncrement = true) =>
         id,
       },
       data: {
-        available_budget: parseInt(amount.toFixed(0)),
+        available_budget: amounts.topUpAmount,
       },
     });
   }
