@@ -13,14 +13,14 @@ contract Hashbuzz {
   event FundsDeposited(string campaigner, uint256 amount);
   event FundsWithdrawn(string campaigner, uint256 amount);
   event InteractorPaid(string interactor, string campaigner, uint256 amount);
-  event InteractorPaidDeferred(string interactor, string campaigner, uint256 amount);
-  event InteractorPaymentSetAside(string campaigner, uint256 amount);
+  event InteractorPaidDeferred(string interactor, string campaigner, string campaignAddress, uint256 amount);
+  event NewCampaignIsAdded(string campaignAdddress, uint256 amount);
   // hashbuzz address, deployer of the contract
   address private owner;
   // campaigner's addresses mapped to balances for campaigners
   mapping(string => uint256) public balances;
   // campaigner's addresses mapped to set aside balances for campaigners, in order to pay those interactors whose wallet hasn't been connected
-  mapping(string => uint256) public setAsidebalances;
+  mapping(string => uint256) public campaignBalances;
 
   //============================================
   // GETTING HBAR TO THE CONTRACT
@@ -71,56 +71,38 @@ contract Hashbuzz {
   }
 
   /**
-   * @dev pay to interactor
-   * @param campaigner address of campaigner
-   * @param interactor address payable of interactor
-   * @param amount amount to be updated
-   * @param instant instant or deferred(in case wallet not connected)
-   */
-  function payInteractor(
-    string memory campaigner,
-    string memory interactor,
-    uint256 amount,
-    bool instant
-  ) public {
-    require(balances[campaigner] > amount);
-    if (instant) {
-      updateBalance(campaigner, amount, false);
-    } else {
-      setAsidePaymentsForInteractor(campaigner, amount);
-    }
-    //payable(interactor).transfer(amount);
-    emit InteractorPaid(interactor, campaigner, amount);
-  }
-
-  /**
-   * @dev pay to interactor from setaside balnces
+   * @dev pay to interactor from cmapign balnces
    * @param campaigner address of campaigner
    * @param interactor address payable of interactor
    * @param amount amount to be updated
    */
-  function payInteractorFromAsideBalances(
+  function payInteractorFromCampaignBalances(
     string memory campaigner,
     string memory interactor,
+    string memory campaignAddress,
     uint256 amount
   ) public {
-    require(setAsidebalances[campaigner] > amount);
-    setAsidebalances[campaigner] -= amount;
+    require(campaignBalances[campaigner] > amount);
+    campaignBalances[campaigner] -= amount;
     //payable(interactor).transfer(amount);
-    emit InteractorPaidDeferred(interactor, campaigner, amount);
+    emit InteractorPaidDeferred(interactor, campaigner, campaignAddress, amount);
   }
 
   /**
-   * @dev set aside payments
+   * @dev add balnce for the campaign;
    * @param campaigner address of campaigner
    * @param amount amount to be updated
    */
-  function setAsidePaymentsForInteractor(string memory campaigner, uint256 amount) public {
+  function addCampaign(
+    string memory campaigner,
+    string memory campaignAddress,
+    uint256 amount
+  ) public {
     require(balances[campaigner] > amount);
     balances[campaigner] -= amount;
     emit FundsWithdrawn(campaigner, amount);
-    setAsidebalances[campaigner] += amount;
-    emit InteractorPaymentSetAside(campaigner, amount);
+    campaignBalances[campaignAddress] += amount;
+    emit NewCampaignIsAdded(campaignAddress, amount);
   }
 
   //Set contract deployer as owner
@@ -137,7 +119,6 @@ contract Hashbuzz {
     require(balances[newCampaigner] == 0);
     emit CampaignerAdded(newCampaigner);
     balances[newCampaigner] = 0;
-    setAsidebalances[newCampaigner] = 0;
   }
 
   /**
