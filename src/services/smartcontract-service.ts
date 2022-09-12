@@ -15,8 +15,9 @@ import {
 import hederaService from "@services/hedera-service";
 import prisma from "@shared/prisma";
 import Web3 from "web3";
+import logger from "jet-logger";
 
-const web3 = new Web3();
+const web3 = new Web3;
 // import JSONBigInt from "json-bigint";
 const { hederaClient, operatorKey, network } = hederaService;
 
@@ -156,7 +157,7 @@ export const deployContract = async () => {
       },
     });
   } catch (error) {
-    console.log(error);
+    logger.err(error);
   }
 
   return { contract_id: contractId, contractAddress };
@@ -172,11 +173,11 @@ export const provideActiveContract = async () => {
 
   if (availableContracts.length > 0) {
     const { contract_id, contractAddress } = availableContracts[0];
-    console.log("Found contract in db::", contract_id);
+    // console.log("Found contract in db::", contract_id);
 
     return { contract_id, contractAddress };
   } else {
-    console.log("Intiate new contract crete::");
+    logger.info("Intiate new contract crete::");
     return await deployContract();
   }
 };
@@ -210,7 +211,7 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
   //recipt;
   const contractExReceipt = await contractExSubmit.getReceipt(hederaClient);
 
-  console.log("add campigner transaction response", contractExReceipt);
+  // console.log("add campigner transaction response", contractExReceipt);
 
   return { contract_id: contract_id!.toString().trim(), addedAccount_Id: accountId, receipt: contractExReceipt };
 };
@@ -224,7 +225,6 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
 export function decodeFunctionResult(functionName: string, resultAsBytes: Uint8Array) {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const functionAbi = contractAbi.find((func: { name: string }) => func.name === functionName);
-  console.log("functionAbi", functionAbi);
   const functionParameters = functionAbi.outputs;
   const resultHex = "0x".concat(Buffer.from(resultAsBytes).toString("hex"));
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument

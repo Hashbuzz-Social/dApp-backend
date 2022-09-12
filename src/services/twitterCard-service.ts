@@ -76,8 +76,8 @@ const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
   return addNewStats;
 };
 
-const updateTotalSpentAmount = (id: number | bigint, amount_spent: number) => {
-  const updateTotalSpentBudget = prisma.campaign_twittercard.update({
+const updateTotalSpentAmount = async (id: number | bigint, amount_spent: number) => {
+  const updateTotalSpentBudget = await  prisma.campaign_twittercard.update({
     where: { id },
     data: {
       amount_spent,

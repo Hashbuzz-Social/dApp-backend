@@ -27,6 +27,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             select: {
               id: true,
               hedera_wallet_id: true,
+              available_budget:true,
               username: true,
               first_name: true,
               last_login: true,

@@ -4,10 +4,12 @@ import { Request, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { sensitizeUserData } from "@shared/helper";
-
+import logger from "jet-logger";
+ 
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
 import { queryBalance } from "@services/smartcontract-service";
+import prisma from "@shared/prisma";
 
 // Constants
 const router = Router();
@@ -66,7 +68,7 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
   })();
 });
 
-router.post("/get-balances", body("accountId").custom(checkWalletFormat), (req: Request, res: Response) => {
+router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("contractBal").isBoolean(), (req: Request, res: Response) => {
   //check validation and return
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -74,12 +76,16 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), (req: 
   }
 
   const address: string = req.body.accountId;
-
-  (async () => {
-    const balances = await queryBalance(address);
-    console.log(balances);
-    return res.status(OK).json(balances);
-  })();
+  const contractBal: boolean = req.body.contractBal;
+  if (contractBal) {
+    (async () => {
+      const balances = await queryBalance(address);
+      logger.info(`Contract balance for the ${address} is::::- ${balances?.balances??0}`);
+      return res.status(OK).json(balances);
+    })();
+  } else {
+    return res.status(OK).json({ available_budget: req.currentUser?.user_user.available_budget });
+  }
 });
 
 export default router;
