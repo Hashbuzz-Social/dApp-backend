@@ -16,6 +16,7 @@ router.post("/create-topup-transaction", body("amounts").isObject(), body("accou
 router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
+router.post("./allotFundForCampaign" , body("campaignId").isNumeric(), checkErrResponse , handleCampaignFundAllocation  )
 
 //@handlers
 
@@ -87,4 +88,9 @@ async function creteTopUpHandler(req: Request, res: Response) {
 
   const transactionBytes = await createTopUpTransaction(payeeId, amounts);
   return res.status(CREATED).json(transactionBytes);
+}
+
+
+function handleCampaignFundAllocation(req:Request , res:Response) {
+  return res.status(CREATED).json({"done":true});
 }
