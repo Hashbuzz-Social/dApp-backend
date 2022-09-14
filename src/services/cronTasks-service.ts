@@ -60,6 +60,9 @@ const manageTwitterCardStatus = async () => {
                 reply_reward: comment_reward,
               }
             );
+            //convert total to tiny hbar
+            total_spent = Math.round(total_spent * Math.pow(10,8));
+
             logger.info(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
           } else {
             logger.warn(`Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""} is not defined`);
