@@ -103,10 +103,10 @@ async function handleCampaignFundAllocation(req: Request, res: Response) {
     const campaignerId = campaignDetails.owner_id;
 
     //?  call the function to update the balances of the camp
-    const { balances , balancesObj } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
+    const { transactionId , recipt } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
     await userService.topUp(campaignId, amounts, "decrement");
 
-    return res.status(CREATED).json({balances , balancesObj});
+    return res.status(CREATED).json({transactionId , recipt});
   }
 
   return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
