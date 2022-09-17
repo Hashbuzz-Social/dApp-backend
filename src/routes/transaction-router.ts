@@ -104,7 +104,7 @@ async function handleCampaignFundAllocation(req: Request, res: Response) {
 
     //?  call the function to update the balances of the camp
     const { transactionId , recipt } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
-    await userService.topUp(campaignId, amounts, "decrement");
+    await userService.topUp(campaignerId, amounts, "decrement");
 
     return res.status(CREATED).json({transactionId , recipt});
   }
