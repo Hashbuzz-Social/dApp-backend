@@ -1,16 +1,10 @@
 import {
-  ContractExecuteTransaction,
-  Hbar as Hban,
-  ContractFunctionParameters,
-  AccountId,
-  ContractId,
-  TransferTransaction,
-  ContractCallQuery,
-  Hbar,
+  AccountId, ContractExecuteTransaction, ContractId,
+  TransferTransaction
 } from "@hashgraph/sdk";
-import { decodeFunctionResult, encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
-import signingService from "@services/signing-service";
 import hbarservice from "@services/hedera-service";
+import signingService from "@services/signing-service";
+import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   const { contract_id } = await provideActiveContract();

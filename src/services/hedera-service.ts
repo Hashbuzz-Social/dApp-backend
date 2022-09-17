@@ -1,5 +1,5 @@
-import { Client, TopicCreateTransaction, AccountId, PrivateKey, AccountBalanceQuery } from "@hashgraph/sdk";
-import logger from "jet-logger"
+import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
+import logger from "jet-logger";
 
 
 const network = process.env.HEDERA_NETWORK;
