@@ -2,6 +2,7 @@ import twitterCardService, { TwitterStats } from "@services/twitterCard-service"
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import functions from "@shared/functions";
+import { closeCampaignOperation } from "./campign-service";
 
 const manageTwitterCardStatus = async () => {
   logger.info("manageTwitterCardStatus::start");
@@ -22,7 +23,7 @@ const manageTwitterCardStatus = async () => {
         let total_spent = 0;
         const campaignStats: TwitterStats = {};
         // refactor card object
-        const { comment_reward, retweet_reward, like_reward, quote_reward, id, name } = card;
+        const { comment_reward, retweet_reward, like_reward, quote_reward, id, name, campaign_budget } = card;
 
         //? get Engagment Data on card. "like" , "Quote", "Retweet" from the twitterAPI.
         const {
@@ -61,7 +62,7 @@ const manageTwitterCardStatus = async () => {
               }
             );
             //convert total to tiny hbar
-            total_spent = Math.round(total_spent * Math.pow(10,8));
+            total_spent = Math.round(total_spent * Math.pow(10, 8));
 
             logger.info(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
           } else {
@@ -73,6 +74,14 @@ const manageTwitterCardStatus = async () => {
             await twitterCardService.updateTwitterCardStats(campaignStats, id),
             await twitterCardService.updateTotalSpentAmount(id, total_spent),
           ]);
+
+          //!! Check budget of the champaign compare it with total spent  amount::4
+          //? First convert campaignBudget to tinyHabr;
+          const tiny_campaign_budget = Math.round(campaign_budget ?? 0 * Math.pow(10, 8));
+          if (total_spent > tiny_campaign_budget) {
+            logger.info(`Campaign with Name ${name ?? ""} Has no more budget available close it`);
+            closeCampaignOperation(id)
+          }
         } else {
           //!! if not available in db then update the DB by adding new record.
           await twitterCardService.addNewCardStats(
