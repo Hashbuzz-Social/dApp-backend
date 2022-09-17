@@ -17,7 +17,7 @@ router.post("/create-topup-transaction", body("amounts").isObject(), body("accou
 router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
-router.post("./allotFundForCampaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
 
 //@handlers
 
@@ -103,12 +103,10 @@ async function handleCampaignFundAllocation(req: Request, res: Response) {
     const campaignerId = campaignDetails.owner_id;
 
     //?  call the function to update the balances of the camp
-    const { balances, balancesObj } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
+    const { balances , balancesObj } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
     await userService.topUp(campaignId, amounts, "decrement");
 
-    return res.status(CREATED).json({
-      campaignerBalances: balances,
-    });
+    return res.status(CREATED).json({balances , balancesObj});
   }
 
   return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
