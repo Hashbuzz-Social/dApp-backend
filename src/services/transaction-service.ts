@@ -82,13 +82,21 @@ export const allocateBalanceToCampaign = async (campaignerId: bigint, amounts: n
       .setGas(1000000)
       .setFunction("abc", new ContractFunctionParameters())
       .setFunctionParameters(functionCallAsUint8Array)
-      .setQueryPayment(new Hbar(1));
+      .setMaxQueryPayment(new Hbar(10));
+
+    // const contractExBalTx = new ContractExecuteTransaction()
+    // .setContractId(contractAddress)
+    // .setGas(1000000)
+    // .setFunctionParameters(functionCallAsUint8Array)
+    // .setTransactionMemo("Hashbuzz add balance to a campaign account")
+    // .setGas(100000);
+
+    // const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+    // return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
     const balances = exResult.getUint256(0).toString();
     const balancesObj = decodeFunctionResult("getBalance", exResult.bytes);
-    // return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
-    // return signingService.signAndMakeBytes(contractExBalTx, payerId);
     return { balances, balancesObj };
   } else {
     throw new Error("Contract id not found");
