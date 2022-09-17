@@ -97,12 +97,13 @@ contract Hashbuzz {
     string memory campaigner,
     string memory campaignAddress,
     uint256 amount
-  ) public {
+  ) public returns (uint256){
     require(balances[campaigner] > amount);
     balances[campaigner] -= amount;
     emit FundsWithdrawn(campaigner, amount);
     campaignBalances[campaignAddress] += amount;
     emit NewCampaignIsAdded(campaignAddress, amount);
+    return balances[campaigner];
   }
 
   //Set contract deployer as owner
@@ -132,4 +133,12 @@ contract Hashbuzz {
   function getBalance(string memory campaigner) public view returns (uint256) {
     return balances[campaigner];
   }
+
+   /**
+   * @dev add campaigner
+   * @param campaignAddress address of new campaigner
+   */
+   function getCampaignBalance(string memory campaignAddress) public view returns (uint256){
+    return campaignBalances[campaignAddress];
+   }
 }

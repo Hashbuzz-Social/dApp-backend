@@ -1,5 +1,14 @@
-import { ContractExecuteTransaction, Hbar, ContractFunctionParameters, AccountId, ContractId, TransferTransaction } from "@hashgraph/sdk";
-import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
+import {
+  ContractExecuteTransaction,
+  Hbar as Hban,
+  ContractFunctionParameters,
+  AccountId,
+  ContractId,
+  TransferTransaction,
+  ContractCallQuery,
+  Hbar,
+} from "@hashgraph/sdk";
+import { decodeFunctionResult, encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 import signingService from "@services/signing-service";
 import hbarservice from "@services/hedera-service";
 
@@ -41,6 +50,46 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
 
     //signing and returning
     return signingService.signAndMakeBytes(transferTx, payerId);
+  } else {
+    throw new Error("Contract id not found");
+  }
+};
+
+/****
+ * @description - This function will be called after creating campaign. Calling this function will debit balance
+ * from the campaigner hedera account and credit same balance to the campaign account.
+ *
+ * @params campaignerAccount - Campaigner account address in 0.0.123456 format.
+ * @params campaignerId - Database id of the campaign
+ * @params amounts - Amount which is allocated to the campaign in tinybar.
+ */
+
+export const allocateBalanceToCampaign = async (campaignerId: bigint, amounts: number, campaignerAccount: string) => {
+  const { contract_id } = await provideActiveContract();
+
+  if (contract_id) {
+    const campaigner = "0x" + AccountId.fromString(campaignerAccount).toSolidityAddress();
+    const contractAddress = ContractId.fromString(contract_id.toString());
+
+    const campaignAddress = campaigner + "_" + campaignerId.toString();
+
+    console.log("tinyAmount is added to contract", amounts);
+
+    const functionCallAsUint8Array = encodeFunctionCall("addCampaign", [campaigner, campaignAddress, amounts]);
+
+    const contractExBalTx = new ContractCallQuery()
+      .setContractId(contractAddress)
+      .setGas(1000000)
+      .setFunction("abc", new ContractFunctionParameters())
+      .setFunctionParameters(functionCallAsUint8Array)
+      .setQueryPayment(new Hbar(1));
+
+    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+    const balances = exResult.getUint256(0).toString();
+    const balancesObj = decodeFunctionResult("getBalance", exResult.bytes);
+    // return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
+    // return signingService.signAndMakeBytes(contractExBalTx, payerId);
+    return { balances, balancesObj };
   } else {
     throw new Error("Contract id not found");
   }

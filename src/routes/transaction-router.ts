@@ -1,5 +1,6 @@
+import { getCampaignDetailsById } from "@services/campign-service";
 import { addCampaigner, provideActiveContract } from "@services/smartcontract-service";
-import { createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
+import { allocateBalanceToCampaign, createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
@@ -9,14 +10,14 @@ import statusCodes from "http-status-codes";
 
 // Constants
 const router = Router();
-const { OK, CREATED, BAD_REQUEST } = statusCodes;
+const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
 // Paths
 
 router.post("/create-topup-transaction", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), creteTopUpHandler);
 router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
-router.post("./allotFundForCampaign" , body("campaignId").isNumeric(), checkErrResponse , handleCampaignFundAllocation  )
+router.post("./allotFundForCampaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
 
 //@handlers
 
@@ -36,7 +37,7 @@ async function topUpHandler(req: Request, res: Response) {
 
   if (req.currentUser?.user_id) {
     try {
-      const topUp = await userService.topUp(req.currentUser?.user_id, amounts);
+      const topUp = await userService.topUp(req.currentUser?.user_id, amounts.topUpAmount, "increment");
       await updateBalanceToContract(accountId, amounts);
       return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
     } catch (error) {
@@ -90,7 +91,25 @@ async function creteTopUpHandler(req: Request, res: Response) {
   return res.status(CREATED).json(transactionBytes);
 }
 
+async function handleCampaignFundAllocation(req: Request, res: Response) {
+  const campaignId: number = req.body.campaignId;
 
-function handleCampaignFundAllocation(req:Request , res:Response) {
-  return res.status(CREATED).json({"done":true});
+  //! get campaignById
+  const campaignDetails = await getCampaignDetailsById(campaignId);
+
+  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
+    const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
+    const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
+    const campaignerId = campaignDetails.owner_id;
+
+    //?  call the function to update the balances of the camp
+    const { balances, balancesObj } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
+    await userService.topUp(campaignId, amounts, "decrement");
+
+    return res.status(CREATED).json({
+      campaignerBalances: balances,
+    });
+  }
+
+  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
 }
