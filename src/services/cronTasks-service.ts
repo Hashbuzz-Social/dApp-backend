@@ -77,8 +77,10 @@ const manageTwitterCardStatus = async () => {
 
           //!! Check budget of the champaign compare it with total spent  amount::4
           //? First convert campaignBudget to tinyHabr;
-          const tiny_campaign_budget = Math.round(campaign_budget ?? 0 * Math.pow(10, 8));
+          const tiny_campaign_budget = Math.round((campaign_budget ?? 0) * Math.pow(10, 8));
+          console.log(tiny_campaign_budget)
           if (total_spent > tiny_campaign_budget) {
+            console.log(`total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`)
             logger.info(`Campaign with Name ${name ?? ""} Has no more budget available close it`);
             closeCampaignOperation(id)
           }
