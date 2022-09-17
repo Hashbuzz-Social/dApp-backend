@@ -1,7 +1,7 @@
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
+import functions from "@shared/functions";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
-import functions from "@shared/functions";
 import { closeCampaignOperation } from "./campign-service";
 
 const manageTwitterCardStatus = async () => {

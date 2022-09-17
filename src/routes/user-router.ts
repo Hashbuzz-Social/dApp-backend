@@ -1,15 +1,14 @@
 import adminMiddleWare from "@middleware/admin";
+import { sensitizeUserData } from "@shared/helper";
 import { checkWalletFormat } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
-import JSONBigInt from "json-bigint";
-import { sensitizeUserData } from "@shared/helper";
 import logger from "jet-logger";
+import JSONBigInt from "json-bigint";
  
+import { queryBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
-import { queryBalance } from "@services/smartcontract-service";
-import prisma from "@shared/prisma";
 
 // Constants
 const router = Router();
