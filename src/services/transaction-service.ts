@@ -77,27 +77,15 @@ export const allocateBalanceToCampaign = async (campaignerId: bigint, amounts: n
 
     const functionCallAsUint8Array = encodeFunctionCall("addCampaign", [campaigner, campaignAddress, amounts]);
 
-    const contractExBalTx = new ContractCallQuery()
-      .setContractId(contractAddress)
-      .setGas(1000000)
-      .setFunction("abc", new ContractFunctionParameters())
-      .setFunctionParameters(functionCallAsUint8Array)
-      .setMaxQueryPayment(new Hbar(10));
-
-    // const contractExBalTx = new ContractExecuteTransaction()
-    // .setContractId(contractAddress)
-    // .setGas(1000000)
-    // .setFunctionParameters(functionCallAsUint8Array)
-    // .setTransactionMemo("Hashbuzz add balance to a campaign account")
-    // .setGas(100000);
-
-    // const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    // return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
+    const contractExBalTx = new ContractExecuteTransaction()
+    .setContractId(contractAddress)
+    .setGas(1000000)
+    .setFunctionParameters(functionCallAsUint8Array)
+    .setTransactionMemo("Hashbuzz add balance to a campaign account")
+    .setGas(100000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    const balances = exResult.getUint256(0).toString();
-    const balancesObj = decodeFunctionResult("getBalance", exResult.bytes);
-    return { balances, balancesObj };
+    return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
   } else {
     throw new Error("Contract id not found");
   }
