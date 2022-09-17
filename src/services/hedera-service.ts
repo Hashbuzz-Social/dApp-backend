@@ -1,8 +1,11 @@
 import { Client, TopicCreateTransaction, AccountId, PrivateKey, AccountBalanceQuery } from "@hashgraph/sdk";
+import logger from "jet-logger"
+
 
 const network = process.env.HEDERA_NETWORK;
 const operatorPrivateKey = process.env.HEDERA_PRIVATE_KEY;
 const operatorAccount = process.env.HEDERA_ACCOUNT_ID;
+
 
 //build key
 const operatorId = AccountId.fromString(operatorAccount!);
@@ -18,20 +21,20 @@ if (operatorPrivateKey == null || operatorAccount == null) {
 let client: Client;
 switch (network) {
   case "mainnet":
-    console.log("Connecting to the Hedera Mainnet");
+    logger.info("Connecting to the Hedera Mainnet");
     client = Client.forMainnet();
     break;
   case "testnet":
-    console.log("Connecting to the Hedera Testnet");
+    logger.info("Connecting to the Hedera Testnet");
     client = Client.forTestnet();
     break;
   case "previewnet":
-    console.log("Connecting to the Hedera Previewnet");
+    logger.info("Connecting to the Hedera Previewnet");
     client = Client.forPreviewnet();
     break;
   default:
-    console.error("Invalid HEDERA_NETWORK: ${network}");
-    throw new Error("Invalid HEDERA_NETWORK: ${network}");
+    logger.err(`Invalid HEDERA_NETWORK: ${network??""}`);
+    throw new Error(`Invalid HEDERA_NETWORK: ${network??""}`);
 }
 client = client.setOperator(operatorId, operatorKey);
 

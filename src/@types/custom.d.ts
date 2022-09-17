@@ -8,6 +8,7 @@ interface UserData {
     id: bigint;
     hedera_wallet_id: string | null;
     username: string;
+    available_budget:number,
     first_name: string;
     last_login: Date | null;
     last_name: string;

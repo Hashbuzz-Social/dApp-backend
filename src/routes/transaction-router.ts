@@ -1,26 +1,23 @@
-import { addCampaigner, provideActiveContract, queryBalance } from "@services/smartcontract-service";
-import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
-import { TransactionResponse } from "@hashgraph/sdk";
+import { getCampaignDetailsById } from "@services/campign-service";
+import { addCampaigner, provideActiveContract } from "@services/smartcontract-service";
+import { allocateBalanceToCampaign, createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
-import hbarService from "@services/hedera-service";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body, validationResult } from "express-validator";
+import { body } from "express-validator";
 import statusCodes from "http-status-codes";
-import prisma from "@shared/prisma";
-import { Prisma } from "@prisma/client";
-import { createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 // import { topUpHandler } from "@controller/transaction.controller";
 
 // Constants
 const router = Router();
-const { OK, CREATED, BAD_REQUEST } = statusCodes;
+const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
 // Paths
 
-router.post("/create-topup-transaction", body("amount").isFloat(), body("accountId").custom(checkWalletFormat), creteTopUpHandler);
-
-router.post("/top-up", body("amount").isFloat(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
+router.post("/create-topup-transaction", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), creteTopUpHandler);
+router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
+router.post("./allotFundForCampaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
 
 //@handlers
 
@@ -31,15 +28,17 @@ router.post("/activeContractId", body("accountId").custom(checkWalletFormat), ch
  */
 
 async function topUpHandler(req: Request, res: Response) {
-  let amount: number = req.body.amount;
   const accountId: string = req.body.accountId;
+  const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
-  amount = parseFloat(amount.toFixed(8));
+  if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
+    return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
+  }
 
   if (req.currentUser?.user_id) {
     try {
-      const topUp = await userService.topUp(req.currentUser?.user_id, amount);
-      await updateBalanceToContract(accountId, amount);
+      const topUp = await userService.topUp(req.currentUser?.user_id, amounts.topUpAmount, "increment");
+      await updateBalanceToContract(accountId, amounts);
       return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
     } catch (error) {
       console.log(error);
@@ -81,9 +80,36 @@ async function activeContractHandler(req: Request, res: Response) {
  */
 
 async function creteTopUpHandler(req: Request, res: Response) {
-  const amount: number = req.body.amount;
   const payeeId: string = req.body.accountId;
+  const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
-  const transactionBytes = await createTopUpTransaction(payeeId, parseFloat(amount.toFixed(8)));
+  if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
+    return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
+  }
+
+  const transactionBytes = await createTopUpTransaction(payeeId, amounts);
   return res.status(CREATED).json(transactionBytes);
+}
+
+async function handleCampaignFundAllocation(req: Request, res: Response) {
+  const campaignId: number = req.body.campaignId;
+
+  //! get campaignById
+  const campaignDetails = await getCampaignDetailsById(campaignId);
+
+  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
+    const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
+    const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
+    const campaignerId = campaignDetails.owner_id;
+
+    //?  call the function to update the balances of the camp
+    const { balances, balancesObj } = await allocateBalanceToCampaign(campaignerId, amounts, campaignerAccount);
+    await userService.topUp(campaignId, amounts, "decrement");
+
+    return res.status(CREATED).json({
+      campaignerBalances: balances,
+    });
+  }
+
+  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
 }

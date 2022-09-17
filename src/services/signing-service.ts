@@ -22,7 +22,7 @@ const signAndMakeBytes = (trans: Transaction, signingAcctId: string) => {
 
   const outBytes = out.toBytes();
 
-  console.log("Transaction bytes", outBytes);
+  // console.log("Transaction bytes", outBytes);
 
   return outBytes;
 };

@@ -4,7 +4,7 @@ import crontabService from "@services/cronTasks-service";
 export const taskEveryMinute = cron.schedule(
   "* * * * *",
   () => {
-    // crontabService.updateCardStatus();
+    crontabService.updateCardStatus();
     console.info("running a task every minute");
   },
   {
