@@ -17,7 +17,7 @@ router.post("/create-topup-transaction", body("amounts").isObject(), body("accou
 router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
-router.post("./allotFundForCampaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post("/allotFundForCampaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
 
 //@handlers
 
