@@ -125,10 +125,9 @@ model campaign_twittercard {
   comment_reward         Float?
   media                  String[]                 @db.VarChar(20)
   amount_claimed         Float?
-  amount_spent           Float?
+  amount_spent           Float                    @default(0)
   name                   String?                  @db.VarChar(50)
   owner_id               BigInt?
-  tweet_stat             String?                  @db.VarChar(200)
   card_status            String                   @db.VarChar(50)
   campaign_budget        Float?
   user_user              user_user?               @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
