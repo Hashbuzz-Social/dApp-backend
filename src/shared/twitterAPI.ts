@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import TwitterApi, { TweetSearchRecentV2Paginator, TweetV2 } from "twitter-api-v2";
+import TwitterApi, { TweetSearchRecentV2Paginator, TweetV2, UserV2 } from "twitter-api-v2";
 
 //Type definitions
 interface PublicMetrics {
@@ -19,40 +19,68 @@ const token = "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl
 const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
 const roClient = twitterClient.readOnly;
 
-const getAllUsersByEngagement = async (tweetId: string, engagement: "like" | "retweet" | "quote" | "comment") => {
-  if (engagement === "like") {
-    const users = await roClient.v2.tweetLikedBy(tweetId, {
-      "user.fields": ["username"],
-      asPaginator: true,
-    });
-    // return !returnOnlyIds ? users.data.data : users?.data?.data ? users?.data?.data.map((d) => d.id) : [];
-    return users.data;
+/*****
+ *@description Get the list of the users with their userId who liked the the user's tweet and list them.
+ * @returns Array of UserV2;
+ */
+const getAllUsersWhoLikedOnTweetId = async (tweetId: string) => {
+  const users: UserV2[] = [];
+
+  const usersRequest = await roClient.v2.tweetLikedBy(tweetId, {
+    "user.fields": ["username"],
+    asPaginator: true,
+  });
+
+  for await (const user of usersRequest) {
+    users.push(user);
   }
-  if (engagement === "retweet") {
-    const get_users = await roClient.v2.tweetRetweetedBy(tweetId, {
-      "user.fields": ["username"],
-    });
-    // return !returnOnlyIds ? get_users.data : get_users?.data ? get_users?.data.map((d) => d.id) : [];
-    return get_users;
+
+  return users;
+};
+
+/****
+ *@description Array of all retweeted data.
+ */
+const getAllRetweetOfTweetId = async (tweetId: string) => {
+  const users: UserV2[] = [];
+
+  const getAllRetweets = await roClient.v2.tweetRetweetedBy(tweetId, {
+    "user.fields": ["username"],
+    asPaginator: true,
+  });
+  for await (const user of getAllRetweets) {
+    users.push(user);
   }
-  if (engagement === "quote") {
-    const get_users = await roClient.v2.quotes(tweetId, {
-      "user.fields": ["username"],
-    });
-    return get_users.data;
+
+  return users;
+};
+
+/*****
+ * @description getAllQuotedUsers
+ *
+ */
+const getAllUsersWhoQuotedOnTweetId = async (tweetId: string) => {
+  4;
+  const data: TweetV2[] = [];
+  const quotes = await roClient.v2.quotes(tweetId, { expansions: ["author_id"], "user.fields": ["username", "url"] });
+
+  for await (const quote of quotes) {
+    data.push(quote);
   }
+
+  return data;
 };
 
 const getEngagementOnCard = async (tweetId: string) => {
   const data = await Promise.all([
-    await getAllUsersByEngagement(tweetId, "like"),
-    await getAllUsersByEngagement(tweetId, "retweet"),
-    await getAllUsersByEngagement(tweetId, "quote"),
+    await getAllUsersWhoLikedOnTweetId(tweetId),
+    await getAllRetweetOfTweetId(tweetId),
+    await getAllUsersWhoQuotedOnTweetId(tweetId),
   ]);
   return {
-    like: data[0],
-    retweet: data[1],
-    quote: data[2],
+    likes: data[0],
+    retweets: data[1],
+    quotes: data[2],
   };
 };
 
@@ -103,6 +131,8 @@ export default {
   getAllReplies,
   getPublicMetrics,
   getEngagementOnCard,
-  getAllUsersByEngagement,
   twitterClient,
+  getAllUsersWhoLikedOnTweetId,
+  getAllRetweetOfTweetId,
+  getAllUsersWhoQuotedOnTweetId,
 } as const;

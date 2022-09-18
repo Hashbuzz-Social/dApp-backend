@@ -29,3 +29,5 @@ declare module "express" {
     currentUser?: UserData;
   }
 }
+
+export type twitterStatus = 'Rejected' | 'Pending' | 'Running' | 'Completed'| 'Deleted';
