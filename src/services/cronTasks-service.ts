@@ -30,7 +30,7 @@ const manageTwitterCardStatus = async () => {
           like_count: _likeCount,
           reply_count: _replyCount,
           retweet_count: _retweetCount,
-          quote_count: _qoteCount,
+          quote_count: _quoteCount,
         } = publicMetrics[activeCardsIds[index]];
 
         //?  get card count status of  "like" , "Quote", "Retweet" from DB(means exiting records).
@@ -42,17 +42,17 @@ const manageTwitterCardStatus = async () => {
 
           //!  if count changes update the data.
           if (like_count && like_count !== _likeCount) campaignStats.like_count = _likeCount;
-          if (quote_count && quote_count !== _qoteCount) campaignStats.quote_count = _qoteCount;
+          if (quote_count && quote_count !== _quoteCount) campaignStats.quote_count = _quoteCount;
           if (retweet_count && retweet_count !== _retweetCount) campaignStats.retweet_count = _retweetCount;
           if (reply_count && reply_count !== _replyCount) campaignStats.reply_count = _replyCount;
 
           if (retweet_reward && like_reward && quote_reward && comment_reward) {
             total_spent = functions.calculateTotalSpent(
               {
-                like_count: _likeCount ?? 0,
-                quote_count: _qoteCount ?? 0,
-                retweet_count: _retweetCount ?? 0,
-                reply_count: _replyCount ?? 0,
+                like_count: _likeCount,
+                quote_count: _quoteCount,
+                retweet_count: _retweetCount,
+                reply_count: _replyCount,
               },
               {
                 retweet_reward,
@@ -78,7 +78,7 @@ const manageTwitterCardStatus = async () => {
           //!! Check budget of the champaign compare it with total spent  amount::4
           //? First convert campaignBudget to tinyHabr;
           const tiny_campaign_budget = Math.round((campaign_budget ?? 0) * Math.pow(10, 8));
-          console.log(tiny_campaign_budget)
+          
           if (total_spent > tiny_campaign_budget) {
             console.log(`total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`)
             logger.info(`Campaign with Name ${name ?? ""} Has no more budget available close it`);
@@ -90,7 +90,7 @@ const manageTwitterCardStatus = async () => {
             {
               like_count: _likeCount,
               retweet_count: _retweetCount,
-              quote_count: _qoteCount,
+              quote_count: _quoteCount,
               reply_count: _replyCount,
             },
             id

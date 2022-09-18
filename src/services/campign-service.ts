@@ -1,4 +1,5 @@
 import prisma from "@shared/prisma";
+import { twitterStatus } from "src/@types/custom";
 
 export const getCampaignDetailsById = async (campaignId: number) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -15,6 +16,19 @@ export const getCampaignDetailsById = async (campaignId: number) => {
     },
   });
 };
+
+
+
+export const updateCampaignStatus = async (campaignId:number|bigint , status:twitterStatus) => {
+  return await prisma.campaign_twittercard.update({
+    where:{
+      id:campaignId
+    },
+    data:{
+      card_status:status
+    }
+  }) 
+}
 
 export const closeCampaignOperation = (id: number | bigint) => {
   console.log("close campaign operation", id);
