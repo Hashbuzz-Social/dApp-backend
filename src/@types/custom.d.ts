@@ -31,3 +31,4 @@ declare module "express" {
 }
 
 export type twitterStatus = 'Rejected' | 'Pending' | 'Running' | 'Completed'| 'Deleted';
+export type engagements = "Like" | "Retweet" | "Reply"| "Quote"
