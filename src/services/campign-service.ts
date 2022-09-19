@@ -17,19 +17,27 @@ export const getCampaignDetailsById = async (campaignId: number) => {
   });
 };
 
-
-
-export const updateCampaignStatus = async (campaignId:number|bigint , status:twitterStatus) => {
-  return await prisma.campaign_twittercard.update({
-    where:{
-      id:campaignId
+export const getRunningCardsOfUserId = async (userId: number | bigint) => {
+  return await prisma.campaign_twittercard.findFirst({
+    where: {
+      owner_id: userId,
+      card_status: "Running",
     },
-    data:{
-      card_status:status
-    }
-  }) 
-}
+  });
+};
 
-export const closeCampaignOperation = (id: number | bigint) => {
+export const updateCampaignStatus = async (campaignId: number | bigint, status: twitterStatus) => {
+  return await prisma.campaign_twittercard.update({
+    where: {
+      id: campaignId,
+    },
+    data: {
+      card_status: status,
+    },
+  });
+};
+
+export const completeCampaignOperation = (id: number | bigint) => {
   console.log("close campaign operation", id);
+  return {message:"done"}
 };

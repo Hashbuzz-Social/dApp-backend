@@ -58,14 +58,14 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
  * @params amounts - Amount which is allocated to the campaign in tinybar.
  */
 
-export const allocateBalanceToCampaign = async (campaignerId: bigint, amounts: number, campaignerAccount: string) => {
+export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string) => {
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
     const campaigner = "0x" + AccountId.fromString(campaignerAccount).toSolidityAddress();
     const contractAddress = ContractId.fromString(contract_id.toString());
 
-    const campaignAddress = campaigner + "_" + campaignerId.toString();
+    const campaignAddress = campaigner + "_" + campaignId.toString();
 
     console.log("tinyAmount is added to contract", amounts);
 

@@ -36,6 +36,8 @@ ENV HEDERA_ACCOUNT_ID=0.0.2174105
 
 
 # Build NPM project.
+RUN npx prisma db pull
+RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 4100
