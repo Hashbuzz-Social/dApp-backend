@@ -21,3 +21,8 @@ export const taskEveryTwoMinute = cron.schedule(
     scheduled: false,
   }
 );
+
+
+export const taskAtEveryMidNight= cron.schedule('0 0 0 * * *' , () => {
+  crontabService.checkForRepliesAndUpdateEngagementsData();
+},{scheduled:false})

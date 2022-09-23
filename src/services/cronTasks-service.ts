@@ -2,7 +2,8 @@ import twitterCardService, { TwitterStats } from "@services/twitterCard-service"
 import functions from "@shared/functions";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
-import logger from "jet-logger";
+import moment from "moment";
+import logger, { LoggerModes } from "jet-logger";
 import { completeCampaignOperation } from "./campign-service";
 
 /****
@@ -121,13 +122,22 @@ const manageTwitterCardStatus = async () => {
  */
 const checkForRepliesAndUpdateEngagementsData = async () => {
   logger.info("Replies check:::satrt");
+  //!! 5 days of threshold
+  const thresholdSeconds = 4 * 24 * 60 * 60;
+
   //? get all active cards from DB
   const allActiveCard = await twitterCardService.allActiveTwitterCard();
 
   //!!loop through al active card and check for comments on tweeter.
   await Promise.all(
     allActiveCard.map(async (card, index) => {
-      if (card.tweet_id) {
+      const { last_reply_checkedAt } = card;
+      //! time diff in seconds
+      const timeDiffInSeconds = moment().unix() - moment(last_reply_checkedAt).unix();
+      if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
+        //? Log card details if we are fetching comments for this card.
+        logger.info(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""}`);
+
         const [allReplies, allExistingReplyEngagements] = await Promise.all([
           await twitterAPI.getAllReplies(card.tweet_id),
           await prisma.campaign_tweetengagements.findMany({

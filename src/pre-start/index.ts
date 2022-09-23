@@ -4,7 +4,7 @@
  */
 
 import dotenv from "dotenv";
-import { taskEveryMinute, taskEveryTwoMinute } from "./cronJob";
+import { taskEveryMinute, taskEveryTwoMinute , taskAtEveryMidNight } from "./cronJob";
 import tweeterApi from "@shared/twitterAPI";
 import cronService from "@services/cronTasks-service";
 import { writeFileSync } from "fs";
@@ -14,6 +14,7 @@ import { writeFileSync } from "fs";
   dotenv.config();
   // taskEveryMinute.start();
   taskEveryTwoMinute.start();
+  taskAtEveryMidNight.start();
 
   //reply tasks
   (async () => {
