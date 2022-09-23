@@ -4,7 +4,9 @@ import functions from "@shared/functions";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import moment from "moment";
-import { completeCampaignOperation } from "@services/campaign-service";
+import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
+import prisma from "@shared/prisma";
+import { scheduleJob } from "node-schedule";
 
 /****
  * @description This function is dealing with checking for tweet stats (likes , comments , quote , replies) counts.
@@ -93,7 +95,7 @@ const manageTwitterCardStatus = async () => {
           if (total_spent > tiny_campaign_budget) {
             console.log(`total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`);
             logger.info(`Campaign with Name ${name ?? ""} Has no more budget available close it`);
-            completeCampaignOperation(id);
+            completeCampaignOperation(card);
           }
         } else {
           //!! if not available in db then update the DB by adding new record.
@@ -144,7 +146,28 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
     })
   );
 };
+
+const scheduleExpiryTasks = async () => {
+  const getCompletedTask = await prisma.campaign_twittercard.findMany({
+    where: {
+      card_status: "Completed",
+      campaign_expiry: {
+        gte: new Date(),
+      },
+    },
+  });
+  getCompletedTask.map((card) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const date = new Date(card.campaign_expiry!);
+    scheduleJob(date, function () {
+      const cardId = card.id;
+      perFormCampaignExpiryOperation(cardId);
+    });
+  });
+};
+
 export default {
   updateCardStatus: manageTwitterCardStatus,
   checkForRepliesAndUpdateEngagementsData,
+  scheduleExpiryTasks
 } as const;

@@ -1,7 +1,7 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import userService from "@services/user-service";
-import { sensitizeUserData } from "@shared/helper";
+import { rmKeyFrmData, sensitizeUserData } from "@shared/helper";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
 import { body } from "express-validator";
@@ -65,8 +65,9 @@ async function stopCampaignHandler(req: Request, res: Response) {
   }
 
   if (requested_card_status === "completed") {
-    const completeCampaign = completeCampaignOperation(campaignId);
-    return res.status(OK).json(completeCampaign)
+    const { user_user, ...restCard } = campaign_data!;
+    const completeCampaign = await completeCampaignOperation(restCard);
+    return res.status(OK).json(completeCampaign);
   }
 
   return res.status(BAD_REQUEST).json({ error: true, message: "Something went wrong." });
