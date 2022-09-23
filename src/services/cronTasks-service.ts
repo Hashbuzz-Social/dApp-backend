@@ -146,15 +146,15 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
         const existingUserIds = allExistingReplyEngagements.map((d) => d.user_id);
 
         const formattedArray = allReplies.map((d) => ({ user_id: d.author_id!, tweet_id: card.id.toString(), engagement_type: "Reply" }));
-        formattedArray.filter((d) => {
+        const filterResult = formattedArray.filter((d) => {
           const isExisting = existingUserIds.includes(d.user_id);
-          if (!isExisting) return true;
-          else false;
+          return !isExisting;
         });
-        await prisma.campaign_tweetengagements.createMany({
-          data: [...formattedArray],
-          skipDuplicates: true,
-        });
+        if (filterResult)
+          await prisma.campaign_tweetengagements.createMany({
+            data: [...filterResult],
+            skipDuplicates: true,
+          });
       }
     })
   );
