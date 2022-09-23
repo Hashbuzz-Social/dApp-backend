@@ -4,20 +4,25 @@ import crontabService from "@services/cronTasks-service";
 export const taskEveryMinute = cron.schedule(
   "* * * * *",
   () => {
-    crontabService.updateCardStatus();
-    console.info("running a task every minute");
+    // console.info("running a task every minute");
   },
   {
     scheduled: false,
   }
 );
 
-export const taskEverySixDay = cron.schedule(
+export const taskEveryTwoMinute = cron.schedule(
   "*/2 * * * *",
   () => {
-    console.info("running a task every Two minutes");
+    crontabService.updateCardStatus();
+    // console.info("running a task every Two minutes");
   },
   {
     scheduled: false,
   }
 );
+
+
+export const taskAtEveryMidNight= cron.schedule('0 0 0 * * *' , () => {
+  crontabService.checkForRepliesAndUpdateEngagementsData();
+},{scheduled:false})

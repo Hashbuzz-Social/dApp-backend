@@ -127,6 +127,21 @@ const getAllReplies = async (tweetID: string) => {
   return tweets;
 };
 
+/*****
+ *
+ *@description Send Message to tht twitter.
+ */
+
+const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
+  const tweeterApi = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!,
+    appSecret: process.env.TWITTER_API_SECRET!,
+    accessToken,
+    accessSecret,
+  });
+  return tweeterApi;
+};
+
 export default {
   getAllReplies,
   getPublicMetrics,
@@ -135,4 +150,5 @@ export default {
   getAllUsersWhoLikedOnTweetId,
   getAllRetweetOfTweetId,
   getAllUsersWhoQuotedOnTweetId,
+  tweeterApiForUser
 } as const;

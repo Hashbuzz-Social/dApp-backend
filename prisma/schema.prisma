@@ -102,6 +102,7 @@ model campaign_tweetengagements {
   tweet_id        String?   @db.VarChar(50)
   engagement_type String    @db.VarChar(50)
   updated_at      DateTime? @db.Timestamptz(6)
+  exprired_at     DateTime? @db.Timestamptz(6)
 }
 
 model campaign_tweetstats {
@@ -130,6 +131,8 @@ model campaign_twittercard {
   owner_id               BigInt?
   card_status            String                   @db.VarChar(50)
   campaign_budget        Float?
+  campaign_expiry        DateTime?                @db.Timestamptz(6)
+  last_reply_checkedAt   DateTime?                @default(now()) @db.Timestamptz(6)
   user_user              user_user?               @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
   campaign_participation campaign_participation[]
   campaign_tweetstats    campaign_tweetstats?
