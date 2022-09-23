@@ -55,16 +55,13 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
   const { id, name, tweet_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
 
-  //? Time-gap for claiming the rewards.
-  const expiryThreshold = 10 * 60;
-
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
     logger.info(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
     const [commetsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
-    const campaignExpiry = new Date(moment().unix() + expiryThreshold).toISOString();
+    const campaignExpiry = moment().add(10 , "minute").toISOString();
     //log campaign expiry
     logger.info(`Campaign expired at ${campaignExpiry}`);
 
