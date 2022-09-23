@@ -1,4 +1,4 @@
-import { getCampaignDetailsById } from "@services/campign-service";
+import { getCampaignDetailsById } from "@services/campaign-service";
 import { addCampaigner, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";

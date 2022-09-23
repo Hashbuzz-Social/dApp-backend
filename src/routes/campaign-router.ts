@@ -1,4 +1,4 @@
-import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campign-service";
+import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";

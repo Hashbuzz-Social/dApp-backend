@@ -1,10 +1,10 @@
+import { updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";
-import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
+import logger from "jet-logger";
 import moment from "moment";
-import logger, { LoggerModes } from "jet-logger";
-import { completeCampaignOperation } from "./campign-service";
+import { completeCampaignOperation } from "@services/campaign-service";
 
 /****
  * @description This function is dealing with checking for tweet stats (likes , comments , quote , replies) counts.
@@ -121,7 +121,7 @@ const manageTwitterCardStatus = async () => {
  * 3. formate data remove duplicate entries from the data.
  */
 const checkForRepliesAndUpdateEngagementsData = async () => {
-  logger.info("Replies check:::satrt");
+  logger.info("Replies check:::start");
   //!! 5 days of threshold
   const thresholdSeconds = 4 * 24 * 60 * 60;
 
@@ -138,33 +138,8 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
         //? Log card details if we are fetching comments for this card.
         logger.info(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""}`);
 
-        const [allReplies, allExistingReplyEngagements] = await Promise.all([
-          await twitterAPI.getAllReplies(card.tweet_id),
-          await prisma.campaign_tweetengagements.findMany({
-            where: {
-              tweet_id: card.id.toString(),
-              engagement_type: "Reply",
-            },
-            select: {
-              user_id: true,
-              tweet_id: true,
-              engagement_type: true,
-            },
-          }),
-        ]);
-
-        const existingUserIds = allExistingReplyEngagements.map((d) => d.user_id);
-
-        const formattedArray = allReplies.map((d) => ({ user_id: d.author_id!, tweet_id: card.id.toString(), engagement_type: "Reply" }));
-        const filterResult = formattedArray.filter((d) => {
-          const isExisting = existingUserIds.includes(d.user_id);
-          return !isExisting;
-        });
-        if (filterResult)
-          await prisma.campaign_tweetengagements.createMany({
-            data: [...filterResult],
-            skipDuplicates: true,
-          });
+        //!! fetch comments from tweeter and update to DB engagements records.
+        await updateRepliesToDB(card.id, card.tweet_id);
       }
     })
   );
