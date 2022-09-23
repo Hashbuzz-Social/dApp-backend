@@ -45,8 +45,10 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
 
 /******
  *@description Sole function for closing the campaign end to end.
- * 1. Get all campaign engagement and update in to local DB.
- * 2. Schedule expiry operation for campaign;
+ * 1. Get all campaign engagement from tweeter and update in to local DB.
+ * 2. Sending a reply threat to the campaign about closing of the camp.
+ * 3. Schedule expiry operation for campaign;
+ * 4. Distribute the amounts for the users which have already wallet connected.
  */
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
@@ -59,31 +61,39 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
     logger.info(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
 
-    //? Fetch all the Replies left ot fetch from last cron task.
+    //?1. Fetch all the Replies left ot fetch from last cron task.
     const [commetsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
-    const campaignExpiry = moment(moment().unix() + expiryThreshold).toISOString();
+    const campaignExpiry = new Date(moment().unix() + expiryThreshold).toISOString();
+    //log campaign expiry
+    logger.info(`Campaign expired at ${campaignExpiry}`);
+
     const tweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: card_owner.business_twitter_access_token,
       accessSecret: card_owner.business_twitter_access_token_secret,
     });
 
-    await Promise.all([
-      await prisma.campaign_twittercard.update({
-        where: {
-          id: card.id,
-        },
-        data: {
-          campaign_expiry: campaignExpiry,
-          card_status:"Completed"
-        },
-      }),
-      await tweeterApi.v2.reply(
-        `Campaign ended ✅ \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
+    try {
+      await Promise.all([
+        await prisma.campaign_twittercard.update({
+          where: {
+            id: card.id,
+          },
+          data: {
+            campaign_expiry: campaignExpiry,
+            card_status: "Completed",
+          },
+        }),
+        //2. Replying to threat.
+        await tweeterApi.v2.reply(
+          `Campaign ended ✅ \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
       \n ad<create your own campaign @hbuzzs>`,
-        tweet_id!
-      ),
-    ]);
+          tweet_id!
+        ),
+      ]);
+    } catch (e) {
+      console.log(e);
+    }
 
     const date = new Date(campaignExpiry);
 
