@@ -61,7 +61,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     //?1. Fetch all the Replies left ot fetch from last cron task.
     const [commetsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
-    const campaignExpiry = moment().add(10 , "minute").toISOString();
+    const campaignExpiry = moment().add(24 , "hours").toISOString();
     //log campaign expiry
     logger.info(`Campaign expired at ${campaignExpiry}`);
 
@@ -85,7 +85,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         await tweeterApi.v2.reply(
           `Campaign ended ✅ \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
       \n ad<create your own campaign @hbuzzs>`,
-          tweet_id!
+          tweet_id!,
         ),
       ]);
     } catch (e) {

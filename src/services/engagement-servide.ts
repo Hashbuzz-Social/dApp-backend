@@ -1,6 +1,7 @@
 import twitterAPI from "@shared/twitterAPI";
 import prisma from "@shared/prisma";
 import { campaign_twittercard } from "@prisma/client";
+import moment from "moment";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
@@ -37,17 +38,27 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number | 
   ]);
   const existingUserIds = allExistingReplyEngagements.map((d) => d.user_id);
 
-  const formattedArray = allReplies.map((d) => ({ user_id: d.author_id!, tweet_id: id.toString(), engagement_type: "Reply" }));
+  const formattedArray = allReplies.map((d) => ({
+    user_id: d.author_id!,
+    tweet_id: id.toString(),
+    engagement_type: "Reply",
+    updated_at: moment().toISOString(),
+  }));
   const filterResult = formattedArray.filter((d) => {
     const isExisting = existingUserIds.includes(d.user_id);
     return !isExisting;
   });
-  if (filterResult && filterResult.length > 0)
-    return await prisma.campaign_tweetengagements.createMany({
+  if (filterResult && filterResult.length > 0) {
+    const updates = await prisma.campaign_tweetengagements.createMany({
       data: [...filterResult],
       skipDuplicates: true,
     });
-  else return false;
+    await prisma.campaign_twittercard.update({
+      where: { id: parseInt(tweet_Id.toString()) },
+      data: { last_reply_checkedAt: moment().toISOString() },
+    });
+    return updates;
+  } else return false;
 };
 
 export const updateAllEngagementsForCard = async (card: campaign_twittercard) => {
@@ -58,7 +69,7 @@ export const updateAllEngagementsForCard = async (card: campaign_twittercard) =>
   const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(tweet_id!);
 
   if (likes.length > 0) {
-    const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Like" }));
+    const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Like", updated_at: moment().toISOString() }));
 
     const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Like");
     const filterResult = likesForDB.filter((d) => {
@@ -76,7 +87,7 @@ export const updateAllEngagementsForCard = async (card: campaign_twittercard) =>
 
   //Retweets lengths grater than 0;
   if (retweets.length > 0) {
-    const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Retweet" }));
+    const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Retweet", updated_at: moment().toISOString() }));
 
     const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Retweet");
     const filterResult = retweetsForDB.filter((d) => {
@@ -94,7 +105,7 @@ export const updateAllEngagementsForCard = async (card: campaign_twittercard) =>
 
   //Quotes lengths grater than > 0
   if (quotes.length > 0) {
-    const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: id.toString(), engagement_type: "Quote" }));
+    const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: id.toString(), engagement_type: "Quote", updated_at: moment().toISOString() }));
 
     const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Quote");
     const filterResult = quotesForDB.filter((d) => {

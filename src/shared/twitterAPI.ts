@@ -62,10 +62,13 @@ const getAllRetweetOfTweetId = async (tweetId: string) => {
 const getAllUsersWhoQuotedOnTweetId = async (tweetId: string) => {
   4;
   const data: TweetV2[] = [];
-  const quotes = await roClient.v2.quotes(tweetId, { expansions: ["author_id"], "user.fields": ["username", "url"] });
+  const quotes = await roClient.v2.quotes(tweetId, {
+    expansions:["author_id"],
+    "user.fields":["username"]
+  });
 
   for await (const quote of quotes) {
-    data.push(quote);
+    data.push({...quote});
   }
 
   return data;
