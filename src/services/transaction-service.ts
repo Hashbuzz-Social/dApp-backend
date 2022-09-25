@@ -3,6 +3,7 @@ import hederaService from "@services/hedera-service";
 import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
+import prisma from "@shared/prisma";
 
 /***
  *@params  campaignerAddresses - Hedera wallet address in format 0.0.024568;
@@ -96,6 +97,14 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
       .setGas(100000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+
+    //Add current smartContract to the card details
+    await prisma.campaign_tweetstats.update({
+      where:{id:campaignId},
+      data:{
+        contract_id:contract_id.toString()
+      }
+    })
     return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
   } else {
     throw new Error("Contract id not found");
