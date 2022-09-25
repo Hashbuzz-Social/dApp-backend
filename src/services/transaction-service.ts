@@ -1,10 +1,9 @@
-import { AccountId, ContractExecuteTransaction, ContractId, TransferTransaction, ContractFunctionParameters, Hbar } from "@hashgraph/sdk";
-import hederaService from "@services/hedera-service";
+import { AccountId, ContractExecuteTransaction, ContractId, TransferTransaction } from "@hashgraph/sdk";
 import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
-import prisma from "@shared/prisma";
 import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
+import prisma from "@shared/prisma";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   const { contract_id } = await provideActiveContract();
