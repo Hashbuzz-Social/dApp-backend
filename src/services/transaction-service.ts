@@ -99,7 +99,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
 
     //Add current smartContract to the card details
-    await prisma.campaign_tweetstats.update({
+    await prisma.campaign_twittercard.update({
       where:{id:campaignId},
       data:{
         contract_id:contract_id.toString()

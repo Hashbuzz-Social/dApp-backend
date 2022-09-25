@@ -45,7 +45,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
           },
         },
       });
-      if (clientData?.user_id) {
+      if (clientData) {
         req.currentUser = clientData;
         next();
       } else {

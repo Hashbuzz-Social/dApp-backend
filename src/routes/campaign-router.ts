@@ -1,5 +1,5 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
-import { calculateRewardsForTheUsersHavingWallet } from "@services/reward-service";
+import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
@@ -22,7 +22,7 @@ router.post(
 
 router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
   const id = _.query["id"] as any as number;
-  const data = await calculateRewardsForTheUsersHavingWallet(id.toString());
+  const data = await SendRewardsForTheUsersHavingWallet(id);
   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
 });
 
