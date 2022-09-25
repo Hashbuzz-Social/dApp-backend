@@ -3,6 +3,7 @@ import prisma from "@shared/prisma";
 import { groupBy } from "lodash";
 import { payAndUpdateContractForReward } from "./transaction-service";
 import userService from "./user-service";
+import logger from "jet-logger";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
@@ -60,6 +61,7 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
       const user_info = await userService.getUserByTwitterId(personal_twitter_id);
       if (user_info?.hedera_wallet_id && user_user?.hedera_wallet_id) {
         const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
+        logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `)
         await Promise.all([
           //Smart-contract call for payment
           await payAndUpdateContractForReward({

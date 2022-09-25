@@ -55,7 +55,7 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number | 
     });
     await prisma.campaign_twittercard.update({
       where: { id: parseInt(tweet_Id.toString()) },
-      data: { last_reply_checkedAt: moment().toISOString() },
+      data: { last_reply_checkedAt: new Date().toISOString() },
     });
     return updates;
   } else return false;

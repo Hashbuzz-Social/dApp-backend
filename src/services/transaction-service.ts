@@ -1,4 +1,4 @@
-import { AccountId, ContractExecuteTransaction, ContractId, TransferTransaction, ContractFunctionParameters } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractId, TransferTransaction, ContractFunctionParameters, Hbar } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
@@ -143,7 +143,7 @@ export const payAndUpdateContractForReward = async ({
       .setContractId(contractAddress)
       .setGas(1000000)
       .setFunction("payInteractorFromCampaignBalances", contractParams)
-      .setPayableAmount(amount);
+      .setPayableAmount(Hbar.fromTinybars(amount));
     const contractExecuteSubmit = await contractExecuteTx.execute(hederaService.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaService.hederaClient);
     return contractExecuteRx;
