@@ -6,6 +6,7 @@ import logger from "jet-logger";
 import moment from "moment";
 import twitterAPI from "@shared/twitterAPI";
 import { scheduleJob } from "node-schedule";
+import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 
 export const getCampaignDetailsById = async (campaignId: number) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -61,7 +62,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     //?1. Fetch all the Replies left ot fetch from last cron task.
     const [commetsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
-    const campaignExpiry = moment().add(24 , "hours").toISOString();
+    const campaignExpiry = moment().add(24, "hours").toISOString();
     //log campaign expiry
     logger.info(`Campaign expired at ${campaignExpiry}`);
 
@@ -72,6 +73,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
     try {
       await Promise.all([
+        //update Status in campaign cards
         await prisma.campaign_twittercard.update({
           where: {
             id: card.id,
@@ -81,12 +83,23 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
             card_status: "Completed",
           },
         }),
+        await prisma.campaign_tweetengagements.updateMany({
+          where: {
+            tweet_id: card.id.toString(),
+          },
+          data: {
+            exprired_at: campaignExpiry,
+          },
+        }),
         //2. Replying to threat.
         await tweeterApi.v2.reply(
           `Campaign ended ✅ \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
       \n ad<create your own campaign @hbuzzs>`,
-          tweet_id!,
+          tweet_id!
         ),
+
+        //startDistributing Rewards
+        await SendRewardsForTheUsersHavingWallet(card.id)
       ]);
     } catch (e) {
       console.log(e);

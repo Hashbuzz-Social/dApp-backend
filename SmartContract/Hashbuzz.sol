@@ -77,12 +77,14 @@ contract Hashbuzz {
    * @param amount amount to be updated
    */
   function payInteractorFromCampaignBalances(
+    address payable paymentAddress,
     string memory campaigner,
     string memory interactor,
     string memory campaignAddress,
     uint256 amount
   ) public {
     require(campaignBalances[campaigner] > amount);
+    callHbarToPayee(paymentAddress , amount);
     campaignBalances[campaigner] -= amount;
     //payable(interactor).transfer(amount);
     emit InteractorPaidDeferred(interactor, campaigner, campaignAddress, amount);

@@ -51,9 +51,18 @@ const topUp = async (id: number | bigint, amounts: number, operation: "increment
   //? Perform DN Query
 };
 
+const getUserByTwitterId = async (personal_twitter_id:string) => {
+  return await prisma.user_user.findFirst({
+    where:{
+      personal_twitter_id
+    }
+  })
+}
+
 export default {
   getAll: getAllUser,
   updateWalletId,
   getUserById,
   topUp,
+  getUserByTwitterId
 } as const;
