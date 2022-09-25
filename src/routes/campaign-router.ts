@@ -1,13 +1,11 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
-import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body, query } from "express-validator";
+import { body } from "express-validator";
 import statuses from "http-status-codes";
-import JSONBigInt from "json-bigint";
 
 const router = Router();
 const { OK, BAD_REQUEST, CONFLICT } = statuses;
@@ -20,11 +18,11 @@ router.post(
   stopCampaignHandler
 );
 
-router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
-  const id = _.query["id"] as any as number;
-  const data = await SendRewardsForTheUsersHavingWallet(id);
-  return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
-});
+// router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
+//   const id = _.query["id"] as any as number;
+//   const data = await SendRewardsForTheUsersHavingWallet(id);
+//   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
+// });
 
 async function stopCampaignHandler(req: Request, res: Response) {
   const campaignId: number = req.body.card_id;
