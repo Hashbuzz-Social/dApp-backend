@@ -1,7 +1,7 @@
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import { groupBy } from "lodash";
-import { payAndUpdateContractForReward } from "./transaction-service";
+import { payAndUpdateContractForReward, withdrawHbarFromContract } from "./transaction-service";
 import userService from "./user-service";
 import logger from "jet-logger";
 
@@ -38,6 +38,7 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
   const engagements = await prisma.campaign_tweetengagements.findMany({
     where: {
       tweet_id: cardId.toString(),
+      payment_status: "UNPAID",
     },
   });
   const campaignDetails = await prisma.campaign_twittercard.findUnique({
@@ -55,47 +56,53 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
   const { user_user, ...card } = campaignDetails!;
   const groupedData = groupBy(engagements, "user_id");
 
-  //!! Loop through each intractor and check if they are an existing user and then reward them.
-  await Promise.all(
-    Object.keys(groupedData).map(async (personal_twitter_id) => {
-      const user_info = await userService.getUserByTwitterId(personal_twitter_id);
-      if (user_info?.hedera_wallet_id && user_user?.hedera_wallet_id) {
-        const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
-        logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `)
-        await Promise.all([
-          //Smart-contract call for payment
-          await payAndUpdateContractForReward({
-            campaignerAccount: user_user?.hedera_wallet_id,
-            campaignId: cardId.toString(),
-            intracterAccount: user_info.hedera_wallet_id,
-            amount: totalRewardsTinyHbar,
-          }),
-          //update Payment status in db
-          await prisma.campaign_tweetengagements.updateMany({
-            where: {
-              id: {
-                in: groupedData[personal_twitter_id].map((d) => d.id),
+  if (user_user?.hedera_wallet_id) {
+    //!! Loop through each intractor and check if they are an existing user and then reward them.
+    await Promise.all(
+      Object.keys(groupedData).map(async (personal_twitter_id) => {
+        const user_info = await userService.getUserByTwitterId(personal_twitter_id);
+        if (user_info?.hedera_wallet_id) {
+          const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
+          logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
+          await Promise.all([
+            //Smart-contract call for payment
+            await withdrawHbarFromContract(user_info.hedera_wallet_id, totalRewardsTinyHbar),
+            //update Payment status in db
+            await prisma.campaign_tweetengagements.updateMany({
+              where: {
+                id: {
+                  in: groupedData[personal_twitter_id].map((d) => d.id),
+                },
               },
-            },
-            data: {
-              payment_status: "PAID",
-            },
-          }),
-        ]);
-        totalRewardsDebited += totalRewardsTinyHbar;
-      }
-    })
-  );
+              data: {
+                payment_status: "PAID",
+              },
+            }),
+          ]);
+          totalRewardsDebited += totalRewardsTinyHbar;
+        }
+      })
+    );
 
-  //Update Amount claimed in the DB.
-  await prisma.campaign_twittercard.update({
-    where: { id: cardId },
-    data: {
-      amount_claimed: {
-        increment: totalRewardsDebited,
-      },
-    },
-  });
+    await Promise.all([
+      //!!update contract balance for this campaign.
+      await payAndUpdateContractForReward({
+        campaignerAccount: user_user?.hedera_wallet_id,
+        campaignId: cardId.toString(),
+        amount: totalRewardsDebited,
+      }),
+
+      //!!Update Amount claimed in the DB.
+      await prisma.campaign_twittercard.update({
+        where: { id: cardId },
+        data: {
+          amount_claimed: {
+            increment: totalRewardsDebited,
+          },
+        },
+      }),
+    ]);
+  }
 
   return groupedData;
 };

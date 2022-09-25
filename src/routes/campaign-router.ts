@@ -1,10 +1,12 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
+import {queryCampaignBalance} from "@services/smartcontract-service"
+import {SendRewardsForTheUsersHavingWallet} from "@services/reward-service"
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body } from "express-validator";
+import { body , query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
 
 const router = Router();
@@ -17,6 +19,21 @@ router.post(
   checkErrResponse,
   stopCampaignHandler
 );
+
+router.get("/balance", validateQuery("campaignId").isNumeric() , checkErrResponse ,  async (_: Request, res: Response) => {
+  const campaignId = _.query.campaignId as any as number;
+  if(_.currentUser?.user_user.hedera_wallet_id){
+    const data  = await queryCampaignBalance(_.currentUser?.user_user.hedera_wallet_id , campaignId);
+    return res.status(OK).json(data);
+  }
+  return res.status(BAD_REQUEST).json({error:true , message:"Wallet address not found"})
+});
+
+router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse ,  async (_: Request, res: Response) => {
+  const campaignId:number = _.body.campaignId;
+  await SendRewardsForTheUsersHavingWallet(campaignId);
+  return res.status(OK).json({success:true , message:"reward Distributed"})
+});
 
 // router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
 //   const id = _.query["id"] as any as number;

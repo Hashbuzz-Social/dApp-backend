@@ -7,6 +7,7 @@ import prisma from "@shared/prisma";
 import { contractAbi, contractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
+import {buildCampaignAddress , buildCampaigner} from "@shared/helper"
 
 const web3 = new Web3;
 // import JSONBigInt from "json-bigint";
@@ -250,6 +251,30 @@ export const queryBalance = async (address: string) => {
       .setContractId(contract_id.toString())
       .setGas(100000)
       .setFunction("getBalance", new ContractFunctionParameters().addString(address))
+      .setQueryPayment(new Hbar(1));
+
+    const qResult = await contractCallQuery.execute(hederaClient);
+    const balances = qResult.getUint256(0).toString();
+    const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
+    return { balances, balancesObj };
+    // return qResult.getUint256(0);
+  }
+};
+
+/****
+ * @description query campaign balance from contract
+ ***/
+
+ export const queryCampaignBalance = async (address: string , campaignId:number) => {
+  // Execute the contract to check changes in state variable
+  address = buildCampaignAddress(address, campaignId.toString())
+
+  const { contract_id } = await provideActiveContract();
+  if (contract_id) {
+    const contractCallQuery = new ContractCallQuery()
+      .setContractId(contract_id.toString())
+      .setGas(100000)
+      .setFunction("getCampaignBalance", new ContractFunctionParameters().addString(address))
       .setQueryPayment(new Hbar(1));
 
     const qResult = await contractCallQuery.execute(hederaClient);

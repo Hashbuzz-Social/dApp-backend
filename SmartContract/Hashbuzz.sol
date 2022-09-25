@@ -13,7 +13,7 @@ contract Hashbuzz {
   event FundsDeposited(string campaigner, uint256 amount);
   event FundsWithdrawn(string campaigner, uint256 amount);
   event InteractorPaid(string interactor, string campaigner, uint256 amount);
-  event InteractorPaidDeferred(string interactor, string campaigner, string campaignAddress, uint256 amount);
+  event InteractorPaidDeferred(string campaigner, string campaignAddress, uint256 amount);
   event NewCampaignIsAdded(string campaignAdddress, uint256 amount);
   // hashbuzz address, deployer of the contract
   address private owner;
@@ -73,21 +73,17 @@ contract Hashbuzz {
   /**
    * @dev pay to interactor from cmapign balnces
    * @param campaigner address of campaigner
-   * @param interactor address payable of interactor
    * @param amount amount to be updated
    */
   function payInteractorFromCampaignBalances(
-    address payable paymentAddress,
     string memory campaigner,
-    string memory interactor,
     string memory campaignAddress,
     uint256 amount
   ) public {
     require(campaignBalances[campaigner] > amount);
-    callHbarToPayee(paymentAddress , amount);
     campaignBalances[campaigner] -= amount;
     //payable(interactor).transfer(amount);
-    emit InteractorPaidDeferred(interactor, campaigner, campaignAddress, amount);
+    emit InteractorPaidDeferred(campaigner, campaignAddress, amount);
   }
 
   /**
