@@ -20,7 +20,7 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz balance update call")
-      .setGas(100000);
+      .setGas(100000000);
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
     return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
     // return signingService.signAndMakeBytes(contractExBalTx, payerId);
@@ -72,7 +72,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz add balance to a campaign account")
-      .setGas(100000);
+      .setGas(100000000);
       
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
     const receipt = await exResult.getReceipt(hbarservice.hederaClient);
@@ -115,7 +115,7 @@ export const payAndUpdateContractForReward = async ({
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz subtracting campaign balance")
-      .setGas(100000);
+      .setGas(100000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
@@ -140,7 +140,7 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz rewarding to intractor")
-      .setGas(100000);
+      .setGas(100000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
