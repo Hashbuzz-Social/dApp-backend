@@ -1,13 +1,15 @@
-import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
+import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
+import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
+import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
-import {queryCampaignBalance} from "@services/smartcontract-service"
-import {SendRewardsForTheUsersHavingWallet} from "@services/reward-service"
+import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body , query as validateQuery } from "express-validator";
+import { body, query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
+import JSONBigInt from "json-bigint";
 
 const router = Router();
 const { OK, BAD_REQUEST, CONFLICT } = statuses;
@@ -17,22 +19,24 @@ router.post(
   body("card_id").isNumeric(),
   body("card_status").isIn(["rejected", "running", "completed", "deleted"]),
   checkErrResponse,
-  stopCampaignHandler
+  statusUpdateHandler
 );
 
-router.get("/balance", validateQuery("campaignId").isNumeric() , checkErrResponse ,  async (_: Request, res: Response) => {
+// router.post("/create")
+
+router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
   const campaignId = _.query.campaignId as any as number;
-  if(_.currentUser?.user_user.hedera_wallet_id){
-    const data  = await queryCampaignBalance(_.currentUser?.user_user.hedera_wallet_id , campaignId);
+  if (_.currentUser?.user_user.hedera_wallet_id) {
+    const data = await queryCampaignBalance(_.currentUser?.user_user.hedera_wallet_id, campaignId);
     return res.status(OK).json(data);
   }
-  return res.status(BAD_REQUEST).json({error:true , message:"Wallet address not found"})
+  return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
 });
 
-router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse ,  async (_: Request, res: Response) => {
-  const campaignId:number = _.body.campaignId;
+router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
+  const campaignId: number = _.body.campaignId;
   await SendRewardsForTheUsersHavingWallet(campaignId);
-  return res.status(OK).json({success:true , message:"reward Distributed"})
+  return res.status(OK).json({ success: true, message: "reward Distributed" });
 });
 
 // router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
@@ -41,7 +45,7 @@ router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse , 
 //   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
 // });
 
-async function stopCampaignHandler(req: Request, res: Response) {
+async function statusUpdateHandler(req: Request, res: Response) {
   const campaignId: number = req.body.card_id;
   let requested_card_status: string = req.body.card_status;
   requested_card_status = requested_card_status.toLowerCase();
@@ -78,13 +82,15 @@ async function stopCampaignHandler(req: Request, res: Response) {
     //! 3. Update the card status as per the requirements.
     amounts = Math.round(amounts * Math.pow(10, 8));
 
-    const requests = await Promise.all([
-      await allocateBalanceToCampaign(campaignId, amounts, campaignerAccount),
-      await userService.topUp(campaignerId, amounts, "decrement"),
-      await updateCampaignStatus(campaignId, "Running"),
-    ]);
+    const tweetId = await twitterCardService.publishTwitter(campaignId);
 
-    return res.status(OK).json({ transaction: requests[0], user: sensitizeUserData(requests[1]) });
+    if (tweetId) {
+      const [SM_transaction, dbUserBalance] = await Promise.all([
+        await allocateBalanceToCampaign(campaignId, amounts, campaignerAccount),
+        await userService.topUp(campaignerId, amounts, "decrement"),
+      ]);
+      return res.status(OK).json({ transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
+    }
   }
 
   if (requested_card_status === "completed") {

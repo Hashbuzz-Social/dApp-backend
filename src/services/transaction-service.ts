@@ -58,6 +58,7 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
  */
 
 export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string) => {
+  console.log("allocateBalanceToCampaign::start-for-campaign",campaignId)
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
@@ -77,15 +78,12 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
       .setGas(100000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+    const receipt = await exResult.getReceipt(hbarservice.hederaClient);
 
-    //Add current smartContract to the card details
-    await prisma.campaign_twittercard.update({
-      where: { id: campaignId },
-      data: {
-        contract_id: contract_id.toString(),
-      },
-    });
-    return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
+    console.log("allocateBalanceToCampaign::finished-with-transactionId",exResult.transactionId)
+    
+    return { contract_id , transactionId: exResult.transactionId,  receipt  };
+
   } else {
     throw new Error("Contract id not found");
   }

@@ -17,6 +17,7 @@ const getUserById = async (id?: number | bigint) => {
 };
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
+  console.log("topUp start");
   if (operation === "increment")
     return await prisma.user_user.update({
       where: {
