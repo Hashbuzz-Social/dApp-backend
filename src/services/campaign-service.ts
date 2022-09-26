@@ -60,7 +60,10 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     logger.info(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
-    const [commetsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
+    const [commetsUpdates, isEngagementUpdated] = await Promise.all([
+      await updateRepliesToDB(id, parseInt(tweet_id!)),
+      await updateAllEngagementsForCard(card),
+    ]);
 
     const campaignExpiry = moment().add(24, "hours").toISOString();
     //log campaign expiry
@@ -99,7 +102,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         ),
 
         //startDistributing Rewards
-        await SendRewardsForTheUsersHavingWallet(card.id)
+        await SendRewardsForTheUsersHavingWallet(card.id),
       ]);
     } catch (e) {
       console.log(e);

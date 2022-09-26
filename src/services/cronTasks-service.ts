@@ -141,7 +141,7 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
         logger.info(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""}`);
 
         //!! fetch comments from tweeter and update to DB engagements records.
-        await updateRepliesToDB(card.id, card.tweet_id);
+        await updateRepliesToDB(card.id,parseInt(card.tweet_id));
       }
     })
   );

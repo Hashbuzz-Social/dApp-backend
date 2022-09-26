@@ -116,10 +116,9 @@ export const payAndUpdateContractForReward = async ({
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(1000000)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz updating campaign balance")
-      .setGas(100000);
+      .setGas(1000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);

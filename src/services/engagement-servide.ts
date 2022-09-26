@@ -2,6 +2,7 @@ import twitterAPI from "@shared/twitterAPI";
 import prisma from "@shared/prisma";
 import { campaign_twittercard } from "@prisma/client";
 import moment from "moment";
+import logger from "jet-logger";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
@@ -21,7 +22,8 @@ const getExistingRecordsIdsIfAny = async (id: string, engagement_type: engagemen
   return allIds;
 };
 
-export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number | string) => {
+export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number) => {
+  logger.info("UpdateReplied to DB ")
   const [allReplies, allExistingReplyEngagements] = await Promise.all([
     await twitterAPI.getAllReplies(`${tweet_Id}`),
     await prisma.campaign_tweetengagements.findMany({
@@ -54,7 +56,7 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number | 
       skipDuplicates: true,
     });
     await prisma.campaign_twittercard.update({
-      where: { id: parseInt(tweet_Id.toString()) },
+      where: { id: tweet_Id },
       data: { last_reply_checkedAt: new Date().toISOString() },
     });
     return updates;
