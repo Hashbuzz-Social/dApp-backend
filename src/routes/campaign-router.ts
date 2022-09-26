@@ -1,4 +1,4 @@
-import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
+import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
 import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
@@ -97,6 +97,12 @@ async function statusUpdateHandler(req: Request, res: Response) {
     const { user_user, ...restCard } = campaign_data!;
     const completeCampaign = await completeCampaignOperation(restCard);
     return res.status(OK).json(completeCampaign);
+  }
+
+  if (["rejected", "deleted"].includes(requested_card_status)) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    const campaignUpdates = await updateCampaignStatus(campaignId, requested_card_status === "rejected" ? "Rejected" : "Deleted");
+    return res.status(OK).json(campaignUpdates);
   }
 
   return res.status(BAD_REQUEST).json({ error: true, message: "Something went wrong." });
