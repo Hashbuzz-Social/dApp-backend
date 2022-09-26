@@ -86,7 +86,7 @@ async function statusUpdateHandler(req: Request, res: Response) {
 
     if (tweetId) {
       const [SM_transaction, dbUserBalance] = await Promise.all([
-        await allocateBalanceToCampaign(campaignId, amounts, campaignerAccount),
+        await allocateBalanceToCampaign(campaign_data.id, amounts, campaignerAccount),
         await userService.topUp(campaignerId, amounts, "decrement"),
       ]);
       return res.status(OK).json({ transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
