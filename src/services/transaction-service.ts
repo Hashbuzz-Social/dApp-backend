@@ -3,7 +3,6 @@ import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
-import prisma from "@shared/prisma";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   const { contract_id } = await provideActiveContract();
@@ -19,7 +18,6 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(1000000)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz balance update call")
       .setGas(100000);
@@ -72,11 +70,10 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(1000000)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz add balance to a campaign account")
       .setGas(100000);
-
+      
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
     const receipt = await exResult.getReceipt(hbarservice.hederaClient);
 
@@ -117,8 +114,8 @@ export const payAndUpdateContractForReward = async ({
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz updating campaign balance")
-      .setGas(1000000);
+      .setTransactionMemo("Hashbuzz subtracting campaign balance")
+      .setGas(100000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
@@ -141,7 +138,6 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(1000000)
       .setFunctionParameters(functionCallAsUint8Array)
       .setTransactionMemo("Hashbuzz rewarding to intractor")
       .setGas(100000);
