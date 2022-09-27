@@ -12,8 +12,9 @@ contract Hashbuzz {
   event CampaignerAdded(string campaigner);
   event FundsDeposited(string campaigner, uint256 amount);
   event FundsWithdrawn(string campaigner, uint256 amount);
+  event camapignClosed(string campaignAddress);
   event InteractorPaid(string interactor, string campaigner, uint256 amount);
-  event InteractorPaidDeferred(string campaigner, string campaignAddress, uint256 amount);
+  event InteractorPaidDeferred(string campaignAddress, uint256 amount);
   event NewCampaignIsAdded(string campaignAdddress, uint256 amount);
   // hashbuzz address, deployer of the contract
   address private owner;
@@ -71,19 +72,18 @@ contract Hashbuzz {
   }
 
   /**
-   * @dev pay to interactor from cmapign balnces
-   * @param campaigner address of campaigner
+   * @dev pay to interactor from campaign balances
+   * @param campaignAddress address of campaign
    * @param amount amount to be updated
    */
   function payInteractorFromCampaignBalances(
-    string memory campaigner,
     string memory campaignAddress,
     uint256 amount
   ) public {
-    require(campaignBalances[campaigner] > amount);
-    campaignBalances[campaigner] -= amount;
+    require(campaignBalances[campaignAddress] > amount);
+    campaignBalances[campaignAddress] -= amount;
     //payable(interactor).transfer(amount);
-    emit InteractorPaidDeferred(campaigner, campaignAddress, amount);
+    emit InteractorPaidDeferred(campaignAddress, amount);
   }
 
   /**
@@ -99,8 +99,22 @@ contract Hashbuzz {
     require(balances[campaigner] > amount);
     balances[campaigner] -= amount;
     emit FundsWithdrawn(campaigner, amount);
-    campaignBalances[campaignAddress] += amount;
+    campaignBalances[campaignAddress] = amount;
     emit NewCampaignIsAdded(campaignAddress, amount);
+  }
+
+  /**
+   * @dev close cmapaign while expiring the campaign;
+   * @param campaigner address of campaigner
+   * @param campaignAddress campaign address which need to be cloded.
+   */
+  function closeCampaign(
+    string memory campaigner,
+    string memory campaignAddress
+  ) public{
+    balances[campaigner] += campaignBalances[campaignAddress];
+    campaignBalances[campaignAddress] = 0;
+    emit camapignClosed(campaignAddress);
   }
 
   //Set contract deployer as owner
