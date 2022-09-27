@@ -79,7 +79,7 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
   if (contractBal) {
     (async () => {
       const balances = await queryBalance(address);
-      if (req.currentUser?.user_id) await userService.topUp(req.currentUser?.user_id, parseInt(balances?.balances ?? ""), "update");
+      if (req.currentUser?.user_id && balances?.balances ) await userService.topUp(req.currentUser?.user_id, parseInt(balances.balances), "update");
       logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
       return res.status(OK).json(balances);
     })();

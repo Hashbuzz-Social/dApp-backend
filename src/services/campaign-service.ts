@@ -7,7 +7,9 @@ import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
 import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
+import { queryBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
+import userService from "./user-service";
 
 export const getCampaignDetailsById = async (campaignId: number | bigint) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -137,7 +139,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
-  const { user_user, name, tweet_id } = campaignDetails!;
+  const { user_user, name, tweet_id, owner_id } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
@@ -148,5 +150,9 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, `Hi, @${user_user.username}\nYour campaign ${name ?? ""} is expired today.`),
       await closeCampaignSMTransaction(id),
     ]);
+
+    //?? Query and update campaigner balance after closing campaign.
+    const balances = await queryBalance(user_user.hedera_wallet_id!);
+    if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
   }
 }
