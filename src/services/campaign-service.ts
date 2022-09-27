@@ -68,7 +68,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       await updateAllEngagementsForCard(card),
     ]);
 
-    const campaignExpiry = moment().add(24, "hours").toISOString();
+    const campaignExpiry = moment().add(30, "minutes").toISOString();
     //log campaign expiry
     logger.info(`Campaign expired at ${campaignExpiry}`);
 
