@@ -73,7 +73,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunction("addCampaign", params)
-      .setTransactionMemo("Hashbuzz add balance to a campaign account")
+      .setTransactionMemo("Hashbuzz add balance to a campaign account"+campaignAddress)
       .setGas(1000000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
@@ -110,7 +110,7 @@ export const updateCampaignBalance = async ({
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunction("payInteractorFromCampaignBalances", params)
-      .setTransactionMemo("Hashbuzz subtracting campaign balance")
+      .setTransactionMemo("Hashbuzz subtracting campaign balance from campaign::" + campaignAddress )
       .setGas(1000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);

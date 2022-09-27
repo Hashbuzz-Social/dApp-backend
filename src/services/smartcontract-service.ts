@@ -267,14 +267,14 @@ export const queryBalance = async (address: string) => {
 
  export const queryCampaignBalance = async (address: string , campaignId:number|bigint) => {
   // Execute the contract to check changes in state variable
-  address = buildCampaignAddress(address, campaignId.toString())
-
+  const campaignAddress = buildCampaignAddress(address, campaignId.toString())
+  logger.info("payment enquiry for campaignAddress"+campaignAddress)
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const contractCallQuery = new ContractCallQuery()
       .setContractId(contract_id.toString())
       .setGas(100000)
-      .setFunction("getCampaignBalance", new ContractFunctionParameters().addString(address))
+      .setFunction("getCampaignBalance", new ContractFunctionParameters().addString(campaignAddress))
       .setQueryPayment(new Hbar(1));
 
     const qResult = await contractCallQuery.execute(hederaClient);
