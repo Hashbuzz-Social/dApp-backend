@@ -3,6 +3,7 @@ import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
+import { getCampaignDetailsById } from "./campaign-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   const { contract_id } = await provideActiveContract();
@@ -86,7 +87,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
   }
 };
 
-export const payAndUpdateContractForReward = async ({
+export const updateCampaignBalance = async ({
   campaignerAccount,
   campaignId,
   amount,
@@ -99,19 +100,12 @@ export const payAndUpdateContractForReward = async ({
 
   if (contract_id) {
     const contractAddress = ContractId.fromString(contract_id.toString());
-    const campaigner = buildCampaigner(campaignerAccount);
     const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
 
     console.log("Update SM balances For campaign", { campaignAddress: campaignAddress.toString(), contract_id, amount });
 
-    //   //!! BUILD Parameters
-    // const functionCallAsUint8Array = encodeFunctionCall("payInteractorFromCampaignBalances", [
-    //   campaigner,
-    //   campaignAddress,
-    //   amount,
-    // ]);
 
-    const params = new ContractFunctionParameters().addString(campaigner).addString(campaignAddress).addUint256(amount);
+    const params = new ContractFunctionParameters().addString(campaignAddress).addUint256(amount);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
@@ -141,7 +135,7 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz rewarding to intractor")
+      .setTransactionMemo("Hashbuzz rewarding to intractor with adderss"+ intracterAccount)
       .setGas(1000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
@@ -149,3 +143,30 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
     return contractExecuteRx;
   }
 };
+
+
+export const closeCampaignSMTransaction = async (campingId:number|bigint) =>{
+  const campaignDetails = await getCampaignDetailsById(campingId);
+  const {user_user , id , contract_id , name} = campaignDetails!;
+  
+  if(user_user?.hedera_wallet_id && contract_id && name){
+    const campaigner = buildCampaigner(user_user?.hedera_wallet_id);
+    const campaignAddress = buildCampaignAddress(user_user.hedera_wallet_id , id.toString());
+
+    const contractAddress = ContractId.fromString(contract_id.toString());
+
+    const params = new ContractFunctionParameters().addString(campaigner).addString(campaignAddress);
+
+    
+    const contractExBalTx = new ContractExecuteTransaction()
+      .setContractId(contractAddress)
+      .setFunction("closeCampaign", params)
+      .setTransactionMemo("Hashbuzz close campaign operation for " + name)
+      .setGas(1000000);
+
+    const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
+    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
+    return contractExecuteRx;
+
+  }
+}

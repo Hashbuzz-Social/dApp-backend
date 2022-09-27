@@ -130,6 +130,20 @@ const getAllReplies = async (tweetID: string) => {
   return tweets;
 };
 
+
+/****
+ *@description Send DM from Hashbuzz to twitter user.
+ */
+const sendDMFromHashBuzz =async (recipient_id:string , text:string) =>{
+ return await twitterClient.v1.sendDm({
+    recipient_id,
+    text,
+  })
+}
+
+
+
+
 /*****
  *
  *@description Send Message to tht twitter.
@@ -153,5 +167,6 @@ export default {
   getAllUsersWhoLikedOnTweetId,
   getAllRetweetOfTweetId,
   getAllUsersWhoQuotedOnTweetId,
-  tweeterApiForUser
+  tweeterApiForUser,
+  sendDMFromHashBuzz
 } as const;

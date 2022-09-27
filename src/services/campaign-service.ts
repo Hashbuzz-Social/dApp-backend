@@ -1,14 +1,15 @@
-import prisma from "@shared/prisma";
 import { campaign_twittercard } from "@prisma/client";
-import { twitterStatus } from "src/@types/custom";
-import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
+import prisma from "@shared/prisma";
+import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import moment from "moment";
-import twitterAPI from "@shared/twitterAPI";
 import { scheduleJob } from "node-schedule";
+import { twitterStatus } from "src/@types/custom";
+import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
 import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
+import { closeCampaignSMTransaction } from "./transaction-service";
 
-export const getCampaignDetailsById = async (campaignId: number) => {
+export const getCampaignDetailsById = async (campaignId: number | bigint) => {
   return await prisma.campaign_twittercard.findUnique({
     where: {
       id: campaignId,
@@ -126,6 +127,8 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     include: {
       user_user: {
         select: {
+          username: true,
+          personal_twitter_id: true,
           business_twitter_access_token: true,
           business_twitter_access_token_secret: true,
           hedera_wallet_id: true,
@@ -134,12 +137,16 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
-  if (campaignDetails?.user_user?.business_twitter_access_token && campaignDetails?.user_user?.business_twitter_access_token_secret) {
-    const tweeterApi = twitterAPI.tweeterApiForUser({
-      accessToken: campaignDetails?.user_user?.business_twitter_access_token,
-      accessSecret: campaignDetails?.user_user?.business_twitter_access_token_secret,
+  const { user_user, name, tweet_id } = campaignDetails!;
+  if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
+    const userTweeterApi = twitterAPI.tweeterApiForUser({
+      accessToken: user_user?.business_twitter_access_token,
+      accessSecret: user_user?.business_twitter_access_token_secret,
     });
-
-    tweeterApi.v2.reply(`Campaign reward claiming for this tweet is closed✅.\n \n ad<create your own campaign @hbuzzs>`, campaignDetails.tweet_id!);
+    await Promise.all([
+      await userTweeterApi.v2.reply(`Campaign reward claiming for this tweet is closed✅.\n \n ad<create your own campaign @hbuzzs>`, tweet_id!),
+      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, `Hi, @${user_user.username}\nYour campaign ${name ?? ""} is expired today.`),
+      await closeCampaignSMTransaction(id),
+    ]);
   }
 }

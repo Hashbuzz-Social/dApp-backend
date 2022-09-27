@@ -1,9 +1,10 @@
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import { groupBy } from "lodash";
-import { payAndUpdateContractForReward, withdrawHbarFromContract } from "./transaction-service";
+import { updateCampaignBalance, withdrawHbarFromContract } from "./transaction-service";
 import userService from "./user-service";
 import logger from "jet-logger";
+import twitterAPI from "@shared/twitterAPI";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
@@ -47,6 +48,8 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
       user_user: {
         select: {
           hedera_wallet_id: true,
+          personal_twitter_handle: true,
+          personal_twitter_id: true,
         },
       },
     },
@@ -85,13 +88,6 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
     );
 
     await Promise.all([
-      //!!update contract balance for this campaign.
-      await payAndUpdateContractForReward({
-        campaignerAccount: user_user?.hedera_wallet_id,
-        campaignId: cardId.toString(),
-        amount: totalRewardsDebited,
-      }),
-
       //!!Update Amount claimed in the DB.
       await prisma.campaign_twittercard.update({
         where: { id: cardId },
@@ -100,6 +96,24 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
             increment: totalRewardsDebited,
           },
         },
+      }),
+
+      //!! Send DM to campaigner.
+      await twitterAPI.sendDMFromHashBuzz(
+        user_user.personal_twitter_id!,
+        `
+      Greetings @${user_user.personal_twitter_handle!}
+      This is for your information only\n \n
+      ———————————————— \n \n
+      Campaign: ${card.name!}\n
+      Status: completed \n
+      Rewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+      ),
+      //!!update contract balance for this campaign.
+      await updateCampaignBalance({
+        campaignerAccount: user_user?.hedera_wallet_id,
+        campaignId: cardId.toString(),
+        amount: totalRewardsDebited,
       }),
     ]);
   }

@@ -265,7 +265,7 @@ export const queryBalance = async (address: string) => {
  * @description query campaign balance from contract
  ***/
 
- export const queryCampaignBalance = async (address: string , campaignId:number) => {
+ export const queryCampaignBalance = async (address: string , campaignId:number|bigint) => {
   // Execute the contract to check changes in state variable
   address = buildCampaignAddress(address, campaignId.toString())
 

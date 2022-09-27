@@ -156,6 +156,7 @@ const scheduleExpiryTasks = async () => {
       },
     },
   });
+  console.log("Setting  Expriry operation on tasksk::::-----",getCompletedTask);
   getCompletedTask.map((card) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const date = new Date(card.campaign_expiry!);

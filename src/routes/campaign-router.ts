@@ -26,8 +26,9 @@ router.post(
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
   const campaignId = _.query.campaignId as any as number;
-  if (_.currentUser?.user_user.hedera_wallet_id) {
-    const data = await queryCampaignBalance(_.currentUser?.user_user.hedera_wallet_id, campaignId);
+  const campaignDetails = await getCampaignDetailsById(campaignId)
+  if (campaignDetails?.user_user?.hedera_wallet_id) {
+    const data = await queryCampaignBalance(campaignDetails.user_user.hedera_wallet_id, campaignDetails.id);
     return res.status(OK).json(data);
   }
   return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
