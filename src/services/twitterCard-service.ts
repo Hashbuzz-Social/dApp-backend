@@ -132,7 +132,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       data: {
         tweet_id: tweetId,
         card_status: "Running",
-        contract_id:contract_id.toString(),
+        contract_id:contract_id.toString().trim(),
       },
     });
     return tweetId;

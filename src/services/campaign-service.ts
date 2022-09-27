@@ -97,15 +97,15 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
             exprired_at: campaignExpiry,
           },
         }),
+        //startDistributing Rewards
+        await SendRewardsForTheUsersHavingWallet(card.id),
         //2. Replying to threat.
         await tweeterApi.v2.reply(
-          `Campaign ended ✅ \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
+          `Campaign ended at ${moment().toLocaleString()}✅
+          \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
       \n ad<create your own campaign @hbuzzs>`,
           tweet_id!
         ),
-
-        //startDistributing Rewards
-        await SendRewardsForTheUsersHavingWallet(card.id),
       ]);
     } catch (e) {
       console.log(e);
@@ -145,14 +145,17 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       accessToken: user_user?.business_twitter_access_token,
       accessSecret: user_user?.business_twitter_access_token_secret,
     });
-    await Promise.all([
-      await userTweeterApi.v2.reply(`Campaign reward claiming for this tweet is closed✅.\n \n ad<create your own campaign @hbuzzs>`, tweet_id!),
-      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, `Hi, @${user_user.username}\nYour campaign ${name ?? ""} is expired today.`),
-      await closeCampaignSMTransaction(id),
-    ]);
+    await closeCampaignSMTransaction(id);
 
     //?? Query and update campaigner balance after closing campaign.
     const balances = await queryBalance(user_user.hedera_wallet_id!);
     if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
+
+    try {
+      await userTweeterApi.v2.reply(`Campaign reward claiming for this tweet is closed✅.\n \n ad<create your own campaign @hbuzzs>`, tweet_id!);
+      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, `Hi, @${user_user.username}\nYour campaign ${name ?? ""} is expired today.`);
+    } catch (error) {
+      logger.err(error.message);
+    }
   }
 }

@@ -131,15 +131,6 @@ const getAllReplies = async (tweetID: string) => {
 };
 
 
-/****
- *@description Send DM from Hashbuzz to twitter user.
- */
-const sendDMFromHashBuzz =async (recipient_id:string , text:string) =>{
- return await twitterClient.v1.sendDm({
-    recipient_id,
-    text,
-  })
-}
 
 
 
@@ -158,6 +149,22 @@ const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string;
   });
   return tweeterApi;
 };
+
+
+
+/****
+ *@description Send DM from Hashbuzz to twitter user.
+ */
+ const sendDMFromHashBuzz =async (recipient_id:string , text:string) =>{
+  const HashbuzzTwitterClient = tweeterApiForUser({
+    accessToken:process.env.HASHBUZZ_ACCESS_TOKEN!,
+    accessSecret:process.env.HASHBUZZ_ACCESS_SECRET!,
+  })
+  return await HashbuzzTwitterClient.v1.sendDm({
+     recipient_id,
+     text,
+   })
+ }
 
 export default {
   getAllReplies,

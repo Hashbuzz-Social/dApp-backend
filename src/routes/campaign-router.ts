@@ -1,7 +1,7 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
 import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";
-import { allocateBalanceToCampaign } from "@services/transaction-service";
+import { allocateBalanceToCampaign  , closeCampaignSMTransaction} from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
@@ -41,11 +41,13 @@ router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, a
   return res.status(OK).json({ success: true, message: "reward Distributed" });
 });
 
-// router.get("/reward-test", query("id").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
-//   const id = _.query["id"] as any as number;
-//   const data = await SendRewardsForTheUsersHavingWallet(id);
-//   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
-// });
+router.post("/expirytest", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
+  const id:string = _.body.campaignId;
+  // const data = await SendRewardsForTheUsersHavingWallet(id);
+  const cardDetails = await getCampaignDetailsById(parseInt(id.toString()));
+  if(cardDetails?.id) await closeCampaignSMTransaction(cardDetails.id);
+  return res.status(OK).json({message:"done"});
+});
 
 async function statusUpdateHandler(req: Request, res: Response) {
   const campaignId: number = req.body.card_id;

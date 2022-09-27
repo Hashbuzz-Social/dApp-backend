@@ -41,6 +41,10 @@ ENV TWITTER_API_KEY=maDVuEK5U4bRUnC7LAf78aVtm
 ENV TWITTER_API_SECRET=OZVJ1KTCzCm7vlN04xxm5ZgshJBfzCQjuyCj0L3nEoUkHy1GDu
 ENV TWITTER_CALLBACK_HOST=https://sea-lion-app-dhl7x.ondigitalocean.app
 
+######## Hashbuzz twiiter data #####
+ENV HASHBUZZ_ACCESS_TOKEN=1483587498156642312-apgdVxZtDUELIVA6Pneo13GwzECYvP
+ENV HASHBUZZ_ACCESS_SECRET=7rF4PnKxObjAYhE1EVddhhs2v7cagg3YRHhbMgx5YEOer
+
 
 # Build NPM project.
 RUN npx prisma db pull

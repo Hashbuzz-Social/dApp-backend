@@ -98,7 +98,15 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
         },
       }),
 
-      //!! Send DM to campaigner.
+      //!!update contract balance for this campaign.
+      await updateCampaignBalance({
+        campaignerAccount: user_user?.hedera_wallet_id,
+        campaignId: cardId.toString(),
+        amount: totalRewardsDebited,
+      }),
+    ]);
+
+    try {
       await twitterAPI.sendDMFromHashBuzz(
         user_user.personal_twitter_id!,
         `
@@ -108,14 +116,10 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
       Campaign: ${card.name!}\n
       Status: completed \n
       Rewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
-      ),
-      //!!update contract balance for this campaign.
-      await updateCampaignBalance({
-        campaignerAccount: user_user?.hedera_wallet_id,
-        campaignId: cardId.toString(),
-        amount: totalRewardsDebited,
-      }),
-    ]);
+      );
+    } catch (error) {
+      logger.err(error.message);
+    }
   }
 
   return groupedData;

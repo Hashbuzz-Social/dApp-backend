@@ -74,7 +74,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
       .setContractId(contractAddress)
       .setFunction("addCampaign", params)
       .setTransactionMemo("Hashbuzz add balance to a campaign account"+campaignAddress)
-      .setGas(1000000);
+      .setGas(10000000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
     const receipt = await exResult.getReceipt(hbarservice.hederaClient);
@@ -130,7 +130,7 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
     const IntractorAddress = AccountId.fromString(intracterAccount).toSolidityAddress();
 
     //   //!! BUILD Parameters
-    const functionCallAsUint8Array = encodeFunctionCall("callHbarToPayee", [IntractorAddress, amount * 1e8]);
+    const functionCallAsUint8Array = encodeFunctionCall("callHbarToPayee", [IntractorAddress, Math.round(amount * 1e8)]);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
@@ -153,7 +153,7 @@ export const closeCampaignSMTransaction = async (campingId:number|bigint) =>{
     const campaigner = buildCampaigner(user_user?.hedera_wallet_id);
     const campaignAddress = buildCampaignAddress(user_user.hedera_wallet_id , id.toString());
 
-    const contractAddress = ContractId.fromString(contract_id.toString());
+    const contractAddress = ContractId.fromString(contract_id.trim().toString());
 
     const params = new ContractFunctionParameters().addString(campaigner).addString(campaignAddress);
 
