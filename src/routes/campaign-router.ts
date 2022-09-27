@@ -25,8 +25,9 @@ router.post(
 // router.post("/create")
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
-  const campaignId = _.query.campaignId as any as number;
-  const campaignDetails = await getCampaignDetailsById(campaignId)
+  const campaignId = _.query.campaignId as any as string;
+  // console.log(typeof campaignId);
+  const campaignDetails = await getCampaignDetailsById(parseInt(campaignId))
   if (campaignDetails?.user_user?.hedera_wallet_id) {
     const data = await queryCampaignBalance(campaignDetails.user_user.hedera_wallet_id, campaignDetails.id);
     return res.status(OK).json(data);

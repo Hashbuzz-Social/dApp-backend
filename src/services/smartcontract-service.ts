@@ -3,11 +3,11 @@ import {
   ContractFunctionParameters, FileAppendTransaction, FileCreateTransaction, FileId, Hbar, Status
 } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
+import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { contractAbi, contractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
-import {buildCampaignAddress , buildCampaigner} from "@shared/helper"
 
 const web3 = new Web3;
 // import JSONBigInt from "json-bigint";
@@ -268,7 +268,7 @@ export const queryBalance = async (address: string) => {
  export const queryCampaignBalance = async (address: string , campaignId:number|bigint) => {
   // Execute the contract to check changes in state variable
   const campaignAddress = buildCampaignAddress(address, campaignId.toString())
-  logger.info("payment enquiry for campaignAddress"+campaignAddress)
+  logger.info("payment enquiry for campaignAddress::: "+campaignAddress)
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const contractCallQuery = new ContractCallQuery()
