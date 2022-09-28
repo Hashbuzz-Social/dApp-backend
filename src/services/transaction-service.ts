@@ -31,7 +31,7 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
   }
 };
 
-export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
+export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number } , connectedAccountId:string) => {
   console.log("Creating Transaction Hash with:" , {payerId , amounts});
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
@@ -43,7 +43,7 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
       .setTransactionMemo("Hashbuzz escrow payment");
 
     //signing and returning
-    return signingService.signAndMakeBytes(transferTx, payerId);
+    return signingService.signAndMakeBytes(transferTx, connectedAccountId);
   } else {
     throw new Error("Contract id not found");
   }
