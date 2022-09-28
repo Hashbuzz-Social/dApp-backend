@@ -36,7 +36,7 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const transferTx = new TransferTransaction()
-      .addHbarTransfer(payerId, -amounts.total / Math.pow(10, 8))
+      .addHbarTransfer(connectedAccountId, -amounts.total / Math.pow(10, 8))
       .addHbarTransfer(contract_id?.toString(), Hbar.fromTinybars(amounts.topUpAmount))
       .setTransactionMemo("Hashbuzz contract payment")
       .addHbarTransfer(hbarservice.operatorId, amounts.fee / Math.pow(10, 8))
