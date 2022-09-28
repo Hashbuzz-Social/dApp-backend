@@ -5,6 +5,8 @@ import { updateCampaignBalance, withdrawHbarFromContract } from "./transaction-s
 import userService from "./user-service";
 import logger from "jet-logger";
 import twitterAPI from "@shared/twitterAPI";
+import moment from "moment";
+import { getCampaignDetailsById } from "./campaign-service";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
@@ -129,13 +131,23 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
  *@description This will be used to show how much amount still pending for an user to claim.
  * @return rewards in tinyhabr
  */
-const totalPendingReward = async (personal_twitter_id: string, card_id: number | bigint) => {
-  const cardDetails = await prisma.campaign_twittercard.findUnique({ where: { id: card_id } });
-  const allUnpaidEngagements = await prisma.campaign_tweetengagements.findMany({
+const totalPendingReward = async (personal_twitter_id: string) => {
+  const allUnpaidEngagementsForAnUser = await prisma.campaign_tweetengagements.findMany({
     where: {
       user_id: personal_twitter_id,
       payment_status: "UNPAID",
+      exprired_at:{
+        gte:moment().toISOString()
+      }
     },
   });
-  return calculateTotalRewards(cardDetails!, allUnpaidEngagements);
+  // let totalRewardsDue = 0 
+  const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id");
+  
+  //calculate Total rewards for each group;
+  await Promise.all(Object.keys(groupedData).map(async (d) => {
+    const card = await getCampaignDetailsById(parseInt(d));
+    const toalFor_card = calculateTotalRewards()
+  }))
+  return groupedData;
 };
