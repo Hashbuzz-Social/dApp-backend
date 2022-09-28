@@ -149,7 +149,7 @@ const totalPendingReward = async (personal_twitter_id: string) => {
     const card = await getCampaignDetailsById(parseInt(d));
     if(card && groupedData[d].length > 0){
       const totalForCard = calculateTotalRewards(card ,groupedData[d]);
-      console.log(totalForCard)
+      // console.log(totalForCard)
     }
   }))
   return groupedData;
