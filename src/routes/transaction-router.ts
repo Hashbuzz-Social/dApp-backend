@@ -14,7 +14,7 @@ const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
 // Paths
 
 router.post("/create-topup-transaction", body("amounts").isObject(), checkErrResponse, creteTopUpHandler);
-router.post("/top-up", body("amounts").isObject(), body("accountId").custom(checkWalletFormat), checkErrResponse, topUpHandler);
+router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
@@ -28,14 +28,14 @@ router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, h
  */
 
 async function topUpHandler(req: Request, res: Response) {
-  const accountId: string = req.body.accountId;
+  const accountId = req.currentUser?.user_user.hedera_wallet_id;
   const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
   if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
     return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
   }
 
-  if (req.currentUser?.user_id) {
+  if (req.currentUser?.user_id && accountId) {
     try {
       const topUp = await userService.topUp(req.currentUser?.user_id, amounts.topUpAmount, "increment");
       await updateBalanceToContract(accountId, amounts);

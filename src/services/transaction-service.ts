@@ -1,4 +1,4 @@
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, TransferTransaction } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction } from "@hashgraph/sdk";
 import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
@@ -35,7 +35,7 @@ export const createTopUpTransaction = async (payerId: string, amounts: { topUpAm
   if (contract_id) {
     const transferTx = new TransferTransaction()
       .addHbarTransfer(payerId, -amounts.total / Math.pow(10, 8))
-      .addHbarTransfer(contract_id?.toString(), amounts.topUpAmount / Math.pow(10, 8))
+      .addHbarTransfer(contract_id?.toString(), Hbar.fromTinybars(amounts.topUpAmount))
       .setTransactionMemo("Hashbuzz contract payment")
       .addHbarTransfer(hbarservice.operatorId, amounts.fee / Math.pow(10, 8))
       .setTransactionMemo("Hashbuzz escrow payment");
