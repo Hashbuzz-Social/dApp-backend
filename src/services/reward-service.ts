@@ -147,7 +147,10 @@ const totalPendingReward = async (personal_twitter_id: string) => {
   //calculate Total rewards for each group;
   await Promise.all(Object.keys(groupedData).map(async (d) => {
     const card = await getCampaignDetailsById(parseInt(d));
-    const toalFor_card = calculateTotalRewards(card ,groupedData[d])
+    if(card && groupedData[d].length > 0){
+      const totalForCard = calculateTotalRewards(card ,groupedData[d]);
+      console.log(totalForCard)
+    }
   }))
   return groupedData;
 };

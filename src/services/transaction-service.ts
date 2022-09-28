@@ -6,6 +6,7 @@ import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
 import { getCampaignDetailsById } from "./campaign-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
+  console.log("updateBalanceToContract::",{payerId , amounts})
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
@@ -31,6 +32,7 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
 };
 
 export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
+  console.log("Creating Transaction Hash with:" , {payerId , amounts});
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const transferTx = new TransferTransaction()
