@@ -298,13 +298,13 @@ export const queryCampaignBalance = async (address: string, campaignId: number |
 
 export const getSMInfo = async () => {
   const { contract_id } = await provideActiveContract();
-  const adminKey = new Key()
   //Create the query
   const query = new ContractInfoQuery().setContractId(contract_id!);
 
   //Sign the query with the client operator private key and submit to a Hedera network
   const info = await query.execute(hederaClient);
-  console.log({info,adminKey:adminKey})
+  console.log(info);
+  console.log(info.adminKey)
 
-  return {info,adminKey};
+  return info;
 };

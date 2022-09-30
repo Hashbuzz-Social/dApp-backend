@@ -65,7 +65,7 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
     (async () => {
       const id = req.currentUser?.user_id;
       const updatedUser = await userService.updateWalletId(walletId, id!);
-      totalPendingReward(updatedUser.personal_twitter_id! , updatedUser.hedera_wallet_id!)
+      await totalPendingReward(updatedUser.personal_twitter_id! , updatedUser.hedera_wallet_id!)
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
     })();
   }
