@@ -1,5 +1,6 @@
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
+import {TransactionReceipt} from "@hashgraph/sdk"
 import { Dictionary, groupBy } from "lodash";
 import { updateCampaignBalance, transferAmountFromContractUsingSDK } from "./transaction-service";
 import userService from "./user-service";
@@ -123,6 +124,7 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
  * @param intractor_hedera_wallet_id hedera wallet id of the user's who is claiming their rewards in format `0.0.01245`.
  */
 export const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_wallet_id: string) => {
+  console.log("Reward calculation asnd transfer for user::" , intractor_hedera_wallet_id)
   //TODO:  Query all activeEngagements of this users from DB.
   const allUnpaidEngagementsForAnUser = await prisma.campaign_tweetengagements.findMany({
     where: {
@@ -157,8 +159,13 @@ export const totalPendingReward = async (personal_twitter_id: string, intractor_
     allCards[d] = campaignDetails!; // Todo: Store DB cards for further use.
   });
 
+  let transferTotalAmountReceipt:TransactionReceipt | undefined;
   //!! Transferring that much amount from smart contract to user's wallet.
-  const transferTotalAmountReceipt = await transferAmountFromContractUsingSDK(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction
+  if(totalRewardsDue > 0){
+   transferTotalAmountReceipt = await transferAmountFromContractUsingSDK(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction
+  }else{
+    logger.err("Total claimed amount for this user's in not sufficient for user with walletIs" + intractor_hedera_wallet_id);
+  }
 
   //!! iF TRANSACTION is successful then start updating bookkeeping and localDB.
   if (transferTotalAmountReceipt) {
