@@ -1,4 +1,5 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction } from "@hashgraph/sdk";
+import hederaService from "@services/hedera-service";
 import hbarservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
@@ -6,7 +7,7 @@ import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
 import { getCampaignDetailsById } from "./campaign-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
-  console.log("updateBalanceToContract::",{payerId , amounts})
+  console.log("updateBalanceToContract::", { payerId, amounts });
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
@@ -31,8 +32,8 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
   }
 };
 
-export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number } , connectedAccountId:string) => {
-  console.log("Creating Transaction Hash with:" , {payerId , amounts});
+export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }, connectedAccountId: string) => {
+  console.log("Creating Transaction Hash with:", { payerId, amounts });
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const transferTx = new TransferTransaction()
@@ -75,7 +76,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunction("addCampaign", params)
-      .setTransactionMemo("Hashbuzz add balance to a campaign account"+campaignAddress)
+      .setTransactionMemo("Hashbuzz add balance to a campaign account" + campaignAddress)
       .setGas(10000000);
 
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
@@ -89,15 +90,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
   }
 };
 
-export const updateCampaignBalance = async ({
-  campaignerAccount,
-  campaignId,
-  amount,
-}: {
-  campaignerAccount: string;
-  campaignId: string;
-  amount: number;
-}) => {
+export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amount }: { campaignerAccount: string; campaignId: string; amount: number }) => {
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
@@ -106,13 +99,12 @@ export const updateCampaignBalance = async ({
 
     console.log("Update SM balances For campaign", { campaignAddress: campaignAddress.toString(), contract_id, amount });
 
-
     const params = new ContractFunctionParameters().addString(campaignAddress).addUint256(amount);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunction("payInteractorFromCampaignBalances", params)
-      .setTransactionMemo("Hashbuzz subtracting campaign balance from campaign::" + campaignAddress )
+      .setTransactionMemo("Hashbuzz subtracting campaign balance from campaign::" + campaignAddress)
       .setGas(1000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
@@ -137,7 +129,7 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz rewarding to intractor with adderss"+ intracterAccount)
+      .setTransactionMemo("Hashbuzz rewarding to intractor with adderss" + intracterAccount)
       .setGas(1000000);
 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
@@ -146,20 +138,32 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
   }
 };
 
+export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number) => {
+  const { contract_id } = await provideActiveContract();
+  if (contract_id) {
+    const transferTx = new TransferTransaction()
+      .addHbarTransfer(contract_id?.toString(), -Hbar.fromTinybars(amount))
+      .addHbarTransfer(intracterAccount, Hbar.fromTinybars(amount))
+      .freezeWith(hbarservice.hederaClient);
+    const transferSign = await transferTx.sign(hederaService.operatorKey);
+    const transferSubmit = await transferSign.execute(hbarservice.hederaClient);
+    const transferRx = await transferSubmit.getReceipt(hbarservice.hederaClient);
+    return transferRx;
+  }
+};
 
-export const closeCampaignSMTransaction = async (campingId:number|bigint) =>{
+export const closeCampaignSMTransaction = async (campingId: number | bigint) => {
   const campaignDetails = await getCampaignDetailsById(campingId);
-  const {user_user , id , contract_id , name} = campaignDetails!;
-  
-  if(user_user?.hedera_wallet_id && contract_id && name){
+  const { user_user, id, contract_id, name } = campaignDetails!;
+
+  if (user_user?.hedera_wallet_id && contract_id && name) {
     const campaigner = buildCampaigner(user_user?.hedera_wallet_id);
-    const campaignAddress = buildCampaignAddress(user_user.hedera_wallet_id , id.toString());
+    const campaignAddress = buildCampaignAddress(user_user.hedera_wallet_id, id.toString());
 
     const contractAddress = ContractId.fromString(contract_id.trim().toString());
 
     const params = new ContractFunctionParameters().addString(campaigner).addString(campaignAddress);
 
-    
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setFunction("closeCampaign", params)
@@ -169,6 +173,5 @@ export const closeCampaignSMTransaction = async (campingId:number|bigint) =>{
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
     return contractExecuteRx;
-
   }
-}
+};

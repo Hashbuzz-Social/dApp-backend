@@ -1,7 +1,7 @@
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import { Dictionary, groupBy } from "lodash";
-import { updateCampaignBalance, withdrawHbarFromContract } from "./transaction-service";
+import { updateCampaignBalance, transferAmountFromContractUsingSDK } from "./transaction-service";
 import userService from "./user-service";
 import logger from "jet-logger";
 import twitterAPI from "@shared/twitterAPI";
@@ -72,7 +72,7 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
           logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
           await Promise.all([
             //* Smart-contract call for payment
-            await withdrawHbarFromContract(user_info.hedera_wallet_id, totalRewardsTinyHbar),
+            await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
 
             // TODO: update Payment status in db
             await updatePaymentStatusToManyRecords(
@@ -158,7 +158,7 @@ export const totalPendingReward = async (personal_twitter_id: string, intractor_
   });
 
   //!! Transferring that much amount from smart contract to user's wallet.
-  const transferTotalAmountReceipt = await withdrawHbarFromContract(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction
+  const transferTotalAmountReceipt = await transferAmountFromContractUsingSDK(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction
 
   //!! iF TRANSACTION is successful then start updating bookkeeping and localDB.
   if (transferTotalAmountReceipt) {
