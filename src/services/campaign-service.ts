@@ -75,7 +75,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
     const [commentsUpdates, isEngagementUpdated] = await Promise.all([
-      await updateRepliesToDB(id, parseInt(tweet_id!)),
+      await updateRepliesToDB(id, tweet_id!),
       await updateAllEngagementsForCard(card),
     ]);
 
