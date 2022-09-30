@@ -7,21 +7,22 @@ import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body, query as validateQuery } from "express-validator";
+import { body, param, query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 
 const router = Router();
 const { OK, BAD_REQUEST, CONFLICT } = statuses;
-
+const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 router.post(
   "/update-status",
   body("card_id").isNumeric(),
-  body("card_status").isIn(["rejected", "running", "completed", "deleted"]),
+  body("card_status").isIn(campaignStatuses),
   checkErrResponse,
   statusUpdateHandler
 );
 
+router.get("/all",param("status"),handleCampaignGet)
 // router.post("/create")
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
@@ -35,19 +36,19 @@ router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse
   return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
 });
 
-router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
-  const campaignId: number = _.body.campaignId;
-  await SendRewardsForTheUsersHavingWallet(campaignId);
-  return res.status(OK).json({ success: true, message: "reward Distributed" });
-});
+// router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
+//   const campaignId: number = _.body.campaignId;
+//   await SendRewardsForTheUsersHavingWallet(campaignId);
+//   return res.status(OK).json({ success: true, message: "reward Distributed" });
+// });
 
-router.post("/expirytest", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
-  const id:string = _.body.campaignId;
-  // const data = await SendRewardsForTheUsersHavingWallet(id);
-  const cardDetails = await getCampaignDetailsById(parseInt(id.toString()));
-  if(cardDetails?.id) await closeCampaignSMTransaction(cardDetails.id);
-  return res.status(OK).json({message:"done"});
-});
+// router.post("/expirytest", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
+//   const id:string = _.body.campaignId;
+//   // const data = await SendRewardsForTheUsersHavingWallet(id);
+//   const cardDetails = await getCampaignDetailsById(parseInt(id.toString()));
+//   if(cardDetails?.id) await closeCampaignSMTransaction(cardDetails.id);
+//   return res.status(OK).json({message:"done"});
+// });
 
 async function statusUpdateHandler(req: Request, res: Response) {
   const campaignId: number = req.body.card_id;
@@ -111,5 +112,7 @@ async function statusUpdateHandler(req: Request, res: Response) {
 
   return res.status(BAD_REQUEST).json({ error: true, message: "Something went wrong." });
 }
-
+function handleCampaignGet(req:Request , res:Response) {
+    return res.status(OK)
+}
 export default router;
