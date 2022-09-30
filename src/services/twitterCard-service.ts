@@ -115,14 +115,14 @@ const publishTwitter = async (cardId: number | bigint) => {
     const threat1 = tweet_text;
     //@ignore es-lint
     // eslint-disable-next-line max-len
-    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars. The reward scheme: \n like ${cardDetails?.like_reward ?? ""} ℏ \n retweet ${cardDetails?.retweet_reward ?? ""} ℏ \n quote ${cardDetails?.quote_reward ?? ""} ℏ \n comment ${cardDetails?.comment_reward ?? ""} ℏ \n ad<create your own campaign @hbuzzs>`;
+    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: \n like ${cardDetails?.like_reward ?? ""} ℏ , retweet ${cardDetails?.retweet_reward ?? ""} ℏ , quote ${cardDetails?.quote_reward ?? ""} ℏ, comment ${cardDetails?.comment_reward ?? ""} ℏ \n ad<create your own campaign @hbuzzs>`;
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
       accessSecret: user_user?.business_twitter_access_token_secret,
     });
-    console.log({threat1 , threat2})
+    console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
-    const card = await userTwitter.v2.tweetThread([""+threat1, ""+threat2]);
+    const card = await userTwitter.v2.tweetThread(["" + threat1, "" + threat2]);
     //tweetId.
     const tweetId = card[0].data.id;
 
@@ -132,7 +132,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       data: {
         tweet_id: tweetId,
         card_status: "Running",
-        contract_id:contract_id.toString().trim(),
+        contract_id: contract_id.toString().trim(),
       },
     });
     return tweetId;

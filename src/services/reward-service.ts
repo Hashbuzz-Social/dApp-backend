@@ -1,9 +1,8 @@
-import { TransactionReceipt } from "@hashgraph/sdk";
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
-import { Dictionary, groupBy } from "lodash";
+import { groupBy } from "lodash";
 import { getCampaignDetailsById, incrementClaimAmount } from "./campaign-service";
 import { updatePaymentStatusToManyRecords } from "./engagement-servide";
 import { transferAmountFromContractUsingSDK, updateCampaignBalance } from "./transaction-service";
@@ -100,13 +99,8 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
     try {
       await twitterAPI.sendDMFromHashBuzz(
         user_user.personal_twitter_id!,
-        `
-      Greetings @${user_user.personal_twitter_handle!}
-      This is for your information only
-      ———————————————— 
-      Campaign: ${card.name!}
-      Status: completed 
-      Rewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+        // eslint-disable-next-line max-len
+        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${card.name!}\nStatus: completed \nRewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
       );
     } catch (error) {
       logger.err(error.message);

@@ -74,12 +74,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     logger.info(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
-    const [commentsUpdates, isEngagementUpdated] = await Promise.all([
-      await updateRepliesToDB(id, tweet_id!),
-      await updateAllEngagementsForCard(card),
-    ]);
-
-    if(commentsUpdates) console.log("commentsUpdates", commentsUpdates)
+    const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
     const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "hours").toISOString();
     //log campaign expiry
@@ -114,9 +109,8 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         await SendRewardsForTheUsersHavingWallet(card.id),
         //2. Replying to threat.
         await tweeterApi.v2.reply(
-          `Campaign ended at ${moment().toLocaleString()}✅
-          \n Rewards being distributed \n 🚨first timer🚨please login to hashbuzz and connect your HashPack wallet to receive your rewards.
-      \n ad<create your own campaign @hbuzzs>`,
+          // eslint-disable-next-line max-len
+          `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @hbuzzs and connect your HashPack wallet to receive your rewards.`,
           tweet_id!
         ),
       ]);
@@ -144,6 +138,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
         select: {
           username: true,
           personal_twitter_id: true,
+          personal_twitter_handle:true,
           business_twitter_access_token: true,
           business_twitter_access_token_secret: true,
           hedera_wallet_id: true,
@@ -152,7 +147,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
-  const { user_user, name, tweet_id, owner_id } = campaignDetails!;
+  const { user_user, name, tweet_id, owner_id , campaign_budget , amount_claimed } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
@@ -165,8 +160,11 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
 
     try {
-      await userTweeterApi.v2.reply(`Campaign reward claiming for this tweet is closed✅.\n \n ad<create your own campaign @hbuzzs>`, tweet_id!);
-      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, `Hi, @${user_user.username}\nYour campaign ${name ?? ""} is expired today.`);
+      await userTweeterApi.v2.reply(`Reward distribution is ended 🎉.\n At ${moment().toLocaleString()}`, tweet_id!);
+      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, 
+        // eslint-disable-next-line max-len
+        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${((amount_claimed! / Math.round(campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+        );
     } catch (error) {
       logger.err(error.message);
     }

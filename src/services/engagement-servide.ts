@@ -39,8 +39,6 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
     }),
   ]);
   const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
-  console.log("existingUserIds" , existingUserIds);
-  console.log("allReplies" , allReplies);
 
   let formattedArray = allReplies.map((d) => ({
     user_id: d.author_id!,
@@ -54,7 +52,6 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
       return !isExisting;
     });
   }
-  console.log("formattedArray" , formattedArray);
   if (formattedArray && formattedArray.length > 0) {
     const updates = await prisma.campaign_tweetengagements.createMany({
       data: [...formattedArray],
