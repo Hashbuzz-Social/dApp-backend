@@ -102,10 +102,10 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
         user_user.personal_twitter_id!,
         `
       Greetings @${user_user.personal_twitter_handle!}
-      This is for your information only\n \n
-      ———————————————— \n \n
-      Campaign: ${card.name!}\n
-      Status: completed \n
+      This is for your information only
+      ———————————————— 
+      Campaign: ${card.name!}
+      Status: completed 
       Rewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
       );
     } catch (error) {
@@ -134,75 +134,38 @@ export const totalPendingReward = async (personal_twitter_id: string, intractor_
       },
     },
   });
-  let totalRewardsDue = 0; //* Initial balance which will increment letter.
+  console.log("allUnpaidEngagementsForAnUser", allUnpaidEngagementsForAnUser);
   const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id"); //? Grouping all engagements regards og their campaign_card(DB).
 
-  const allCards: Dictionary<
-    campaign_twittercard & {
-      user_user: {
-        hedera_wallet_id: string | null;
-        available_budget: number;
-      } | null;
-    }
-  > = {}; //* For storing cards details in grouped way.
-
   //TODO: will calculate total amounts pending for this user.
-  Object.keys(groupedData).map(async (d) => {
-    const campaignDetails = await getCampaignDetailsById(parseInt(d)); //? will return campaign card form DB. Contain rewards pricing.
-    const { user_user, ...card } = campaignDetails!;
+  await Promise.all([
+    Object.keys(groupedData).map(async (d) => {
+      const campaignDetails = await getCampaignDetailsById(parseInt(d)); //? will return campaign card form DB. Contain rewards pricing.
+      const { user_user, ...card } = campaignDetails!;
 
-    const totalForCard = calculateTotalRewards(card, groupedData[d]); //TODO: Wll calculate total for a single card.
-    logger.info(`Card::${card.id} userWallet:${intractor_hedera_wallet_id} totalForThisCard::${totalForCard}`);
-    totalRewardsDue += totalForCard;
+      const totalForCard = calculateTotalRewards(card, groupedData[d]); //TODO: Wll calculate total for a single card.
 
-    allCards[d] = campaignDetails!; // Todo: Store DB cards for further use.
-  });
+      logger.info(`Card::${card.id} userWallet:${intractor_hedera_wallet_id} totalForThisCard::${totalForCard}`);
+      //!!===== Transfer begins==============!!
+      if (card && groupedData[d].length > 0 && user_user?.hedera_wallet_id) {
+        //!! SM record update call;
+        await updateCampaignBalance({
+          campaignerAccount: user_user.hedera_wallet_id!,
+          campaignId: card.id.toString(),
+          amount: totalForCard,
+        });
 
-  let transferTotalAmountReceipt: TransactionReceipt | undefined;
-  //!! Transferring that much amount from smart contract to user's wallet.
-  if (totalRewardsDue > 0) {
-    transferTotalAmountReceipt = await transferAmountFromContractUsingSDK(
-      intractor_hedera_wallet_id,
-      totalRewardsDue,
-      `Hashbuzz reward payments for engagements`
-    ); // SM -> user_ wallet Transaction
-  } else {
-    logger.err("Total claimed amount for this user's in not sufficient for user with walletIs" + intractor_hedera_wallet_id);
-  }
+        //!! Transferring that much amount from smart contract to user's wallet.
+        await transferAmountFromContractUsingSDK(intractor_hedera_wallet_id, totalForCard, `Hashbuzz reward payments for engagements`),
+          //!! Update Payment status in DB.
+          await updatePaymentStatusToManyRecords(
+            groupedData[d].map((d) => d.id),
+            "PAID"
+          );
 
-  //!! iF TRANSACTION is successful then start updating bookkeeping and localDB.
-  if (transferTotalAmountReceipt) {
-    //calculate Total rewards for each group;
-    try {
-      await Promise.all(
-        Object.keys(allCards).map(async (cardId) => {
-          const { user_user, ...card } = allCards[cardId]; // campaign card
-          const engagementsOnCard = groupedData[cardId]; // all engagement for given card id for this specific user.;
-          const totalAmountForCard = calculateTotalRewards(card, engagementsOnCard);
-
-          if (card && engagementsOnCard.length > 0 && user_user?.hedera_wallet_id) {
-            //!! SM record update call;
-            await updateCampaignBalance({
-              campaignerAccount: user_user?.hedera_wallet_id,
-              campaignId: cardId.toString(),
-              amount: totalAmountForCard,
-            });
-
-            //!! Update Payment status in DB.
-            await updatePaymentStatusToManyRecords(
-              engagementsOnCard.map((d) => d.id),
-              "PAID"
-            );
-
-            //!! Increment claim amount in localDB.
-            await incrementClaimAmount(card.id, totalAmountForCard);
-          }
-        })
-      );
-    } catch (error) {
-      logger.err(error.message);
-    }
-  }
-
-  return { engagements: groupedData, amount: totalPendingReward, receipt: transferTotalAmountReceipt };
+        //!! Increment claim amount in localDB.
+        await incrementClaimAmount(card.id, totalForCard);
+      }
+    }),
+  ]);
 };
