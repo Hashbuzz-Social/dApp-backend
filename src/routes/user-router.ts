@@ -56,6 +56,8 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
 
   const walletId: string = req.body.walletId;
 
+  console.log("Update_wallet::",req.currentUser?.user_user.hedera_wallet_id)
+
   if (req.currentUser?.user_user.hedera_wallet_id) {
     return res.status(OK).json({ updated: true, message: "Wallet already added to this account" });
   } else {

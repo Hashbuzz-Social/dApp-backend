@@ -1,5 +1,5 @@
 import { getCampaignDetailsById } from "@services/campaign-service";
-import { addCampaigner, provideActiveContract } from "@services/smartcontract-service";
+import { addCampaigner, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
@@ -18,6 +18,7 @@ router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandle
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post("/contract-info", handleContractInfoReq);
 
 //@handlers
 
@@ -81,14 +82,14 @@ async function activeContractHandler(req: Request, res: Response) {
 
 async function creteTopUpHandler(req: Request, res: Response) {
   const payeeId = req.currentUser?.user_user.hedera_wallet_id;
-  const connectedAccountId:string = req.body.connectedAccountId;
+  const connectedAccountId: string = req.body.connectedAccountId;
   const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
   if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
     return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
   }
   if (payeeId && connectedAccountId) {
-    const transactionBytes = await createTopUpTransaction(payeeId, amounts , connectedAccountId);
+    const transactionBytes = await createTopUpTransaction(payeeId, amounts, connectedAccountId);
     return res.status(CREATED).json(transactionBytes);
   }
   return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
@@ -113,4 +114,11 @@ async function handleCampaignFundAllocation(req: Request, res: Response) {
   }
 
   return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
+}
+
+async function handleContractInfoReq(_: Request, res: Response) {
+  const info = await getSMInfo();
+  if(info)
+   return res.status(OK).json(info);
+  return res.status(BAD_REQUEST);
 }

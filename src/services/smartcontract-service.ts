@@ -1,6 +1,16 @@
 import {
-  AccountId, ContractCallQuery, ContractCreateTransaction, ContractExecuteTransaction,
-  ContractFunctionParameters, FileAppendTransaction, FileCreateTransaction, FileId, Hbar, Status
+  AccountId,
+  ContractCallQuery,
+  ContractCreateTransaction,
+  ContractExecuteTransaction,
+  ContractFunctionParameters,
+  FileAppendTransaction,
+  FileCreateTransaction,
+  FileId,
+  Hbar,
+  Status,
+  ContractInfoQuery,
+  Key
 } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
@@ -9,7 +19,7 @@ import { contractAbi, contractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 
-const web3 = new Web3;
+const web3 = new Web3();
 // import JSONBigInt from "json-bigint";
 const { hederaClient, operatorKey, network } = hederaService;
 
@@ -120,6 +130,7 @@ export const deployContract = async () => {
     .setBytecodeFileId(bytecodeFileId!)
     .setGas(100000)
     .setMaxTransactionFee(20)
+    .setAdminKey(operatorKey)
     .setContractMemo("Hashbuzz smart contract")
     .setTransactionMemo("Hashbuzz contract deploy transaction");
 
@@ -265,10 +276,10 @@ export const queryBalance = async (address: string) => {
  * @description query campaign balance from contract
  ***/
 
- export const queryCampaignBalance = async (address: string , campaignId:number|bigint) => {
+export const queryCampaignBalance = async (address: string, campaignId: number | bigint) => {
   // Execute the contract to check changes in state variable
-  const campaignAddress = buildCampaignAddress(address, campaignId.toString())
-  logger.info("payment enquiry for campaignAddress::: "+campaignAddress)
+  const campaignAddress = buildCampaignAddress(address, campaignId.toString());
+  logger.info("payment enquiry for campaignAddress::: " + campaignAddress);
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
     const contractCallQuery = new ContractCallQuery()
@@ -283,4 +294,17 @@ export const queryBalance = async (address: string) => {
     return { balances, balancesObj };
     // return qResult.getUint256(0);
   }
+};
+
+export const getSMInfo = async () => {
+  const { contract_id } = await provideActiveContract();
+  const adminKey = new Key()
+  //Create the query
+  const query = new ContractInfoQuery().setContractId(contract_id!);
+
+  //Sign the query with the client operator private key and submit to a Hedera network
+  const info = await query.execute(hederaClient);
+  console.log({info,adminKey:adminKey})
+
+  return {info,adminKey};
 };

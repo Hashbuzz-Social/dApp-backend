@@ -140,10 +140,11 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
 
 export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number) => {
   const { contract_id } = await provideActiveContract();
+  amount = Math.round(amount)/1e8;
   if (contract_id) {
     const transferTx = new TransferTransaction()
-      .addHbarTransfer(contract_id?.toString(), -Hbar.fromTinybars(Math.round(amount)))
-      .addHbarTransfer(intracterAccount, Hbar.fromTinybars(Math.round(amount)))
+      .addHbarTransfer(contract_id?.toString(),- amount )
+      .addHbarTransfer(intracterAccount, amount)
       .freezeWith(hbarservice.hederaClient);
     const transferSign = await transferTx.sign(hederaService.operatorKey);
     const transferSubmit = await transferSign.execute(hbarservice.hederaClient);
