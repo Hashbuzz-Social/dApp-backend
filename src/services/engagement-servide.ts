@@ -38,21 +38,26 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number) =
       },
     }),
   ]);
-  const existingUserIds = allExistingReplyEngagements.map((d) => d.user_id);
+  const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
+  console.log(existingUserIds);
+  console.log(allReplies);
 
-  const formattedArray = allReplies.map((d) => ({
+  let formattedArray = allReplies.map((d) => ({
     user_id: d.author_id!,
     tweet_id: id.toString(),
     engagement_type: "Reply",
     updated_at: moment().toISOString(),
   }));
-  const filterResult = formattedArray.filter((d) => {
-    const isExisting = existingUserIds.includes(d.user_id);
-    return !isExisting;
-  });
-  if (filterResult && filterResult.length > 0) {
+  if (existingUserIds) {
+    formattedArray = formattedArray.filter((d) => {
+      const isExisting = existingUserIds.includes(d.user_id);
+      return !isExisting;
+    });
+  }
+  console.log(formattedArray);
+  if (formattedArray && formattedArray.length > 0) {
     const updates = await prisma.campaign_tweetengagements.createMany({
-      data: [...filterResult],
+      data: [...formattedArray],
       skipDuplicates: true,
     });
     await prisma.campaign_twittercard.update({

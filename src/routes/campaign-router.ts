@@ -1,7 +1,6 @@
 import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
-import { SendRewardsForTheUsersHavingWallet } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";
-import { allocateBalanceToCampaign  , closeCampaignSMTransaction} from "@services/transaction-service";
+import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
