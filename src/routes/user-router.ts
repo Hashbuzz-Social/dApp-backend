@@ -9,6 +9,7 @@ import JSONBigInt from "json-bigint";
 import { queryBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
+import { totalPendingReward } from "@services/reward-service";
 
 // Constants
 const router = Router();
@@ -62,6 +63,7 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
     (async () => {
       const id = req.currentUser?.user_id;
       const updatedUser = await userService.updateWalletId(walletId, id!);
+      totalPendingReward(updatedUser.personal_twitter_id! , updatedUser.hedera_wallet_id!)
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
     })();
   }
