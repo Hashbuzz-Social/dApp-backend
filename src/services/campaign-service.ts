@@ -36,6 +36,17 @@ export const getRunningCardsOfUserId = async (userId: number | bigint) => {
   });
 };
 
+export const incrementClaimAmount = async (cardId: number | bigint, amount: number) => {
+  return await prisma.campaign_twittercard.update({
+    where: { id: cardId },
+    data: {
+      amount_claimed: {
+        increment: amount,
+      },
+    },
+  });
+};
+
 export const updateCampaignStatus = async (campaignId: number | bigint, status: twitterStatus) => {
   return await prisma.campaign_twittercard.update({
     where: {

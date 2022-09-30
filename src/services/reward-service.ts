@@ -1,12 +1,13 @@
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
-import { groupBy } from "lodash";
+import { Dictionary, groupBy } from "lodash";
 import { updateCampaignBalance, withdrawHbarFromContract } from "./transaction-service";
 import userService from "./user-service";
 import logger from "jet-logger";
 import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
-import { getCampaignDetailsById } from "./campaign-service";
+import { getCampaignDetailsById, incrementClaimAmount } from "./campaign-service";
+import { updatePaymentStatusToManyRecords } from "./engagement-servide";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
@@ -70,19 +71,14 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
           const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
           logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
           await Promise.all([
-            //Smart-contract call for payment
+            //* Smart-contract call for payment
             await withdrawHbarFromContract(user_info.hedera_wallet_id, totalRewardsTinyHbar),
-            //update Payment status in db
-            await prisma.campaign_tweetengagements.updateMany({
-              where: {
-                id: {
-                  in: groupedData[personal_twitter_id].map((d) => d.id),
-                },
-              },
-              data: {
-                payment_status: "PAID",
-              },
-            }),
+
+            // TODO: update Payment status in db
+            await updatePaymentStatusToManyRecords(
+              groupedData[personal_twitter_id].map((d) => d.id),
+              "PAID"
+            ),
           ]);
           totalRewardsDebited += totalRewardsTinyHbar;
         }
@@ -91,14 +87,7 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
 
     await Promise.all([
       //!!Update Amount claimed in the DB.
-      await prisma.campaign_twittercard.update({
-        where: { id: cardId },
-        data: {
-          amount_claimed: {
-            increment: totalRewardsDebited,
-          },
-        },
-      }),
+      await incrementClaimAmount(cardId, totalRewardsDebited),
 
       //!!update contract balance for this campaign.
       await updateCampaignBalance({
@@ -130,27 +119,76 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
 /****
  *@description This will be used to show how much amount still pending for an user to claim.
  * @return rewards in tinyhabr
+ * @param personal_twitter_id Twitter id of the current user's come to claim their total pending rewards for claiming.
+ * @param intractor_hedera_wallet_id hedera wallet id of the user's who is claiming their rewards in format `0.0.01245`.
  */
-const totalPendingReward = async (personal_twitter_id: string) => {
+const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_wallet_id: string) => {
+  
   const allUnpaidEngagementsForAnUser = await prisma.campaign_tweetengagements.findMany({
     where: {
       user_id: personal_twitter_id,
       payment_status: "UNPAID",
-      exprired_at:{
-        gte:moment().toISOString()
-      }
+      exprired_at: {
+        gte: moment().toISOString(),
+      },
     },
   });
-  // let totalRewardsDue = 0 
+  let totalRewardsDue = 0;
   const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id");
-  
-  //calculate Total rewards for each group;
-  await Promise.all(Object.keys(groupedData).map(async (d) => {
-    const card = await getCampaignDetailsById(parseInt(d));
-    if(card && groupedData[d].length > 0){
-      const totalForCard = calculateTotalRewards(card ,groupedData[d]);
-      // console.log(totalForCard)
+  const allCards: Dictionary<
+    campaign_twittercard & {
+      user_user: {
+        hedera_wallet_id: string | null;
+        available_budget: number;
+      } | null;
     }
-  }))
-  return groupedData;
+  > = {};
+
+  //?? Calaculate total amounts pending for this user.
+  Object.keys(groupedData).map(async (d) => {
+    const campaignDetails = await getCampaignDetailsById(parseInt(d));
+    const { user_user, ...card } = campaignDetails!;
+    const totalForCard = calculateTotalRewards(card, groupedData[d]);
+    totalRewardsDue += totalForCard;
+    allCards[d] = campaignDetails!;
+  });
+
+  //!! Transferring that much amount from smart contract to user's wallet.
+  const transferTotalAmount = await withdrawHbarFromContract(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction 
+
+  //!! iF TRANSACTION is successful then start updating bookkeeping and localDB.
+  if (transferTotalAmount) {
+    //calculate Total rewards for each group;
+    try {
+      await Promise.all(
+        Object.keys(allCards).map(async (cardId) => {
+          const { user_user, ...card } = allCards[cardId]; // campaign card
+          const engagementsOnCard = groupedData[cardId]; // all engagement for given card id for this specific user.;
+          const totalAmountForCard = calculateTotalRewards(card, engagementsOnCard);
+
+          if (card && engagementsOnCard.length > 0 && user_user?.hedera_wallet_id) {
+            //!! SM record update call;
+            await updateCampaignBalance({
+              campaignerAccount: user_user?.hedera_wallet_id,
+              campaignId: cardId.toString(),
+              amount: totalAmountForCard,
+            });
+
+            //!! Update Payment status in DB.
+            await updatePaymentStatusToManyRecords(
+              engagementsOnCard.map((d) => d.id),
+              "PAID"
+            );
+
+            //!! Increment claim amount in localDB.
+            await incrementClaimAmount(card.id, totalAmountForCard);
+          }
+        })
+      );
+    } catch (error) {
+      logger.err(error.message);
+    }
+  }
+
+  return {engagments:groupedData, };
 };
