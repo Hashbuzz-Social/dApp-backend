@@ -22,10 +22,10 @@ const getExistingRecordsIdsIfAny = async (id: string, engagement_type: engagemen
   return allIds;
 };
 
-export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number) => {
+export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) => {
   logger.info("UpdateReplied to DB ");
   const [allReplies, allExistingReplyEngagements] = await Promise.all([
-    await twitterAPI.getAllReplies(`${tweet_Id}`),
+    await twitterAPI.getAllReplies(tweet_Id),
     await prisma.campaign_tweetengagements.findMany({
       where: {
         tweet_id: id.toString(),
@@ -39,8 +39,8 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number) =
     }),
   ]);
   const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
-  console.log(existingUserIds);
-  console.log(allReplies);
+  console.log("existingUserIds" , existingUserIds);
+  console.log("allReplies" , allReplies);
 
   let formattedArray = allReplies.map((d) => ({
     user_id: d.author_id!,
@@ -54,14 +54,14 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: number) =
       return !isExisting;
     });
   }
-  console.log(formattedArray);
+  console.log("formattedArray" , formattedArray);
   if (formattedArray && formattedArray.length > 0) {
     const updates = await prisma.campaign_tweetengagements.createMany({
       data: [...formattedArray],
       skipDuplicates: true,
     });
     await prisma.campaign_twittercard.update({
-      where: { id: tweet_Id },
+      where: { id: id },
       data: { last_reply_checkedAt: new Date().toISOString() },
     });
     return updates;
