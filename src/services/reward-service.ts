@@ -122,8 +122,8 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
  * @param personal_twitter_id Twitter id of the current user's come to claim their total pending rewards for claiming.
  * @param intractor_hedera_wallet_id hedera wallet id of the user's who is claiming their rewards in format `0.0.01245`.
  */
-const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_wallet_id: string) => {
-  
+export const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_wallet_id: string) => {
+  //TODO:  Query all activeEngagements of this users from DB.
   const allUnpaidEngagementsForAnUser = await prisma.campaign_tweetengagements.findMany({
     where: {
       user_id: personal_twitter_id,
@@ -133,8 +133,10 @@ const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_
       },
     },
   });
-  let totalRewardsDue = 0;
-  const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id");
+
+  let totalRewardsDue = 0; //* Initial balance which will increment letter.
+  const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id"); //? Grouping all engagements regards og their campaign_card(DB).
+
   const allCards: Dictionary<
     campaign_twittercard & {
       user_user: {
@@ -142,22 +144,24 @@ const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_
         available_budget: number;
       } | null;
     }
-  > = {};
+  > = {}; //* For storing cards details in grouped way.
 
-  //?? Calaculate total amounts pending for this user.
+  //TODO: will calculate total amounts pending for this user.
   Object.keys(groupedData).map(async (d) => {
-    const campaignDetails = await getCampaignDetailsById(parseInt(d));
+    const campaignDetails = await getCampaignDetailsById(parseInt(d)); //? will return campaign card form DB. Contain rewards pricing.
     const { user_user, ...card } = campaignDetails!;
-    const totalForCard = calculateTotalRewards(card, groupedData[d]);
+
+    const totalForCard = calculateTotalRewards(card, groupedData[d]); //TODO: Wll calculate total for a single card.
     totalRewardsDue += totalForCard;
-    allCards[d] = campaignDetails!;
+
+    allCards[d] = campaignDetails!; // Todo: Store DB cards for further use.
   });
 
   //!! Transferring that much amount from smart contract to user's wallet.
-  const transferTotalAmount = await withdrawHbarFromContract(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction 
+  const transferTotalAmountReceipt = await withdrawHbarFromContract(intractor_hedera_wallet_id, totalRewardsDue); // SM -> user_ wallet Transaction
 
   //!! iF TRANSACTION is successful then start updating bookkeeping and localDB.
-  if (transferTotalAmount) {
+  if (transferTotalAmountReceipt) {
     //calculate Total rewards for each group;
     try {
       await Promise.all(
@@ -190,5 +194,5 @@ const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_
     }
   }
 
-  return {engagments:groupedData, };
+  return { engagements: groupedData, amount: totalPendingReward, receipt: transferTotalAmountReceipt };
 };
