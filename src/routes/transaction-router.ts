@@ -1,6 +1,6 @@
 import { getCampaignDetailsById } from "@services/campaign-service";
 import { addCampaigner, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
-import { allocateBalanceToCampaign, createTopUpTransaction, updateBalanceToContract } from "@services/transaction-service";
+import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
@@ -18,6 +18,8 @@ router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandle
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post("/reimbursed" , body("amount").isNumeric(), checkErrResponse , handleReimbursement )
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 router.post("/contract-info", handleContractInfoReq);
 
 //@handlers
@@ -120,5 +122,22 @@ async function handleContractInfoReq(_: Request, res: Response) {
   const info = await getSMInfo();
   if(info)
    return res.status(OK).json(info);
-  return res.status(BAD_REQUEST);
+  return res.status(BAD_REQUEST).json({error:true});
+}
+
+
+async function handleReimbursement(req: Request, res: Response) {
+  const amount:number = req.body.amount;
+
+  if(!req.currentUser?.user_user.hedera_wallet_id){
+    return res.status(BAD_REQUEST).json({error:true , message:"Sorry This request can't be completed."})
+  }
+
+  if(!req.currentUser?.user_user.available_budget || (req.currentUser?.user_user.available_budget && req.currentUser?.user_user.available_budget<amount)){
+    return res.status(BAD_REQUEST).json({error:true , message:"Insufficient available amount in user's account."})
+  }
+
+
+  const reimbursementTransaction = await reimbursementAmount(req.currentUser.user_id, amount , req.currentUser.user_user.hedera_wallet_id);
+  return res.status(OK).json(reimbursementTransaction)
 }

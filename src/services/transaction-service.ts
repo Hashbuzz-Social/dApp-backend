@@ -1,10 +1,10 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction } from "@hashgraph/sdk";
-import hederaService from "@services/hedera-service";
-import hbarservice from "@services/hedera-service";
+import { default as hbarservice, default as hederaService } from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
+import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
 import { getCampaignDetailsById } from "./campaign-service";
+import userService from "./user-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   console.log("updateBalanceToContract::", { payerId, amounts });
@@ -25,7 +25,7 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
       .setTransactionMemo("Hashbuzz balance update call")
       .setGas(1000000);
     const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    return { transactionId: exResult.transactionId, recipt: exResult.getReceipt(hbarservice.hederaClient) };
+    return { transactionId: exResult.transactionId, recipt: await exResult.getReceipt(hbarservice.hederaClient) };
     // return signingService.signAndMakeBytes(contractExBalTx, payerId);
   } else {
     throw new Error("Contract id not found");
@@ -138,12 +138,12 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
   }
 };
 
-export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number , memo="Reward payment from hashbuzz") => {
+export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number, memo = "Reward payment from hashbuzz") => {
   const { contract_id } = await provideActiveContract();
-  amount = Math.round(amount)/1e8;
+  amount = Math.round(amount) / 1e8;
   if (contract_id) {
     const transferTx = new TransferTransaction()
-      .addHbarTransfer(contract_id?.toString(),- amount )
+      .addHbarTransfer(contract_id?.toString(), -amount)
       .addHbarTransfer(intracterAccount, amount)
       .setTransactionMemo(memo)
       .freezeWith(hbarservice.hederaClient);
@@ -175,5 +175,37 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint) => 
     const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
     return contractExecuteRx;
+  }
+};
+
+export const reimbursementAmount = async(userId:number|bigint, amounts: number, accountId: string) => {
+  console.log("Reimbursement::", { amounts, accountId });
+  const { contract_id } = await provideActiveContract();
+
+  if (contract_id) {
+    const address = "0x" + AccountId.fromString(accountId).toSolidityAddress();
+    const contractAddress = ContractId.fromString(contract_id.toString());
+    const deposit = false;
+
+    console.log("tinyAmount is Reimbursed from contract", amounts);
+
+    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts, deposit]);
+
+    const contractExBalTx = new ContractExecuteTransaction()
+      .setContractId(contractAddress)
+      .setFunctionParameters(functionCallAsUint8Array)
+      .setTransactionMemo("Hashbuzz balance update call")
+      .setGas(1000000);
+    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
+    const receipt = await exResult.getReceipt(hbarservice.hederaClient);
+
+    console.log(receipt.status);
+
+    const balance = await queryBalance(accountId);
+
+    await userService.topUp(userId, parseInt(balance?.balances??"0"),"update");
+
+    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, amounts, "Reimbursement payment from hashbuzz");
+    return { paymentTransaction, contractCallReceipt: receipt };
   }
 };
