@@ -8,8 +8,15 @@ export const getAllUser = async () => {
 };
 
 const updateWalletId = async (walletId: string, userId: bigint) => {
-  const updateUserWallet = await prisma.user_user.update({ data: { hedera_wallet_id: walletId }, where: { id: userId} });
-  return updateUserWallet;
+  const user = await prisma.user_user.findUnique({ where: { id: userId } });
+  if (!user?.hedera_wallet_id) {
+    const updateUserWallet = await prisma.user_user.update({
+      where: { id: userId },
+      data: { hedera_wallet_id: walletId },
+    });
+    return updateUserWallet;
+  }
+  return false;
 };
 
 const getUserById = async (id?: number | bigint) => {
@@ -52,18 +59,18 @@ const topUp = async (id: number | bigint, amounts: number, operation: "increment
   //? Perform DN Query
 };
 
-const getUserByTwitterId = async (personal_twitter_id:string) => {
+const getUserByTwitterId = async (personal_twitter_id: string) => {
   return await prisma.user_user.findFirst({
-    where:{
-      personal_twitter_id
-    }
-  })
-}
+    where: {
+      personal_twitter_id,
+    },
+  });
+};
 
 export default {
   getAll: getAllUser,
   updateWalletId,
   getUserById,
   topUp,
-  getUserByTwitterId
+  getUserByTwitterId,
 } as const;
