@@ -14,7 +14,6 @@ import { totalPendingReward } from "@services/reward-service";
 // Constants
 const router = Router();
 const { OK, BAD_REQUEST } = StatusCodes;
-
 // Paths
 export const p = {
   get: "/all",
