@@ -59,6 +59,15 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
   })();
 };
 
+
+const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
+  if(req.currentUser?.user_user.username && ["Ashh20x","omprakashMahua"].includes(req.currentUser?.user_user.username)) next();
+  else  return res.status(UNAUTHORIZED).json({
+    error: Error("You are not authorize to accesses.")
+  });
+}
+
 export default {
   isHavingValidAuthToken,
+  isAdminRequesting
 } as const;

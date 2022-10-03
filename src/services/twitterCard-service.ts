@@ -141,6 +141,27 @@ const publishTwitter = async (cardId: number | bigint) => {
   }
 };
 
+
+const getAllTwitterCardByStatus = async (status:string) => {
+  const data = await prisma.campaign_twittercard.findMany({
+    where:{
+      card_status:status
+    },
+    include:{
+      user_user:{
+        select:{
+          business_twitter_handle:true,
+          personal_twitter_handle:true,
+          available_budget:true,
+          hedera_wallet_id:true
+        }
+      }
+    }
+  })
+
+  return data;
+}
+
 export default {
   allActiveTwitterCard,
   twitterCardStats,
@@ -148,4 +169,5 @@ export default {
   addNewCardStats,
   updateTotalSpentAmount,
   publishTwitter,
+  getAllTwitterCardByStatus
 } as const;

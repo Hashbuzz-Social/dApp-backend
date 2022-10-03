@@ -18,7 +18,7 @@ router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandle
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
-router.post("/reimbursed" , body("amount").isNumeric(), checkErrResponse , handleReimbursement )
+router.post("/reimbursement" , body("amount").isNumeric(), checkErrResponse , handleReimbursement )
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
 router.post("/contract-info", handleContractInfoReq);
 

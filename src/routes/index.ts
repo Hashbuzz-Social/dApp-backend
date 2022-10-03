@@ -3,7 +3,7 @@ import { Router } from "express";
 import campaignRouter from './campaign-router';
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
-
+import adminRouter from "./admin";
 // Export the base-router
 const baseRouter = Router();
 
@@ -12,6 +12,7 @@ const baseRouter = Router();
 baseRouter.use("/users", authMiddleware.isHavingValidAuthToken, userRouter);
 baseRouter.use("/transaction", authMiddleware.isHavingValidAuthToken, transactionRouter);
 baseRouter.use("/campaign", authMiddleware.isHavingValidAuthToken, campaignRouter);
+baseRouter.use("/admin" ,authMiddleware.isHavingValidAuthToken , authMiddleware.isAdminRequesting , adminRouter)
 
 // Export default.
 export default baseRouter;
