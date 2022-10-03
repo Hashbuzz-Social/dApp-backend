@@ -59,6 +59,40 @@ const topUp = async (id: number | bigint, amounts: number, operation: "increment
   //? Perform DN Query
 };
 
+const totalReward = async (userId: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
+  if (operation === "increment")
+    return await prisma.user_user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        total_rewarded: {
+          increment: amounts,
+        },
+      },
+    });
+  else if (operation === "decrement")
+    return await prisma.user_user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        total_rewarded: {
+          decrement: amounts,
+        },
+      },
+    });
+  else
+    return await prisma.user_user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        total_rewarded: amounts,
+      },
+    });
+};
+
 const getUserByTwitterId = async (personal_twitter_id: string) => {
   return await prisma.user_user.findFirst({
     where: {
@@ -73,4 +107,5 @@ export default {
   getUserById,
   topUp,
   getUserByTwitterId,
+  totalReward
 } as const;

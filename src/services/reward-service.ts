@@ -78,6 +78,9 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
               groupedData[personal_twitter_id].map((d) => d.id),
               "PAID"
             ),
+
+            //increment reward bal
+            await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment")
           ]);
           totalRewardsDebited += totalRewardsTinyHbar;
         }
@@ -159,6 +162,8 @@ export const totalPendingReward = async (personal_twitter_id: string, intractor_
 
         //!! Increment claim amount in localDB.
         await incrementClaimAmount(card.id, totalForCard);
+          await userService.totalReward(card.owner_id! , totalForCard , "increment");
+
       }
     }),
   ]);
