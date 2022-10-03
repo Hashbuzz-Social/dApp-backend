@@ -259,6 +259,7 @@ model user_user {
   business_twitter_access_token        String?                       @db.VarChar(200)
   business_twitter_access_token_secret String?                       @db.VarChar(200)
   personal_twitter_id                  String?                       @db.VarChar(50)
+  total_rewarded                       Float                         @default(0)
   account_emailaddress                 account_emailaddress[]
   authtoken_token                      authtoken_token?
   campaign_media                       campaign_media[]
