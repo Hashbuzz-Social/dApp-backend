@@ -2,9 +2,10 @@ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Cont
 import { default as hbarservice, default as hederaService } from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
-import { buildCampaignAddress, buildCampaigner } from "@shared/helper";
+import { buildCampaignAddress, buildCampaigner, sensitizeUserData } from "@shared/helper";
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
+import JSONBigInt from "json-bigint"
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   console.log("updateBalanceToContract::", { payerId, amounts });
@@ -203,9 +204,9 @@ export const reimbursementAmount = async(userId:number|bigint, amounts: number, 
 
     const balance = await queryBalance(accountId);
 
-    await userService.topUp(userId, parseInt(balance?.balances??"0"),"update");
+    const userData = await userService.topUp(userId, parseInt(balance?.balances??"0"),"update");
 
     const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, amounts, "Reimbursement payment from hashbuzz");
-    return { paymentTransaction, contractCallReceipt: receipt };
+    return { paymentTransaction, contractCallReceipt: receipt , userData:JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };
