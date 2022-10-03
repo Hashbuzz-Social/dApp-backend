@@ -106,7 +106,7 @@ async function statusUpdateHandler(req: Request, res: Response) {
   if (["rejected", "deleted"].includes(requested_card_status)) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const campaignUpdates = await updateCampaignStatus(campaignId, requested_card_status === "rejected" ? "Rejected" : "Deleted");
-    return res.status(OK).json(campaignUpdates);
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(campaignUpdates)));
   }
 
   return res.status(BAD_REQUEST).json({ error: true, message: "Something went wrong." });
