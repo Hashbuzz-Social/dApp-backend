@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import TwitterApi, { TweetSearchRecentV2Paginator, TweetV2, UserV2 } from "twitter-api-v2";
+import TwitterApi, { TweetV2, UserV2 } from "twitter-api-v2";
 
 //Type definitions
 interface PublicMetrics {
@@ -18,6 +18,9 @@ const token = "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl
 // Instantiate with desired auth type (here's Bearer v2 auth)
 const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
 const roClient = twitterClient.readOnly;
+
+
+
 
 /*****
  *@description Get the list of the users with their userId who liked the the user's tweet and list them.
@@ -150,16 +153,17 @@ const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string;
   return tweeterApi;
 };
 
+//!! Hashbuzz account twitter client
+const HashbuzzTwitterClient = tweeterApiForUser({
+  accessToken:process.env.HASHBUZZ_ACCESS_TOKEN!,
+  accessSecret:process.env.HASHBUZZ_ACCESS_SECRET!,
+});
 
 
 /****
  *@description Send DM from Hashbuzz to twitter user.
  */
  const sendDMFromHashBuzz =async (recipient_id:string , text:string) =>{
-  const HashbuzzTwitterClient = tweeterApiForUser({
-    accessToken:process.env.HASHBUZZ_ACCESS_TOKEN!,
-    accessSecret:process.env.HASHBUZZ_ACCESS_SECRET!,
-  })
   return await HashbuzzTwitterClient.v1.sendDm({
      recipient_id,
      text,
@@ -175,5 +179,6 @@ export default {
   getAllRetweetOfTweetId,
   getAllUsersWhoQuotedOnTweetId,
   tweeterApiForUser,
-  sendDMFromHashBuzz
+  sendDMFromHashBuzz,
+  HashbuzzTwitterClient
 } as const;

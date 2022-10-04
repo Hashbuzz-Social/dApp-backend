@@ -9,6 +9,7 @@ import StatusCodes from "http-status-codes";
 import "express-async-errors";
 
 import apiRouter from "./routes";
+import authRouter from "@routes/auth-router";
 import logger from "jet-logger";
 import { CustomError } from "@shared/errors";
 
@@ -45,6 +46,7 @@ if (process.env.NODE_ENV === "production") {
 
 // Add api router
 app.use("/api", apiRouter);
+app.use("/auth" , authRouter)
 
 // Error handling
 app.use((err: Error | CustomError, _: Request, res: Response, __: NextFunction) => {
