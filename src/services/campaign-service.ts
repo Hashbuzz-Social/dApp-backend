@@ -67,7 +67,7 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
  */
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
-  const { id, name, tweet_id } = card;
+  const { id, name, tweet_id, last_thread_tweet_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
 
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
@@ -86,6 +86,12 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     });
 
     try {
+      const updateThread = await tweeterApi.v2.reply(
+        // eslint-disable-next-line max-len
+        `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @hbuzzs and connect your HashPack wallet to receive your rewards.`,
+        last_thread_tweet_id!
+      );
+
       await Promise.all([
         //update Status in campaign cards
         await prisma.campaign_twittercard.update({
@@ -95,6 +101,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
           data: {
             campaign_expiry: campaignExpiry,
             card_status: "Completed",
+            last_thread_tweet_id: updateThread.data.id,
           },
         }),
         await prisma.campaign_tweetengagements.updateMany({
@@ -107,12 +114,6 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         }),
         //startDistributing Rewards
         await SendRewardsForTheUsersHavingWallet(card.id),
-        //2. Replying to threat.
-        await tweeterApi.v2.reply(
-          // eslint-disable-next-line max-len
-          `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @hbuzzs and connect your HashPack wallet to receive your rewards.`,
-          tweet_id!
-        ),
       ]);
     } catch (e) {
       console.log(e);
@@ -138,7 +139,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
         select: {
           username: true,
           personal_twitter_id: true,
-          personal_twitter_handle:true,
+          personal_twitter_handle: true,
           business_twitter_access_token: true,
           business_twitter_access_token_secret: true,
           hedera_wallet_id: true,
@@ -147,7 +148,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
-  const { user_user, name, tweet_id, owner_id , campaign_budget , amount_claimed } = campaignDetails!;
+  const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
@@ -160,11 +161,18 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
 
     try {
-      await userTweeterApi.v2.reply(`Reward distribution is ended 🎉.\n At ${moment().toLocaleString()}`, tweet_id!);
-      await twitterAPI.sendDMFromHashBuzz(user_user.personal_twitter_id, 
+      await userTweeterApi.v2.reply(
+        `Reward distribution is ended 🎉.\n At ${moment().toLocaleString()}\nTotal ${(amount_claimed! / 1e8).toFixed(4)} ℏ rewarded for this campaign`,
+        last_thread_tweet_id!
+      );
+      await twitterAPI.sendDMFromHashBuzz(
+        user_user.personal_twitter_id,
         // eslint-disable-next-line max-len
-        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${((amount_claimed! / Math.round(campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
-        );
+        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${(
+          (amount_claimed! / Math.round(campaign_budget! * 1e8)) *
+          100
+        ).toFixed(2)}% of campaign budget*`
+      );
     } catch (error) {
       logger.err(error.message);
     }

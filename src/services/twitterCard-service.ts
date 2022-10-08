@@ -122,15 +122,18 @@ const publishTwitter = async (cardId: number | bigint) => {
     });
     console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
-    const card = await userTwitter.v2.tweetThread(["" + threat1, "" + threat2]);
+    const card = await userTwitter.v2.tweet(threat1);
+    const reply = await userTwitter.v2.reply(threat2,card.data.id);
     //tweetId.
-    const tweetId = card[0].data.id;
+    const tweetId = card.data.id;
+    const lastThreadTweetId = reply.data.id;
 
     //Add TweetId to the DB
     await prisma.campaign_twittercard.update({
       where: { id },
       data: {
         tweet_id: tweetId,
+        last_thread_tweet_id:lastThreadTweetId,
         card_status: "Running",
         contract_id: contract_id.toString().trim(),
       },
