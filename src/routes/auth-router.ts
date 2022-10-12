@@ -1,16 +1,18 @@
 import auth from "@middleware/auth";
-import { user_user } from "@prisma/client";
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
 import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
-import userService from "@services/user-service";
 import prisma from "@shared/prisma";
+import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
+import { body } from "express-validator";
 import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import moment from "moment";
+import JSONBigInt from "json-bigint";
+import { sensitizeUserData } from "@shared/helper";
 
 const authRouter = Router();
-const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
+const { OK, TEMPORARY_REDIRECT, UNAUTHORIZED } = HttpStatusCodes;
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
@@ -20,7 +22,7 @@ authRouter.get("/twitter-login", (req: Request, res: Response) => {
   })();
 });
 
-authRouter.get("/brand-handle", auth.isHavingValidAuthToken, (req: Request, res: Response) => {
+authRouter.get("/brand-handle", auth.isHavingValidAuthToken, checkErrResponse, (req: Request, res: Response) => {
   (async () => {
     console.log("twitter-login:::");
     const url = await twitterAuthUrl({
@@ -29,6 +31,31 @@ authRouter.get("/brand-handle", auth.isHavingValidAuthToken, (req: Request, res:
       business_owner_id: req.currentUser?.id,
     });
     return res.status(OK).json({ url });
+  })();
+});
+
+authRouter.post("/logout", auth.isHavingValidAuthToken, checkErrResponse, (req: Request, res: Response) => {
+  (async () => {
+    await prisma.authtoken_token.delete({ where: { user_id: req.currentUser?.id } });
+    return res.status(OK).json({ success: true, message: "Logout successfully." });
+  })();
+});
+
+authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, (req: Request, res: Response) => {
+  (async () => {
+    const refreshToken = req.body.refreshToken as string;
+    const tokenDetails = await prisma.authtoken_token.findUnique({ where: { key: refreshToken }, include: { user_user: true } });
+    if (!tokenDetails) {
+      throw Error("Refresh token is invalid. Do login again");
+    }
+    const { user_user } = tokenDetails;
+    const newRefreshToken = await generateRefreshToken(user_user);
+    const accessToken = generateAccessToken(user_user);
+    return res.status(OK).json({
+      users: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user_user))),
+      token: accessToken,
+      refreshToken: newRefreshToken,
+    });
   })();
 });
 
@@ -45,49 +72,41 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       const { client: loggedClient, accessToken, accessSecret } = loginResult;
       const meUser = await loggedClient.v2.me();
       const { username, id } = meUser.data;
-      let user: user_user;
-      const existinguser = await userService.getUserByUserName(username);
-      if (!existinguser) {
-        user = await prisma.user_user.create({
-          data: {
-            personal_twitter_handle: username,
-            username: username,
-            personal_twitter_id: id,
-            twitter_access_token: accessToken,
-            twitter_access_token_secret: accessSecret,
-            available_budget: 0,
-            is_superuser: false,
-            is_active: true,
-            is_staff: false,
-            first_name: "",
-            last_name: "",
-            email: "",
-            password: "",
-            date_joined: moment().toISOString(),
-          },
-        });
-      } else {
-        user = await prisma.user_user.update({
-          where: {
-            username,
-          },
-          data: {
-            twitter_access_token: accessToken,
-            twitter_access_token_secret: accessSecret,
-          },
-        });
-      }
+      const user = await prisma.user_user.upsert({
+        where: { username: username },
+        create: {
+          personal_twitter_handle: username,
+          username: username,
+          personal_twitter_id: id,
+          twitter_access_token: accessToken,
+          twitter_access_token_secret: accessSecret,
+          available_budget: 0,
+          is_superuser: false,
+          is_active: true,
+          is_staff: false,
+          first_name: "",
+          last_name: "",
+          email: "",
+          password: "",
+          date_joined: moment().toISOString(),
+        },
+        update: {
+          twitter_access_token: accessToken,
+          twitter_access_token_secret: accessSecret,
+          personal_twitter_id: id,
+        },
+      });
       // ?token={token.key}&user_id={user.id}
       const token = generateAccessToken(user);
       const refreshToken = await generateRefreshToken(user);
       res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?token=${token}&user_id=${user.id}&refresh_token=${refreshToken}`,
+        Location: `${process.env.FRONTEND_URL!}?token=${token}&refreshToken=${refreshToken}&user_id=${user.id}`,
       });
       res.end();
     } catch (error) {
       logger.err(error.message);
       console.log(error);
-      const message:string = error.message  as string;
+      const message: string = error.message as string;
       res.writeHead(TEMPORARY_REDIRECT, {
         Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
       });
@@ -125,7 +144,7 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
       res.end();
     } catch (error) {
       logger.err(error.message);
-      const message:string = error.message  as string;
+      const message: string = error.message as string;
       res.writeHead(TEMPORARY_REDIRECT, {
         Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
       });
