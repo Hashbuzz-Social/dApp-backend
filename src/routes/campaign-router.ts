@@ -154,6 +154,8 @@ function handleAddNewCampaign(req: Request, res: Response) {
           campaign_budget: convertToTinyHbar(campaign_budget as string),
           card_status: "Pending",
           owner_id: req.currentUser?.id,
+          amount_spent:0,
+          amount_claimed:0
         },
       });
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
