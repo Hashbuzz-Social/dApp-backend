@@ -22,7 +22,11 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
       (async () => {
-        if (err) throw Error(authTokenInvalidError);
+        if (err) {
+          return res.status(UNAUTHORIZED).json({
+            error: authTokenInvalidError,
+          });
+        }
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         //@ts-ignore
         const username: string = payload.username;
