@@ -46,9 +46,10 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       .then(async ({ client: loggedClient, accessToken, accessSecret }) => {
         const meUser = await client.v2.me();
         const { username, id } = meUser.data;
+        let user: user_user;
         const existinguser = await userService.getUserByUserName(username);
         if (!existinguser) {
-          const newUser = prisma.user_user.create({
+          user = await prisma.user_user.create({
             data: {
               personal_twitter_handle: username,
               username: username,
@@ -64,6 +65,16 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
               email: "",
               password: "",
               date_joined: moment().toISOString(),
+            },
+          });
+        } else {
+          user = await prisma.user_user.update({
+            where: {
+              username,
+            },
+            data: {
+              twitter_access_token: accessToken,
+              twitter_access_token_secret: accessSecret,
             },
           });
         }
