@@ -39,14 +39,18 @@ ENV REWARD_CALIM_HOUR=48
 # -----------------
 # Twitter Keys
 # -----------------
-ENV TWITTER_API_KEY=maDVuEK5U4bRUnC7LAf78aVtm
-ENV TWITTER_API_SECRET=OZVJ1KTCzCm7vlN04xxm5ZgshJBfzCQjuyCj0L3nEoUkHy1GDu
+ENV TWITTER_API_KEY=EKQ7GpcHelxQrLpv9EWgsAxvd
+ENV TWITTER_API_SECRET=AyFnZWztKGCooCFd1rYzynbdTgLNeLlCJY2h6TZCaZQeFjT4kF
 ENV TWITTER_CALLBACK_HOST=https://sea-lion-app-dhl7x.ondigitalocean.app
 
 ######## Hashbuzz twiiter data #####
 ENV HASHBUZZ_ACCESS_TOKEN=1483587498156642312-5MlsI8u0BDY2Z7EALZdNbSGvEPM33t
 ENV HASHBUZZ_ACCESS_SECRET=3QWiEsxrP0m5BcuRb5ccxmEhnZYbAYHGU6KsQnZIyccet
 
+ENV J_ACCESS_TOKEN_SECRET=fb8dcbfcce50f2ffb2d873ed44cdb3a9c9013f6a6d780dfd3eae703ad115e222
+ENV J_REFRESH_TOKEN_SECRET=86e7a828c1a879d6d938211a1ed1e18fada5f2bc776fab0314e5e4a7de7462d8
+
+ENV FRONTEND_URL="https://starfish-app-k9l9v.ondigitalocean.app"
 
 # Build NPM project.
 RUN npx prisma db pull
