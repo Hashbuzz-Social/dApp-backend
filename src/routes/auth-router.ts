@@ -108,7 +108,7 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       console.log(error);
       const message: string = error.message as string;
       res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
+        Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,
       });
       res.end();
     }

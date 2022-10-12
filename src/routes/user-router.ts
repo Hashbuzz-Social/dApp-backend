@@ -10,6 +10,7 @@ import { queryBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { body, validationResult } from "express-validator";
 import { totalPendingReward } from "@services/reward-service";
+import prisma from "@shared/prisma";
 
 // Constants
 const router = Router();
@@ -71,6 +72,17 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
     })();
   }
 });
+
+router.patch("/update",(req:Request , res:Response) => {
+  (async() => {
+    const {consent} = req.body;
+    const updatedUser = await prisma.user_user.update({
+      where:{id:req.currentUser?.id},
+      data:{consent:consent}
+    })
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  })()
+})
 
 router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("contractBal").isBoolean(), (req: Request, res: Response) => {
   //check validation and return
