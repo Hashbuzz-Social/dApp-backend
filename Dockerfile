@@ -41,7 +41,7 @@ ENV REWARD_CALIM_HOUR=48
 # -----------------
 ENV TWITTER_API_KEY=EKQ7GpcHelxQrLpv9EWgsAxvd
 ENV TWITTER_API_SECRET=AyFnZWztKGCooCFd1rYzynbdTgLNeLlCJY2h6TZCaZQeFjT4kF
-ENV TWITTER_CALLBACK_HOST=https://sea-lion-app-dhl7x.ondigitalocean.app
+ENV TWITTER_CALLBACK_HOST=https://dapp-backend9-ws9ps.ondigitalocean.app
 
 ######## Hashbuzz twiiter data #####
 ENV HASHBUZZ_ACCESS_TOKEN=1483587498156642312-5MlsI8u0BDY2Z7EALZdNbSGvEPM33t

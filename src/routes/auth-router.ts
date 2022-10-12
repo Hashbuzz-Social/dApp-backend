@@ -1,14 +1,13 @@
-import { Router, Response, Request } from "express";
-import { authLogin, twitterAuthUrl } from "@services/auth-service";
-import HttpStatusCodes from "http-status-codes";
-import prisma from "@shared/prisma";
-import { user_user } from "@prisma/client";
-import twitterAPI from "@shared/twitterAPI";
-import userService from "@services/user-service";
-import moment from "moment";
-import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
 import auth from "@middleware/auth";
+import { user_user } from "@prisma/client";
+import { authLogin, twitterAuthUrl } from "@services/auth-service";
+import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
+import userService from "@services/user-service";
+import prisma from "@shared/prisma";
+import { Request, Response, Router } from "express";
+import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
+import moment from "moment";
 
 const authRouter = Router();
 const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
