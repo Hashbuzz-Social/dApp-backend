@@ -4,11 +4,13 @@ import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
 import { sensitizeUserData } from "@shared/helper";
+import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
 import { body, param, query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
+import { isEmpty } from "lodash";
 
 const router = Router();
 const { OK, BAD_REQUEST, CONFLICT } = statuses;
@@ -16,7 +18,7 @@ const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, statusUpdateHandler);
 
 router.get("/all", param("status"), handleCampaignGet);
-// router.post("/create")
+router.post("/add-new", handleAddNewCampaign);
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, (_: Request, res: Response) => {
   (async () => {
@@ -113,7 +115,53 @@ function statusUpdateHandler(req: Request, res: Response) {
     return res.status(BAD_REQUEST).json({ error: true, message: "Something went wrong." });
   })();
 }
+
 function handleCampaignGet(req: Request, res: Response) {
   return res.status(OK);
+}
+
+/***
+ *  "name": name,
+      "tweet_text": Text,
+      "comment_reward": reply,
+      "retweet_reward": retweet,
+      "like_reward": like,
+      "quote_reward": quote,
+      "follow_reward": follow,
+      "campaign_budget":budget == ""? 0:budget,
+      "media": media,
+ * 
+ * 
+ */
+
+function handleAddNewCampaign(req: Request, res: Response) {
+  const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, follow_reward, campaign_budget, media } = req.body;
+  if (
+    isEmpty(name) ||
+    isEmpty(tweet_text) ||
+    isEmpty(comment_reward) ||
+    isEmpty(retweet_reward) ||
+    isEmpty(like_reward) ||
+    isEmpty(quote_reward) ||
+    isEmpty(campaign_budget)
+  ) {
+    return res.status(BAD_REQUEST).json({ error: true, message: "Data felids should not be emphty." });
+  }
+  (async () => {
+    const newCampaign = await prisma.campaign_twittercard.create({
+      data: {
+        name,
+        tweet_text,
+        comment_reward,
+        like_reward,
+        retweet_reward,
+        quote_reward,
+        campaign_budget: Math.round(parseFloat(campaign_budget as string) * 1e8),
+        card_status: "Pending",
+        owner_id: req.currentUser?.id,
+      },
+    });
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
+  })();
 }
 export default router;

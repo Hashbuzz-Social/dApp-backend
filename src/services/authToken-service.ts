@@ -6,12 +6,12 @@ const refreshSecret = process.env.J_REFRESH_TOKEN_SECRET;
 
 export const generateAccessToken = (user: user_user) => {
   const { id, username, personal_twitter_id } = user;
-  return jwt.sign({ id, username, personal_twitter_id }, accessSecret!, { expiresIn: "20m" });
+  return jwt.sign({ id:id.toString(), username, personal_twitter_id }, accessSecret!, { expiresIn: "20m" });
 };
 
 export const generateRefreshToken = async (user: user_user) => {
   const { id, username, personal_twitter_id } = user;
-  const refreshToken = jwt.sign({ id:id, username, personal_twitter_id }, refreshSecret!, { expiresIn: "30m" });
+  const refreshToken = jwt.sign({ id:id.toString(), username, personal_twitter_id }, refreshSecret!, { expiresIn: "30m" });
   await prisma.authtoken_token.create({
     data: {
       user_id: id,
