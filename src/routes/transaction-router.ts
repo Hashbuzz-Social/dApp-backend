@@ -31,16 +31,16 @@ router.post("/contract-info", handleContractInfoReq);
  */
 
 async function topUpHandler(req: Request, res: Response) {
-  const accountId = req.currentUser?.user_user.hedera_wallet_id;
+  const accountId = req.currentUser?.hedera_wallet_id;
   const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
   if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
     return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
   }
 
-  if (req.currentUser?.user_id && accountId) {
+  if (req.currentUser?.id && accountId) {
     try {
-      const topUp = await userService.topUp(req.currentUser?.user_id, amounts.topUpAmount, "increment");
+      const topUp = await userService.topUp(req.currentUser?.id, amounts.topUpAmount, "increment");
       await updateBalanceToContract(accountId, amounts);
       return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
     } catch (error) {
@@ -60,7 +60,7 @@ export default router;
 async function addCampaignerHandlers(req: Request, res: Response) {
   const walletId: string = req.body.walletId;
 
-  const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.user_id);
+  const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
   return res.status(CREATED).json(addWalletAddressToCampaign);
 }
 
@@ -83,7 +83,7 @@ async function activeContractHandler(req: Request, res: Response) {
  */
 
 async function creteTopUpHandler(req: Request, res: Response) {
-  const payeeId = req.currentUser?.user_user.hedera_wallet_id;
+  const payeeId = req.currentUser?.hedera_wallet_id;
   const connectedAccountId: string = req.body.connectedAccountId;
   const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
@@ -129,15 +129,15 @@ async function handleContractInfoReq(_: Request, res: Response) {
 async function handleReimbursement(req: Request, res: Response) {
   const amount:number = req.body.amount;
 
-  if(!req.currentUser?.user_user.hedera_wallet_id){
+  if(!req.currentUser?.hedera_wallet_id){
     return res.status(BAD_REQUEST).json({error:true , message:"Sorry This request can't be completed."})
   }
 
-  if(!req.currentUser?.user_user.available_budget || (req.currentUser?.user_user.available_budget && req.currentUser?.user_user.available_budget<amount)){
+  if(!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget<amount)){
     return res.status(BAD_REQUEST).json({error:true , message:"Insufficient available amount in user's account."})
   }
 
 
-  const reimbursementTransaction = await reimbursementAmount(req.currentUser.user_id, amount , req.currentUser.user_user.hedera_wallet_id);
+  const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount , req.currentUser.hedera_wallet_id);
   return res.status(OK).json(reimbursementTransaction)
 }

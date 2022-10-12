@@ -55,14 +55,14 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
 
   const walletId: string = req.body.walletId;
 
-  console.log("Update_wallet::",req.currentUser?.user_user.hedera_wallet_id)
+  console.log("Update_wallet::",req.currentUser?.hedera_wallet_id)
 
-  if (req.currentUser?.user_user.hedera_wallet_id) {
+  if (req.currentUser?.hedera_wallet_id) {
     return res.status(OK).json({ updated: true, message: "Wallet already added to this account" });
   } else {
     //If not error then update database
     (async () => {
-      const id = req.currentUser?.user_id;
+      const id = req.currentUser?.id;
       const updatedUser = await userService.updateWalletId(walletId, id!);
       if(updatedUser){
         await totalPendingReward(updatedUser.personal_twitter_id! , updatedUser.hedera_wallet_id!)
@@ -84,12 +84,12 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
   if (contractBal) {
     (async () => {
       const balances = await queryBalance(address);
-      if (req.currentUser?.user_id && balances?.balances ) await userService.topUp(req.currentUser?.user_id, parseInt(balances.balances), "update");
+      if (req.currentUser?.id && balances?.balances ) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
       logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
       return res.status(OK).json(balances);
     })();
   } else {
-    return res.status(OK).json({ available_budget: req.currentUser?.user_user.available_budget });
+    return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
   }
 });
 

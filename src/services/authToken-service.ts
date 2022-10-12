@@ -11,7 +11,7 @@ export const generateAccessToken = (user: user_user) => {
 
 export const generateRefreshToken = async (user: user_user) => {
   const { id, username, personal_twitter_id } = user;
-  const refreshToken = jwt.sign({ id, username, personal_twitter_id }, refreshSecret!, { expiresIn: "30m" });
+  const refreshToken = jwt.sign({ id:id, username, personal_twitter_id }, refreshSecret!, { expiresIn: "30m" });
   await prisma.authtoken_token.create({
     data: {
       user_id: id,
@@ -23,9 +23,12 @@ export const generateRefreshToken = async (user: user_user) => {
   return refreshToken;
 };
 
-export const validateToken = (token: string) => {
-  jwt.verify(token, accessSecret!, (err, payload) => {
-    if (err) throw err;
-    return payload;
-  }); //end of jwt.verify()
-}; //end of function
+// export const validateToken = (token: string) => {
+//   let user:Partial<user_user>;
+//   const user = jwt.verify(token, accessSecret!, (err, payload) => {
+//     if (err) throw err;
+//     user = payload as any as {id:bigint, username:string, personal_twitter_id:string}
+//     return payload;
+//   }); //end of jwt.verify()
+//   return user;
+// }; //end of function

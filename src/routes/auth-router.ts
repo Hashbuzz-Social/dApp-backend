@@ -6,9 +6,10 @@ import { user_user } from "@prisma/client";
 import twitterAPI from "@shared/twitterAPI";
 import userService from "@services/user-service";
 import moment from "moment";
+import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
 
 const authRouter = Router();
-const { OK } = HttpStatusCodes;
+const { OK  , TEMPORARY_REDIRECT} = HttpStatusCodes;
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
@@ -78,6 +79,13 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
             },
           });
         }
+        // ?token={token.key}&user_id={user.id}
+        const token = generateAccessToken(user);
+        const refreshToken = await generateRefreshToken(user);
+        res.writeHead( TEMPORARY_REDIRECT , {
+          'Location':`${process.env.FRONTEND_URL!}?token=${token}&user_id=${user.id}&refresh_token=${refreshToken}`
+        });
+        res.end();
         //check user is existing or not;
 
         // loggedClient is an authenticated client in behalf of some user
