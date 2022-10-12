@@ -41,29 +41,30 @@ const twitterCardStats = async (cardId: bigint) => {
 
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
   console.log("updateTwitterCardStats::withData", JSON.stringify(body));
-
-  const data: any = {};
-  if (body.like_count) data["like_count"] = body.like_count;
-  if (body.quote_count) data["quote_count"] = body.quote_count;
-  if (body.retweet_count) data["retweet_count"] = body.retweet_count;
-
+  // {"like_count":3,"quote_count":0,"retweet_count":2,"reply_count":2};
+  const {like_count , quote_count , reply_count , retweet_count} = body
+ 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  if (Object.keys(data).length > 0) {
+ 
     const update = await prisma.campaign_tweetstats.upsert({
       where: { twitter_card_id: cardId },
       update: {
-        ...data,
+        like_count:like_count,
+        quote_count:quote_count,
+        reply_count:reply_count,
+        retweet_count:retweet_count,
         last_update:new Date().toISOString()
       },
       create: {
-        ...data,
+        like_count:like_count,
+        quote_count:quote_count,
+        reply_count:reply_count,
+        retweet_count:retweet_count,
         twitter_card_id:cardId,
         last_update:new Date().toISOString()
       },
     });
     return update.id;
-  }
-  return false;
 };
 
 const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
