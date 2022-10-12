@@ -67,7 +67,7 @@ model auth_permission {
 }
 
 model authtoken_token {
-  key       String    @id @db.VarChar(40)
+  key       String    @id @db.VarChar(500)
   created   DateTime  @db.Timestamptz(6)
   user_id   BigInt    @unique
   user_user user_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "authtoken_token_user_id_35299eff_fk_user_user_id")
