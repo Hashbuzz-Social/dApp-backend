@@ -7,6 +7,7 @@ import moment from "moment";
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
 import prisma from "@shared/prisma";
 import { scheduleJob } from "node-schedule";
+import { json } from "stream/consumers";
 
 /****
  * @description This function is dealing with checking for tweet stats (likes , comments , quote , replies) counts.
@@ -34,7 +35,7 @@ const manageTwitterCardStatus = async () => {
     await Promise.all(
       allActiveCard.map(async (card, index) => {
         let total_spent = 0;
-        const campaignStats: TwitterStats = {};
+        let campaignStats: TwitterStats;
         // refactor card object
         const { comment_reward, retweet_reward, like_reward, quote_reward, id, name, campaign_budget } = card;
 
@@ -47,42 +48,44 @@ const manageTwitterCardStatus = async () => {
         } = publicMetrics[activeCardsIds[index]];
 
         //?  get card count status of  "like" , "Quote", "Retweet" from DB(means exiting records).
-        const CurrCardStats = await twitterCardService.twitterCardStats(id);
+        // const CurrCardStats = await twitterCardService.twitterCardStats(id);
 
-        if (CurrCardStats) {
-          //! compare counts with existing record and then update
-          const { like_count, retweet_count, quote_count, reply_count } = CurrCardStats;
+        // if (CurrCardStats) {
+        //! compare counts with existing record and then update
+        // const { like_count, retweet_count, quote_count, reply_count } = CurrCardStats;
 
-          //!  if count changes update the data.
-          if (like_count && like_count !== _likeCount) campaignStats.like_count = _likeCount;
-          if (quote_count && quote_count !== _quoteCount) campaignStats.quote_count = _quoteCount;
-          if (retweet_count && retweet_count !== _retweetCount) campaignStats.retweet_count = _retweetCount;
-          if (reply_count && reply_count !== _replyCount) campaignStats.reply_count = _replyCount;
+        // //!  if count changes update the data.
+        // if (like_count && like_count !== _likeCount) campaignStats.like_count = _likeCount;
+        // if (quote_count && quote_count !== _quoteCount) campaignStats.quote_count = _quoteCount;
+        // if (retweet_count && retweet_count !== _retweetCount) campaignStats.retweet_count = _retweetCount;
+        // if (reply_count && reply_count !== _replyCount) campaignStats.reply_count = _replyCount;
 
-          if (retweet_reward && like_reward && quote_reward && comment_reward) {
-            total_spent = functions.calculateTotalSpent(
-              {
-                like_count: _likeCount,
-                quote_count: _quoteCount,
-                retweet_count: _retweetCount,
-                reply_count: _replyCount,
-              },
-              {
-                retweet_reward,
-                like_reward,
-                quote_reward,
-                reply_reward: comment_reward,
-              }
-            );
-            //convert total to tiny hbar
-            total_spent = Math.round(total_spent);
+        if (retweet_reward && like_reward && quote_reward && comment_reward) {
+          campaignStats = {
+            like_count: _likeCount,
+            quote_count: _quoteCount,
+            retweet_count: _retweetCount,
+            reply_count: _replyCount,
+          };
+          total_spent = functions.calculateTotalSpent(
+            {
+              like_count: _likeCount,
+              quote_count: _quoteCount,
+              retweet_count: _retweetCount,
+              reply_count: _replyCount,
+            },
+            {
+              retweet_reward,
+              like_reward,
+              quote_reward,
+              reply_reward: comment_reward,
+            }
+          );
+          //convert total to tiny hbar
+          total_spent = Math.round(total_spent);
+          console.log("campaignStats", JSON.stringify(campaignStats));
+          logger.info(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
 
-            logger.info(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
-          } else {
-            logger.warn(`Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""} is not defined`);
-          }
-
-          //? update stats to DB
           await Promise.all([
             await twitterCardService.updateTwitterCardStats(campaignStats, id),
             await twitterCardService.updateTotalSpentAmount(id, total_spent),
@@ -98,16 +101,7 @@ const manageTwitterCardStatus = async () => {
             completeCampaignOperation(card);
           }
         } else {
-          //!! if not available in db then update the DB by adding new record.
-          await twitterCardService.addNewCardStats(
-            {
-              like_count: _likeCount,
-              retweet_count: _retweetCount,
-              quote_count: _quoteCount,
-              reply_count: _replyCount,
-            },
-            id
-          );
+          logger.warn(`Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""} is not defined`);
         }
       })
     );
@@ -141,7 +135,7 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
         logger.info(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""}`);
 
         //!! fetch comments from tweeter and update to DB engagements records.
-        await updateRepliesToDB(card.id,card.tweet_id);
+        await updateRepliesToDB(card.id, card.tweet_id);
       }
     })
   );
@@ -170,5 +164,5 @@ const scheduleExpiryTasks = async () => {
 export default {
   updateCardStatus: manageTwitterCardStatus,
   checkForRepliesAndUpdateEngagementsData,
-  scheduleExpiryTasks
+  scheduleExpiryTasks,
 } as const;

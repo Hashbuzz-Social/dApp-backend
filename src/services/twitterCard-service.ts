@@ -40,7 +40,7 @@ const twitterCardStats = async (cardId: bigint) => {
 };
 
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  console.info("updateTwitterCardStats::withData", JSON.stringify(body));
+  console.log("updateTwitterCardStats::withData", JSON.stringify(body));
 
   const data: any = {};
   if (body.like_count) data["like_count"] = body.like_count;
@@ -49,10 +49,16 @@ const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | numbe
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   if (Object.keys(data).length > 0) {
-    const update = await prisma.campaign_tweetstats.update({
+    const update = await prisma.campaign_tweetstats.upsert({
       where: { twitter_card_id: cardId },
-      data: {
+      update: {
         ...data,
+        last_update:new Date().toISOString()
+      },
+      create: {
+        ...data,
+        twitter_card_id:cardId,
+        last_update:new Date().toISOString()
       },
     });
     return update.id;
@@ -125,7 +131,11 @@ const publishTwitter = async (cardId: number | bigint) => {
     const threat1 = tweet_text;
     //@ignore es-lint
     // eslint-disable-next-line max-len
-    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: like ${convertTinyHbarToHbar(like_reward).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(2)} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @hbuzzs>`;
+    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: like ${convertTinyHbarToHbar(
+      like_reward
+    ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
+      2
+    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @hbuzzs>`;
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
       accessSecret: user_user?.business_twitter_access_token_secret,
