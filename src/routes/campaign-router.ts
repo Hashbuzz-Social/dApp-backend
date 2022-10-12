@@ -7,7 +7,7 @@ import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body, param, query as validateQuery } from "express-validator";
+import { body,  query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
@@ -17,8 +17,9 @@ const { OK, BAD_REQUEST, CONFLICT } = statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, statusUpdateHandler);
 
-router.get("/all", param("status"), handleCampaignGet);
+router.get("/all", handleCampaignGet);
 router.post("/add-new", handleAddNewCampaign);
+router.get("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, (_: Request, res: Response) => {
   (async () => {
@@ -32,6 +33,7 @@ router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse
     return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
   })();
 });
+
 
 // router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
 //   const campaignId: number = _.body.campaignId;
@@ -117,22 +119,14 @@ function statusUpdateHandler(req: Request, res: Response) {
 }
 
 function handleCampaignGet(req: Request, res: Response) {
-  return res.status(OK);
+  (async() => {
+    const allCampaigns = await prisma.campaign_twittercard.findMany({where:{
+      owner_id:req.currentUser?.id
+    }});
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns))); 
+  })();
 }
 
-/***
- *  "name": name,
-      "tweet_text": Text,
-      "comment_reward": reply,
-      "retweet_reward": retweet,
-      "like_reward": like,
-      "quote_reward": quote,
-      "follow_reward": follow,
-      "campaign_budget":budget == ""? 0:budget,
-      "media": media,
- * 
- * 
- */
 
 function handleAddNewCampaign(req: Request, res: Response) {
   const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, follow_reward, campaign_budget, media } = req.body;
@@ -164,4 +158,15 @@ function handleAddNewCampaign(req: Request, res: Response) {
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
   })();
 }
+
+function handleCampaignStats(req: Request, res: Response) {
+  (async () => {
+    const card_id = req.body.card_id;
+    const stats = await prisma.campaign_tweetstats.findUnique({
+      where: { twitter_card_id: card_id },
+    });
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(stats)));
+  })();
+}
+
 export default router;
