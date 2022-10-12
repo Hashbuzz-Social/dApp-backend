@@ -75,7 +75,7 @@ const manageTwitterCardStatus = async () => {
               }
             );
             //convert total to tiny hbar
-            total_spent = Math.round(total_spent * Math.pow(10, 8));
+            total_spent = Math.round(total_spent);
 
             logger.info(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
           } else {

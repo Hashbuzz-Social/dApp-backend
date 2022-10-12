@@ -88,7 +88,7 @@ function statusUpdateHandler(req: Request, res: Response) {
       //! Now 1. - Do smartcontrct transaction for balance update.
       //! 2. Decrement the balance from card owner main account in db_available_budget;
       //! 3. Update the card status as per the requirements.
-      amounts = Math.round(amounts * Math.pow(10, 8));
+      amounts = Math.round(amounts);
 
       const tweetId = await twitterCardService.publishTwitter(campaignId);
 

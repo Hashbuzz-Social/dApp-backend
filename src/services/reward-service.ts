@@ -29,7 +29,7 @@ const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweete
         break;
     }
   });
-  return Math.round(total * Math.pow(10, 8));
+  return Math.round(total);
 };
 
 /****

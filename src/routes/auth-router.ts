@@ -10,6 +10,7 @@ import logger from "jet-logger";
 import moment from "moment";
 import JSONBigInt from "json-bigint";
 import { sensitizeUserData } from "@shared/helper";
+import { url } from "inspector";
 
 const authRouter = Router();
 const { OK, TEMPORARY_REDIRECT, UNAUTHORIZED } = HttpStatusCodes;
@@ -23,22 +24,26 @@ authRouter.get("/twitter-login", (req: Request, res: Response) => {
 });
 
 authRouter.get("/brand-handle", auth.isHavingValidAuthToken, checkErrResponse, (req: Request, res: Response) => {
-  (async () => {
-    console.log("twitter-login:::");
-    const url = await twitterAuthUrl({
-      callbackUrl: `${process.env.TWITTER_CALLBACK_HOST!}/auth/business-twitter-return/`,
-      isBrand: true,
-      business_owner_id: req.currentUser?.id,
+  console.log("twitter-login:::");
+  twitterAuthUrl({
+    callbackUrl: `${process.env.TWITTER_CALLBACK_HOST!}/auth/business-twitter-return/`,
+    isBrand: true,
+    business_owner_id: req.currentUser?.id,
+  })
+    .then((url) => {
+      return res.status(OK).json({ url });
+    })
+    .catch((err) => {
+      console.log("brand-handle:::",err);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      throw Error(err.message);
     });
-    return res.status(OK).json({ url });
-  })();
 });
 
 authRouter.post("/logout", auth.isHavingValidAuthToken, checkErrResponse, (req: Request, res: Response) => {
-  (async () => {
-    await prisma.authtoken_token.delete({ where: { user_id: req.currentUser?.id } });
+  prisma.authtoken_token.delete({ where: { user_id: req.currentUser?.id } }).then(() => {
     return res.status(OK).json({ success: true, message: "Logout successfully." });
-  })();
+  });
 });
 
 authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, (req: Request, res: Response) => {

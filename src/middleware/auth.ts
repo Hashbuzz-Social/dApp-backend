@@ -21,17 +21,17 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
     const bearerToken = bearer[1];
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
-      (async () => {
-        if (err) {
-          return res.status(UNAUTHORIZED).json({
-            error: authTokenInvalidError,
-          });
-        }
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        const username: string = payload.username;
-        // get data in reference of auth token
-        const clientData = await prisma.user_user.findUnique({
+      if (err) {
+        return res.status(UNAUTHORIZED).json({
+          error: authTokenInvalidError,
+        });
+      }
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
+      const username: string = payload.username;
+      // get data in reference of auth token
+      const clientData = prisma.user_user
+        .findUnique({
           where: { username },
           select: {
             id: true,
@@ -51,15 +51,14 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             is_staff: true,
             is_superuser: true,
           },
-        });
-
-        if (clientData) {
-          req.currentUser = clientData;
+        })
+        .then((data) => {
+          req.currentUser = data!;
           next();
-        } else {
+        })
+        .catch(() => {
           throw Error(authTokenInvalidError);
-        }
-      })();
+        });
     });
   } catch (err) {
     return res.status(UNAUTHORIZED).json({
