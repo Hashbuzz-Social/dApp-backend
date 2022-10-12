@@ -13,17 +13,19 @@ const { OK  , TEMPORARY_REDIRECT} = HttpStatusCodes;
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
-    const url = await twitterAuthUrl("/auth/twitter-return/");
+    console.log("twitter-login:::")
+    const url = await twitterAuthUrl(`${process.env.TWITTER_CALLBACK_HOST!}/auth/twitter-return/`);
     return res.status(OK).json({ url });
   })();
 });
 
 authRouter.get("/twitter-return", (req: Request, res: Response) => {
   (async () => {
+    console.log({params:req.params, query:req.query})
     // Extract tokens from query string
     const oauth_token = req.query.oauth_token as any as string;
     const oauth_verifier = req.query.oauth_verifier as any as string;
-
+    console.log("getting Token Token=::" , oauth_token);
     // Get the saved oauth_token_secret from session
     // const { oauth_token_secret } = req.session;
     const authtoken = await prisma.user_twitterlogintemp.findFirst({
@@ -33,6 +35,8 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
     });
 
     const { oauth_token_secret } = authtoken!;
+
+    console.log("getting oauth_token_secret=::" , oauth_token_secret);
 
     if (!oauth_token || !oauth_verifier || !oauth_token_secret) {
       return res.status(400).send("You denied the app or your session expired!");
@@ -91,7 +95,10 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
         // loggedClient is an authenticated client in behalf of some user
         // Store accessToken & accessSecret somewhere
       })
-      .catch(() => res.status(403).send("Invalid verifier or access tokens!"));
+      .catch((error) => {
+        console.log(error);
+       return res.status(403).send("Invalid verifier or access tokens!")
+      });
   })();
 });
 

@@ -18,7 +18,7 @@ router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandle
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
-router.post("/reimbursement" , body("amount").isNumeric(), checkErrResponse , handleReimbursement )
+router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
 router.post("/contract-info", handleContractInfoReq);
 
@@ -30,38 +30,40 @@ router.post("/contract-info", handleContractInfoReq);
  *@description top-up handler
  */
 
-async function topUpHandler(req: Request, res: Response) {
-  const accountId = req.currentUser?.hedera_wallet_id;
-  const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
+function topUpHandler(req: Request, res: Response) {
+  (async () => {
+    const accountId = req.currentUser?.hedera_wallet_id;
+    const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
-  if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
-    return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
-  }
-
-  if (req.currentUser?.id && accountId) {
-    try {
-      const topUp = await userService.topUp(req.currentUser?.id, amounts.topUpAmount, "increment");
-      await updateBalanceToContract(accountId, amounts);
-      return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
-    } catch (error) {
-      console.log(error);
-      throw error;
+    if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
+      return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
     }
-  }
-}
 
-export default router;
+    if (req.currentUser?.id && accountId) {
+      try {
+        const topUp = await userService.topUp(req.currentUser?.id, amounts.topUpAmount, "increment");
+        await updateBalanceToContract(accountId, amounts);
+        return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
+      } catch (error) {
+        console.log(error);
+        throw error;
+      }
+    }
+  })();
+}
 
 //===============================
 
 /*****
  * @description Add campaign to smart contract handler.
  **/
-async function addCampaignerHandlers(req: Request, res: Response) {
-  const walletId: string = req.body.walletId;
+function addCampaignerHandlers(req: Request, res: Response) {
+  (async () => {
+    const walletId: string = req.body.walletId;
 
-  const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
-  return res.status(CREATED).json(addWalletAddressToCampaign);
+    const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
+    return res.status(CREATED).json(addWalletAddressToCampaign);
+  })();
 }
 
 //===============================
@@ -71,9 +73,11 @@ async function addCampaignerHandlers(req: Request, res: Response) {
  *@description Check active contract and return to the user.
  */
 
-async function activeContractHandler(req: Request, res: Response) {
-  const activeContract = await provideActiveContract();
-  return res.status(OK).json(activeContract);
+function activeContractHandler(req: Request, res: Response) {
+  (async () => {
+    const activeContract = await provideActiveContract();
+    return res.status(OK).json(activeContract);
+  })();
 }
 
 //===============================
@@ -82,62 +86,69 @@ async function activeContractHandler(req: Request, res: Response) {
  *@description this function is handling crete topup transaction
  */
 
-async function creteTopUpHandler(req: Request, res: Response) {
-  const payeeId = req.currentUser?.hedera_wallet_id;
-  const connectedAccountId: string = req.body.connectedAccountId;
-  const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
+function creteTopUpHandler(req: Request, res: Response) {
+  (async () => {
+    const payeeId = req.currentUser?.hedera_wallet_id;
+    const connectedAccountId: string = req.body.connectedAccountId;
+    const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
 
-  if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
-    return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
-  }
-  if (payeeId && connectedAccountId) {
-    const transactionBytes = await createTopUpTransaction(payeeId, amounts, connectedAccountId);
-    return res.status(CREATED).json(transactionBytes);
-  }
-  return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
+    if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
+      return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
+    }
+    if (payeeId && connectedAccountId) {
+      const transactionBytes = await createTopUpTransaction(payeeId, amounts, connectedAccountId);
+      return res.status(CREATED).json(transactionBytes);
+    }
+    return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
+  })();
 }
 
-async function handleCampaignFundAllocation(req: Request, res: Response) {
-  const campaignId: number = req.body.campaignId;
+function handleCampaignFundAllocation(req: Request, res: Response) {
+  (async () => {
+    const campaignId: number = req.body.campaignId;
 
-  //! get campaignById
-  const campaignDetails = await getCampaignDetailsById(campaignId);
+    //! get campaignById
+    const campaignDetails = await getCampaignDetailsById(campaignId);
 
-  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
-    const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
-    const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
-    const campaignerId = campaignDetails.owner_id;
+    if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
+      const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
+      const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
+      const campaignerId = campaignDetails.owner_id;
 
-    //?  call the function to update the balances of the camp
-    const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount);
-    await userService.topUp(campaignerId, amounts, "decrement");
+      //?  call the function to update the balances of the camp
+      const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount);
+      await userService.topUp(campaignerId, amounts, "decrement");
 
-    return res.status(CREATED).json({ transactionId, receipt });
-  }
+      return res.status(CREATED).json({ transactionId, receipt });
+    }
 
-  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
+    return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
+  })();
 }
 
-async function handleContractInfoReq(_: Request, res: Response) {
-  const info = await getSMInfo();
-  if(info)
-   return res.status(OK).json(info);
-  return res.status(BAD_REQUEST).json({error:true});
+function handleContractInfoReq(_: Request, res: Response) {
+  (async () => {
+    const info = await getSMInfo();
+    if (info) return res.status(OK).json(info);
+    return res.status(BAD_REQUEST).json({ error: true });
+  })();
 }
 
+function handleReimbursement(req: Request, res: Response) {
+  (async () => {
+    const amount: number = req.body.amount;
 
-async function handleReimbursement(req: Request, res: Response) {
-  const amount:number = req.body.amount;
+    if (!req.currentUser?.hedera_wallet_id) {
+      return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
+    }
 
-  if(!req.currentUser?.hedera_wallet_id){
-    return res.status(BAD_REQUEST).json({error:true , message:"Sorry This request can't be completed."})
-  }
+    if (!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget < amount)) {
+      return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
+    }
 
-  if(!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget<amount)){
-    return res.status(BAD_REQUEST).json({error:true , message:"Insufficient available amount in user's account."})
-  }
-
-
-  const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount , req.currentUser.hedera_wallet_id);
-  return res.status(OK).json(reimbursementTransaction)
+    const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount, req.currentUser.hedera_wallet_id);
+    return res.status(OK).json(reimbursementTransaction);
+  })();
 }
+
+export default router;

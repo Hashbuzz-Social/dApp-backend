@@ -38,7 +38,7 @@ router.get("/all", adminMiddleWare.isAdmin, (_: Request, res: Response) => {
 
 router.get("/current", (red: Request, res: Response) => {
   (async () => {
-    const currentUser = await userService.getUserById(red.currentUser?.user_id);
+    const currentUser = await userService.getUserById(red.currentUser?.id);
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser!))));
   })();
 });
