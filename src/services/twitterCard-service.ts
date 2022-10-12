@@ -180,6 +180,9 @@ const getAllTwitterCardByStatus = async (status: string) => {
         },
       },
     },
+    orderBy:{
+      id:"desc"
+    }
   });
 
   return data;

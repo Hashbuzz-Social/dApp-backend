@@ -123,6 +123,9 @@ function handleCampaignGet(req: Request, res: Response) {
       where: {
         owner_id: req.currentUser?.id,
       },
+      orderBy:{
+        id:"desc"
+      }
     });
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
   })();
