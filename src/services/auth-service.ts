@@ -10,8 +10,8 @@ export const twitterAuthUrl = async ({callbackUrl , isBrand , business_owner_id}
   // property in second parameter to 'authorize' to use oauth/authorize
   console.log(callbackUrl);
   let authLink;
-  if (isBrand) authLink = await client.generateAuthLink(callbackUrl);
-  else authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
+  if (isBrand) authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
+  else authLink = await client.generateAuthLink(callbackUrl);
   const { url, oauth_callback_confirmed, oauth_token, oauth_token_secret } = authLink;
 
   console.log("Saving Token=::", oauth_token);
