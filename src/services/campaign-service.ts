@@ -169,7 +169,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
         user_user.personal_twitter_id,
         // eslint-disable-next-line max-len
         `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${(
-          (amount_claimed! / Math.round(campaign_budget! * 1e8)) *
+          (amount_claimed! / Math.round(campaign_budget!)) *
           100
         ).toFixed(2)}% of campaign budget*`
       );

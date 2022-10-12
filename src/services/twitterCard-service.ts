@@ -1,3 +1,4 @@
+import { convertTinyHbarToHbar } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import { provideActiveContract } from "./smartcontract-service";
@@ -108,14 +109,23 @@ const publishTwitter = async (cardId: number | bigint) => {
     }),
   ]);
 
-  const { id, tweet_text, user_user } = cardDetails!;
+  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward } = cardDetails!;
   const { contract_id } = contractDetails;
 
-  if (tweet_text && user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && contract_id) {
+  if (
+    tweet_text &&
+    user_user?.business_twitter_access_token &&
+    user_user?.business_twitter_access_token_secret &&
+    contract_id &&
+    like_reward &&
+    quote_reward &&
+    comment_reward &&
+    retweet_reward
+  ) {
     const threat1 = tweet_text;
     //@ignore es-lint
     // eslint-disable-next-line max-len
-    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: like ${cardDetails?.like_reward ?? ""} ℏ, retweet ${cardDetails?.retweet_reward ?? ""} ℏ, quote ${cardDetails?.quote_reward ?? ""} ℏ, comment ${cardDetails?.comment_reward ?? ""} ℏ\nad<create your own campaign @hbuzzs>`;
+    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: like ${convertTinyHbarToHbar(like_reward).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(2)} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @hbuzzs>`;
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: user_user?.business_twitter_access_token,
       accessSecret: user_user?.business_twitter_access_token_secret,
@@ -123,7 +133,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
     const card = await userTwitter.v2.tweet(threat1);
-    const reply = await userTwitter.v2.reply(threat2,card.data.id);
+    const reply = await userTwitter.v2.reply(threat2, card.data.id);
     //tweetId.
     const tweetId = card.data.id;
     const lastThreadTweetId = reply.data.id;
@@ -133,7 +143,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       where: { id },
       data: {
         tweet_id: tweetId,
-        last_thread_tweet_id:lastThreadTweetId,
+        last_thread_tweet_id: lastThreadTweetId,
         card_status: "Running",
         contract_id: contract_id.toString().trim(),
       },
@@ -144,26 +154,25 @@ const publishTwitter = async (cardId: number | bigint) => {
   }
 };
 
-
-const getAllTwitterCardByStatus = async (status:string) => {
+const getAllTwitterCardByStatus = async (status: string) => {
   const data = await prisma.campaign_twittercard.findMany({
-    where:{
-      card_status:status
+    where: {
+      card_status: status,
     },
-    include:{
-      user_user:{
-        select:{
-          business_twitter_handle:true,
-          personal_twitter_handle:true,
-          available_budget:true,
-          hedera_wallet_id:true
-        }
-      }
-    }
-  })
+    include: {
+      user_user: {
+        select: {
+          business_twitter_handle: true,
+          personal_twitter_handle: true,
+          available_budget: true,
+          hedera_wallet_id: true,
+        },
+      },
+    },
+  });
 
   return data;
-}
+};
 
 export default {
   allActiveTwitterCard,
@@ -172,5 +181,5 @@ export default {
   addNewCardStats,
   updateTotalSpentAmount,
   publishTwitter,
-  getAllTwitterCardByStatus
+  getAllTwitterCardByStatus,
 } as const;
