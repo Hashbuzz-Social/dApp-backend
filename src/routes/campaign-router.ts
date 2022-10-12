@@ -147,10 +147,10 @@ function handleAddNewCampaign(req: Request, res: Response) {
         data: {
           name,
           tweet_text,
-          comment_reward:convertToTinyHbar(comment_reward as string),
-          like_reward:convertToTinyHbar(like_reward as string),
-          retweet_reward:convertToTinyHbar(retweet_reward as string),
-          quote_reward:convertToTinyHbar(quote_reward as string),
+          comment_reward: convertToTinyHbar(comment_reward as string),
+          like_reward: convertToTinyHbar(like_reward as string),
+          retweet_reward: convertToTinyHbar(retweet_reward as string),
+          quote_reward: convertToTinyHbar(quote_reward as string),
           campaign_budget: convertToTinyHbar(campaign_budget as string),
           card_status: "Pending",
           owner_id: req.currentUser?.id,
@@ -158,7 +158,7 @@ function handleAddNewCampaign(req: Request, res: Response) {
       });
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
     } catch (err) {
-      console.log("Error from handleAddNewCampaign:::" , err);
+      console.log("Error from handleAddNewCampaign:::", err);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       throw Error(err.message);
     }
@@ -167,11 +167,17 @@ function handleAddNewCampaign(req: Request, res: Response) {
 
 function handleCampaignStats(req: Request, res: Response) {
   (async () => {
-    const card_id = req.body.card_id;
-    const stats = await prisma.campaign_tweetstats.findUnique({
-      where: { twitter_card_id: card_id },
-    });
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(stats)));
+    try {
+      const card_id = req.body.card_id;
+      const stats = await prisma.campaign_tweetstats.findUnique({
+        where: { twitter_card_id: parseInt(card_id as string) },
+      });
+      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(stats)));
+    } catch (err) {
+      console.log("Error from handleCampaignStats:::", err);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      throw Error(err.message);
+    }
   })();
 }
 
