@@ -19,7 +19,7 @@ router.post("/update-status", body("card_id").isNumeric(), body("card_status").i
 
 router.get("/all", handleCampaignGet);
 router.post("/add-new", handleAddNewCampaign);
-router.get("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
+router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, (_: Request, res: Response) => {
   (async () => {
