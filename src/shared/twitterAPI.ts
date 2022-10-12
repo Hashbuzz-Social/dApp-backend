@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import TwitterApi, { TweetV2, UserV2 } from "twitter-api-v2";
 
 //Type definitions
@@ -14,6 +13,7 @@ interface PublicMetricsObject {
 }
 
 const token = "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl5o8X1STsnuc6LOlecUq3lFeKw9xiVOZUWxfipds21HyxvPB4j";
+
 
 // Instantiate with desired auth type (here's Bearer v2 auth)
 const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
@@ -144,6 +144,9 @@ const getAllReplies = async (tweetID: string) => {
  */
 
 const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
+  // console.log({accessToken , accessSecret})
+  // console.log({apiKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET! })
+
   const tweeterApi = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,
     appSecret: process.env.TWITTER_API_SECRET!,

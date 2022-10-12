@@ -1,23 +1,11 @@
-/**
- * Pre-start is where we want to place things that must run BEFORE the express server is started.
- * This is useful for environment variables, command-line arguments, and cron-jobs.
- */
 
-import cronTasksService from "@services/cronTasks-service";
-import dotenv from "dotenv";
 import { taskAtEveryMidNight, taskOnEvery30Seconds } from "./cronJob";
+import cronTasksService from "@services/cronTasks-service";
 
 (() => {
-  // Setup command line options
-  dotenv.config();
-  // taskEveryMinute.start();
-  // taskEveryTwoMinute.start();
   taskAtEveryMidNight.start();
   taskOnEvery30Seconds.start();
-
-  (async () => {
-    await cronTasksService.scheduleExpiryTasks();
-  })()
+  cronTasksService.scheduleExpiryTasks();
 
   //reply tasks
   // (async () => {

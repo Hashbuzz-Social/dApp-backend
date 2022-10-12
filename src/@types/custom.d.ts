@@ -1,10 +1,7 @@
 import "express";
 
 interface UserData {
-  key: string | null;
-  user_id: bigint;
-  created: Date | null;
-  user_user: Partial<{
+ 
     id: bigint;
     hedera_wallet_id: string | null;
     username: string;
@@ -21,7 +18,6 @@ interface UserData {
     consent: boolean | null;
     is_staff: boolean | null;
     is_superuser: boolean | null;
-  }>;
 }
 
 declare module "express" {
