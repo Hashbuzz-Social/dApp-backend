@@ -41,6 +41,8 @@ export const buildCampaignAddress = (campaignerAddress: string, campaign_id: str
   return campaignAddress;
 };
 
+export const convertToTinyHbar = (amount:string) =>  Math.round(parseFloat(amount)*1e8);
+
 
 // const filterTwitterEngagementsData = () => arr.filter(element => {
 //   const isDuplicate = uniqueIds.includes(element.id);

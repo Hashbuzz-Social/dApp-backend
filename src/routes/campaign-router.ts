@@ -3,11 +3,11 @@ import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
-import { sensitizeUserData } from "@shared/helper";
+import { convertToTinyHbar, sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
-import { body,  query as validateQuery } from "express-validator";
+import { body, query as validateQuery } from "express-validator";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
@@ -33,7 +33,6 @@ router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse
     return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
   })();
 });
-
 
 // router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
 //   const campaignId: number = _.body.campaignId;
@@ -119,14 +118,15 @@ function statusUpdateHandler(req: Request, res: Response) {
 }
 
 function handleCampaignGet(req: Request, res: Response) {
-  (async() => {
-    const allCampaigns = await prisma.campaign_twittercard.findMany({where:{
-      owner_id:req.currentUser?.id
-    }});
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns))); 
+  (async () => {
+    const allCampaigns = await prisma.campaign_twittercard.findMany({
+      where: {
+        owner_id: req.currentUser?.id,
+      },
+    });
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
   })();
 }
-
 
 function handleAddNewCampaign(req: Request, res: Response) {
   const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, follow_reward, campaign_budget, media } = req.body;
@@ -142,20 +142,26 @@ function handleAddNewCampaign(req: Request, res: Response) {
     return res.status(BAD_REQUEST).json({ error: true, message: "Data felids should not be emphty." });
   }
   (async () => {
-    const newCampaign = await prisma.campaign_twittercard.create({
-      data: {
-        name,
-        tweet_text,
-        comment_reward,
-        like_reward,
-        retweet_reward,
-        quote_reward,
-        campaign_budget: Math.round(parseFloat(campaign_budget as string) * 1e8),
-        card_status: "Pending",
-        owner_id: req.currentUser?.id,
-      },
-    });
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
+    try {
+      const newCampaign = await prisma.campaign_twittercard.create({
+        data: {
+          name,
+          tweet_text,
+          comment_reward:convertToTinyHbar(comment_reward as string),
+          like_reward:convertToTinyHbar(like_reward as string),
+          retweet_reward:convertToTinyHbar(retweet_reward as string),
+          quote_reward:convertToTinyHbar(quote_reward as string),
+          campaign_budget: convertToTinyHbar(campaign_budget as string),
+          card_status: "Pending",
+          owner_id: req.currentUser?.id,
+        },
+      });
+      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
+    } catch (err) {
+      console.log("Error from handleAddNewCampaign:::" , err);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      throw Error(err.message);
+    }
   })();
 }
 
