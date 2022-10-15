@@ -2,7 +2,6 @@ import { user_user } from "@prisma/client";
 import { AccountId } from "@hashgraph/sdk";
 
 
-export const selfBrandAccount = process.env.SELF_BRAND_HANDLE;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
