@@ -1,10 +1,12 @@
 import { campaign_twittercard } from "@prisma/client";
+import { selfBrandAccount } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import moment from "moment";
 import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
+import { TwitterApi } from "twitter-api-v2";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
 import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 import { queryBalance } from "./smartcontract-service";
@@ -80,15 +82,18 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     //log campaign expiry
     logger.info(`Campaign expired at ${campaignExpiry}`);
 
-    const tweeterApi = twitterAPI.tweeterApiForUser({
-      accessToken: card_owner.business_twitter_access_token,
-      accessSecret: card_owner.business_twitter_access_token_secret,
-    });
+    let tweeterApi:TwitterApi;
+    if(card_owner.business_twitter_handle !== selfBrandAccount)
+      tweeterApi = twitterAPI.tweeterApiForUser({
+        accessToken: card_owner.business_twitter_access_token,
+        accessSecret: card_owner.business_twitter_access_token_secret,
+      });
+    else tweeterApi = twitterAPI.twitterClient;
 
     try {
       const updateThread = await tweeterApi.v2.reply(
         // eslint-disable-next-line max-len
-        `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @hbuzzs and connect your HashPack wallet to receive your rewards.`,
+        `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @${selfBrandAccount!} and connect your HashPack wallet to receive your rewards.`,
         last_thread_tweet_id!
       );
 
@@ -144,16 +149,20 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
           business_twitter_access_token_secret: true,
           hedera_wallet_id: true,
           available_budget: true,
+          business_twitter_handle:true
         },
       },
     },
   });
   const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
-    const userTweeterApi = twitterAPI.tweeterApiForUser({
-      accessToken: user_user?.business_twitter_access_token,
-      accessSecret: user_user?.business_twitter_access_token_secret,
-    });
+    let userTweeterApi:TwitterApi;
+    if(user_user.business_twitter_handle !== selfBrandAccount)
+    userTweeterApi = twitterAPI.tweeterApiForUser({
+        accessToken: user_user.business_twitter_access_token,
+        accessSecret: user_user.business_twitter_access_token_secret,
+      });
+    else userTweeterApi = twitterAPI.twitterClient;
     await closeCampaignSMTransaction(id);
 
     //?? Query and update campaigner balance after closing campaign.
