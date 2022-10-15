@@ -1,6 +1,7 @@
-import { convertTinyHbarToHbar } from "@shared/helper";
+import { convertTinyHbarToHbar, selfBrandAccount } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
+import { TwitterApi } from "twitter-api-v2";
 import { provideActiveContract } from "./smartcontract-service";
 
 //types
@@ -108,6 +109,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       include: {
         user_user: {
           select: {
+            business_twitter_handle:true,
             business_twitter_access_token: true,
             business_twitter_access_token_secret: true,
           },
@@ -136,18 +138,24 @@ const publishTwitter = async (cardId: number | bigint) => {
       like_reward
     ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
-    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @hbuzzs>`;
+    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @${selfBrandAccount!}>`;
+    // let userTwitter:TwitterApi;
+    // if(user_user.business_twitter_handle !== selfBrandAccount)
+    //   userTwitter = twitterAPI.tweeterApiForUser({
+    //     accessToken: user_user?.business_twitter_access_token,
+    //     accessSecret: user_user?.business_twitter_access_token_secret,
+    //   });
     const userTwitter = twitterAPI.tweeterApiForUser({
-      accessToken: user_user?.business_twitter_access_token,
-      accessSecret: user_user?.business_twitter_access_token_secret,
-    });
+          accessToken: user_user?.business_twitter_access_token,
+          accessSecret: user_user?.business_twitter_access_token_secret,
+        });
     console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
-    const card = await userTwitter.v2.tweet(threat1);
-    const reply = await userTwitter.v2.reply(threat2, card.data.id);
+    const card = await userTwitter.v1.tweet(threat1);
+    const reply = await userTwitter.v1.reply(threat2, card.id.toString());
     //tweetId.
-    const tweetId = card.data.id;
-    const lastThreadTweetId = reply.data.id;
+    const tweetId = card.id.toString();
+    const lastThreadTweetId = reply.id.toString();
 
     //Add TweetId to the DB
     await prisma.campaign_twittercard.update({
