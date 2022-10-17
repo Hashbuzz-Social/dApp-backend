@@ -163,10 +163,12 @@ const publishTwitter = async (cardId: number | bigint) => {
       return tweetId;
     }catch(err){
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      throw Error(err?.message??"Something wrong with tweet text.")
+      console.log(err); 
+      console.log(err.message);
+      throw Error("Something wrong with tweet text.");
     }
   } else {
-    throw new Error("User's brand handle not found");
+    throw Error("User's brand handle not found");
   }
 };
 
