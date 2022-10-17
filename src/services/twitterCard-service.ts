@@ -143,7 +143,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     });
     console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
-    try {
+    try{
       const card = await userTwitter.v2.tweet(threat1);
       const reply = await userTwitter.v2.reply(threat2, card.data.id);
       //tweetId.
@@ -161,9 +161,9 @@ const publishTwitter = async (cardId: number | bigint) => {
         },
       });
       return tweetId;
-    } catch (error) {
+    }catch(err){
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      throw new Error(error.message);
+      throw Error(err?.message??"Something wrong with tweet text.")
     }
   } else {
     throw new Error("User's brand handle not found");
