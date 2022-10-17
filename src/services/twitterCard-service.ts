@@ -42,29 +42,29 @@ const twitterCardStats = async (cardId: bigint) => {
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
   console.log("updateTwitterCardStats::withData", JSON.stringify(body));
   // {"like_count":3,"quote_count":0,"retweet_count":2,"reply_count":2};
-  const {like_count , quote_count , reply_count , retweet_count} = body
- 
+  const { like_count, quote_count, reply_count, retweet_count } = body;
+
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
- 
-    const update = await prisma.campaign_tweetstats.upsert({
-      where: { twitter_card_id: cardId },
-      update: {
-        like_count:like_count,
-        quote_count:quote_count,
-        reply_count:reply_count,
-        retweet_count:retweet_count,
-        last_update:new Date().toISOString()
-      },
-      create: {
-        like_count:like_count,
-        quote_count:quote_count,
-        reply_count:reply_count,
-        retweet_count:retweet_count,
-        twitter_card_id:cardId,
-        last_update:new Date().toISOString()
-      },
-    });
-    return update.id;
+
+  const update = await prisma.campaign_tweetstats.upsert({
+    where: { twitter_card_id: cardId },
+    update: {
+      like_count: like_count,
+      quote_count: quote_count,
+      reply_count: reply_count,
+      retweet_count: retweet_count,
+      last_update: new Date().toISOString(),
+    },
+    create: {
+      like_count: like_count,
+      quote_count: quote_count,
+      reply_count: reply_count,
+      retweet_count: retweet_count,
+      twitter_card_id: cardId,
+      last_update: new Date().toISOString(),
+    },
+  });
+  return update.id;
 };
 
 const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
@@ -143,23 +143,28 @@ const publishTwitter = async (cardId: number | bigint) => {
     });
     console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
-    const card = await userTwitter.v2.tweet(threat1);
-    const reply = await userTwitter.v2.reply(threat2, card.data.id);
-    //tweetId.
-    const tweetId = card.data.id;
-    const lastThreadTweetId = reply.data.id;
+    try {
+      const card = await userTwitter.v2.tweet(threat1);
+      const reply = await userTwitter.v2.reply(threat2, card.data.id);
+      //tweetId.
+      const tweetId = card.data.id;
+      const lastThreadTweetId = reply.data.id;
 
-    //Add TweetId to the DB
-    await prisma.campaign_twittercard.update({
-      where: { id },
-      data: {
-        tweet_id: tweetId,
-        last_thread_tweet_id: lastThreadTweetId,
-        card_status: "Running",
-        contract_id: contract_id.toString().trim(),
-      },
-    });
-    return tweetId;
+      //Add TweetId to the DB
+      await prisma.campaign_twittercard.update({
+        where: { id },
+        data: {
+          tweet_id: tweetId,
+          last_thread_tweet_id: lastThreadTweetId,
+          card_status: "Running",
+          contract_id: contract_id.toString().trim(),
+        },
+      });
+      return tweetId;
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      throw new Error(error.message);
+    }
   } else {
     throw new Error("User's brand handle not found");
   }
@@ -180,9 +185,9 @@ const getAllTwitterCardByStatus = async (status: string) => {
         },
       },
     },
-    orderBy:{
-      id:"desc"
-    }
+    orderBy: {
+      id: "desc",
+    },
   });
 
   return data;
