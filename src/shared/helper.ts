@@ -1,6 +1,8 @@
 import { user_user } from "@prisma/client";
 import { AccountId } from "@hashgraph/sdk";
 
+
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
   listOfKey.forEach((key) => delete d[key]);
