@@ -1,4 +1,14 @@
-import TwitterApi, { TweetV2, UserV2 } from "twitter-api-v2";
+import TwitterApi, { TweetV2, UserV2 , TwitterApiV2Settings } from "twitter-api-v2";
+import logger from 'jet-logger';
+
+TwitterApiV2Settings.debug = true;
+
+TwitterApiV2Settings.logger = {
+  log: (msg, payload) =>{
+    logger.err(msg);
+    logger.info(payload);
+  } 
+};
 
 //Type definitions
 interface PublicMetrics {
