@@ -22,7 +22,7 @@ const options: cors.CorsOptions = {
 
 // Then pass these options to cors:
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-app.use(cors(options));
+// app.use(cors(options));
 
 
 // **** Middlewares **** //
