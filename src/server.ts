@@ -16,13 +16,13 @@ import { CustomError } from "@shared/errors";
 // Constants
 const app = express();
 
-// const options: cors.CorsOptions = {
-//   origin: process.env.FRONTEND_URL??"*"
-// };
+const options: cors.CorsOptions = {
+  origin: process.env.FRONTEND_URL??"*"
+};
 
 // Then pass these options to cors:
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-app.use(cors());
+app.use(cors(options));
 
 
 // **** Middlewares **** //
