@@ -17,7 +17,7 @@ import { CustomError } from "@shared/errors";
 const app = express();
 
 const options: cors.CorsOptions = {
-  origin: "*"
+  origin: process.env.FRONTEND_URL??"*"
 };
 
 // Then pass these options to cors:
