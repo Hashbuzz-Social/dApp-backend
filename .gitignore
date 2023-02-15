@@ -6,3 +6,4 @@ logs
 dist/
 **/**/*.log
 xxxx.txt
+contractBuild

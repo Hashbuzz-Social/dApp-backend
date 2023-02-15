@@ -25,3 +25,6 @@ Description of the environment variable required here for creating all the detai
 
     TWITTER_APP_USER_TOKEN=tweeter app APi auth token Auth2
 
+### Cmd for the Solidity build file generation.
+
+       `npx solcjs --bin --abi SmartContract/Hashbuzz.sol -o SmartContract/build`
