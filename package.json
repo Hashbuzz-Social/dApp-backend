@@ -13,7 +13,7 @@
     "test:no-reloading": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./spec",
     "preReadyPrisma": "npx prisma db pull",
     "readyPrisma": "npx prisma generate",
-    "buildContract":"npx solcjs --bin --abi SmartContract/Hashbuzz.sol -o SmartContract/build"
+    "buildContract":"npx solcjs --bin --abi contract/Hashbuzz.sol -o contractBuild"
   },
   "nodemonConfig": {
     "watch": [
