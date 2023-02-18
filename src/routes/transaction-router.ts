@@ -138,7 +138,7 @@ function handleReimbursement(req: Request, res: Response) {
   (async () => {
     const amount: number = req.body.amount;
 
-    if (!req.currentUser?.hedera_wallet_id) {
+    if (!req.currentUser?.id || !req.currentUser?.hedera_wallet_id) {
       return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
     }
 

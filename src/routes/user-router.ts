@@ -37,9 +37,9 @@ router.get("/all", adminMiddleWare.isAdmin, (_: Request, res: Response) => {
  * get current user.
  */
 
-router.get("/current", (red: Request, res: Response) => {
+router.get("/current", (req: Request, res: Response) => {
   (async () => {
-    const currentUser = await userService.getUserById(red.currentUser?.id);
+    const currentUser = await userService.getUserById(req.currentUser?.id);
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser!))));
   })();
 });
@@ -56,7 +56,7 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
 
   const walletId: string = req.body.walletId;
 
-  console.log("Update_wallet::",req.currentUser?.hedera_wallet_id)
+  console.log("Update_wallet::", req.currentUser?.hedera_wallet_id);
 
   if (req.currentUser?.hedera_wallet_id) {
     return res.status(OK).json({ updated: true, message: "Wallet already added to this account" });
@@ -65,24 +65,24 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
     (async () => {
       const id = req.currentUser?.id;
       const updatedUser = await userService.updateWalletId(walletId, id!);
-      if(updatedUser){
-        await totalPendingReward(updatedUser.personal_twitter_id! , updatedUser.hedera_wallet_id!)
+      if (updatedUser) {
+        await totalPendingReward(updatedUser.personal_twitter_id!, updatedUser.hedera_wallet_id!);
         return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
       }
     })();
   }
 });
 
-router.patch("/update",(req:Request , res:Response) => {
-  (async() => {
-    const {consent} = req.body;
+router.patch("/update", (req: Request, res: Response) => {
+  (async () => {
+    const { consent } = req.body;
     const updatedUser = await prisma.user_user.update({
-      where:{id:req.currentUser?.id},
-      data:{consent:consent}
-    })
+      where: { id: req.currentUser?.id },
+      data: { consent: consent },
+    });
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-  })()
-})
+  })();
+});
 
 router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("contractBal").isBoolean(), (req: Request, res: Response) => {
   //check validation and return
@@ -96,7 +96,7 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
   if (contractBal) {
     (async () => {
       const balances = await queryBalance(address);
-      if (req.currentUser?.id && balances?.balances ) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
+      if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
       logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
       return res.status(OK).json(balances);
     })();
@@ -106,3 +106,4 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
 });
 
 export default router;
+

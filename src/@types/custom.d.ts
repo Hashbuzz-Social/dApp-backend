@@ -1,29 +1,19 @@
 import "express";
-
-interface UserData {
- 
-    id: bigint;
-    hedera_wallet_id: string | null;
-    username: string;
-    available_budget:number,
-    first_name: string;
-    last_login: Date | null;
-    last_name: string;
-    twitter_access_token: string | null;
-    twitter_access_token_secret: string | null;
-    personal_twitter_handle: string | null;
-    business_twitter_access_token: string | null;
-    business_twitter_access_token_secret: string | null;
-    business_twitter_handle: string | null;
-    consent: boolean | null;
-    is_staff: boolean | null;
-    is_superuser: boolean | null;
-}
+import { user_user } from "@prisma/client";
 
 declare module "express" {
   export interface Request {
-    currentUser?: UserData;
+    currentUser?: Partial<user_user>;
   }
 }
 
-export type twitterStatus = 'Rejected' | 'Pending' | 'Running' | 'Completed'| 'Deleted';
+export type twitterStatus = "Rejected" | "Pending" | "Running" | "Completed" | "Deleted";
+export enum user_roles {
+  "SUPER_ADMIN",
+  "ADMIN",
+  "ANALYTICS",
+  "MARKETING",
+  "MANAGEMENT",
+  "USER",
+  "GUEST_USER",
+}

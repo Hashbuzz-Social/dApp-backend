@@ -3,7 +3,7 @@ import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
-import { convertToTinyHbar, sensitizeUserData } from "@shared/helper";
+import { convertToTinyHbar, sensitizeUserData, rmKeyFrmData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
@@ -123,9 +123,9 @@ function handleCampaignGet(req: Request, res: Response) {
       where: {
         owner_id: req.currentUser?.id,
       },
-      orderBy:{
-        id:"desc"
-      }
+      orderBy: {
+        id: "desc",
+      },
     });
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
   })();
@@ -157,11 +157,13 @@ function handleAddNewCampaign(req: Request, res: Response) {
           campaign_budget: convertToTinyHbar(campaign_budget as string),
           card_status: "Pending",
           owner_id: req.currentUser?.id,
-          amount_spent:0,
-          amount_claimed:0
+          amount_spent: 0,
+          amount_claimed: 0,
         },
       });
-      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(newCampaign))));
+      return res
+        .status(OK)
+        .json(JSONBigInt.parse(JSONBigInt.stringify(rmKeyFrmData(newCampaign, ["last_reply_checkedAt", "last_thread_tweet_id", "contract_id"]))));
     } catch (err) {
       console.log("Error from handleAddNewCampaign:::", err);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -187,3 +189,4 @@ function handleCampaignStats(req: Request, res: Response) {
 }
 
 export default router;
+

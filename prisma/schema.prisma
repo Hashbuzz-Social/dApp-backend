@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model authtoken_token {
+  key       String    @id @db.VarChar(500)
+  created   DateTime  @db.Timestamptz(6)
+  user_id   BigInt    @unique
+  user_user user_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "authtoken_token_user_id_35299eff_fk_user_user_id")
+
+  @@index([key], map: "authtoken_token_key_10f0b77e_like")
+}
+
 model campaign_media {
   id               BigInt     @id @default(autoincrement())
   media_type       String?    @db.VarChar(255)
@@ -101,7 +110,7 @@ model user_user {
   personal_twitter_handle              String?                 @db.VarChar(50)
   business_twitter_handle              String?                 @db.VarChar(50)
   hedera_wallet_id                     String?                 @db.VarChar(50)
-  consent                              Boolean?
+  consent                              Boolean                 @default(false)
   available_budget                     Float                   @default(0)
   twitter_access_token                 String?                 @db.VarChar(200)
   twitter_access_token_secret          String?                 @db.VarChar(200)
@@ -113,6 +122,7 @@ model user_user {
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
   user_twitterlogintemp                user_twitterlogintemp[]
+  authtoken_token                      authtoken_token?
 
   @@unique([id, username])
   @@index([username], map: "user_user_username_e2bdfe0c_like")

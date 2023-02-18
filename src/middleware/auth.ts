@@ -21,26 +21,27 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
     const bearerToken = bearer[1];
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
-      if (err) {
-        return res.status(UNAUTHORIZED).json({
-          error: authTokenInvalidError,
-        });
-      }
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-ignore
-      const username: string = payload.username;
-      // get data in reference of auth token
-      const clientData = prisma.user_user
-        .findUnique({
+      (async () => {
+        if (err) {
+          return res.status(UNAUTHORIZED).json({
+            error: authTokenInvalidError,
+          });
+        }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-ignore
+        const username: string = payload.username;
+        // get data in reference of auth token
+        const clientData = await prisma.user_user.findUnique({
           where: { username },
           select: {
             id: true,
             hedera_wallet_id: true,
             available_budget: true,
             username: true,
-            first_name: true,
+            name: true,
             last_login: true,
-            last_name: true,
+            role: true,
+            profile_image_url: true,
             twitter_access_token: true,
             twitter_access_token_secret: true,
             personal_twitter_handle: true,
@@ -48,17 +49,11 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             business_twitter_access_token_secret: true,
             business_twitter_handle: true,
             consent: true,
-            is_staff: true,
-            is_superuser: true,
           },
-        })
-        .then((data) => {
-          req.currentUser = data!;
-          next();
-        })
-        .catch(() => {
-          throw Error(authTokenInvalidError);
         });
+        req.currentUser = clientData!;
+        next();
+      })();
     });
   } catch (err) {
     return res.status(UNAUTHORIZED).json({
@@ -79,3 +74,4 @@ export default {
   isHavingValidAuthToken,
   isAdminRequesting,
 } as const;
+

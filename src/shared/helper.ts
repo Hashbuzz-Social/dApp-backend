@@ -18,8 +18,6 @@ export const sensitizeUserData = (userData: Partial<user_user>) => {
     "twitter_access_token_secret",
     "last_login",
     "date_joined",
-    "is_superuser",
-    "is_staff",
   ]);
 };
 
