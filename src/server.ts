@@ -45,10 +45,10 @@ if (process.env.NODE_ENV === "production") {
 
 // **** API routes and error handling **** //
 
+
 // Add api router
 app.use("/api", apiRouter);
 app.use("/auth" , authRouter)
-
 // Error handling
 app.use((err: Error | CustomError, _: Request, res: Response, __: NextFunction) => {
   logger.err(err, true);

@@ -32,3 +32,13 @@ export class UserNotFoundError extends CustomError {
         super(UserNotFoundError.Msg, UserNotFoundError.HttpStatus);
     }
 }
+
+export class UnauthorizeError extends CustomError {
+
+    public static readonly Msg = 'Access token for the user is expired login again.';
+    public static readonly HttpStatus = HttpStatusCodes.UNAUTHORIZED;
+
+    constructor(msg?:string) {
+        super(msg??UnauthorizeError.Msg, UnauthorizeError.HttpStatus);
+    }
+}

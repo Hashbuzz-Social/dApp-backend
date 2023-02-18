@@ -68,7 +68,7 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       const oauth_verifier = req.query.oauth_verifier as any as string;
 
       //get the twitter users that are whitelisted
-      const wl_users = process.env.TWITTER_ADMIN_USERNAMES?.split("")?.map((u) => u.trim());
+      const wl_users = process.env.TWITTER_ADMIN_USERNAMES?.split(" ")?.map((u) => u.trim());
       // Obtain the persistent tokens
       // Create a client from temporary tokens
       const { loginResult } = await authLogin({ oauth_token, oauth_verifier });
