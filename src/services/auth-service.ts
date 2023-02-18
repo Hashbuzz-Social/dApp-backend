@@ -8,7 +8,7 @@ const client = new TwitterApi({ appKey: process.env.TWITTER_API_KEY!, appSecret:
 export const twitterAuthUrl = async ({callbackUrl , isBrand , business_owner_id}:{callbackUrl: string, isBrand?:boolean , business_owner_id?:bigint|null}) => {
   // By default, oauth/authenticate are used for auth links, you can change with linkMode
   // property in second parameter to 'authorize' to use oauth/authorize
-  console.log(callbackUrl);
+  // console.log(callbackUrl);
   let authLink;
   if (isBrand) authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
   else authLink = await client.generateAuthLink(callbackUrl);

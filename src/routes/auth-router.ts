@@ -12,18 +12,16 @@ import JSONBigInt from "json-bigint";
 import moment from "moment";
 
 const authRouter = Router();
-const { OK, TEMPORARY_REDIRECT, UNAUTHORIZED } = HttpStatusCodes;
+const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
-    console.log("twitter-login:::");
     const url = await twitterAuthUrl({ callbackUrl: `${process.env.TWITTER_CALLBACK_HOST!}/auth/twitter-return/` });
     return res.status(OK).json({ url });
   })();
 });
 
 authRouter.get("/brand-handle", auth.isHavingValidAuthToken, checkErrResponse, (req: Request, res: Response) => {
-  console.log("twitter-login:::");
   twitterAuthUrl({
     callbackUrl: `${process.env.TWITTER_CALLBACK_HOST!}/auth/business-twitter-return/`,
     isBrand: true,
@@ -33,7 +31,6 @@ authRouter.get("/brand-handle", auth.isHavingValidAuthToken, checkErrResponse, (
       return res.status(OK).json({ url });
     })
     .catch((err) => {
-      console.log("brand-handle:::",err);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       throw Error(err.message);
     });
@@ -70,12 +67,14 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       const oauth_token = req.query.oauth_token as any as string;
       const oauth_verifier = req.query.oauth_verifier as any as string;
 
+      //get the twitter users that are whitelisted
+      const wl_users = process.env.TWITTER_ADMIN_USERNAMES?.split("")?.map((u) => u.trim());
       // Obtain the persistent tokens
       // Create a client from temporary tokens
       const { loginResult } = await authLogin({ oauth_token, oauth_verifier });
       const { client: loggedClient, accessToken, accessSecret } = loginResult;
       const meUser = await loggedClient.v2.me();
-      const { username, id } = meUser.data;
+      const { username, id, name, profile_image_url } = meUser.data;
       const user = await prisma.user_user.upsert({
         where: { username: username },
         create: {
@@ -85,12 +84,11 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
           twitter_access_token: accessToken,
           twitter_access_token_secret: accessSecret,
           available_budget: 0,
-          is_superuser: false,
           is_active: true,
-          is_staff: false,
-          first_name: "",
-          last_name: "",
-          email: "",
+          name,
+          profile_image_url: profile_image_url ?? "",
+          role: wl_users?.includes(username) ? "SUPER_ADMIN" : "GUEST_USER",
+          email: wl_users?.includes(username) ? "su@hashbuzz.social" : "",
           password: "",
           date_joined: moment().toISOString(),
         },
@@ -157,3 +155,4 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
   })();
 });
 export default authRouter;
+
