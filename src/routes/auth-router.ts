@@ -1,16 +1,15 @@
 import auth from "@middleware/auth";
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
 import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
+import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Request, Response, Router } from "express";
 import { body } from "express-validator";
 import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
-import moment from "moment";
 import JSONBigInt from "json-bigint";
-import { sensitizeUserData } from "@shared/helper";
-import { url } from "inspector";
+import moment from "moment";
 
 const authRouter = Router();
 const { OK, TEMPORARY_REDIRECT, UNAUTHORIZED } = HttpStatusCodes;
