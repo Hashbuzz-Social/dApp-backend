@@ -13,9 +13,17 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import moment from "moment";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const authRouter = Router();
 const { OK, TEMPORARY_REDIRECT, BAD_REQUEST } = HttpStatusCodes;
+const passwordCheck: IsStrongPasswordOptions = {
+  minLength: 8,
+  minNumbers: 1,
+  minLowercase: 1,
+  minUppercase: 1,
+  minSymbols: 1,
+};
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
@@ -157,7 +165,7 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
   })();
 });
 
-authRouter.post("/admin-login", body("email").isEmail(), body("password").isStrongPassword(), (req: Request, res: Response) => {
+authRouter.post("/admin-login", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), (req: Request, res: Response) => {
   (async () => {
     const { email, password }: { email: string; password: string } = req.body;
     const user = await prisma.user_user.findMany({
@@ -182,13 +190,11 @@ authRouter.post("/admin-login", body("email").isEmail(), body("password").isStro
     });
     const token = generateAccessToken(updatedUser);
     const refreshToken = generateRefreshToken(updatedUser);
-    return res
-      .status(OK)
-      .json({
-        message: "Logged in successfully.",
-        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-        auth: { token, refreshToken },
-      });
+    return res.status(OK).json({
+      message: "Logged in successfully.",
+      user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
+      auth: { token, refreshToken },
+    });
   })();
 });
 

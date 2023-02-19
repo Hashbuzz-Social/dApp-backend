@@ -1,8 +1,6 @@
 import { user_user } from "@prisma/client";
 import { AccountId } from "@hashgraph/sdk";
 
-
-
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
   listOfKey.forEach((key) => delete d[key]);
@@ -10,16 +8,20 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
 };
 
 export const sensitizeUserData = (userData: Partial<user_user>) => {
-  return rmKeyFrmData(userData, [
-    "salt",
-    "hash",
-    "twitter_access_token",
-    "business_twitter_access_token",
-    "business_twitter_access_token_secret",
-    "twitter_access_token_secret",
-    "last_login",
-    "date_joined",
-  ]);
+  const emailActive = Boolean(userData.email && userData.salt && userData.hash);
+  return {
+    ...rmKeyFrmData(userData, [
+      "salt",
+      "hash",
+      "twitter_access_token",
+      "business_twitter_access_token",
+      "business_twitter_access_token_secret",
+      "twitter_access_token_secret",
+      "last_login",
+      "date_joined",
+    ]),
+    emailActive,
+  };
 };
 
 /***
@@ -56,3 +58,4 @@ export const convertTinyHbarToHbar = (amount: number) => amount / 1e8;
 
 //   return false;
 // });
+
