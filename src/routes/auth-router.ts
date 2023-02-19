@@ -1,6 +1,8 @@
 import auth from "@middleware/auth";
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
 import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
+import passwordService from "@services/password-service";
+import { UserNotFoundError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
@@ -9,10 +11,11 @@ import { body } from "express-validator";
 import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
+import { isEmpty } from "lodash";
 import moment from "moment";
 
 const authRouter = Router();
-const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
+const { OK, TEMPORARY_REDIRECT, BAD_REQUEST } = HttpStatusCodes;
 
 authRouter.get("/twitter-login", (req: Request, res: Response) => {
   (async () => {
@@ -89,7 +92,6 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
           profile_image_url: profile_image_url ?? "",
           role: wl_users?.includes(username) ? "SUPER_ADMIN" : "GUEST_USER",
           email: wl_users?.includes(username) ? "su@hashbuzz.social" : "",
-          password: "",
           date_joined: moment().toISOString(),
         },
         update: {
@@ -154,5 +156,41 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
     }
   })();
 });
+
+authRouter.post("/admin-login", body("email").isEmail(), body("password").isStrongPassword(), (req: Request, res: Response) => {
+  (async () => {
+    const { email, password }: { email: string; password: string } = req.body;
+    const user = await prisma.user_user.findMany({
+      where: {
+        email,
+        role: {
+          in: ["ADMIN", "SUPER_ADMIN"],
+        },
+      },
+    });
+
+    if (!user || isEmpty(user)) {
+      throw new UserNotFoundError();
+    }
+
+    const _user = user[0];
+    const { id } = _user;
+    const { salt, hash } = passwordService.createPassword(password);
+    const updatedUser = await prisma.user_user.update({
+      where: { id },
+      data: { salt, hash },
+    });
+    const token = generateAccessToken(updatedUser);
+    const refreshToken = generateRefreshToken(updatedUser);
+    return res
+      .status(OK)
+      .json({
+        message: "Logged in successfully.",
+        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
+        auth: { token, refreshToken },
+      });
+  })();
+});
+
 export default authRouter;
 

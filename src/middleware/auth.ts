@@ -37,6 +37,8 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             username: true,
             name: true,
             last_login: true,
+            salt:true,
+            hash:true,
             role: true,
             profile_image_url: true,
             twitter_access_token: true,
@@ -61,11 +63,8 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
 };
 
 const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
-  if (req.currentUser?.username && ["Ashh20x", "omprakashMahua"].includes(req.currentUser?.username)) next();
-  next(new UnauthorizeError());
-  // return res.status(UNAUTHORIZED).json({
-  //   error: Error("You are not authorize to accesses."),
-  // });
+  if (req.currentUser?.role && ["SUPER_ADMIN", "ADMIN"].includes(req.currentUser?.role)) next();
+  next(new UnauthorizeError("You have not permission to access this routes"));
 };
 
 export default {

@@ -99,7 +99,8 @@ model user_twitterlogintemp {
 
 model user_user {
   id                                   BigInt                  @id @default(autoincrement())
-  password                             String                  @db.VarChar(128)
+  salt                                 String?                 @db.VarChar
+  hash                                 String?                 @db.VarChar
   last_login                           DateTime?               @db.Timestamptz(6)
   username                             String                  @unique @db.VarChar(150)
   name                                 String                  @db.VarChar(150)

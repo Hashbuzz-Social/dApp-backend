@@ -11,7 +11,8 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
 
 export const sensitizeUserData = (userData: Partial<user_user>) => {
   return rmKeyFrmData(userData, [
-    "password",
+    "salt",
+    "hash",
     "twitter_access_token",
     "business_twitter_access_token",
     "business_twitter_access_token_secret",
