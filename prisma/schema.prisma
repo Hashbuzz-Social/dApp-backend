@@ -99,8 +99,6 @@ model user_twitterlogintemp {
 
 model user_user {
   id                                   BigInt                  @id @default(autoincrement())
-  salt                                 String?                 @db.VarChar
-  hash                                 String?                 @db.VarChar
   last_login                           DateTime?               @db.Timestamptz(6)
   username                             String                  @unique @db.VarChar(150)
   name                                 String                  @db.VarChar(150)
@@ -120,10 +118,12 @@ model user_user {
   personal_twitter_id                  String?                 @db.VarChar(50)
   total_rewarded                       Float                   @default(0)
   role                                 user_roles              @default(GUEST_USER)
+  hash                                 String?                 @db.VarChar
+  salt                                 String?                 @db.VarChar
+  authtoken_token                      authtoken_token?
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
   user_twitterlogintemp                user_twitterlogintemp[]
-  authtoken_token                      authtoken_token?
 
   @@unique([id, username])
   @@index([username], map: "user_user_username_e2bdfe0c_like")
