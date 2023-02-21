@@ -101,9 +101,9 @@ model user_user {
   id                                   BigInt                  @id @default(autoincrement())
   last_login                           DateTime?               @db.Timestamptz(6)
   username                             String                  @unique @db.VarChar(150)
-  name                                 String                  @db.VarChar(150)
+  name                                 String                  @db.VarChar @default("")
   email                                String                  @db.VarChar(254)
-  profile_image_url                    String                  @db.VarChar
+  profile_image_url                    String                  @db.VarChar @default("")
   is_active                            Boolean
   date_joined                          DateTime                @db.Timestamptz(6)
   personal_twitter_handle              String?                 @db.VarChar(50)
