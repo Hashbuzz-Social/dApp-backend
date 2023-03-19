@@ -27,6 +27,11 @@ export const generateRefreshToken = async (user: user_user) => {
   return refreshToken;
 };
 
+export const generateAdminToken = (user: user_user) => {
+  const { id, username, personal_twitter_id , role } = user;
+  return jwt.sign({ id: id.toString(), username, personal_twitter_id , role}, accessSecret!, { expiresIn: "24h" });
+};
+
 // export const validateToken = (token: string) => {
 //   let user:Partial<user_user>;
 //   const user = jwt.verify(token, accessSecret!, (err, payload) => {

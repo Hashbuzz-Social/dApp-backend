@@ -102,7 +102,7 @@ model user_user {
   last_login                           DateTime?               @db.Timestamptz(6)
   username                             String                  @unique @db.VarChar(150)
   name                                 String                  @db.VarChar @default("")
-  email                                String                  @db.VarChar(254)
+  email                                String                  @unique @db.VarChar(254)
   profile_image_url                    String                  @db.VarChar @default("")
   is_active                            Boolean
   date_joined                          DateTime                @db.Timestamptz(6)
@@ -125,7 +125,7 @@ model user_user {
   campaign_twittercard                 campaign_twittercard[]
   user_twitterlogintemp                user_twitterlogintemp[]
 
-  @@unique([id, username])
+  @@unique([id, username, email])
   @@index([username], map: "user_user_username_e2bdfe0c_like")
 }
 

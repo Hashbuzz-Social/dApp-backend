@@ -24,6 +24,7 @@ const passwordCheck: IsStrongPasswordOptions = {
   minSymbols: 1,
 };
 
+
 router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, getAllCard);
 router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
 router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updateEmail);
@@ -42,14 +43,12 @@ function updatePassword(req: Request, res: Response, next: NextFunction) {
   (async () => {
     try {
       const { password, oldPassword, email }: { password: string; oldPassword?: string; email?: string } = req.body;
-      const adminEmail = "su@hashbuzz.social";
-      if (email && email === adminEmail) {
-        throw new ParamMissingError("Email must be updated.");
-      }
 
       if (req.currentUser?.salt && req.currentUser.hash && isEmpty(oldPassword)) {
         throw new ParamMissingError("Password rest is only allowed with old password.");
       }
+
+      // Update normal password.
 
       if (oldPassword && password && req.currentUser?.salt && req.currentUser.hash) {
         //?? match the old password.
@@ -72,7 +71,7 @@ function updatePassword(req: Request, res: Response, next: NextFunction) {
       }
 
       //!! reset password for newly created admin.
-      if (!req.currentUser?.salt && !req.currentUser?.hash && password && req.currentUser?.email === "su@hashbuzz.social") {
+      if (!req.currentUser?.salt && !req.currentUser?.hash && password) {
         // create new password key and salt
         const { salt, hash } = passwordService.createPassword(password);
         //!! Save to db.

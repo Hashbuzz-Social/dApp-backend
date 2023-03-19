@@ -73,7 +73,7 @@ router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: R
   }
 });
 
-router.patch("/update", (req: Request, res: Response) => {
+router.patch("/update-concent", (req: Request, res: Response) => {
   (async () => {
     const { consent } = req.body;
     const updatedUser = await prisma.user_user.update({

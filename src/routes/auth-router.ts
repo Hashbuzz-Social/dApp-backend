@@ -1,12 +1,12 @@
 import auth from "@middleware/auth";
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
-import { generateAccessToken, generateRefreshToken } from "@services/authToken-service";
+import { generateAccessToken, generateAdminToken, generateRefreshToken } from "@services/authToken-service";
 import passwordService from "@services/password-service";
 import { UserNotFoundError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
-import { Request, Response, Router } from "express";
+import { NextFunction, Request, Response, Router } from "express";
 import { body } from "express-validator";
 import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
@@ -16,7 +16,7 @@ import moment from "moment";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const authRouter = Router();
-const { OK, TEMPORARY_REDIRECT, BAD_REQUEST } = HttpStatusCodes;
+const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
   minNumbers: 1,
@@ -62,12 +62,13 @@ authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrRespon
     }
     const { user_user } = tokenDetails;
     const newRefreshToken = await generateRefreshToken(user_user);
-    const accessToken = generateAccessToken(user_user);
-    return res.status(OK).json({
+    const token = generateAccessToken(user_user);
+    const data = {
       users: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user_user))),
-      token: accessToken,
+      token,
       refreshToken: newRefreshToken,
-    });
+    };
+    return res.status(OK).json(data);
   })();
 });
 
@@ -99,7 +100,7 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
           name,
           profile_image_url: profile_image_url ?? "",
           role: wl_users?.includes(username) ? "SUPER_ADMIN" : "GUEST_USER",
-          email: wl_users?.includes(username) ? "su@hashbuzz.social" : "",
+          email: `${username.toLocaleLowerCase()}@hashbuzz.social`,
           date_joined: moment().toISOString(),
         },
         update: {
@@ -117,7 +118,7 @@ authRouter.get("/twitter-return", (req: Request, res: Response) => {
       res.end();
     } catch (error) {
       logger.err(error.message);
-      console.log(error);
+      // console.log(error);
       const message: string = error.message as string;
       res.writeHead(TEMPORARY_REDIRECT, {
         Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,
@@ -140,7 +141,7 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
       const { client: loggedClient, accessToken, accessSecret } = loginResult;
       const meUser = await loggedClient.v2.me();
       const { username, id } = meUser.data;
-      const user = await prisma.user_user.update({
+      await prisma.user_user.update({
         where: {
           id: business_owner_id!,
         },
@@ -165,38 +166,47 @@ authRouter.get("/business-twitter-return", (req: Request, res: Response) => {
   })();
 });
 
-authRouter.post("/admin-login", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), (req: Request, res: Response) => {
-  (async () => {
-    const { email, password }: { email: string; password: string } = req.body;
-    const user = await prisma.user_user.findMany({
-      where: {
-        email,
-        role: {
-          in: ["ADMIN", "SUPER_ADMIN"],
-        },
-      },
-    });
+authRouter.post(
+  "/admin-login",
+  body("email").isEmail(),
+  body("password").isStrongPassword(passwordCheck),
+  (req: Request, res: Response, next: NextFunction) => {
+    (async () => {
+      try {
+        const { email, password }: { email: string; password: string } = req.body;
+        const user = await prisma.user_user.findMany({
+          where: {
+            email,
+            role: {
+              in: ["ADMIN", "SUPER_ADMIN"],
+            },
+          },
+        });
 
-    if (!user || isEmpty(user)) {
-      throw new UserNotFoundError();
-    }
+        if (!user || isEmpty(user)) {
+          throw new UserNotFoundError();
+        }
 
-    const _user = user[0];
-    const { id } = _user;
-    const { salt, hash } = passwordService.createPassword(password);
-    const updatedUser = await prisma.user_user.update({
-      where: { id },
-      data: { salt, hash },
-    });
-    const token = generateAccessToken(updatedUser);
-    const refreshToken = generateRefreshToken(updatedUser);
-    return res.status(OK).json({
-      message: "Logged in successfully.",
-      user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-      auth: { token, refreshToken },
-    });
-  })();
-});
+        const _user = user[0];
+        const { id } = _user;
+        const { salt, hash } = passwordService.createPassword(password);
+        const updatedUser = await prisma.user_user.update({
+          where: { id },
+          data: { salt, hash },
+        });
+        const adminToken = generateAdminToken(updatedUser);
+
+        return res.status(OK).json({
+          message: "Logged in successfully.",
+          user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
+          adminToken,
+        });
+      } catch (err) {
+        next(err);
+      }
+    })();
+  }
+);
 
 export default authRouter;
 
