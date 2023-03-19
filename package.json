@@ -14,8 +14,8 @@
     "preReadyPrisma": "npx prisma db pull",
     "readyPrisma": "npx prisma generate",
     "buildContract": "npx solcjs --bin --abi contract/Hashbuzz.sol -o contractBuild",
-    "db:pull":"npx prisma db pull && npx prisma generate",
-    "db:push":"npx prisma db push && npx prisma generate"
+    "db:pull": "npx prisma db pull && npx prisma generate",
+    "db:push": "npx prisma db push && npx prisma generate"
   },
   "nodemonConfig": {
     "watch": [
@@ -76,7 +76,7 @@
   "author": "hashbuzz-dev",
   "license": "ISC",
   "dependencies": {
-    "@hashgraph/sdk": "^2.17.1",
+    "@hashgraph/sdk": "^2.22.0",
     "@prisma/client": "^4.10.1",
     "command-line-args": "^5.2.1",
     "cookie-parser": "^1.4.6",

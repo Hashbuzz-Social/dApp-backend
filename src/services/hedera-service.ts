@@ -14,7 +14,7 @@ const operatorKey = PrivateKey.fromString(operatorPrivateKey!);
 // ===================================Set Hedera Client Details======================================
 
 if (operatorPrivateKey == null || operatorAccount == null) {
-  console.error("Environment variables HEDERA_PRIVATE_KEY and HEDERA_ACCOUNT_ID must be present");
+  // console.error("Environment variables HEDERA_PRIVATE_KEY and HEDERA_ACCOUNT_ID must be present");
   throw new Error("Environment variables HEDERA_PRIVATE_KEY and HEDERA_ACCOUNT_ID must be present");
 }
 
@@ -48,7 +48,7 @@ async function createNewTopic() {
   const receipt = await txResponse.getReceipt(client);
   //Get the topic ID
   const newTopicId = receipt.topicId;
-  console.log("The new topic ID is " + newTopicId);
+  // console.log("The new topic ID is " + newTopicId);
   return newTopicId;
   //v2.0.0
 }

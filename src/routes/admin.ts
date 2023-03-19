@@ -1,8 +1,9 @@
 import passwordService from "@services/password-service";
 import twitterCardService from "@services/twitterCard-service";
 import { CustomError, ParamMissingError } from "@shared/errors";
+import htsServices from "@services/hts-services";
 import { sensitizeUserData } from "@shared/helper";
-import { checkErrResponse } from "@validator/userRoutes.validator";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response, Router } from "express";
 import { body, query } from "express-validator";
@@ -23,11 +24,6 @@ const passwordCheck: IsStrongPasswordOptions = {
   minUppercase: 1,
   minSymbols: 1,
 };
-
-
-router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, getAllCard);
-router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
-router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updateEmail);
 
 function getAllCard(req: Request, res: Response) {
   (async () => {
@@ -121,5 +117,22 @@ function updateEmail(req: Request, res: Response, next: NextFunction) {
   })();
 }
 
-export default router;
+const handleTokenInfo = (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    try {
+      const tokenId = req.body.tokenId as string;
+      const tokenInfo = await htsServices.getTokenInfo(tokenId);
+      return res.status(OK).json(tokenInfo);
+    } catch (err) {
+      console.log(err)
+      next(err);
+    }
+  })();
+};
 
+router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, getAllCard);
+router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
+router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updateEmail);
+router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfo);
+
+export default router;

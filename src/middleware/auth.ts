@@ -7,6 +7,18 @@ const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
 const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 
+const extractToken = (authStr: string, type: "token1" | "token2"): string => {
+  let token = "";
+  const authStrArr = authStr.split(",");
+
+  if (type === "token1") {
+    token = authStrArr[0].trim().substring(6);
+  } else {
+    token = authStrArr[1].trim().substring(6);
+  }
+  return token;
+};
+
 const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction) => {
   try {
     // Get header token
@@ -16,8 +28,8 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
       throw new UnauthorizeError(authTokenNotPresentErr);
     }
 
-    const bearer = bearerHeader.split(" ");
-    const bearerToken = bearer[1];
+    // const bearer = bearerHeader.split(" ");
+    const bearerToken = extractToken(bearerHeader,"token1");
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
       if (err) {
@@ -72,12 +84,12 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
       throw new UnauthorizeError(authTokenNotPresentErr);
     }
 
-    const bearer = bearerHeader.split(" ");
-    const bearerToken = bearer[2];
+   
+    const bearerToken = extractToken(bearerHeader,"token2");
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
       if (err) {
-        throw new UnauthorizeError(authTokenInvalidError);
+        throw new UnauthorizeError(authTokenInvalidError + "-A-");
       }
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       //@ts-ignore;
@@ -103,4 +115,3 @@ export default {
   isHavingValidAuthToken,
   isAdminRequesting,
 } as const;
-
