@@ -128,7 +128,7 @@ export const deployContract = async () => {
   // Instantiate the smart contract
   const contractInstantiateTx = new ContractCreateTransaction()
     .setBytecodeFileId(bytecodeFileId!)
-    .setGas(100000)
+    .setGas(2000000)
     .setMaxTransactionFee(20)
     .setAdminKey(operatorKey)
     .setContractMemo("Hashbuzz smart contract")

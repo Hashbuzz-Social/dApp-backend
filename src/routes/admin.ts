@@ -1,5 +1,6 @@
 import passwordService from "@services/password-service";
 import twitterCardService from "@services/twitterCard-service";
+import { TokenInfo, TokenType } from "@hashgraph/sdk";
 import { CustomError, ParamMissingError } from "@shared/errors";
 import htsServices from "@services/hts-services";
 import { sensitizeUserData } from "@shared/helper";
@@ -14,6 +15,7 @@ import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const router = Router();
 const { OK, BAD_REQUEST } = statuses;
+const {associateTokenToContract} = htsServices;
 
 const cardTypes = ["Pending", "Completed", "Running"];
 
@@ -124,7 +126,74 @@ const handleTokenInfo = (req: Request, res: Response, next: NextFunction) => {
       const tokenInfo = await htsServices.getTokenInfo(tokenId);
       return res.status(OK).json(tokenInfo);
     } catch (err) {
-      console.log(err)
+      console.log(err);
+      next(err);
+    }
+  })();
+};
+
+const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    try {
+      const tokenId = req.body.tokenId as string;
+      const tokenInfo = req.body.tokenData as TokenInfo;
+      const token_type = req.body.token_type as string;
+      const userId = req.currentUser?.id;
+      if (userId) {
+        await associateTokenToContract(tokenId);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        const token = await prisma.whiteListedTokens.upsert({
+          where: { token_id: tokenId },
+          create: {
+            name: tokenInfo.name,
+            token_id: tokenId,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            //@ts-ignore
+            tokendata: tokenInfo,
+            token_type,
+            added_by: userId,
+          },
+          update: {
+            token_id: tokenId,
+             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            //@ts-ignore
+            tokendata: tokenInfo,
+          },
+        });
+        return res.status(OK).json({ message: "Token added successfully", data: token });
+      }
+      return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
+    } catch (err) {
+      console.log(err);
+      next(err);
+    }
+  })();
+};
+
+const getAllListedTokens = (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    try {
+      const tokenId = req.query.tokenId as any as string;
+      if (tokenId) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        const tokenData = await prisma.whiteListedTokens.findUnique({
+          where: { token_id: tokenId },
+          // select: {
+          //   token_id: true,
+          //   token_type: true,
+          //   tokendata: true,
+          // },
+        });
+        return res.status(OK).json({ tokenId, data: JSONBigInt.parse(JSONBigInt.stringify(tokenData)) });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        const allTokens = await prisma.whiteListedTokens.findMany();
+        return res.status(OK).json({
+          data: JSONBigInt.parse(JSONBigInt.stringify(allTokens)),
+        });
+      }
+    } catch (err) {
+      console.log(err);
       next(err);
     }
   })();
@@ -134,5 +203,14 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, g
 router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
 router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updateEmail);
 router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfo);
+router.post(
+  "/list-token",
+  body("tokenId").custom(checkWalletFormat),
+  body("tokenData").isObject(),
+  body("token_type").isString(),
+  checkErrResponse,
+  whiteListToken
+);
+router.get("/listed-tokens", getAllListedTokens);
 
 export default router;

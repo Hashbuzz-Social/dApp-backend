@@ -101,9 +101,9 @@ model user_user {
   id                                   BigInt                  @id @default(autoincrement())
   last_login                           DateTime?               @db.Timestamptz(6)
   username                             String                  @unique @db.VarChar(150)
-  name                                 String                  @db.VarChar @default("")
+  name                                 String                  @default("") @db.VarChar
   email                                String                  @unique @db.VarChar(254)
-  profile_image_url                    String                  @db.VarChar @default("")
+  profile_image_url                    String                  @default("") @db.VarChar
   is_active                            Boolean
   date_joined                          DateTime                @db.Timestamptz(6)
   personal_twitter_handle              String?                 @db.VarChar(50)
@@ -124,6 +124,7 @@ model user_user {
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
   user_twitterlogintemp                user_twitterlogintemp[]
+  whiteListedTokens                    whiteListedTokens[]
 
   @@unique([id, username, email])
   @@index([username], map: "user_user_username_e2bdfe0c_like")
@@ -139,6 +140,19 @@ model smartcontracts {
   fileId          String    @db.VarChar(50)
 
   @@unique([id, contract_id])
+}
+
+model whiteListedTokens {
+  id         BigInt    @id @default(autoincrement())
+  token_id   String    @db.VarChar(20) @unique
+  name       String    @default("") @db.VarChar
+  added_by   BigInt
+  tokendata  Json?     @db.Json
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  token_type String    @db.VarChar
+  user_user  user_user @relation(fields: [added_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([token_id])
 }
 
 enum network {
