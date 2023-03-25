@@ -1,7 +1,7 @@
 import adminMiddleWare from "@middleware/admin";
 import { sensitizeUserData } from "@shared/helper";
 import { checkWalletFormat } from "@validator/userRoutes.validator";
-import { Request, Response, Router } from "express";
+import { NextFunction, Request, response, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
@@ -104,6 +104,43 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
     return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
   }
 });
+
+const getBalancesForToken = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    (async () => {
+      const tokenList = await prisma.whiteListedTokens.findMany({
+        select: {
+          id: true,
+          token_id: true,
+          token_type: true,
+          token_symbol: true,
+          name: true,
+        },
+      });
+      const userBalancesForTokens = await prisma.user_balances.findMany({
+        where: {
+          user_id: req.currentUser?.id,
+        },
+        select: {
+          token_id: true,
+          entity_balance: true,
+          entity_decimal: true,
+        },
+      });
+
+      const balanceData = tokenList.map((token) => {
+        const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
+        return { ...token, available_balance: balance_record?.entity_balance ?? 0, entity_decimal: balance_record?.entity_decimal ?? 0 };
+      });
+
+      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
+    })();
+  } catch (error) {
+    next(error);
+  }
+};
+
+router.get("/token-balances", getBalancesForToken);
 
 export default router;
 

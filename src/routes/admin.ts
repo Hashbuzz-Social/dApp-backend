@@ -1,17 +1,17 @@
+import { TokenInfo } from "@hashgraph/sdk";
+import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import twitterCardService from "@services/twitterCard-service";
-import { TokenInfo, TokenType } from "@hashgraph/sdk";
-import { CustomError, ParamMissingError } from "@shared/errors";
-import htsServices from "@services/hts-services";
+import { ParamMissingError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
-import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import prisma from "@shared/prisma";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { NextFunction, Request, Response, Router } from "express";
 import { body, query } from "express-validator";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const router = Router();
 const { OK, BAD_REQUEST } = statuses;
@@ -160,7 +160,7 @@ const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
             tokendata: tokenInfo,
           },
         });
-        return res.status(OK).json({ message: "Token added successfully", data: token });
+        return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(token)) });
       }
       return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
     } catch (err) {
