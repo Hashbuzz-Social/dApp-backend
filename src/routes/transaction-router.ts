@@ -2,25 +2,17 @@ import { getCampaignDetailsById } from "@services/campaign-service";
 import { addCampaigner, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
-import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
-import { Request, Response, Router } from "express";
+import { checkErrResponse, checkWalletFormat, validateEntityObject } from "@validator/userRoutes.validator";
+import { Request, Response, Router, NextFunction } from "express";
 import { body } from "express-validator";
 import statusCodes from "http-status-codes";
+import { CreateTranSactionEntity } from "src/@types/custom";
 // import { topUpHandler } from "@controller/transaction.controller";
 
 // Constants
 const router = Router();
 const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
 // Paths
-
-router.post("/create-topup-transaction", body("amounts").isObject(), body("connectedAccountId").custom(checkWalletFormat), checkErrResponse, creteTopUpHandler);
-router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandler);
-router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
-router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
-router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
-router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
-// eslint-disable-next-line @typescript-eslint/no-misused-promises
-router.post("/contract-info", handleContractInfoReq);
 
 //@handlers
 
@@ -86,22 +78,24 @@ function activeContractHandler(req: Request, res: Response) {
  *@description this function is handling crete topup transaction
  */
 
-function creteTopUpHandler(req: Request, res: Response) {
-  (async () => {
-    const payeeId = req.currentUser?.hedera_wallet_id;
-    const connectedAccountId: string = req.body.connectedAccountId;
-    const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
+const creteTopUpHandler = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    (async () => {
+      const entity: CreateTranSactionEntity = req.body.entity;
 
-    if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
-      return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
-    }
-    if (payeeId && connectedAccountId) {
-      const transactionBytes = await createTopUpTransaction(payeeId, amounts, connectedAccountId);
-      return res.status(CREATED).json(transactionBytes);
-    }
-    return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
-  })();
-}
+      const payeeId = req.currentUser?.hedera_wallet_id;
+      const connectedAccountId: string = req.body.connectedAccountId;
+
+      if (payeeId && connectedAccountId) {
+        const transactionBytes = await createTopUpTransaction(entity, connectedAccountId);
+        return res.status(CREATED).json(transactionBytes);
+      }
+      return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
+    })();
+  } catch (err) {
+    next(err);
+  }
+};
 
 function handleCampaignFundAllocation(req: Request, res: Response) {
   (async () => {
@@ -151,4 +145,20 @@ function handleReimbursement(req: Request, res: Response) {
   })();
 }
 
+router.post(
+  "/create-topup-transaction",
+  body("entity").custom(validateEntityObject),
+  body("connectedAccountId").custom(checkWalletFormat),
+  checkErrResponse,
+  creteTopUpHandler
+);
+router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandler);
+router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
+router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
+router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
+router.post("/contract-info", handleContractInfoReq);
+
 export default router;
+

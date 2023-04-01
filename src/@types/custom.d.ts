@@ -17,3 +17,13 @@ export enum user_roles {
   "USER",
   "GUEST_USER",
 }
+
+export type CreateTranSactionEntity = {
+  entityType:string,
+  entityId?:string,
+  amount:{
+    value:number,
+    fee:number,
+    total:number
+  }
+}

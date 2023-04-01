@@ -1,11 +1,13 @@
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction, TokenInfo } from "@hashgraph/sdk";
 import { default as hbarservice, default as hederaService } from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner, sensitizeUserData } from "@shared/helper";
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
-import JSONBigInt from "json-bigint"
+import JSONBigInt from "json-bigint";
+import { CreateTranSactionEntity } from "src/@types/custom";
+import prisma from "@shared/prisma";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
   console.log("updateBalanceToContract::", { payerId, amounts });
@@ -33,16 +35,26 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
   }
 };
 
-export const createTopUpTransaction = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }, connectedAccountId: string) => {
-  console.log("Creating Transaction Hash with:", { payerId, amounts });
+export const createTopUpTransaction = async (entity: CreateTranSactionEntity, connectedAccountId: string) => {
+  // console.log("Creating Transaction Hash with:", { payerId, amounts });
+  const { value, fee, total } = entity.amount;
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
-    const transferTx = new TransferTransaction()
-      .addHbarTransfer(connectedAccountId, -amounts.total / Math.pow(10, 8))
-      .addHbarTransfer(contract_id?.toString(), Hbar.fromTinybars(amounts.topUpAmount))
-      .setTransactionMemo("Hashbuzz contract payment")
-      .addHbarTransfer(hbarservice.operatorId, amounts.fee / Math.pow(10, 8))
-      .setTransactionMemo("Hashbuzz escrow payment");
+    const transferTx = new TransferTransaction().setTransactionMemo("Hashbuzz balance topup");
+    if (entity.entityType === "HBAR")
+      transferTx
+        .addHbarTransfer(connectedAccountId, -total)
+        .addHbarTransfer(contract_id?.toString(), value)
+        .setTransactionMemo("Hashbuzz escrow payment")
+        .addHbarTransfer(hbarservice.operatorId, fee);
+
+    if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
+      transferTx
+        .addTokenTransfer(entity.entityId, connectedAccountId, -total)
+        .addTokenTransfer(entity.entityId, contract_id.toString(), value)
+        .setTransactionMemo("Hashbuzz escrow payment")
+        .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee);
+    }
 
     //signing and returning
     return signingService.signAndMakeBytes(transferTx, connectedAccountId);
@@ -179,7 +191,7 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint) => 
   }
 };
 
-export const reimbursementAmount = async(userId:number|bigint, amounts: number, accountId: string) => {
+export const reimbursementAmount = async (userId: number | bigint, amounts: number, accountId: string) => {
   console.log("Reimbursement::", { amounts, accountId });
   const { contract_id } = await provideActiveContract();
 
@@ -204,9 +216,10 @@ export const reimbursementAmount = async(userId:number|bigint, amounts: number, 
 
     const balance = await queryBalance(accountId);
 
-    const userData = await userService.topUp(userId, parseInt(balance?.balances??"0"),"update");
+    const userData = await userService.topUp(userId, parseInt(balance?.balances ?? "0"), "update");
 
     const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, amounts, "Reimbursement payment from hashbuzz");
-    return { paymentTransaction, contractCallReceipt: receipt , userData:JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
+    return { paymentTransaction, contractCallReceipt: receipt, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };
+
