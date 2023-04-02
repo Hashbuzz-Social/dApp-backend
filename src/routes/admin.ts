@@ -1,6 +1,7 @@
 import { TokenInfo } from "@hashgraph/sdk";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
+import { provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ParamMissingError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
@@ -139,7 +140,10 @@ const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
       const tokenInfo = req.body.tokenData as TokenInfo;
       const token_type = req.body.token_type as string;
       const userId = req.currentUser?.id;
-      if (userId) {
+
+      const {contract_id} = await provideActiveContract()
+
+      if (userId && contract_id) {
         await associateTokenToContract(tokenId);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const token = await prisma.whiteListedTokens.upsert({
@@ -152,6 +156,7 @@ const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
             tokendata: tokenInfo,
             token_type,
             added_by: userId,
+            contract_id:contract_id.toString()
           },
           update: {
             token_id: tokenId,

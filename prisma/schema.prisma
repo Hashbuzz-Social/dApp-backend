@@ -123,52 +123,54 @@ model user_user {
   authtoken_token                      authtoken_token?
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
+  user_balances                        user_balances[]
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
-  user_balances                        user_balances[]
 
   @@unique([id, username, email])
   @@index([username], map: "user_user_username_e2bdfe0c_like")
 }
 
 model smartcontracts {
-  id              BigInt    @id @default(autoincrement())
-  contract_id     String    @db.VarChar(50)
-  is_active       Boolean   @default(true)
-  network         network?
-  created_at      DateTime? @db.Timestamptz(6)
-  contractAddress String    @db.VarChar(150)
-  fileId          String    @db.VarChar(50)
+  id                BigInt              @id @default(autoincrement())
+  contract_id       String              @unique @db.VarChar(50)
+  is_active         Boolean             @default(true)
+  network           network?
+  created_at        DateTime?           @db.Timestamptz(6)
+  contractAddress   String              @db.VarChar(150)
+  fileId            String              @db.VarChar(50)
+  whiteListedTokens whiteListedTokens[]
 
   @@unique([id, contract_id])
 }
 
 model whiteListedTokens {
-  id            BigInt          @id @default(autoincrement())
-  token_id      String          @unique @db.VarChar(20)
-  name          String          @default("") @db.VarChar
-  token_symbol  String          @db.VarChar @default("ℏ")
-  added_by      BigInt
-  tokendata     Json?           @db.Json
-  created_at    DateTime        @default(now()) @db.Timestamptz(6)
-  token_type    String          @db.VarChar
-  user_user     user_user       @relation(fields: [added_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_balances user_balances[]
+  id             BigInt          @id @default(autoincrement())
+  token_id       String          @unique @db.VarChar(20)
+  name           String          @default("") @db.VarChar
+  token_symbol   String          @default("ℏ") @db.VarChar
+  added_by       BigInt
+  contract_id    String          @db.VarChar(50)
+  tokendata      Json?           @db.Json
+  created_at     DateTime        @default(now()) @db.Timestamptz(6)
+  token_type     String          @db.VarChar
+  user_balances  user_balances[]
+  user_user      user_user       @relation(fields: [added_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  smartcontracts smartcontracts  @relation(fields: [contract_id], references: [contract_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([token_id])
 }
 
 model user_balances {
-  id             BigInt   @id @default(autoincrement())
-  user_id        BigInt
-  token_id       BigInt
-  entity_decimal Int      @db.Integer
-  entity_balance Float    @default(0)
-  created_at     DateTime @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime @default(now()) @db.Timestamptz(6)
-
-  user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                BigInt            @id @default(autoincrement())
+  user_id           BigInt
+  token_id          BigInt
+  entity_decimal    Int
+  entity_balance    Float             @default(0)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @db.Timestamptz(6)
   whiteListedTokens whiteListedTokens @relation(fields: [token_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model transactions {
@@ -178,8 +180,7 @@ model transactions {
   network          network
   amount           Float
   status           String          @db.VarChar
-
-  created_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at       DateTime        @default(now()) @db.Timestamptz(6)
 }
 
 enum network {

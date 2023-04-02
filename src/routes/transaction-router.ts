@@ -1,7 +1,7 @@
 import { whiteListedTokens } from "@prisma/client";
 import { getCampaignDetailsById } from "@services/campaign-service";
 import htsServices from "@services/hts-services";
-import { addCampaigner, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
+import { addCampaigner, addUserToContractForHbar, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { formatTokenBalancesObject } from "@shared/helper";
@@ -49,16 +49,17 @@ const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
         //update Balance to db;
         const balanceRecord = await userService.updateTokenBalanceForUser({ amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id });
 
-        return res
-          .status(OK)
-          .json({
-            success: true,
-            message: `Token balance for ${tokenDetails.name}(${tokenDetails.token_symbol}) Update successfully`,
-            balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord),
-          });
+        return res.status(OK).json({
+          success: true,
+          message: `Token balance for ${tokenDetails.name}(${tokenDetails.token_symbol}) Update successfully`,
+          balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord),
+        });
       }
 
       if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
+        if (req.currentUser.available_budget && req.currentUser.available_budget === 0) {
+          await addUserToContractForHbar(accountId);
+        }
         await updateBalanceToContract(accountId, amounts);
         const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
         return res.status(OK).json({ success: true, message: "Hbar(ℏ) budget update successfully", available_budget: topUp.available_budget });

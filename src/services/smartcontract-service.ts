@@ -10,7 +10,7 @@ import {
   Hbar,
   Status,
   ContractInfoQuery,
-  Key
+  Key,
 } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
@@ -254,7 +254,7 @@ export function encodeFunctionCall(functionName: string, parameters: any[]) {
 
 export const queryBalance = async (address: string) => {
   // Execute the contract to check changes in state variable
-  address = "0x" + AccountId.fromString(address).toSolidityAddress();
+  address = AccountId.fromString(address).toSolidityAddress();
 
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
@@ -296,6 +296,26 @@ export const queryCampaignBalance = async (address: string, campaignId: number |
   }
 };
 
+export const addUserToContractForHbar = async (user_wallet_id: string) => {
+  const { contract_id } = await provideActiveContract();
+  const address = AccountId.fromString(user_wallet_id).toSolidityAddress();
+  if (contract_id) {
+    const addUser = new ContractExecuteTransaction()
+      .setContractId(contract_id)
+      .setGas(400000)
+      .setFunction("addUser", new ContractFunctionParameters().addAddress(address))
+      .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
+
+    const addUserTx = await addUser.execute(hederaClient);
+    const addUserRx = await addUserTx.getReceipt(hederaClient);
+    const addUserStatus = addUserRx.status;
+
+    console.log(" - Add user transaction status: " + addUserStatus);
+
+    return addUserStatus;
+  }
+};
+
 export const getSMInfo = async () => {
   const { contract_id } = await provideActiveContract();
   //Create the query
@@ -304,7 +324,8 @@ export const getSMInfo = async () => {
   //Sign the query with the client operator private key and submit to a Hedera network
   const info = await query.execute(hederaClient);
   console.log(info);
-  console.log(info.adminKey)
+  console.log(info.adminKey);
 
   return info;
 };
+
