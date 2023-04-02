@@ -40,7 +40,7 @@ const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
       if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
         const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
 
-        if (!tokenDetails) return res.status(BAD_REQUEST).json({ message: "Wrong parameters provided" });
+        if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong parameters provided" });
         const decimal = tokenDetails.tokendata.decimals;
         const amount = amounts.value * Math.pow(10, decimal);
 
@@ -51,13 +51,17 @@ const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
 
         return res
           .status(OK)
-          .json({ message: "Balance Update successfully", balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord) });
+          .json({
+            success: true,
+            message: `Token balance for ${tokenDetails.name}(${tokenDetails.token_symbol}) Update successfully`,
+            balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord),
+          });
       }
 
       if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
         await updateBalanceToContract(accountId, amounts);
         const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
-        return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
+        return res.status(OK).json({ success: true, message: "Hbar(ℏ) budget update successfully", available_budget: topUp.available_budget });
       }
       return res.status(BAD_REQUEST).json({ message: "Error while processing request." });
     })();
