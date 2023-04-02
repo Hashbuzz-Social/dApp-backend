@@ -1,9 +1,12 @@
+import { whiteListedTokens } from "@prisma/client";
 import { getCampaignDetailsById } from "@services/campaign-service";
+import htsServices from "@services/hts-services";
 import { addCampaigner, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
+import { formatTokenBalancesObject } from "@shared/helper";
 import { checkErrResponse, checkWalletFormat, validateEntityObject } from "@validator/userRoutes.validator";
-import { Request, Response, Router, NextFunction } from "express";
+import { NextFunction, Request, Response, Router } from "express";
 import { body } from "express-validator";
 import statusCodes from "http-status-codes";
 import { CreateTranSactionEntity } from "src/@types/custom";
@@ -22,27 +25,46 @@ const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
  *@description top-up handler
  */
 
-function topUpHandler(req: Request, res: Response) {
-  (async () => {
-    const accountId = req.currentUser?.hedera_wallet_id;
-    const amounts: { topUpAmount: number; fee: number; total: number } = req.body.amounts;
+const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    (async () => {
+      const accountId = req.currentUser?.hedera_wallet_id;
+      const user_id = req.currentUser?.id;
+      const entity: CreateTranSactionEntity = req.body.entity;
+      const amounts = entity.amount;
 
-    if (!amounts?.topUpAmount || !amounts.fee || !amounts.total) {
-      return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
-    }
-
-    if (req.currentUser?.id && accountId) {
-      try {
-        const topUp = await userService.topUp(req.currentUser?.id, amounts.topUpAmount, "increment");
-        await updateBalanceToContract(accountId, amounts);
-        return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
-      } catch (error) {
-        console.log(error);
-        throw error;
+      if (!accountId || !amounts?.value || !amounts.fee || !amounts.total || !user_id) {
+        return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
       }
-    }
-  })();
-}
+
+      if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
+        const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
+
+        if (!tokenDetails) return res.status(BAD_REQUEST).json({ message: "Wrong parameters provided" });
+        const decimal = tokenDetails.tokendata.decimals;
+        const amount = amounts.value * Math.pow(10, decimal);
+
+        //update Balance to contract
+        await htsServices.updateTokenTopupBalanceToContract(accountId, amount, entity.entityId);
+        //update Balance to db;
+        const balanceRecord = await userService.updateTokenBalanceForUser({ amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id });
+
+        return res
+          .status(OK)
+          .json({ message: "Balance Update successfully", balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord) });
+      }
+
+      if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
+        await updateBalanceToContract(accountId, amounts);
+        const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
+        return res.status(OK).json({ response: "success", available_budget: topUp.available_budget });
+      }
+      return res.status(BAD_REQUEST).json({ message: "Error while processing request." });
+    })();
+  } catch (err) {
+    next(err);
+  }
+};
 
 //===============================
 
@@ -152,7 +174,7 @@ router.post(
   checkErrResponse,
   creteTopUpHandler
 );
-router.post("/top-up", body("amounts").isObject(), checkErrResponse, topUpHandler);
+router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").isString(), checkErrResponse, topUpHandler);
 router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
 router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);

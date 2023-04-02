@@ -9,8 +9,8 @@ import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import prisma from "@shared/prisma";
 
-export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
-  console.log("updateBalanceToContract::", { payerId, amounts });
+export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
+  // console.log("updateBalanceToContract::", { payerId, amounts });
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
@@ -18,9 +18,9 @@ export const updateBalanceToContract = async (payerId: string, amounts: { topUpA
     const contractAddress = ContractId.fromString(contract_id.toString());
     const deposit = true;
 
-    console.log("tinyAmount is added to contract", amounts.topUpAmount);
+    // console.log("tinyAmount is added to contract", amounts.value*1e8);
 
-    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts.topUpAmount, deposit]);
+    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts.value*1e8, deposit]);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)

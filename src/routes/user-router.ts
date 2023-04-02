@@ -1,16 +1,16 @@
 import adminMiddleWare from "@middleware/admin";
-import { sensitizeUserData } from "@shared/helper";
+import { formatTokenBalancesObject, sensitizeUserData } from "@shared/helper";
 import { checkWalletFormat } from "@validator/userRoutes.validator";
-import { NextFunction, Request, response, Response, Router } from "express";
+import { NextFunction, Request, Response, Router } from "express";
 import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 
+import { totalPendingReward } from "@services/reward-service";
 import { queryBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
-import { body, validationResult } from "express-validator";
-import { totalPendingReward } from "@services/reward-service";
 import prisma from "@shared/prisma";
+import { body, validationResult } from "express-validator";
 
 // Constants
 const router = Router();
@@ -108,29 +108,15 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
 const getBalancesForToken = (req: Request, res: Response, next: NextFunction) => {
   try {
     (async () => {
-      const tokenList = await prisma.whiteListedTokens.findMany({
-        select: {
-          id: true,
-          token_id: true,
-          token_type: true,
-          token_symbol: true,
-          name: true,
-        },
-      });
+      const tokenList = await prisma.whiteListedTokens.findMany();
       const userBalancesForTokens = await prisma.user_balances.findMany({
         where: {
           user_id: req.currentUser?.id,
         },
-        select: {
-          token_id: true,
-          entity_balance: true,
-          entity_decimal: true,
-        },
       });
-
       const balanceData = tokenList.map((token) => {
         const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
-        return { ...token, available_balance: balance_record?.entity_balance ?? 0, entity_decimal: balance_record?.entity_decimal ?? 0 };
+        return formatTokenBalancesObject(token, balance_record);
       });
 
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
