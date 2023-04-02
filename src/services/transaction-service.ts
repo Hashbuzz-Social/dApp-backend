@@ -49,11 +49,16 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
         .addHbarTransfer(hbarservice.operatorId, fee);
 
     if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
-      transferTx
-        .addTokenTransfer(entity.entityId, connectedAccountId, -total)
-        .addTokenTransfer(entity.entityId, contract_id.toString(), value)
-        .setTransactionMemo("Hashbuzz escrow payment")
-        .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee);
+      const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: entity.entityId } });
+      if (token && token.tokendata) {
+        const tokenInfo: TokenInfo = JSON.parse(JSON.stringify(token.tokendata));
+        const decimal = parseInt("" + tokenInfo.decimals);
+        transferTx
+          .addTokenTransfer(entity.entityId, connectedAccountId, -(total * Math.pow(10, decimal)))
+          .addTokenTransfer(entity.entityId, contract_id.toString(), value * Math.pow(10, decimal))
+          .setTransactionMemo("Hashbuzz escrow payment")
+          .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee * Math.pow(10, decimal));
+      }
     }
 
     //signing and returning
