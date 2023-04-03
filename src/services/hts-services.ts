@@ -48,11 +48,12 @@ const associateTokenToContract = async (tokenId: string) => {
 };
 
 const updateTokenTopupBalanceToContract = async (payerId: string, amount: number, token_id: string) => {
+    console.log("updateTokenTopupBalanceToContract::->",{payerId , amount , token_id})
   const { contract_id } = await provideActiveContract();
 
   //if a active contract is available for interaction
   if (contract_id) {
-    const payerAddress = "0x" + AccountId.fromString(payerId).toSolidityAddress();
+    const payerAddress = AccountId.fromString(payerId).toSolidityAddress();
     const tokenAddress = AccountId.fromString(token_id).toSolidityAddress();
     const topupAmount = new BigNumber(amount);
 

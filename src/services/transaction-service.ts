@@ -10,18 +10,18 @@ import { CreateTranSactionEntity } from "src/@types/custom";
 import prisma from "@shared/prisma";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
-  // console.log("updateBalanceToContract::", { payerId, amounts });
+  console.log("updateBalanceToContract::", { payerId, amounts });
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
     const address = AccountId.fromString(payerId).toSolidityAddress();
-    // const contractAddress = ContractId.fromString(contract_id.toString());
+    const contractAddress = ContractId.fromString(contract_id.toString());
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8)
 
     const tokenTransfer = new ContractExecuteTransaction()
-      .setContractId(contract_id)
-      .setGas(2000000)
+      .setContractId(contractAddress)
+      .setGas(5000000)
       .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address).addUint256(amount).addBool(deposit))
       .setTransactionMemo(`Top up from the account ${payerId}`)
 

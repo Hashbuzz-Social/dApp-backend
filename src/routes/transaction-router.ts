@@ -1,7 +1,7 @@
 import { whiteListedTokens } from "@prisma/client";
 import { getCampaignDetailsById } from "@services/campaign-service";
 import htsServices from "@services/hts-services";
-import { addCampaigner, addUserToContractForHbar, getSMInfo, provideActiveContract } from "@services/smartcontract-service";
+import { addCampaigner, addUserToContractForHbar, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { formatTokenBalancesObject } from "@shared/helper";
@@ -38,6 +38,7 @@ const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
       }
 
       if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
+        console.log("topUpHandler::topUpHandler")
         const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
 
         if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong parameters provided" });
@@ -57,7 +58,7 @@ const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
       }
 
       if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
-        if (req.currentUser.available_budget && req.currentUser.available_budget === 0) {
+        if (req.currentUser.available_budget === 0) {
           await addUserToContractForHbar(accountId);
         }
         await updateBalanceToContract(accountId, amounts);
@@ -147,13 +148,7 @@ function handleCampaignFundAllocation(req: Request, res: Response) {
   })();
 }
 
-function handleContractInfoReq(_: Request, res: Response) {
-  (async () => {
-    const info = await getSMInfo();
-    if (info) return res.status(OK).json(info);
-    return res.status(BAD_REQUEST).json({ error: true });
-  })();
-}
+
 
 function handleReimbursement(req: Request, res: Response) {
   (async () => {
@@ -185,7 +180,7 @@ router.post("/activeContractId", body("accountId").custom(checkWalletFormat), ch
 router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
 router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-router.post("/contract-info", handleContractInfoReq);
+
 
 export default router;
 

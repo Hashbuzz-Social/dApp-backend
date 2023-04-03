@@ -1,7 +1,7 @@
 import { TokenInfo } from "@hashgraph/sdk";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
-import { provideActiveContract } from "@services/smartcontract-service";
+import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ParamMissingError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
@@ -16,7 +16,7 @@ import { isEmpty } from "lodash";
 
 const router = Router();
 const { OK, BAD_REQUEST } = statuses;
-const {associateTokenToContract} = htsServices;
+const { associateTokenToContract } = htsServices;
 
 const cardTypes = ["Pending", "Completed", "Running"];
 
@@ -141,7 +141,7 @@ const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
       const token_type = req.body.token_type as string;
       const userId = req.currentUser?.id;
 
-      const {contract_id} = await provideActiveContract()
+      const { contract_id } = await provideActiveContract();
 
       if (userId && contract_id) {
         await associateTokenToContract(tokenId);
@@ -156,11 +156,12 @@ const whiteListToken = (req: Request, res: Response, next: NextFunction) => {
             tokendata: tokenInfo,
             token_type,
             added_by: userId,
-            contract_id:contract_id.toString()
+            token_symbol: tokenInfo.symbol,
+            contract_id: contract_id.toString(),
           },
           update: {
             token_id: tokenId,
-             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
             tokendata: tokenInfo,
           },
@@ -204,6 +205,18 @@ const getAllListedTokens = (req: Request, res: Response, next: NextFunction) => 
   })();
 };
 
+const handleActiveContractInfoReq = (_: Request, res: Response, next: NextFunction) => {
+  try {
+    (async () => {
+      const info = await getSMInfo();
+      if (info) return res.status(OK).json(info);
+      return res.status(BAD_REQUEST).json({ error: true });
+    })();
+  } catch (err) {
+    next(err);
+  }
+};
+
 router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, getAllCard);
 router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
 router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updateEmail);
@@ -217,5 +230,7 @@ router.post(
   whiteListToken
 );
 router.get("/listed-tokens", getAllListedTokens);
+router.get("/active-contract", handleActiveContractInfoReq);
 
 export default router;
+
