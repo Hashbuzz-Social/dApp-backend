@@ -10,12 +10,18 @@ const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 const extractToken = (authStr: string, type: "token1" | "token2"): string => {
   let token = "";
   const authStrArr = authStr.split(",");
-
-  if (type === "token1") {
-    token = authStrArr[0].trim().substring(6);
-  } else {
-    token = authStrArr[1].trim().substring(6);
+  switch (type) {
+    case "token1":
+      token = authStrArr[0].trim().substring(6);
+      break;
+    case "token2":
+      token = authStrArr[1] && authStrArr[1].length > 6 ? authStrArr[1].trim().substring(6) : "";
+      break;
+    default:
+      token = "";
+      break;
   }
+
   return token;
 };
 
@@ -29,7 +35,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
     }
 
     // const bearer = bearerHeader.split(" ");
-    const bearerToken = extractToken(bearerHeader,"token1");
+    const bearerToken = extractToken(bearerHeader, "token1");
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
       if (err) {
@@ -84,8 +90,7 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
       throw new UnauthorizeError(authTokenNotPresentErr);
     }
 
-   
-    const bearerToken = extractToken(bearerHeader,"token2");
+    const bearerToken = extractToken(bearerHeader, "token2");
 
     jwt.verify(bearerToken, accessSecret!, (err, payload) => {
       if (err) {
@@ -103,15 +108,9 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-// console.log(req.currentUser?.role && ["SUPER_ADMIN", "ADMIN"].includes(req.currentUser?.role));
-//   if (req.currentUser?.role && ["SUPER_ADMIN", "ADMIN"].includes(req.currentUser?.role)) {
-//     next();
-//   } else {
-//     next(new UnauthorizeError("You have not permission to access this routes"));
-//   }
-// };
 
 export default {
   isHavingValidAuthToken,
   isAdminRequesting,
 } as const;
+

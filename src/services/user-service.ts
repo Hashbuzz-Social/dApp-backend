@@ -109,6 +109,43 @@ const getUserByTwitterId = async (personal_twitter_id: string) => {
   });
 };
 
+const updateTokenBalanceForUser = async ({
+  amount,
+  operation,
+  token_id,
+  user_id,
+  decimal,
+}: {
+  amount: number;
+  operation: "increment" | "decrement";
+  token_id: number | bigint;
+  user_id: number | bigint;
+  decimal: number;
+}) => {
+  const balRecord = await prisma.user_balances.findFirst({ where: { user_id, token_id } });
+  if (balRecord) {
+    return await prisma.user_balances.update({
+      data: {
+        entity_balance: {
+          [operation]: amount,
+        },
+      },
+      where: {
+        id: balRecord.id,
+      },
+    });
+  } else {
+    return await prisma.user_balances.create({
+      data: {
+        user_id,
+        entity_balance: amount,
+        entity_decimal: decimal,
+        token_id,
+      },
+    });
+  }
+};
+
 export default {
   getAll: getAllUser,
   updateWalletId,
@@ -117,4 +154,6 @@ export default {
   getUserByTwitterId,
   totalReward,
   getUserByUserName,
+  updateTokenBalanceForUser
 } as const;
+

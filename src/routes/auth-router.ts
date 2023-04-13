@@ -8,15 +8,15 @@ import prisma from "@shared/prisma";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { NextFunction, Request, Response, Router } from "express";
 import { body } from "express-validator";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
 import HttpStatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import moment from "moment";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const authRouter = Router();
-const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
+const { OK, TEMPORARY_REDIRECT , BAD_REQUEST } = HttpStatusCodes;
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
   minNumbers: 1,

@@ -9,26 +9,32 @@ import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import prisma from "@shared/prisma";
 
-export const updateBalanceToContract = async (payerId: string, amounts: { topUpAmount: number; fee: number; total: number }) => {
+export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
   console.log("updateBalanceToContract::", { payerId, amounts });
   const { contract_id } = await provideActiveContract();
 
   if (contract_id) {
-    const address = "0x" + AccountId.fromString(payerId).toSolidityAddress();
+    const address = AccountId.fromString(payerId).toSolidityAddress();
     const contractAddress = ContractId.fromString(contract_id.toString());
     const deposit = true;
+    const amount = Math.floor(amounts.value * 1e8)
 
-    console.log("tinyAmount is added to contract", amounts.topUpAmount);
+    const gas =  new Hbar(1.75).toTinybars().toNumber();
+    console.log(gas)
 
-    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts.topUpAmount, deposit]);
-
-    const contractExBalTx = new ContractExecuteTransaction()
+    const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz balance update call")
-      .setGas(1000000);
-    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    return { transactionId: exResult.transactionId, recipt: await exResult.getReceipt(hbarservice.hederaClient) };
+      .setGas(gas)
+      .setMaxTransactionFee(2)
+      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address).addUint256(amount).addBool(deposit))
+      .setTransactionMemo(`Top up from the account ${payerId}`)
+
+    const submitTransfer = await tokenTransfer.execute(hbarservice.hederaClient);
+    const tokenTransferRx = await submitTransfer.getReceipt(hbarservice.hederaClient);
+    const tokenStatus = tokenTransferRx.status;
+    console.log(" - The updated transaction status " + tokenStatus);
+
+    return { transactionId: submitTransfer.transactionId, recipt: tokenTransferRx };
     // return signingService.signAndMakeBytes(contractExBalTx, payerId);
   } else {
     throw new Error("Contract id not found");

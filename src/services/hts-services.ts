@@ -1,8 +1,10 @@
 import hederaService from "@services/hedera-service";
-import { TokenInfoQuery, ContractExecuteTransaction, ContractFunctionParameters, AccountId } from "@hashgraph/sdk";
+import { TokenInfoQuery, ContractExecuteTransaction, ContractFunctionParameters, AccountId, TokenInfo } from "@hashgraph/sdk";
 import { provideActiveContract } from "./smartcontract-service";
+import prisma from "@shared/prisma";
+import { BigNumber } from "bignumber.js";
 
-const { hederaClient } = hederaService;
+const { hederaClient, operatorKey } = hederaService;
 
 const getTokenInfo = async (tokenId: string) => {
   const query = new TokenInfoQuery().setTokenId(tokenId);
@@ -45,4 +47,51 @@ const associateTokenToContract = async (tokenId: string) => {
   }
 };
 
-export default { getTokenInfo, associateTokenToContract };
+const updateTokenTopupBalanceToContract = async (payerId: string, amount: number, token_id: string) => {
+    console.log("updateTokenTopupBalanceToContract::->",{payerId , amount , token_id})
+  const { contract_id } = await provideActiveContract();
+
+  //if a active contract is available for interaction
+  if (contract_id) {
+    const payerAddress = AccountId.fromString(payerId).toSolidityAddress();
+    const tokenAddress = AccountId.fromString(token_id).toSolidityAddress();
+    const topupAmount = new BigNumber(amount);
+
+    //!!! create a contract execution transaction
+    const transferToken = new ContractExecuteTransaction()
+      .setContractId(contract_id)
+      .setGas(500000)
+      .setFunction("transferTokenToContract", new ContractFunctionParameters().addAddress(tokenAddress).addAddress(payerAddress).addInt64(topupAmount));
+
+    const transferTokenSign = await transferToken.freezeWith(hederaClient).sign(operatorKey);
+
+    const transferTokenTx = await transferTokenSign.execute(hederaClient);
+    const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
+    const tokenStatus = transferTokenRx.status;
+    return tokenStatus;
+    // console.log(" - The transfer transaction status " + tokenStatus);
+    // /////////////////////////check contract Balance /////////////////////////
+    // const query = new ContractInfoQuery().setContractId(contractId);
+
+    // const info = await query.execute(client);
+    // const balance = info.tokenRelationships.get(tokenId).balance;
+
+    // console.log(
+    //   " - The contract balance for token " + tokenId + " is: " + balance
+    // );
+    // }
+  }
+};
+
+const getEntityDetailsByTokenId = async (token_id: string) => {
+  const entityData = await prisma.whiteListedTokens.findUnique({ where: { token_id } });
+  if (entityData) {
+    const { tokendata, ...rest } = entityData;
+    const tokenInfo: TokenInfo = JSON.parse(JSON.stringify(tokendata));
+    return { ...rest, tokendata: tokenInfo };
+  }
+  return false;
+};
+
+export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId  , updateTokenTopupBalanceToContract};
+

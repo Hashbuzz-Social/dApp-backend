@@ -1,5 +1,5 @@
-import { user_user } from "@prisma/client";
 import { AccountId } from "@hashgraph/sdk";
+import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -46,6 +46,17 @@ export const buildCampaignAddress = (campaignerAddress: string, campaign_id: str
 
 export const convertToTinyHbar = (amount: string) => Math.round(parseFloat(amount) * 1e8);
 export const convertTinyHbarToHbar = (amount: number) => amount / 1e8;
+
+export const formatTokenBalancesObject = (token: whiteListedTokens, balance_record?: user_balances) => {
+  const { name, token_id, token_symbol, token_type } = token;
+  if (balance_record) {
+    const decimal = balance_record.entity_decimal;
+    const available_balance = parseFloat(((balance_record.entity_balance ?? 0) / Math.pow(10, decimal)).toFixed(4));
+    return { name, token_id, token_symbol, token_type, available_balance };
+  } else {
+    return { name, token_id, token_symbol, token_type, available_balance: 0 };
+  }
+};
 
 // const filterTwitterEngagementsData = () => arr.filter(element => {
 //   const isDuplicate = uniqueIds.includes(element.id);

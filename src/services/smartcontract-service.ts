@@ -4,13 +4,13 @@ import {
   ContractCreateTransaction,
   ContractExecuteTransaction,
   ContractFunctionParameters,
+  ContractInfoQuery,
   FileAppendTransaction,
   FileCreateTransaction,
   FileId,
   Hbar,
   Status,
-  ContractInfoQuery,
-  Key
+  ContractCreateFlow,
 } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
@@ -21,7 +21,7 @@ import Web3 from "web3";
 
 const web3 = new Web3();
 // import JSONBigInt from "json-bigint";
-const { hederaClient, operatorKey, network } = hederaService;
+const { hederaClient, operatorKey, network, operatorId } = hederaService;
 
 const copyBytes = (start: number, length: number, bytes: Buffer) => {
   console.debug("contractDeploy :: copyBytes");
@@ -120,33 +120,34 @@ const uploadFile = async () => {
 };
 
 export const deployContract = async () => {
-  const bytecodeFileId = (await uploadFile()).fileId;
-
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  console.log(`- The bytecode file ID is: ${bytecodeFileId} \n`);
-
-  // Instantiate the smart contract
-  const contractInstantiateTx = new ContractCreateTransaction()
-    .setBytecodeFileId(bytecodeFileId!)
-    .setGas(2000000)
-    .setMaxTransactionFee(20)
-    .setAdminKey(operatorKey)
-    .setContractMemo("Hashbuzz smart contract")
-    .setTransactionMemo("Hashbuzz contract deploy transaction");
-
-  const contractInstantiateSubmit = await contractInstantiateTx.execute(hederaClient);
-
-  const contractInstantiateRx = await contractInstantiateSubmit.getReceipt(hederaClient);
-
-  const contractId = contractInstantiateRx.contractId;
-  const contractAddress = contractId?.toSolidityAddress();
-
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  console.log(`- The smart contract ID is: ${contractId} \n`);
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  console.log(`- Smart contract ID in Solidity format: ${contractAddress} \n`);
-
   try {
+    const bytecodeFileId = (await uploadFile()).fileId;
+
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    // console.log(`- The bytecode file ID is: ${bytecodeFileId} \n`);
+
+    // Instantiate the smart contract
+    const contractInstantiateTx = new ContractCreateTransaction()
+      .setBytecodeFileId(bytecodeFileId!)
+      .setGas(2000000)
+      .setConstructorParameters(new ContractFunctionParameters().addAddress(operatorId.toSolidityAddress()))
+      .setMaxTransactionFee(20)
+      .setAdminKey(operatorKey)
+      .setContractMemo("Hashbuzz smart contract")
+      .setTransactionMemo("Hashbuzz contract deploy transaction");
+
+    const contractInstantiateSubmit = await contractInstantiateTx.execute(hederaClient);
+
+    const contractInstantiateRx = await contractInstantiateSubmit.getReceipt(hederaClient);
+
+    const contractId = contractInstantiateRx.contractId;
+    const contractAddress = contractId?.toSolidityAddress();
+
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    console.log(`- The smart contract ID is: ${contractId} \n`);
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    console.log(`- Smart contract ID in Solidity format: ${contractAddress} \n`);
+
     await prisma.smartcontracts.create({
       data: {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -159,11 +160,44 @@ export const deployContract = async () => {
         fileId: `${bytecodeFileId?.toString()}`,
       },
     });
+    return { contract_id: contractId, contractAddress };
   } catch (error) {
     logger.err(error);
+    throw error;
   }
+};
 
-  return { contract_id: contractId, contractAddress };
+export const deployContractNew = async () => {
+  console.log("deployContractNew::->")
+  try {
+    /////////////////////DEPLOY THE SMART CONTRACT ////////////////////////////////
+    const createContract = new ContractCreateFlow()
+      .setGas(5000000)
+      .setBytecode(contractByteCode)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
+      .setConstructorParameters("constructor", new ContractFunctionParameters().addAddress(operatorId.toSolidityAddress()))
+      .setAdminKey(operatorKey);
+    const createSubmit = await createContract.execute(hederaClient);
+    const createRx = await createSubmit.getReceipt(hederaClient);
+    const contractId = createRx.contractId;
+    const fileId = createRx.fileId?.toString();
+      await prisma.smartcontracts.create({
+        data: {
+          contractAddress: contractId?.toSolidityAddress()??"",
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          contract_id: `${contractId}`,
+          network,
+          fileId:fileId??"",
+          created_at: new Date().toISOString(),
+        },
+      });
+      console.log(" - The new contract ID is " + contractId);
+    return { contract_id: contractId, contractAddress: contractId?.toSolidityAddress() };
+  } catch (err) {
+    logger.err(err);
+    throw err;
+  }
 };
 
 export const provideActiveContract = async () => {
@@ -181,7 +215,7 @@ export const provideActiveContract = async () => {
     return { contract_id, contractAddress };
   } else {
     logger.info("Intiate new contract crete::");
-    return await deployContract();
+    return await deployContractNew();
   }
 };
 
@@ -254,7 +288,7 @@ export function encodeFunctionCall(functionName: string, parameters: any[]) {
 
 export const queryBalance = async (address: string) => {
   // Execute the contract to check changes in state variable
-  address = "0x" + AccountId.fromString(address).toSolidityAddress();
+  address = AccountId.fromString(address).toSolidityAddress();
 
   const { contract_id } = await provideActiveContract();
   if (contract_id) {
@@ -296,15 +330,37 @@ export const queryCampaignBalance = async (address: string, campaignId: number |
   }
 };
 
-export const getSMInfo = async () => {
+export const addUserToContractForHbar = async (user_wallet_id: string) => {
+  console.log("addUserToContractForHbar:::->user_wallet_id", user_wallet_id);
   const { contract_id } = await provideActiveContract();
-  //Create the query
-  const query = new ContractInfoQuery().setContractId(contract_id!);
+  const address = AccountId.fromString(user_wallet_id).toSolidityAddress();
+  if (contract_id) {
+    const addUser = new ContractExecuteTransaction()
+      .setContractId(contract_id)
+      .setGas(400000)
+      .setFunction("addUser", new ContractFunctionParameters().addAddress(address))
+      .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
 
-  //Sign the query with the client operator private key and submit to a Hedera network
-  const info = await query.execute(hederaClient);
-  console.log(info);
-  console.log(info.adminKey)
+    const addUserTx = await addUser.execute(hederaClient);
+    const addUserRx = await addUserTx.getReceipt(hederaClient);
+    const addUserStatus = addUserRx.status;
 
-  return info;
+    console.log(" - Add user transaction status: " + addUserStatus);
+
+    return addUserStatus;
+  }
 };
+
+export const getSMInfo = async () => {
+  const activeContract = await provideActiveContract();
+  //Create the query
+  // const query = new ContractInfoQuery().setContractId(contract_id!);
+
+  // //Sign the query with the client operator private key and submit to a Hedera network
+  // const info = await query.execute(hederaClient);
+  // console.log(info);
+  // console.log(info.adminKey);
+
+  return activeContract;
+};
+

@@ -1,16 +1,19 @@
 import adminMiddleWare from "@middleware/admin";
-import { sensitizeUserData } from "@shared/helper";
-import { checkWalletFormat } from "@validator/userRoutes.validator";
-import { NextFunction, Request, response, Response, Router } from "express";
+import { formatTokenBalancesObject, sensitizeUserData } from "@shared/helper";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
+import { NextFunction, Request, Response, Router } from "express";
+import passwordService from "@services/password-service";
 import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 
+import { totalPendingReward } from "@services/reward-service";
 import { queryBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
-import { body, validationResult } from "express-validator";
-import { totalPendingReward } from "@services/reward-service";
 import prisma from "@shared/prisma";
+import { body, validationResult } from "express-validator";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
+import { ParamMissingError } from "@shared/errors";
 
 // Constants
 const router = Router();
@@ -22,6 +25,14 @@ export const p = {
   update: "/update",
   delete: "/delete/:id",
 } as const;
+
+const passwordCheck: IsStrongPasswordOptions = {
+  minLength: 8,
+  minNumbers: 1,
+  minLowercase: 1,
+  minUppercase: 1,
+  minSymbols: 1,
+};
 
 /**
  * Get all users.
@@ -108,29 +119,15 @@ router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("
 const getBalancesForToken = (req: Request, res: Response, next: NextFunction) => {
   try {
     (async () => {
-      const tokenList = await prisma.whiteListedTokens.findMany({
-        select: {
-          id: true,
-          token_id: true,
-          token_type: true,
-          token_symbol: true,
-          name: true,
-        },
-      });
+      const tokenList = await prisma.whiteListedTokens.findMany();
       const userBalancesForTokens = await prisma.user_balances.findMany({
         where: {
           user_id: req.currentUser?.id,
         },
-        select: {
-          token_id: true,
-          entity_balance: true,
-          entity_decimal: true,
-        },
       });
-
       const balanceData = tokenList.map((token) => {
         const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
-        return { ...token, available_balance: balance_record?.entity_balance ?? 0, entity_decimal: balance_record?.entity_decimal ?? 0 };
+        return formatTokenBalancesObject(token, balance_record);
       });
 
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
@@ -140,6 +137,43 @@ const getBalancesForToken = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+const updatePassword = (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    try {
+      const { password, email }: { password: string; email?: string } = req.body;
+
+      if (!email || !password) {
+        throw new ParamMissingError("Email and password is required felid");
+      }
+
+      const role = req.currentUser?.role;
+      const salt = req.currentUser?.salt;
+      const hash = req.currentUser?.hash;
+
+      //!! reset password for newly created admin.
+      if (role && ["ADMIN", "SUPER_ADMIN"].includes(role) && !salt && !hash) {
+        // create new password key and salt
+        const { salt, hash } = passwordService.createPassword(password);
+        //!! Save to db.
+        const updatedUser = await prisma.user_user.update({
+          where: { id: req.currentUser?.id },
+          data: {
+            salt,
+            hash,
+            email,
+          },
+        });
+        return res.status(OK).json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+      }
+
+      res.status(BAD_REQUEST).json({ message: "Handler function not found" });
+    } catch (err) {
+      next(err);
+    }
+  })();
+};
+
+router.put("/update-password", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
 router.get("/token-balances", getBalancesForToken);
 
 export default router;
