@@ -19,9 +19,13 @@ export const updateBalanceToContract = async (payerId: string, amounts: { value:
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8)
 
+    const gas =  new Hbar(1.75).toTinybars().toNumber();
+    console.log(gas)
+
     const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(5000000)
+      .setGas(gas)
+      .setMaxTransactionFee(2)
       .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address).addUint256(amount).addBool(deposit))
       .setTransactionMemo(`Top up from the account ${payerId}`)
 
