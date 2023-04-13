@@ -124,7 +124,6 @@ model user_user {
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
   user_balances                        user_balances[]
-  user_balances                        user_balances[]
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
 
@@ -166,12 +165,11 @@ model user_balances {
   id                BigInt            @id @default(autoincrement())
   user_id           BigInt
   token_id          BigInt
-  entity_decimal    String            @db.VarChar(2)
+  entity_decimal    Int
   entity_balance    Float             @default(0)
   created_at        DateTime          @default(now()) @db.Timestamptz(6)
   updated_at        DateTime          @default(now()) @db.Timestamptz(6)
   whiteListedTokens whiteListedTokens @relation(fields: [token_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -182,7 +180,6 @@ model transactions {
   network          network
   amount           Float
   status           String          @db.VarChar
-  created_at       DateTime        @default(now()) @db.Timestamptz(6)
   created_at       DateTime        @default(now()) @db.Timestamptz(6)
 }
 
