@@ -60,7 +60,7 @@ const updateTokenTopupBalanceToContract = async (payerId: string, amount: number
     //!!! create a contract execution transaction
     const transferToken = new ContractExecuteTransaction()
       .setContractId(contract_id)
-      .setGas(500000)
+      .setGas(2000000)
       .setFunction("transferTokenToContract", new ContractFunctionParameters().addAddress(tokenAddress).addAddress(payerAddress).addInt64(topupAmount));
 
     const transferTokenSign = await transferToken.freezeWith(hederaClient).sign(operatorKey);
