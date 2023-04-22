@@ -50,7 +50,7 @@ export const convertTinyHbarToHbar = (amount: number) => amount / 1e8;
 export const formatTokenBalancesObject = (token: whiteListedTokens, balance_record?: user_balances) => {
   const { name, token_id, token_symbol, token_type } = token;
   if (balance_record) {
-    const decimal = balance_record.entity_decimal;
+    const decimal = parseInt(balance_record.entity_decimal.toString());
     const available_balance = parseFloat(((balance_record.entity_balance ?? 0) / Math.pow(10, decimal)).toFixed(4));
     return { name, token_id, token_symbol, token_type, available_balance };
   } else {

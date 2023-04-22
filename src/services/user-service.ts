@@ -139,7 +139,7 @@ const updateTokenBalanceForUser = async ({
       data: {
         user_id,
         entity_balance: amount,
-        entity_decimal: decimal,
+        entity_decimal: parseInt(decimal.toString()),
         token_id,
       },
     });
