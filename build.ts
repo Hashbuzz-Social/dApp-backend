@@ -16,8 +16,8 @@ dotenv.config();
     // Copy front-end files
     await copy("./src/public", "./dist/public");
     await copy("./src/views", "./dist/views");
-    await copy("./contractBuild/contract_Hashbuzz_sol_HashbuzzV2.bin" , "./dist/contractBuild/contract_Hashbuzz_sol_HashbuzzV2.bin")
-    await copy("./contractBuild/contract_Hashbuzz_sol_HashbuzzV2.abi" , "./dist/contractBuild/contract_Hashbuzz_sol_HashbuzzV2.abi")
+    await copy("./contractBuild/Hashbuzz.bin" , "./dist/contractBuild/Hashbuzz.bin")
+    await copy("./contractBuild/Hashbuzz.abi" , "./dist/contractBuild/Hashbuzz.abi")
     // Copy production env file
     // if (process.env.NODE_ENV !== "docker") {
     //   await copy(".env", "./dist/.env");
