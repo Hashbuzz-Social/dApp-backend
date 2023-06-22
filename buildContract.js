@@ -70,6 +70,11 @@ const output = JSON.parse(solc.compile(JSON.stringify(input), { import: resolver
 const bytecode = output.contracts["Hashbuzz.sol"]["HashbuzzV2"].evm.bytecode.object;
 const abi = output.contracts["Hashbuzz.sol"]["HashbuzzV2"].abi;
 
+const dirPath = path.join(__dirname, "contractBuild");
+if (!fs.existsSync(dirPath)){
+  fs.mkdirSync(dirPath);
+}
+
 // Write bytecode to file
 fs.writeFileSync(path.join(__dirname, "contractBuild", "Hashbuzz.bin"), bytecode);
 
