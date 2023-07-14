@@ -72,7 +72,8 @@
       "@routes/*": ["src/routes/*"],
       "@middleware/*": ["src/middleware/*"],
       "@validator/*": ["src/validator/*"],
-      "@smartContract":["src/smartContract"]
+      "@smartContract":["src/smartContract"],
+      "@controller/*":["src/controller/*"]
     },
     "useUnknownInCatchVariables": false
   },

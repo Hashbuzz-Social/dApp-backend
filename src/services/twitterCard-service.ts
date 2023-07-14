@@ -20,7 +20,7 @@ export interface RewardCatalog {
 }
 
 export const allActiveTwitterCard = async () => {
-  console.info("allActiveTwitterCard::start");
+  // console.info("allActiveTwitterCard::start");
   const allActiveCards = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: "Running",
@@ -30,7 +30,7 @@ export const allActiveTwitterCard = async () => {
 };
 
 const twitterCardStats = async (cardId: bigint) => {
-  console.info("twitterCardStatus::Start");
+  // console.info("twitterCardStatus::Start");
   const cardStatus = await prisma.campaign_tweetstats.findUnique({
     where: {
       twitter_card_id: cardId,
@@ -40,7 +40,7 @@ const twitterCardStats = async (cardId: bigint) => {
 };
 
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  console.log("updateTwitterCardStats::withData", JSON.stringify(body));
+  // console.log("updateTwitterCardStats::withData", JSON.stringify(body));
   // {"like_count":3,"quote_count":0,"retweet_count":2,"reply_count":2};
   const { like_count, quote_count, reply_count, retweet_count } = body;
 
@@ -68,7 +68,7 @@ const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | numbe
 };
 
 const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  console.info("addNewCardStats::start::withData", JSON.stringify(body));
+  // console.info("addNewCardStats::start::withData", JSON.stringify(body));
 
   const data: any = {};
   if (body.like_count) data["like_count"] = body.like_count;
@@ -141,7 +141,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       accessToken: user_user?.business_twitter_access_token,
       accessSecret: user_user?.business_twitter_access_token_secret,
     });
-    console.log({ threat1, threat2 });
+    // console.log({ threat1, threat2 });
     //Post tweets to the tweeter;
     try{
       const card = await userTwitter.v2.tweet(threat1);
@@ -163,8 +163,8 @@ const publishTwitter = async (cardId: number | bigint) => {
       return tweetId;
     }catch(err){
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      console.log(err); 
-      console.log(err.message);
+      // console.log(err); 
+      // console.log(err.message);
       throw Error("Something wrong with tweet text.");
     }
   } else {

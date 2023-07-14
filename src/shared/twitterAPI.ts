@@ -105,7 +105,7 @@ const getEngagementOnCard = async (tweetId: string) => {
  */
 
 const getPublicMetrics = async (tweetIds: string | string[]) => {
-  console.log("Ids:::", tweetIds);
+  // console.log("Ids:::", tweetIds);
 
   const result = await roClient.v2.tweets(tweetIds, {
     "user.fields": ["username", "public_metrics", "description", "location"],
@@ -127,7 +127,7 @@ const getPublicMetrics = async (tweetIds: string | string[]) => {
  */
 
 const getAllReplies = async (tweetID: string) => {
-  console.log("getAllReplies::start");
+  // console.log("getAllReplies::start");
   const SearchResults = await twitterClient.v2.search(`conversation_id:${tweetID}`, {
     expansions: ["author_id", "referenced_tweets.id"],
     "user.fields": ["username", "public_metrics", "description", "location"],

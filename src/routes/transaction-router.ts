@@ -1,186 +1,98 @@
-import { whiteListedTokens } from "@prisma/client";
-import { getCampaignDetailsById } from "@services/campaign-service";
-import htsServices from "@services/hts-services";
-import { addCampaigner, addUserToContractForHbar, provideActiveContract } from "@services/smartcontract-service";
-import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
-import userService from "@services/user-service";
-import { formatTokenBalancesObject } from "@shared/helper";
+import {
+  handleAddCampaigner,
+  handleCampaignFundAllocation,
+  handleCrateToupReq,
+  handleGetActiveContract,
+  handleReimbursement,
+  handleTopUp,
+} from "@controller/Transactions";
 import { checkErrResponse, checkWalletFormat, validateEntityObject } from "@validator/userRoutes.validator";
-import { NextFunction, Request, Response, Router } from "express";
+import { Router } from "express";
 import { body } from "express-validator";
-import statusCodes from "http-status-codes";
-import { CreateTranSactionEntity } from "src/@types/custom";
-// import { topUpHandler } from "@controller/transaction.controller";
 
-// Constants
 const router = Router();
-const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION } = statusCodes;
-// Paths
 
-//@handlers
 
-//===============================
-
-/****
- *@description top-up handler
- */
-
-const topUpHandler = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const accountId = req.currentUser?.hedera_wallet_id;
-      const user_id = req.currentUser?.id;
-      const entity: CreateTranSactionEntity = req.body.entity;
-      const amounts = entity.amount;
-
-      if (!accountId || !amounts?.value || !amounts.fee || !amounts.total || !user_id) {
-        return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
-      }
-
-      if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
-        console.log("topUpHandler::topUpHandler")
-        const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
-
-        if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong parameters provided" });
-        const decimal = tokenDetails.tokendata.decimals;
-        const amount = amounts.value * Math.pow(10, decimal);
-
-        //update Balance to contract
-        await htsServices.updateTokenTopupBalanceToContract(accountId, amount, entity.entityId);
-        //update Balance to db;
-        const balanceRecord = await userService.updateTokenBalanceForUser({ amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id });
-
-        return res.status(OK).json({
-          success: true,
-          message: `Token balance for ${tokenDetails.name}(${tokenDetails.token_symbol}) Update successfully`,
-          balance: formatTokenBalancesObject(tokenDetails as any as whiteListedTokens, balanceRecord),
-        });
-      }
-
-      if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
-        if (req.currentUser.available_budget === 0) {
-          await addUserToContractForHbar(accountId);
-        }
-        await updateBalanceToContract(accountId, amounts);
-        const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
-        return res.status(OK).json({ success: true, message: "Hbar(ℏ) budget update successfully", available_budget: topUp.available_budget });
-      }
-      return res.status(BAD_REQUEST).json({ message: "Error while processing request." });
-    })();
-  } catch (err) {
-    next(err);
-  }
-};
-
-//===============================
-
-/*****
- * @description Add campaign to smart contract handler.
- **/
-function addCampaignerHandlers(req: Request, res: Response) {
-  (async () => {
-    const walletId: string = req.body.walletId;
-
-    const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
-    return res.status(CREATED).json(addWalletAddressToCampaign);
-  })();
-}
-
-//===============================
-
-/****
+/**
+ * Create a top-up transaction.
  *
- *@description Check active contract and return to the user.
+ * @route POST /api/create-topup-transaction
+ * @param {Object} req.body - The request body.
+ * @param {Object} req.body.entity - The entity object.
+ * @param {string} req.body.entity.name - The name of the entity.
+ * @param {string} req.body.entity.type - The type of the entity.
+ * @param {string} req.body.connectedAccountId - The connected account ID.
+ * @validator body("entity").custom(validateEntityObject)
+ * @validator body("connectedAccountId").custom(checkWalletFormat)
+ * @validator checkErrResponse
+ * @handler handleCrateToupReq
  */
-
-function activeContractHandler(req: Request, res: Response) {
-  (async () => {
-    const activeContract = await provideActiveContract();
-    return res.status(OK).json(activeContract);
-  })();
-}
-
-//===============================
-
-/****
- *@description this function is handling crete topup transaction
- */
-
-const creteTopUpHandler = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const entity: CreateTranSactionEntity = req.body.entity;
-
-      const payeeId = req.currentUser?.hedera_wallet_id;
-      const connectedAccountId: string = req.body.connectedAccountId;
-
-      if (payeeId && connectedAccountId) {
-        const transactionBytes = await createTopUpTransaction(entity, connectedAccountId);
-        return res.status(CREATED).json(transactionBytes);
-      }
-      return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
-    })();
-  } catch (err) {
-    next(err);
-  }
-};
-
-function handleCampaignFundAllocation(req: Request, res: Response) {
-  (async () => {
-    const campaignId: number = req.body.campaignId;
-
-    //! get campaignById
-    const campaignDetails = await getCampaignDetailsById(campaignId);
-
-    if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
-      const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
-      const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
-      const campaignerId = campaignDetails.owner_id;
-
-      //?  call the function to update the balances of the camp
-      const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount);
-      await userService.topUp(campaignerId, amounts, "decrement");
-
-      return res.status(CREATED).json({ transactionId, receipt });
-    }
-
-    return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
-  })();
-}
-
-
-
-function handleReimbursement(req: Request, res: Response) {
-  (async () => {
-    const amount: number = req.body.amount;
-
-    if (!req.currentUser?.id || !req.currentUser?.hedera_wallet_id) {
-      return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
-    }
-
-    if (!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget < amount)) {
-      return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
-    }
-
-    const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount, req.currentUser.hedera_wallet_id);
-    return res.status(OK).json(reimbursementTransaction);
-  })();
-}
-
 router.post(
   "/create-topup-transaction",
   body("entity").custom(validateEntityObject),
   body("connectedAccountId").custom(checkWalletFormat),
   checkErrResponse,
-  creteTopUpHandler
+  handleCrateToupReq
 );
-router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").isString(), checkErrResponse, topUpHandler);
-router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, addCampaignerHandlers);
-router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, activeContractHandler);
-router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
-router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
-// eslint-disable-next-line @typescript-eslint/no-misused-promises
 
+/**
+ * Perform a top-up transaction.
+ *
+ * @route POST /api/top-up
+ * @param {Object} req.body - The request body.
+ * @param {Object} req.body.entity - The entity object.
+ * @param {string} req.body.entity.name - The name of the entity.
+ * @param {string} req.body.entity.type - The type of the entity.
+ * @param {string} req.body.transactionId - The transaction ID.
+ * @validator body("entity").custom(validateEntityObject)
+ * @validator body("transactionId").isString()
+ * @validator checkErrResponse
+ * @handler handleTopUp
+ */
+router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").isString(), checkErrResponse, handleTopUp);
+
+/**
+ * Add a campaigner.
+ *
+ * @route POST /api/addCampaigner
+ * @param {string} req.body.walletId - The wallet ID.
+ * @validator body("walletId").custom(checkWalletFormat)
+ * @validator checkErrResponse
+ * @handler handleAddCampaigner
+ */
+router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, handleAddCampaigner);
+
+/**
+ * Get the active contract ID.
+ *
+ * @route POST /api/activeContractId
+ * @param {string} req.body.accountId - The account ID.
+ * @validator body("accountId").custom(checkWalletFormat)
+ * @validator checkErrResponse
+ * @handler handleGetActiveContract
+ */
+router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, handleGetActiveContract);
+
+/**
+ * Add funds to a campaign.
+ *
+ * @route POST /api/add-campaign
+ * @param {number} req.body.campaignId - The ID of the campaign.
+ * @validator body("campaignId").isNumeric()
+ * @validator checkErrResponse
+ * @handler handleCampaignFundAllocation
+ */
+router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+
+/**
+ * Perform a reimbursement.
+ *
+ * @route POST /api/reimbursement
+ * @param {number} req.body.amount - The amount to be reimbursed.
+ * @validator body("amount").isNumeric()
+ * @validator checkErrResponse
+ * @handler handleReimbursement
+ */
+router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
 
 export default router;
-

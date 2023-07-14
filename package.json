@@ -34,7 +34,8 @@
     "@routes": "dist/routes",
     "@middleware": "dist/middleware",
     "@validator": "dist/validator",
-    "@smartContract": "dist/smartContract"
+    "@smartContract": "dist/smartContract",
+    "@controller": "dist/controller"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -60,10 +61,10 @@
       "no-extra-boolean-cast": 0,
       "@typescript-eslint/restrict-plus-operands": 0,
       "@typescript-eslint/explicit-module-boundary-types": 0,
-      "@typescript-eslint/no-explicit-any": 0,
       "@typescript-eslint/no-floating-promises": 0,
       "@typescript-eslint/no-unsafe-member-access": 0,
-      "@typescript-eslint/no-unsafe-assignment": 0
+      "@typescript-eslint/no-unsafe-assignment": 0,
+      "@typescript-eslint/no-explicit-any": 0
     }
   },
   "eslintIgnore": [
@@ -77,7 +78,7 @@
   "license": "ISC",
   "dependencies": {
     "@hashgraph/sdk": "^2.22.0",
-    "@prisma/client": "^4.11.0",
+    "@prisma/client": "^4.16.2",
     "bignumber.js": "^9.1.1",
     "command-line-args": "^5.2.1",
     "cookie-parser": "^1.4.6",
@@ -90,6 +91,7 @@
     "jet-logger": "^1.2.6",
     "json-bigint": "^1.0.0",
     "lodash": "^4.17.21",
+    "markdown-it": "^13.0.1",
     "module-alias": "^2.2.2",
     "moment": "^2.29.4",
     "morgan": "^1.10.0",
@@ -119,13 +121,14 @@
     "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
+    "apidoc": "^1.1.0",
     "concurrently": "^7.3.0",
     "eslint": "^8.9.0",
     "find": "^0.3.0",
     "fs-extra": "^10.1.0",
     "jsonwebtoken": "^8.5.1",
     "nodemon": "^2.0.19",
-    "prisma": "^4.12.0",
+    "prisma": "^4.16.2",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^4.7.4",

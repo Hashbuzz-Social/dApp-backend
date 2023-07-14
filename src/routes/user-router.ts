@@ -1,31 +1,26 @@
+import {
+  handleCurrentUser,
+  handleGetAllUser,
+  handleGetUserBalances,
+  handleTokenBalReq,
+  handleUpdateConcent,
+  handleUpdatePassword,
+  handleWalletUpdate,
+} from "@controller/User";
 import adminMiddleWare from "@middleware/admin";
-import { formatTokenBalancesObject, sensitizeUserData } from "@shared/helper";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
-import { NextFunction, Request, Response, Router } from "express";
-import passwordService from "@services/password-service";
-import StatusCodes from "http-status-codes";
-import logger from "jet-logger";
-import JSONBigInt from "json-bigint";
-
-import { totalPendingReward } from "@services/reward-service";
-import { queryBalance } from "@services/smartcontract-service";
-import userService from "@services/user-service";
-import prisma from "@shared/prisma";
-import { body, validationResult } from "express-validator";
+import { Router } from "express";
+import { body } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-import { ParamMissingError } from "@shared/errors";
 
 // Constants
 const router = Router();
-const { OK, BAD_REQUEST } = StatusCodes;
-// Paths
-export const p = {
-  get: "/all",
-  add: "/add",
-  update: "/update",
-  delete: "/delete/:id",
-} as const;
 
+/**
+ * Strong password validation options.
+ *
+ * @type {IsStrongPasswordOptions}
+ */
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
   minNumbers: 1,
@@ -36,145 +31,79 @@ const passwordCheck: IsStrongPasswordOptions = {
 
 /**
  * Get all users.
+ *
+ * @route GET /api/users/all
+ * @middleware adminMiddleWare.isAdmin
+ * @handler handleGetAllUser
  */
-router.get("/all", adminMiddleWare.isAdmin, (_: Request, res: Response) => {
-  (async () => {
-    const users = await userService.getAll();
-    return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
-  })();
-});
+router.get("/all", adminMiddleWare.isAdmin, handleGetAllUser);
 
-/****
- * get current user.
+/**
+ * Get the current user.
+ *
+ * @route GET /api/users/current
+ * @handler handleCurrentUser
  */
+router.get("/current", handleCurrentUser);
 
-router.get("/current", (req: Request, res: Response) => {
-  (async () => {
-    const currentUser = await userService.getUserById(req.currentUser?.id);
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser!))));
-  })();
-});
+/**
+ * Update wallet ID for the current user.
+ *
+ * @route PUT /api/users/update/wallet
+ * @bodyParam {string} walletId - The wallet ID to update.
+ * @validator checkWalletFormat - Custom wallet format validation.
+ * @handler handleWalletUpdate
+ */
+router.put("/update/wallet", body("walletId").custom(checkWalletFormat), handleWalletUpdate);
 
-/***
- * Update wallet id to for current user.
- **/
-router.put("/update/wallet", body("walletId").custom(checkWalletFormat), (req: Request, res: Response) => {
-  //check validation and return
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(BAD_REQUEST).json({ errors: errors.array() });
-  }
+/**
+ * Update concent.
+ *
+ * @route PATCH /api/users/update-concent
+ * @handler handleUpdateConcent
+ */
+router.patch("/update-concent", handleUpdateConcent);
 
-  const walletId: string = req.body.walletId;
+/**
+ * Get user balances.
+ *
+ * @route POST /api/users/get-balances
+ * @bodyParam {string} accountId - The account ID.
+ * @validator checkWalletFormat - Custom wallet format validation.
+ * @bodyParam {boolean} contractBal - Indicates whether to include contract balances.
+ * @handler handleGetUserBalances
+ */
+router.post(
+  "/get-balances",
+  body("accountId").custom(checkWalletFormat),
+  body("contractBal").isBoolean(),
+  handleGetUserBalances
+);
 
-  // console.log("Update_wallet::", req.currentUser?.hedera_wallet_id);
+/**
+ * Update password.
+ *
+ * @route PUT /api/users/update-password
+ * @bodyParam {string} email - The user's email.
+ * @bodyParam {string} password - The new password.
+ * @validator checkErrResponse - Error response validation.
+ * @validator body("password").isStrongPassword(passwordCheck) - Strong password validation.
+ * @handler handleUpdatePassword
+ */
+router.put(
+  "/update-password",
+  body("email").isEmail(),
+  body("password").isStrongPassword(passwordCheck),
+  checkErrResponse,
+  handleUpdatePassword
+);
 
-  if (req.currentUser?.hedera_wallet_id) {
-    return res.status(OK).json({ updated: true, message: "Wallet already added to this account" });
-  } else {
-    //If not error then update database
-    (async () => {
-      const id = req.currentUser?.id;
-      const updatedUser = await userService.updateWalletId(walletId, id!);
-      if (updatedUser) {
-        await totalPendingReward(updatedUser.personal_twitter_id!, updatedUser.hedera_wallet_id!);
-        return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-      }
-    })();
-  }
-});
-
-router.patch("/update-concent", (req: Request, res: Response) => {
-  (async () => {
-    const { consent } = req.body;
-    const updatedUser = await prisma.user_user.update({
-      where: { id: req.currentUser?.id },
-      data: { consent: consent },
-    });
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-  })();
-});
-
-router.post("/get-balances", body("accountId").custom(checkWalletFormat), body("contractBal").isBoolean(), (req: Request, res: Response) => {
-  //check validation and return
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(BAD_REQUEST).json({ errors: errors.array() });
-  }
-
-  const address: string = req.body.accountId;
-  const contractBal: boolean = req.body.contractBal;
-  if (contractBal) {
-    (async () => {
-      const balances = await queryBalance(address);
-      if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
-      logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
-      return res.status(OK).json(balances);
-    })();
-  } else {
-    return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
-  }
-});
-
-const getBalancesForToken = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const tokenList = await prisma.whiteListedTokens.findMany();
-      const userBalancesForTokens = await prisma.user_balances.findMany({
-        where: {
-          user_id: req.currentUser?.id,
-        },
-      });
-      const balanceData = tokenList.map((token) => {
-        const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
-        return formatTokenBalancesObject(token, balance_record);
-      });
-
-      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
-    })();
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updatePassword = (req: Request, res: Response, next: NextFunction) => {
-  (async () => {
-    try {
-      const { password, email }: { password: string; email?: string } = req.body;
-
-      if (!email || !password) {
-        throw new ParamMissingError("Email and password is required felid");
-      }
-
-      const role = req.currentUser?.role;
-      const salt = req.currentUser?.salt;
-      const hash = req.currentUser?.hash;
-
-      //!! reset password for newly created admin.
-      if (role && ["ADMIN", "SUPER_ADMIN"].includes(role) && !salt && !hash) {
-        // create new password key and salt
-        const { salt, hash } = passwordService.createPassword(password);
-        //!! Save to db.
-        const updatedUser = await prisma.user_user.update({
-          where: { id: req.currentUser?.id },
-          data: {
-            salt,
-            hash,
-            email,
-          },
-        });
-        return res.status(OK).json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
-      }
-
-      res.status(BAD_REQUEST).json({ message: "Handler function not found" });
-    } catch (err) {
-      next(err);
-    }
-  })();
-};
-
-router.put("/update-password", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, updatePassword);
-router.get("/token-balances", getBalancesForToken);
+/**
+ * Get token balances.
+ *
+ * @route GET /api/users/token-balances
+ * @handler handleTokenBalReq
+ */
+router.get("/token-balances", handleTokenBalReq);
 
 export default router;
-

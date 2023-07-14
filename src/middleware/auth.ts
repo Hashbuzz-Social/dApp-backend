@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
-const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
+const accessSecret = process.env.J_ACCESS_TOKEN_SECRET??"";
 
 const extractToken = (authStr: string, type: "token1" | "token2"): string => {
   let token = "";
@@ -37,7 +37,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
     // const bearer = bearerHeader.split(" ");
     const bearerToken = extractToken(bearerHeader, "token1");
 
-    jwt.verify(bearerToken, accessSecret!, (err, payload) => {
+    jwt.verify(bearerToken, accessSecret, (err, payload) => {
       if (err) {
         throw new UnauthorizeError(authTokenInvalidError);
       }
@@ -69,7 +69,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             consent: true,
           },
         });
-        req.currentUser = clientData!;
+       if(clientData) req.currentUser = clientData;
         next();
       })();
     });
@@ -92,7 +92,7 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
 
     const bearerToken = extractToken(bearerHeader, "token2");
 
-    jwt.verify(bearerToken, accessSecret!, (err, payload) => {
+    jwt.verify(bearerToken, accessSecret, (err, payload) => {
       if (err) {
         throw new UnauthorizeError(authTokenInvalidError + "-A-");
       }
