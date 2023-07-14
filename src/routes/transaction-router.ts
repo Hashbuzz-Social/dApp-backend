@@ -16,7 +16,7 @@ const router = Router();
 /**
  * Create a top-up transaction.
  *
- * @route POST /api/create-topup-transaction
+ * @api POST /api/create-topup-transaction
  * @param {Object} req.body - The request body.
  * @param {Object} req.body.entity - The entity object.
  * @param {string} req.body.entity.name - The name of the entity.
@@ -38,7 +38,7 @@ router.post(
 /**
  * Perform a top-up transaction.
  *
- * @route POST /api/top-up
+ * @api POST /api/top-up
  * @param {Object} req.body - The request body.
  * @param {Object} req.body.entity - The entity object.
  * @param {string} req.body.entity.name - The name of the entity.
@@ -54,7 +54,7 @@ router.post("/top-up", body("entity").custom(validateEntityObject), body("transa
 /**
  * Add a campaigner.
  *
- * @route POST /api/addCampaigner
+ * @api POST /api/addCampaigner
  * @param {string} req.body.walletId - The wallet ID.
  * @validator body("walletId").custom(checkWalletFormat)
  * @validator checkErrResponse
@@ -65,7 +65,7 @@ router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkE
 /**
  * Get the active contract ID.
  *
- * @route POST /api/activeContractId
+ * @api POST /api/activeContractId
  * @param {string} req.body.accountId - The account ID.
  * @validator body("accountId").custom(checkWalletFormat)
  * @validator checkErrResponse
@@ -76,7 +76,7 @@ router.post("/activeContractId", body("accountId").custom(checkWalletFormat), ch
 /**
  * Add funds to a campaign.
  *
- * @route POST /api/add-campaign
+ * @api POST /api/add-campaign
  * @param {number} req.body.campaignId - The ID of the campaign.
  * @validator body("campaignId").isNumeric()
  * @validator checkErrResponse
@@ -87,7 +87,7 @@ router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, h
 /**
  * Perform a reimbursement.
  *
- * @route POST /api/reimbursement
+ * @api POST /api/reimbursement
  * @param {number} req.body.amount - The amount to be reimbursed.
  * @validator body("amount").isNumeric()
  * @validator checkErrResponse

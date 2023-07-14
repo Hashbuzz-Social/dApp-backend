@@ -14,18 +14,7 @@ import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const router = Router();
 
-/**
- * Card types.
- *
- * @type {string[]}
- */
 const cardTypes = ["Pending", "Completed", "Running"];
-
-/**
- * Strong password validation options.
- *
- * @type {IsStrongPasswordOptions}
- */
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
   minNumbers: 1,
@@ -37,7 +26,7 @@ const passwordCheck: IsStrongPasswordOptions = {
 /**
  * Get all Twitter cards.
  *
- * @route GET /api/twitter-card
+ * @api GET /api/twitter-card
  * @param {string} req.query.status - The status of the cards. Must be one of: Pending, Completed, Running.
  * @validator query("status").isIn(cardTypes)
  * @validator checkErrResponse
@@ -48,7 +37,7 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, h
 /**
  * Update password.
  *
- * @route PUT /api/update-password
+ * @api PUT /api/update-password
  * @param {string} req.body.email - The email (optional).
  * @param {string} req.body.password - The new password.
  * @validator body("email").optional().isEmail()
@@ -61,7 +50,7 @@ router.put("/update-password", body("email").optional().isEmail(), body("passwor
 /**
  * Update email.
  *
- * @route PATCH /api/update-email
+ * @api PATCH /api/update-email
  * @param {string} req.body.email - The new email.
  * @param {string} req.body.password - The current password.
  * @validator body("email").isEmail()
@@ -74,7 +63,7 @@ router.patch("/update-email", body("email").isEmail(), body("password").isStrong
 /**
  * Get token information.
  *
- * @route POST /api/token-info
+ * @api POST /api/token-info
  * @param {string} req.body.tokenId - The token ID.
  * @validator body("tokenId").custom(checkWalletFormat)
  * @validator checkErrResponse
@@ -85,7 +74,7 @@ router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrRe
 /**
  * List a token.
  *
- * @route POST /api/list-token
+ * @api POST /api/list-token
  * @param {string} req.body.tokenId - The token ID.
  * @param {Object} req.body.tokenData - The token data object.
  * @param {string} req.body.token_type - The type of the token.
@@ -107,7 +96,7 @@ router.post(
 /**
  * Get all listed tokens.
  *
- * @route GET /api/listed-tokens
+ * @api GET /api/listed-tokens
  * @handler handleGetAllWLToken
  */
 router.get("/listed-tokens", handleGetAllWLToken);
@@ -115,7 +104,7 @@ router.get("/listed-tokens", handleGetAllWLToken);
 /**
  * Get active contract information.
  *
- * @route GET /api/active-contract
+ * @api GET /api/active-contract
  * @handler handleActiveContractInfoReq
  */
 router.get("/active-contract", handleActiveContractInfoReq);
