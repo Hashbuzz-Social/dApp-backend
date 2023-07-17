@@ -2,12 +2,15 @@ import { UnauthorizeError } from "@shared/errors";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import signingService from "@services/signing-service";
+import hederaService from "@services/hedera-service";
+import { AccountId } from "@hashgraph/sdk";
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
-const accessSecret = process.env.J_ACCESS_TOKEN_SECRET??"";
+const accessSecret = process.env.J_ACCESS_TOKEN_SECRET ?? "";
 
-const extractToken = (authStr: string, type: "token1" | "token2"): string => {
+const extractToken = (authStr: string, type: "token1" | "token2" | "aSToken"): string => {
   let token = "";
   const authStrArr = authStr.split(",");
   switch (type) {
@@ -17,6 +20,9 @@ const extractToken = (authStr: string, type: "token1" | "token2"): string => {
     case "token2":
       token = authStrArr[1] && authStrArr[1].length > 6 ? authStrArr[1].trim().substring(6) : "";
       break;
+    case "aSToken":
+      token = authStrArr[0].trim().substring(7);
+      break;
     default:
       token = "";
       break;
@@ -25,17 +31,51 @@ const extractToken = (authStr: string, type: "token1" | "token2"): string => {
   return token;
 };
 
+const getBarerToken = (req: Request, type: "token1" | "token2" | "aSToken") => {
+  // Get header token
+  const bearerHeader = req.headers["authorization"];
+
+  if (!bearerHeader) {
+    throw new UnauthorizeError(authTokenNotPresentErr);
+  }
+
+  // const bearer = bearerHeader.split(" ");
+  return extractToken(bearerHeader, type);
+};
+
+const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
+  try {
+    const barerToken = getBarerToken(req, "aSToken");
+    jwt.verify(barerToken, accessSecret, (err, payload) => {
+      if (err) {
+        throw new UnauthorizeError("Invalid ast");
+      }
+
+      if (payload) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-ignore
+        const { ts, accountId, signature } = payload as any;
+        const timeStampDiffCheck = new Date().getTime() - parseInt(ts as string) <= 24 * 60 * 60 * 1000;
+        const validSignature = signingService.verifyData(
+          { ts, accountId },
+          hederaService.operatorKey.publicKey.toStringDer(),
+          Buffer.from(signature as string, "utf-8")
+        );
+        if (timeStampDiffCheck && validSignature) {
+          req.accountAddress = AccountId.fromString(accountId as string).toSolidityAddress();
+          next();
+        } else throw new UnauthorizeError("Signature not verified");
+      } else throw new UnauthorizeError("Invalid data. Please try again.");
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get header token
-    const bearerHeader = req.headers["authorization"];
-
-    if (!bearerHeader) {
-      throw new UnauthorizeError(authTokenNotPresentErr);
-    }
-
     // const bearer = bearerHeader.split(" ");
-    const bearerToken = extractToken(bearerHeader, "token1");
+    const bearerToken = getBarerToken(req, "token1");
 
     jwt.verify(bearerToken, accessSecret, (err, payload) => {
       if (err) {
@@ -69,7 +109,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
             consent: true,
           },
         });
-       if(clientData) req.currentUser = clientData;
+        if (clientData) req.currentUser = clientData;
         next();
       })();
     });
@@ -83,14 +123,7 @@ const isHavingValidAuthToken = (req: Request, res: Response, next: NextFunction)
 
 const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get header token
-    const bearerHeader = req.headers["authorization"];
-
-    if (!bearerHeader) {
-      throw new UnauthorizeError(authTokenNotPresentErr);
-    }
-
-    const bearerToken = extractToken(bearerHeader, "token2");
+    const bearerToken = getBarerToken(req, "token2");
 
     jwt.verify(bearerToken, accessSecret, (err, payload) => {
       if (err) {
@@ -108,9 +141,28 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const havingValidPayloadToken = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.body.payload.token as string;
+    jwt.verify(token, accessSecret, (err, payload) => {
+      if (err) {
+        throw new UnauthorizeError("Invalid data. Please try again.");
+      }
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
+      const ts = payload?.ts as string;
+      const currentTimeStamp = new Date().getTime();
+      if (currentTimeStamp - parseInt(ts) <= 30 * 1000) next();
+      else throw new UnauthorizeError("Invalid data. Please try again.");
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export default {
   isHavingValidAuthToken,
   isAdminRequesting,
+  havingValidPayloadToken,
+  isHavingValidAst,
 } as const;
-

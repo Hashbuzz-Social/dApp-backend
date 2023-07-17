@@ -58,6 +58,14 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
   }
 };
 
+export const fetchAccountIfoKey = async (accountId: string) => {
+  const url = "https://testnet.mirrornode.hedera.com/api/v1/accounts/" + accountId;
+  const response = await fetch(url);
+  const data = await response.json();
+  const key: string = data.key.key as string;
+  return key;
+};
+
 // const filterTwitterEngagementsData = () => arr.filter(element => {
 //   const isDuplicate = uniqueIds.includes(element.id);
 
@@ -69,4 +77,3 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
 
 //   return false;
 // });
-

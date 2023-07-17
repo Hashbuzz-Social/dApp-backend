@@ -1,4 +1,4 @@
-import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
+import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction  } from "@hashgraph/sdk";
 import logger from "jet-logger";
 
 
@@ -63,6 +63,7 @@ const getAccountBalances = async (accountId: string) => {
   return accountBalance;
 };
 
+
 export default {
   hederaClient: client,
   network,
@@ -70,5 +71,5 @@ export default {
   operatorPrivateKey,
   operatorId,
   operatorKey,
-  getAccountBalances
-};
+  getAccountBalances,
+} as const;

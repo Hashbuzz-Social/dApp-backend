@@ -239,7 +239,9 @@ contract HashbuzzV2 is
         uint256 amount,
         bool deposit
     ) public payable {
-        require(_addCampaign.has(msg.sender));
+        // require(_addCampaign.has(msg.sender));
+         require(msg.sender == owner);
+          require(_addCampaign.has(campaigner));
         if (deposit) {
             if (balances[campaigner] == 0) {
                 addCampaigner(campaigner);

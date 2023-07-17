@@ -2,7 +2,7 @@ import { ParamMissingError } from "@shared/errors";
 import { NextFunction, Request, Response } from "express";
 import { CustomValidator, validationResult } from "express-validator";
 import statusCodes from "http-status-codes";
-import { CreateTranSactionEntity } from "src/@types/custom";
+import { CreateTranSactionEntity, GenerateAstPayload } from "src/@types/custom";
 
 const { BAD_REQUEST } = statusCodes;
 
@@ -38,4 +38,31 @@ export const validateEntityObject:CustomValidator = (createTransactionEntity:Cre
      throw new ParamMissingError("Check entity object.it looks like in wrong format.");
   }
   return true;
+}
+
+export const validateGenerateAstPayload:CustomValidator = (body:GenerateAstPayload) => {
+  if (
+    body &&
+    typeof body === "object" &&
+    "payload" in body &&
+    typeof body.payload === "object" &&
+    "url" in body.payload &&
+    typeof body.payload.url === "string" &&
+    "token" in body.payload &&
+    typeof body.payload.token === "string" &&
+    "signatures" in body &&
+    typeof body.signatures === "object" &&
+    "server" in body.signatures &&
+    typeof body.signatures.server === "string" &&
+    "wallet" in body.signatures &&
+    typeof body.signatures.wallet === "object" &&
+    "accountId" in body.signatures.wallet &&
+    typeof body.signatures.wallet.accountId === "string" &&
+    "value" in body.signatures.wallet &&
+    typeof body.signatures.wallet.value === "string"
+  ) {
+    return true;
+  }
+
+   throw new ParamMissingError("Signature payload format is not correct.");
 }

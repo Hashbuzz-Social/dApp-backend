@@ -28,16 +28,41 @@ export const generateRefreshToken = async (user: user_user) => {
 };
 
 export const generateAdminToken = (user: user_user) => {
-  const { id, username, personal_twitter_id , role } = user;
-  return jwt.sign({ id: id.toString(), username, personal_twitter_id , role}, accessSecret!, { expiresIn: "24h" });
+  const { id, username, personal_twitter_id, role } = user;
+  return jwt.sign({ id: id.toString(), username, personal_twitter_id, role }, accessSecret!, { expiresIn: "24h" });
 };
 
-// export const validateToken = (token: string) => {
-//   let user:Partial<user_user>;
-//   const user = jwt.verify(token, accessSecret!, (err, payload) => {
-//     if (err) throw err;
-//     user = payload as any as {id:bigint, username:string, personal_twitter_id:string}
-//     return payload;
-//   }); //end of jwt.verify()
-//   return user;
-// }; //end of function
+export const generateSigningToken = () => {
+  const currentTimeStamp = new Date().getTime();
+  return jwt.sign({ ts: currentTimeStamp }, accessSecret!, { expiresIn: "30s" });
+};
+
+/**
+ * Parameters for creating an AST token.
+ */
+interface CreateAstTokenParams {
+  /**
+   * Current timestamp.
+   */
+  ts: number;
+
+  /**
+   * Server-generated signature.
+   */
+  signature: string;
+
+  /**
+   * Client account ID from which the client had signed the signature.
+   */
+  accountId: string;
+}
+
+/**
+ * 
+ * @param CreateAstTokenParams
+ * @returns string 
+ */
+
+export const createAstToken = (params: CreateAstTokenParams) => {
+  return jwt.sign(params, accessSecret!, { expiresIn: "24h" });
+};

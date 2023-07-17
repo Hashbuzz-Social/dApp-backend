@@ -1,14 +1,17 @@
 import {
   handleAdminLogin,
+  handleAuthPing,
   handleLogout,
   handleRefreshToken,
   handleTwitterBizRegister,
   handleTwitterBrand,
   handleTwitterLogin,
   handleTwitterReturnUrl,
+  handleCreateChallenge,
+  handleGenerateAuthAst
 } from "@controller/Auth";
 import auth from "@middleware/auth";
-import { checkErrResponse } from "@validator/userRoutes.validator";
+import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
@@ -95,4 +98,8 @@ authRouter.post(
   handleAdminLogin
 );
 
+//dAppAccessRoutes
+authRouter.get("/ping" , auth.isHavingValidAst , handleAuthPing )
+authRouter.get("/challenge", handleCreateChallenge)
+authRouter.post("/generate" ,auth.havingValidPayloadToken ,  body().custom(validateGenerateAstPayload) , checkErrResponse , handleGenerateAuthAst)
 export default authRouter;

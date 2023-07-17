@@ -1,8 +1,10 @@
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
-import { generateAccessToken, generateAdminToken, generateRefreshToken } from "@services/authToken-service";
+import { createAstToken, generateAccessToken, generateAdminToken, generateRefreshToken, generateSigningToken } from "@services/authToken-service";
+import hederaservice from "@services/hedera-service";
 import passwordService from "@services/password-service";
-import { UserNotFoundError } from "@shared/errors";
-import { sensitizeUserData } from "@shared/helper";
+import signingService from "@services/signing-service";
+import { UnauthorizeError, UserNotFoundError } from "@shared/errors";
+import { fetchAccountIfoKey, sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
@@ -10,8 +12,60 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import moment from "moment";
+import { GenerateAstPayload } from "src/@types/custom";
 
 const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
+
+export const handleAuthPing = (_: Request, res: Response, next: NextFunction) => {
+  //req.accountAddress
+  // insert or get query;
+  return res.status(OK).json({});
+};
+
+export const handleCreateChallenge = (_: Request, res: Response, next: NextFunction) => {
+  try {
+    const payload = { url: "hashbuzz.social", data: { token: generateSigningToken() } };
+    const { signature, serverSigningAccount } = signingService.signData(payload);
+
+    return res.status(OK).json({ payload, server: { signature, account: serverSigningAccount } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const handleGenerateAuthAst = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    (async () => {
+      const clientPayload: GenerateAstPayload = req.body;
+      const {
+        payload,
+        signatures: {
+          server,
+          wallet: { value, accountId },
+        },
+      } = clientPayload;
+      const clientAccountPublicKey = await fetchAccountIfoKey(accountId);
+
+      const serverSig = Buffer.from(server, "utf-8");
+      const clientSig = Buffer.from(value, "utf-8");
+      // check verification status
+      const server_sig_verification = signingService.verifyData(payload, hederaservice.operatorKey.publicKey.toStringRaw(), serverSig);
+      const client_sig_verification = signingService.verifyData(payload, clientAccountPublicKey, clientSig);
+
+      if (server_sig_verification && client_sig_verification) {
+        //? if verified send a ast token to the client
+        const ts = new Date().getTime();
+        const { signature } = signingService.signData({ ts: ts.toString(), accountId });
+        res.status(OK).json({ ast: createAstToken({ ts, accountId, signature: signature.toString() }) });
+      } else {
+        //! not verified by the signature throw an invalid signature error;
+        throw new UnauthorizeError("Invalid signature.");
+      }
+    })();
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const handleTwitterLogin = (_: Request, res: Response, next: NextFunction) => {
   try {
@@ -55,7 +109,7 @@ export const handleRefreshToken = (req: Request, res: Response, next: NextFuncti
       const refreshToken = req.body.refreshToken as string;
       const tokenDetails = await prisma.authtoken_token.findUnique({ where: { key: refreshToken }, include: { user_user: true } });
       if (!tokenDetails) {
-        throw Error("Refresh token is invalid. Do login again");
+        throw new Error("Refresh token is invalid. Do login again");
       }
       const { user_user } = tokenDetails;
       const newRefreshToken = await generateRefreshToken(user_user);
