@@ -1,21 +1,20 @@
 import {
-  handleAdminLogin,
+  // handleAdminLogin,
   handleAuthPing,
   handleLogout,
-  handleRefreshToken,
-  handleTwitterBizRegister,
+  // handleRefreshToken,
+  // handleTwitterBizRegister,
   handleTwitterBrand,
   handleTwitterLogin,
-  handleTwitterReturnUrl,
+  // handleTwitterReturnUrl,
   handleCreateChallenge,
-  handleGenerateAuthAst
+  handleGenerateAuthAst,
 } from "@controller/Auth";
 import auth from "@middleware/auth";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-
 
 const authRouter = Router();
 const passwordCheck: IsStrongPasswordOptions = {
@@ -38,21 +37,21 @@ authRouter.get("/twitter-login", handleTwitterLogin);
  * Handle Twitter brand.
  *
  * @api GET /api/auth/brand-handle
- * @middleware auth.isHavingValidAuthToken
+ * @middleware auth.isHavingValidAst
  * @validator checkErrResponse
  * @handler handleTwitterBrand
  */
-authRouter.get("/brand-handle", auth.isHavingValidAuthToken, checkErrResponse, handleTwitterBrand);
+authRouter.get("/brand-handle", auth.isHavingValidAst, checkErrResponse, handleTwitterBrand);
 
 /**
  * Logout user.
  *
  * @api POST /api/auth/logout
- * @middleware auth.isHavingValidAuthToken
+ * @middleware auth.isHavingValidAst
  * @validator checkErrResponse
  * @handler handleLogout
  */
-authRouter.post("/logout", auth.isHavingValidAuthToken, checkErrResponse, handleLogout);
+authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, handleLogout);
 
 /**
  * Refresh authentication token.
@@ -63,7 +62,7 @@ authRouter.post("/logout", auth.isHavingValidAuthToken, checkErrResponse, handle
  * @validator checkErrResponse
  * @handler handleRefreshToken
  */
-authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
+// authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
 
 /**
  * Handle Twitter return URL.
@@ -71,7 +70,7 @@ authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrRespon
  * @api GET /api/auth/twitter-return
  * @handler handleTwitterReturnUrl
  */
-authRouter.get("/twitter-return", handleTwitterReturnUrl);
+// authRouter.get("/twitter-return", handleTwitterReturnUrl);
 
 /**
  * Handle Twitter business registration return URL.
@@ -79,7 +78,7 @@ authRouter.get("/twitter-return", handleTwitterReturnUrl);
  * @api GET /api/auth/business-twitter-return
  * @handler handleTwitterBizRegister
  */
-authRouter.get("/business-twitter-return", handleTwitterBizRegister);
+// authRouter.get("/business-twitter-return", handleTwitterBizRegister);
 
 /**
  * Handle admin login.
@@ -91,15 +90,15 @@ authRouter.get("/business-twitter-return", handleTwitterBizRegister);
  * @validator body("password").isStrongPassword(passwordCheck)
  * @handler handleAdminLogin
  */
-authRouter.post(
-  "/admin-login",
-  body("email").isEmail(),
-  body("password").isStrongPassword(passwordCheck),
-  handleAdminLogin
-);
+// authRouter.post(
+//   "/admin-login",
+//   body("email").isEmail(),
+//   body("password").isStrongPassword(passwordCheck),
+//   handleAdminLogin
+// );
 
 //dAppAccessRoutes
-authRouter.get("/ping" , auth.isHavingValidAst , handleAuthPing )
-authRouter.get("/challenge", handleCreateChallenge)
-authRouter.post("/generate" ,auth.havingValidPayloadToken ,  body().custom(validateGenerateAstPayload) , checkErrResponse , handleGenerateAuthAst)
+authRouter.get("/ping", auth.isHavingValidAst, handleAuthPing);
+authRouter.get("/challenge", handleCreateChallenge);
+authRouter.post("/generate", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
 export default authRouter;

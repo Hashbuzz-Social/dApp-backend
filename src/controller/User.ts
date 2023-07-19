@@ -150,7 +150,6 @@ export const handleUpdatePassword = (req: Request, res: Response, next: NextFunc
             data: {
               salt,
               hash,
-              email,
             },
           });
           return res

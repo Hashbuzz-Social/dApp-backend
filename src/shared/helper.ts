@@ -8,7 +8,7 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
 };
 
 export const sensitizeUserData = (userData: Partial<user_user>) => {
-  const emailActive = Boolean(userData.email && userData.salt && userData.hash);
+  // const emailActive = Boolean(userData.email && userData.salt && userData.hash);
   return {
     ...rmKeyFrmData(userData, [
       "salt",
@@ -20,7 +20,6 @@ export const sensitizeUserData = (userData: Partial<user_user>) => {
       "last_login",
       "date_joined",
     ]),
-    emailActive,
   };
 };
 
@@ -64,6 +63,25 @@ export const fetchAccountIfoKey = async (accountId: string) => {
   const data = await response.json();
   const key: string = data.key.key as string;
   return key;
+};
+
+// Function to convert Base64 string to Uint8Array
+export const base64ToUint8Array = (base64String: string) => {
+  const buffer = Buffer.from(base64String, "base64");
+  const uint8Array = new Uint8Array(buffer);
+  return uint8Array;
+};
+
+// Function to convert Uint8Array to an object
+export const uint8ArrayToObject = (uint8Array: Uint8Array) => {
+  const buffer = Buffer.from(uint8Array);
+  const objectData = {};
+  for (let i = 0; i < buffer.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-ignore
+    objectData[i] = buffer[i];
+  }
+  return objectData;
 };
 
 // const filterTwitterEngagementsData = () => arr.filter(element => {

@@ -3,7 +3,7 @@ import {
   handleGetAllCard,
   handleGetAllWLToken,
   handleTokenInfoReq,
-  handleUpdateEmailReq,
+  // handleUpdateEmailReq,
   handleWhiteListToken,
 } from "@controller/Admin";
 import { handleUpdatePassword } from "@controller/User";
@@ -58,7 +58,7 @@ router.put("/update-password", body("email").optional().isEmail(), body("passwor
  * @validator checkErrResponse
  * @handler handleUpdateEmailReq
  */
-router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdateEmailReq);
+// router.patch("/update-email", body("email").isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdateEmailReq);
 
 /**
  * Get token information.

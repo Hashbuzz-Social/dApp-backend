@@ -4,7 +4,7 @@ import { user_user } from "@prisma/client";
 declare module "express" {
   export interface Request {
     currentUser?: Partial<user_user>;
-    accountAddress?:string;
+    accountAddress?: string;
   }
 }
 
@@ -29,12 +29,14 @@ export type CreateTranSactionEntity = {
   };
 };
 
+export type Payload = {
+  url: string;
+  data: any;
+};
 
 export type GenerateAstPayload = {
-  payload: {
-    url: string;
-    token: string;
-  };
+  payload: Payload;
+  clientPayload:object
   signatures: {
     server: string;
     wallet: {

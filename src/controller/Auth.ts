@@ -1,33 +1,31 @@
-import { authLogin, twitterAuthUrl } from "@services/auth-service";
-import { createAstToken, generateAccessToken, generateAdminToken, generateRefreshToken, generateSigningToken } from "@services/authToken-service";
+import { AccountId } from "@hashgraph/sdk";
+import { twitterAuthUrl } from "@services/auth-service";
+import { createAstToken, generateSigningToken } from "@services/authToken-service";
 import hederaservice from "@services/hedera-service";
-import passwordService from "@services/password-service";
 import signingService from "@services/signing-service";
-import { UnauthorizeError, UserNotFoundError } from "@shared/errors";
-import { fetchAccountIfoKey, sensitizeUserData } from "@shared/helper";
+import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
-import logger from "jet-logger";
-import JSONBigInt from "json-bigint";
-import { isEmpty } from "lodash";
-import moment from "moment";
-import { GenerateAstPayload } from "src/@types/custom";
 
-const { OK, TEMPORARY_REDIRECT } = HttpStatusCodes;
+const { OK, BAD_REQUEST } = HttpStatusCodes;
 
-export const handleAuthPing = (_: Request, res: Response, next: NextFunction) => {
-  //req.accountAddress
-  // insert or get query;
-  return res.status(OK).json({});
+export const handleAuthPing = (req: Request, res: Response) => {
+  if (req?.accountAddress) {
+    const accountId = AccountId.fromSolidityAddress(req?.accountAddress).toString();
+    return res.status(OK).json({ hedera_wallet_id: accountId });
+  } else {
+    return res.status(BAD_REQUEST).json({ message: "No address found" });
+  }
 };
 
-export const handleCreateChallenge = (_: Request, res: Response, next: NextFunction) => {
+export const handleCreateChallenge = (req: Request, res: Response, next: NextFunction) => {
+  const params = req.query;
+  // console.log(param);
   try {
-    const payload = { url: "hashbuzz.social", data: { token: generateSigningToken() } };
+    const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken() } };
     const { signature, serverSigningAccount } = signingService.signData(payload);
-
-    return res.status(OK).json({ payload, server: { signature, account: serverSigningAccount } });
+    return res.status(OK).json({ payload, server: { signature: Buffer.from(signature).toString("base64"), account: serverSigningAccount } });
   } catch (err) {
     next(err);
   }
@@ -36,30 +34,33 @@ export const handleCreateChallenge = (_: Request, res: Response, next: NextFunct
 export const handleGenerateAuthAst = (req: Request, res: Response, next: NextFunction) => {
   try {
     (async () => {
-      const clientPayload: GenerateAstPayload = req.body;
+      const data = req.body;
       const {
         payload,
+        clientPayload,
         signatures: {
           server,
           wallet: { value, accountId },
         },
-      } = clientPayload;
-      const clientAccountPublicKey = await fetchAccountIfoKey(accountId);
+      } = data;
 
-      const serverSig = Buffer.from(server, "utf-8");
-      const clientSig = Buffer.from(value, "utf-8");
+      const clientAccountPublicKey = await fetchAccountIfoKey(accountId as string);
       // check verification status
-      const server_sig_verification = signingService.verifyData(payload, hederaservice.operatorKey.publicKey.toStringRaw(), serverSig);
-      const client_sig_verification = signingService.verifyData(payload, clientAccountPublicKey, clientSig);
+      const server_sig_verification = signingService.verifyData(
+        payload as object,
+        hederaservice.operatorKey.publicKey.toStringRaw(),
+        base64ToUint8Array(server as string)
+      );
+      const client_sig_verification = signingService.verifyData(clientPayload as object, clientAccountPublicKey, base64ToUint8Array(value as string));
 
       if (server_sig_verification && client_sig_verification) {
         //? if verified send a ast token to the client
         const ts = new Date().getTime();
-        const { signature } = signingService.signData({ ts: ts.toString(), accountId });
-        res.status(OK).json({ ast: createAstToken({ ts, accountId, signature: signature.toString() }) });
+        const { signature } = signingService.signData({ ts, accountId });
+        res.status(OK).json({ ast: createAstToken({ ts, accountId, signature: Buffer.from(signature).toString("base64") }) });
       } else {
         //! not verified by the signature throw an invalid signature error;
-        throw new UnauthorizeError("Invalid signature.");
+        res.status(BAD_REQUEST).json({ message: "Invalid signature." });
       }
     })();
   } catch (err) {
@@ -103,156 +104,156 @@ export const handleLogout = (req: Request, res: Response, next: NextFunction) =>
     });
 };
 
-export const handleRefreshToken = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const refreshToken = req.body.refreshToken as string;
-      const tokenDetails = await prisma.authtoken_token.findUnique({ where: { key: refreshToken }, include: { user_user: true } });
-      if (!tokenDetails) {
-        throw new Error("Refresh token is invalid. Do login again");
-      }
-      const { user_user } = tokenDetails;
-      const newRefreshToken = await generateRefreshToken(user_user);
-      const token = generateAccessToken(user_user);
-      const data = {
-        users: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user_user))),
-        token,
-        refreshToken: newRefreshToken,
-      };
-      return res.status(OK).json(data);
-    })();
-  } catch (err) {
-    next(err);
-  }
-};
+// export const handleRefreshToken = (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     (async () => {
+//       const refreshToken = req.body.refreshToken as string;
+//       const tokenDetails = await prisma.authtoken_token.findUnique({ where: { key: refreshToken }, include: { user_user: true } });
+//       if (!tokenDetails) {
+//         throw new Error("Refresh token is invalid. Do login again");
+//       }
+//       const { user_user } = tokenDetails;
+//       const newRefreshToken = await generateRefreshToken(user_user);
+//       const token = generateAccessToken(user_user);
+//       const data = {
+//         users: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user_user))),
+//         token,
+//         refreshToken: newRefreshToken,
+//       };
+//       return res.status(OK).json(data);
+//     })();
+//   } catch (err) {
+//     next(err);
+//   }
+// };
 
-export const handleTwitterReturnUrl = (req: Request, res: Response) => {
-  (async () => {
-    try {
-      // Extract tokens from query string
-      const oauth_token = req.query.oauth_token as any as string;
-      const oauth_verifier = req.query.oauth_verifier as any as string;
+// export const handleTwitterReturnUrl = (req: Request, res: Response) => {
+//   (async () => {
+//     try {
+//       // Extract tokens from query string
+//       const oauth_token = req.query.oauth_token as any as string;
+//       const oauth_verifier = req.query.oauth_verifier as any as string;
 
-      //get the twitter users that are whitelisted
-      const wl_users = process.env.TWITTER_ADMIN_USERNAMES?.split(" ")?.map((u) => u.trim());
-      // Obtain the persistent tokens
-      // Create a client from temporary tokens
-      const { loginResult } = await authLogin({ oauth_token, oauth_verifier });
-      const { client: loggedClient, accessToken, accessSecret } = loginResult;
-      const meUser = await loggedClient.v2.me();
-      const { username, id, name, profile_image_url } = meUser.data;
-      const user = await prisma.user_user.upsert({
-        where: { username: username },
-        create: {
-          personal_twitter_handle: username,
-          username: username,
-          personal_twitter_id: id,
-          twitter_access_token: accessToken,
-          twitter_access_token_secret: accessSecret,
-          available_budget: 0,
-          is_active: true,
-          name,
-          profile_image_url: profile_image_url ?? "",
-          role: wl_users?.includes(username) ? "SUPER_ADMIN" : "GUEST_USER",
-          email: `${username.toLocaleLowerCase()}@hashbuzz.social`,
-          date_joined: moment().toISOString(),
-        },
-        update: {
-          twitter_access_token: accessToken,
-          twitter_access_token_secret: accessSecret,
-          personal_twitter_id: id,
-        },
-      });
-      // ?token={token.key}&user_id={user.id}
-      const token = generateAccessToken(user);
-      const refreshToken = await generateRefreshToken(user);
-      res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?token=${token}&refreshToken=${refreshToken}&user_id=${user.id}`,
-      });
-      res.end();
-    } catch (error) {
-      logger.err(error.message);
-      // console.log(error);
-      const message: string = error.message as string;
-      res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,
-      });
-      res.end();
-    }
-  })();
-};
+//       //get the twitter users that are whitelisted
+//       const wl_users = process.env.TWITTER_ADMIN_USERNAMES?.split(" ")?.map((u) => u.trim());
+//       // Obtain the persistent tokens
+//       // Create a client from temporary tokens
+//       const { loginResult } = await authLogin({ oauth_token, oauth_verifier });
+//       const { client: loggedClient, accessToken, accessSecret } = loginResult;
+//       const meUser = await loggedClient.v2.me();
+//       const { username, id, name, profile_image_url } = meUser.data;
+//       const user = await prisma.user_user.upsert({
+//         where: { username: username },
+//         create: {
+//           personal_twitter_handle: username,
+//           username: username,
+//           personal_twitter_id: id,
+//           twitter_access_token: accessToken,
+//           twitter_access_token_secret: accessSecret,
+//           available_budget: 0,
+//           is_active: true,
+//           name,
+//           profile_image_url: profile_image_url ?? "",
+//           role: wl_users?.includes(username) ? "SUPER_ADMIN" : "GUEST_USER",
+//           email: `${username.toLocaleLowerCase()}@hashbuzz.social`,
+//           date_joined: moment().toISOString(),
+//         },
+//         update: {
+//           twitter_access_token: accessToken,
+//           twitter_access_token_secret: accessSecret,
+//           personal_twitter_id: id,
+//         },
+//       });
+//       // ?token={token.key}&user_id={user.id}
+//       const token = generateAccessToken(user);
+//       const refreshToken = await generateRefreshToken(user);
+//       res.writeHead(TEMPORARY_REDIRECT, {
+//         Location: `${process.env.FRONTEND_URL!}?token=${token}&refreshToken=${refreshToken}&user_id=${user.id}`,
+//       });
+//       res.end();
+//     } catch (error) {
+//       logger.err(error.message);
+//       // console.log(error);
+//       const message: string = error.message as string;
+//       res.writeHead(TEMPORARY_REDIRECT, {
+//         Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,
+//       });
+//       res.end();
+//     }
+//   })();
+// };
 
-export const handleTwitterBizRegister = (req: Request, res: Response) => {
-  (async () => {
-    try {
-      // Extract tokens from query string
-      const oauth_token = req.query.oauth_token as any as string;
-      const oauth_verifier = req.query.oauth_verifier as any as string;
+// export const handleTwitterBizRegister = (req: Request, res: Response) => {
+//   (async () => {
+//     try {
+//       // Extract tokens from query string
+//       const oauth_token = req.query.oauth_token as any as string;
+//       const oauth_verifier = req.query.oauth_verifier as any as string;
 
-      // Obtain the persistent tokens
-      // Create a client from temporary tokens
-      const { loginResult, business_owner_id } = await authLogin({ oauth_token, oauth_verifier });
-      const { client: loggedClient, accessToken, accessSecret } = loginResult;
-      const meUser = await loggedClient.v2.me();
-      const { username, id } = meUser.data;
-      await prisma.user_user.update({
-        where: {
-          id: business_owner_id!,
-        },
-        data: {
-          business_twitter_handle: username,
-          business_twitter_access_token: accessToken,
-          business_twitter_access_token_secret: accessSecret,
-        },
-      });
-      res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?brandConnection=success&handle=${username}`,
-      });
-      res.end();
-    } catch (error) {
-      logger.err(error.message);
-      const message: string = error.message as string;
-      res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
-      });
-      res.end();
-    }
-  })();
-};
+//       // Obtain the persistent tokens
+//       // Create a client from temporary tokens
+//       const { loginResult, business_owner_id } = await authLogin({ oauth_token, oauth_verifier });
+//       const { client: loggedClient, accessToken, accessSecret } = loginResult;
+//       const meUser = await loggedClient.v2.me();
+//       const { username, id } = meUser.data;
+//       await prisma.user_user.update({
+//         where: {
+//           id: business_owner_id!,
+//         },
+//         data: {
+//           business_twitter_handle: username,
+//           business_twitter_access_token: accessToken,
+//           business_twitter_access_token_secret: accessSecret,
+//         },
+//       });
+//       res.writeHead(TEMPORARY_REDIRECT, {
+//         Location: `${process.env.FRONTEND_URL!}?brandConnection=success&handle=${username}`,
+//       });
+//       res.end();
+//     } catch (error) {
+//       logger.err(error.message);
+//       const message: string = error.message as string;
+//       res.writeHead(TEMPORARY_REDIRECT, {
+//         Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
+//       });
+//       res.end();
+//     }
+//   })();
+// };
 
-export const handleAdminLogin = (req: Request, res: Response, next: NextFunction) => {
-  (async () => {
-    try {
-      const { email, password }: { email: string; password: string } = req.body;
-      const user = await prisma.user_user.findMany({
-        where: {
-          email,
-          role: {
-            in: ["ADMIN", "SUPER_ADMIN"],
-          },
-        },
-      });
+// export const handleAdminLogin = (req: Request, res: Response, next: NextFunction) => {
+//   (async () => {
+//     try {
+//       const { email, password }: { email: string; password: string } = req.body;
+//       const user = await prisma.user_user.findMany({
+//         where: {
+//           email,
+//           role: {
+//             in: ["ADMIN", "SUPER_ADMIN"],
+//           },
+//         },
+//       });
 
-      if (!user || isEmpty(user)) {
-        throw new UserNotFoundError();
-      }
+//       if (!user || isEmpty(user)) {
+//         throw new UserNotFoundError();
+//       }
 
-      const _user = user[0];
-      const { id } = _user;
-      const { salt, hash } = passwordService.createPassword(password);
-      const updatedUser = await prisma.user_user.update({
-        where: { id },
-        data: { salt, hash },
-      });
-      const adminToken = generateAdminToken(updatedUser);
+//       const _user = user[0];
+//       const { id } = _user;
+//       const { salt, hash } = passwordService.createPassword(password);
+//       const updatedUser = await prisma.user_user.update({
+//         where: { id },
+//         data: { salt, hash },
+//       });
+//       const adminToken = generateAdminToken(updatedUser);
 
-      return res.status(OK).json({
-        message: "Logged in successfully.",
-        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-        adminToken,
-      });
-    } catch (err) {
-      next(err);
-    }
-  })();
-};
+//       return res.status(OK).json({
+//         message: "Logged in successfully.",
+//         user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
+//         adminToken,
+//       });
+//     } catch (err) {
+//       next(err);
+//     }
+//   })();
+// };

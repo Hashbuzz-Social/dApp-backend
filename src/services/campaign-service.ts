@@ -137,7 +137,6 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     include: {
       user_user: {
         select: {
-          username: true,
           personal_twitter_id: true,
           personal_twitter_handle: true,
           business_twitter_access_token: true,

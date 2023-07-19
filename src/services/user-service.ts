@@ -23,10 +23,10 @@ const getUserById = async (id?: number | bigint) => {
   return await prisma.user_user.findUnique({ where: { id } });
 };
 
-const getUserByUserName = async (username: string) => {
-  return await prisma.user_user.findUnique({
+const getUserByTwitterHandle = async (twitter_handle: string) => {
+  return await prisma.user_user.findFirst({
     where: {
-      username,
+      personal_twitter_handle:twitter_handle,
     },
   });
 };
@@ -153,7 +153,7 @@ export default {
   topUp,
   getUserByTwitterId,
   totalReward,
-  getUserByUserName,
+  getUserByUserName:getUserByTwitterHandle,
   updateTokenBalanceForUser
 } as const;
 

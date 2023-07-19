@@ -4,6 +4,7 @@ import logger from "jet-logger";
 
 const network = process.env.HEDERA_NETWORK;
 const operatorPrivateKey = process.env.HEDERA_PRIVATE_KEY;
+const operatorPublicKey = process.env.HEDERA_PUBLIC_KEY;
 const operatorAccount = process.env.HEDERA_ACCOUNT_ID;
 
 
@@ -71,5 +72,6 @@ export default {
   operatorPrivateKey,
   operatorId,
   operatorKey,
+  operatorPublicKey,
   getAccountBalances,
 } as const;

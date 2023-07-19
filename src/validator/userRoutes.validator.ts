@@ -46,20 +46,10 @@ export const validateGenerateAstPayload:CustomValidator = (body:GenerateAstPaylo
     typeof body === "object" &&
     "payload" in body &&
     typeof body.payload === "object" &&
-    "url" in body.payload &&
-    typeof body.payload.url === "string" &&
-    "token" in body.payload &&
-    typeof body.payload.token === "string" &&
+    "clientPayload" in body &&
+    typeof body.clientPayload === "object" &&
     "signatures" in body &&
-    typeof body.signatures === "object" &&
-    "server" in body.signatures &&
-    typeof body.signatures.server === "string" &&
-    "wallet" in body.signatures &&
-    typeof body.signatures.wallet === "object" &&
-    "accountId" in body.signatures.wallet &&
-    typeof body.signatures.wallet.accountId === "string" &&
-    "value" in body.signatures.wallet &&
-    typeof body.signatures.wallet.value === "string"
+    typeof body.signatures === "object"
   ) {
     return true;
   }

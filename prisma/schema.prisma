@@ -99,16 +99,15 @@ model user_twitterlogintemp {
 
 model user_user {
   id                                   BigInt                  @id @default(autoincrement())
+  accountAddress                       String                  @unique
+  hedera_wallet_id                     String                  @unique
   last_login                           DateTime?               @db.Timestamptz(6)
-  username                             String                  @unique @db.VarChar(150)
-  name                                 String                  @default("") @db.VarChar
-  email                                String                  @unique @db.VarChar(254)
+  name                                 String?                 @default("") @db.VarChar
   profile_image_url                    String                  @default("") @db.VarChar
   is_active                            Boolean
-  date_joined                          DateTime                @db.Timestamptz(6)
+  date_joined                          DateTime                @default(now()) @db.Timestamptz(6)
   personal_twitter_handle              String?                 @db.VarChar(50)
   business_twitter_handle              String?                 @db.VarChar(50)
-  hedera_wallet_id                     String?                 @db.VarChar(50)
   consent                              Boolean                 @default(false)
   available_budget                     Float                   @default(0)
   twitter_access_token                 String?                 @db.VarChar(200)
@@ -127,8 +126,7 @@ model user_user {
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
 
-  @@unique([id, username, email])
-  @@index([username], map: "user_user_username_e2bdfe0c_like")
+  @@unique([id , hedera_wallet_id , accountAddress])
 }
 
 model smartcontracts {

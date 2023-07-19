@@ -127,7 +127,7 @@ export const updateAllEngagementsForCard = async (card: campaign_twittercard) =>
   return isDone;
 };
 
-export const updatePaymentStatusToManyRecords = async (ids: number | bigint[], payment_status: payment_status) => {
+export const updatePaymentStatusToManyRecords = async (ids: number[] | bigint[], payment_status: payment_status) => {
   return await prisma.campaign_tweetengagements.updateMany({
     where: {
       id: {

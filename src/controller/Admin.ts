@@ -69,7 +69,6 @@ export const handleUpdatePasswordReq = (req: Request, res: Response, next: NextF
           data: {
             salt,
             hash,
-            email,
           },
         });
         return res.status(OK).json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
@@ -82,33 +81,33 @@ export const handleUpdatePasswordReq = (req: Request, res: Response, next: NextF
   })();
 };
 
-export const handleUpdateEmailReq = (req: Request, res: Response, next: NextFunction) => {
-  (async () => {
-    try {
-      const { email, password }: { email: string; password: string } = req.body;
-      if (!req.currentUser?.hash || !req.currentUser.salt) {
-        throw new ParamMissingError("First update your password.");
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      const isPasswordMatched = passwordService.validPassword(password, req.currentUser?.salt, req.currentUser?.hash);
-      if (!isPasswordMatched) throw new ParamMissingError("Password used is incorrect");
+// export const handleUpdateEmailReq = (req: Request, res: Response, next: NextFunction) => {
+//   (async () => {
+//     try {
+//       const { email, password }: { email: string; password: string } = req.body;
+//       if (!req.currentUser?.hash || !req.currentUser.salt) {
+//         throw new ParamMissingError("First update your password.");
+//       }
+//       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+//       const isPasswordMatched = passwordService.validPassword(password, req.currentUser?.salt, req.currentUser?.hash);
+//       if (!isPasswordMatched) throw new ParamMissingError("Password used is incorrect");
 
-      //if password matched then update email and send updated user's data as response;
-      const updatedUser = await prisma.user_user.update({
-        where: { id: req.currentUser.id },
-        data: {
-          email,
-        },
-      });
-      return res.status(OK).json({
-        message: "Email updated successfully",
-        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-      });
-    } catch (err) {
-      next(err);
-    }
-  })();
-};
+//       //if password matched then update email and send updated user's data as response;
+//       const updatedUser = await prisma.user_user.update({
+//         where: { id: req.currentUser.id },
+//         data: {
+//           email,
+//         },
+//       });
+//       return res.status(OK).json({
+//         message: "Email updated successfully",
+//         user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
+//       });
+//     } catch (err) {
+//       next(err);
+//     }
+//   })();
+// };
 
 export const handleTokenInfoReq = (req: Request, res: Response, next: NextFunction) => {
   (async () => {
