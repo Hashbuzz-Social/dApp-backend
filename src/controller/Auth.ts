@@ -57,10 +57,10 @@ export const handleGenerateAuthAst = (req: Request, res: Response, next: NextFun
         //? if verified send a ast token to the client
         const ts = new Date().getTime();
         const { signature } = signingService.signData({ ts, accountId });
-        res.status(OK).json({ ast: createAstToken({ ts, accountId, signature: Buffer.from(signature).toString("base64") }) });
+        res.status(OK).json({ auth:true , ast: createAstToken({ ts, accountId, signature: Buffer.from(signature).toString("base64") }) });
       } else {
         //! not verified by the signature throw an invalid signature error;
-        res.status(BAD_REQUEST).json({ message: "Invalid signature." });
+        res.status(BAD_REQUEST).json({ auth:false, message: "Invalid signature." });
       }
     })();
   } catch (err) {

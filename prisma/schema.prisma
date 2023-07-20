@@ -8,9 +8,10 @@ datasource db {
 }
 
 model authtoken_token {
-  key       String    @id @db.VarChar(500)
-  created   DateTime  @db.Timestamptz(6)
+  key       String    @id @db.VarChar(1000)
+  created   DateTime  @default(now()) @db.Timestamptz(6)
   user_id   BigInt    @unique
+  expirry   DateTime  @db.Timestamptz(6)
   user_user user_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "authtoken_token_user_id_35299eff_fk_user_user_id")
 
   @@index([key], map: "authtoken_token_key_10f0b77e_like")
@@ -100,7 +101,6 @@ model user_twitterlogintemp {
 model user_user {
   id                                   BigInt                  @id @default(autoincrement())
   accountAddress                       String                  @unique
-  hedera_wallet_id                     String                  @unique
   last_login                           DateTime?               @db.Timestamptz(6)
   name                                 String?                 @default("") @db.VarChar
   profile_image_url                    String                  @default("") @db.VarChar
@@ -119,6 +119,7 @@ model user_user {
   role                                 user_roles              @default(GUEST_USER)
   hash                                 String?                 @db.VarChar
   salt                                 String?                 @db.VarChar
+  hedera_wallet_id                     String                  @unique
   authtoken_token                      authtoken_token?
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
@@ -126,7 +127,7 @@ model user_user {
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
 
-  @@unique([id , hedera_wallet_id , accountAddress])
+  @@unique([id, hedera_wallet_id, accountAddress])
 }
 
 model smartcontracts {
