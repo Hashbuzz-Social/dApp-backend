@@ -1,47 +1,20 @@
 import {
-  // handleAdminLogin,
   handleAuthPing,
-  handleLogout,
-  // handleRefreshToken,
-  // handleTwitterBizRegister,
-  handleTwitterBrand,
-  handleTwitterLogin,
-  // handleTwitterReturnUrl,
   handleCreateChallenge,
   handleGenerateAuthAst,
+  handleLogout,
 } from "@controller/Auth";
+import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
 import auth from "@middleware/auth";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const authRouter = Router();
-const passwordCheck: IsStrongPasswordOptions = {
-  minLength: 8,
-  minNumbers: 1,
-  minLowercase: 1,
-  minUppercase: 1,
-  minSymbols: 1,
-};
 
-/**
- * Handle Twitter login.
- *
- * @api GET /api/auth/twitter-login
- * @handler handleTwitterLogin
- */
-authRouter.get("/twitter-login", handleTwitterLogin);
+// authRouter.get("/personal", handleTwitterLogin);
 
-/**
- * Handle Twitter brand.
- *
- * @api GET /api/auth/brand-handle
- * @middleware auth.isHavingValidAst
- * @validator checkErrResponse
- * @handler handleTwitterBrand
- */
-authRouter.get("/brand-handle", auth.isHavingValidAst, checkErrResponse, handleTwitterBrand);
+// authRouter.get("/brand-handle", auth.isHavingValidAst, checkErrResponse, handleTwitterBrand);
 
 /**
  * Logout user.
@@ -70,7 +43,7 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, handleLogout
  * @api GET /api/auth/twitter-return
  * @handler handleTwitterReturnUrl
  */
-// authRouter.get("/twitter-return", handleTwitterReturnUrl);
+authRouter.get("/twitter-return", handleTwitterReturnUrl);
 
 /**
  * Handle Twitter business registration return URL.
@@ -78,7 +51,7 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, handleLogout
  * @api GET /api/auth/business-twitter-return
  * @handler handleTwitterBizRegister
  */
-// authRouter.get("/business-twitter-return", handleTwitterBizRegister);
+authRouter.get("/business-twitter-return", handleTwitterBizRegister);
 
 /**
  * Handle admin login.

@@ -1,9 +1,12 @@
 import authMiddleware from "@middleware/auth";
+import userInfo from "@middleware/userInfo";
 import { Router } from "express";
+import adminRouter from "./admin";
 import campaignRouter from "./campaign-router";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
-import adminRouter from "./admin";
+import integrationRouter from "./integrations";
+import auth from "@middleware/auth";
 
 // Export the base-router
 const baseRouter = Router();
@@ -32,7 +35,7 @@ baseRouter.use("/users", authMiddleware.isHavingValidAst, userRouter);
  * @middleware authMiddleware.isHavingValidAst
  * @handler transactionRouter
  */
-baseRouter.use("/transaction", authMiddleware.isHavingValidAst, transactionRouter);
+baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurrentUserInfo, transactionRouter);
 
 /**
  * Campaign API routes.
@@ -53,7 +56,9 @@ baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
  * @middleware authMiddleware.isAdminRequesting
  * @handler adminRouter
  */
-// baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdminRequesting, adminRouter);
+baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdminRequesting, adminRouter);
+
+baseRouter.use("/integrations", auth.isHavingValidAst, integrationRouter);
 
 // Export default.
 export default baseRouter;

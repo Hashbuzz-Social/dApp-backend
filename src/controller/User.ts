@@ -14,10 +14,16 @@ import { validationResult } from "express-validator";
 
 const { OK, BAD_REQUEST } = StatusCodes;
 
-export const handleGetAllUser = (_: Request, res: Response, next: NextFunction) => {
+/**
+ * @description Get all user list by pagination.
+ */
+export const handleGetAllUser = (req: Request, res: Response, next: NextFunction) => {
   try {
+    const body = req.body;
+    const offset = body.offset ?? 10;
+    const limit = body.limit ?? 10;
     (async () => {
-      const users = await userService.getAll();
+      const users = await userService.getAll({ limit, offset });
       return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
     })();
   } catch (err) {
@@ -28,39 +34,12 @@ export const handleGetAllUser = (_: Request, res: Response, next: NextFunction) 
 export const handleCurrentUser = (req: Request, res: Response, next: NextFunction) => {
   try {
     (async () => {
-      const currentUser = await userService.getUserById(req.currentUser?.id);
-      if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
-      else throw new ParamMissingError("User id send is not verified");
+      if (req?.accountAddress) {
+        const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
+        if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
+        else throw new ParamMissingError("No record for this id.");
+      }
     })();
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const handleWalletUpdate = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(BAD_REQUEST).json({ errors: errors.array() });
-    }
-
-    const walletId: string = req.body.walletId;
-
-    // console.log("Update_wallet::", req.currentUser?.hedera_wallet_id);
-
-    if (req.currentUser?.hedera_wallet_id) {
-      return res.status(OK).json({ updated: true, message: "Wallet already added to this account" });
-    } else {
-      //If not error then update database
-      (async () => {
-        const id = req.currentUser?.id;
-        const updatedUser = await userService.updateWalletId(walletId, id!);
-        if (updatedUser) {
-          await totalPendingReward(updatedUser.personal_twitter_id!, updatedUser.hedera_wallet_id!);
-          return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-        }
-      })();
-    }
   } catch (err) {
     next(err);
   }
@@ -71,7 +50,7 @@ export const handleUpdateConcent = (req: Request, res: Response, next: NextFunct
     (async () => {
       const { consent } = req.body;
       const updatedUser = await prisma.user_user.update({
-        where: { id: req.currentUser?.id },
+        where: { accountAddress: req.accountAddress },
         data: { consent: consent },
       });
       return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
@@ -126,43 +105,3 @@ export const handleTokenBalReq = (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const handleUpdatePassword = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      try {
-        const { password, email }: { password: string; email?: string } = req.body;
-
-        if (!email || !password) {
-          throw new ParamMissingError("Email and password is required felid");
-        }
-
-        const role = req.currentUser?.role;
-        const salt = req.currentUser?.salt;
-        const hash = req.currentUser?.hash;
-
-        //!! reset password for newly created admin.
-        if (role && ["ADMIN", "SUPER_ADMIN"].includes(role) && !salt && !hash) {
-          // create new password key and salt
-          const { salt, hash } = passwordService.createPassword(password);
-          //!! Save to db.
-          const updatedUser = await prisma.user_user.update({
-            where: { id: req.currentUser?.id },
-            data: {
-              salt,
-              hash,
-            },
-          });
-          return res
-            .status(OK)
-            .json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
-        }
-
-        res.status(BAD_REQUEST).json({ message: "Handler function not found" });
-      } catch (err) {
-        next(err);
-      }
-    })();
-  } catch (err) {
-    next(err);
-  }
-};

@@ -22,11 +22,10 @@ interface PublicMetricsObject {
   [name: string]: PublicMetrics;
 }
 
-const token = "AAAAAAAAAAAAAAAAAAAAAGAsaAEAAAAA%2B5iOEMRE9r9mQrrhUmmDCjQ1GA0%3Dl5o8X1STsnuc6LOlecUq3lFeKw9xiVOZUWxfipds21HyxvPB4j";
 
 
 // Instantiate with desired auth type (here's Bearer v2 auth)
-const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN ?? token);
+const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN!);
 const roClient = twitterClient.readOnly;
 
 

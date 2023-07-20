@@ -1,10 +1,15 @@
 import prisma from "@shared/prisma";
 
-export const getAllUser = async () => {
+export const getAllUser = async (params: { limit: number; offset: number }) => {
+  const { limit, offset } = params;
   const users = await prisma.user_user.findMany({
     orderBy: { id: "asc" },
+    skip: offset,
+    take: limit,
   });
-  return users;
+
+  const count = await prisma.user_user.count();
+  return { users, count };
 };
 
 const updateWalletId = async (walletId: string, userId: bigint) => {
@@ -19,17 +24,35 @@ const updateWalletId = async (walletId: string, userId: bigint) => {
   return false;
 };
 
-const getUserById = async (id?: number | bigint) => {
-  return await prisma.user_user.findUnique({ where: { id } });
+const getUserByHederaWalletTd = async (hedera_wallet_id: string) => {
+  return await prisma.user_user.findUnique({
+    where: { hedera_wallet_id },
+  });
 };
 
-const getUserByTwitterHandle = async (twitter_handle: string) => {
+const getUserByAccountAddress = async (accountAddress: string) => {
+  return await prisma.user_user.findUnique({
+    where: { accountAddress },
+  });
+};
+
+const getUserById = async (id: number | bigint) => {
+  return await prisma.user_user.findUnique({
+    where: { id },
+  });
+};
+
+const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) => {
   return await prisma.user_user.findFirst({
     where: {
-      personal_twitter_handle:twitter_handle,
+      personal_twitter_handle,
     },
   });
 };
+
+const getAstForUserByAccountAddress = async (accountAddress:string) => {
+  return await prisma.authtoken_token.findUnique({where:{accountAddress}})
+}
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
   console.log("topUp start");
@@ -150,10 +173,12 @@ export default {
   getAll: getAllUser,
   updateWalletId,
   getUserById,
+  getUserByAccountAddress,
+  getUserByHederaWalletTd,
   topUp,
   getUserByTwitterId,
   totalReward,
-  getUserByUserName:getUserByTwitterHandle,
-  updateTokenBalanceForUser
+  getUserByPersonalTwitterHandle,
+  updateTokenBalanceForUser,
+  getAstForUserByAccountAddress
 } as const;
-

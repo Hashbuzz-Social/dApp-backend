@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
-const refreshSecret = process.env.J_REFRESH_TOKEN_SECRET;
 
 // export const generateAccessToken = (user: user_user) => {
 //   const { id, username, personal_twitter_id } = user;

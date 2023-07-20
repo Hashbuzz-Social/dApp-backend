@@ -1,27 +1,13 @@
-import {
-  handleCurrentUser,
-  handleGetAllUser,
-  handleGetUserBalances,
-  handleTokenBalReq,
-  handleUpdateConcent,
-  handleUpdatePassword,
-  handleWalletUpdate,
-} from "@controller/User";
+import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleUpdateConcent } from "@controller/User";
 import adminMiddleWare from "@middleware/admin";
-import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
+import userInfo from "@middleware/userInfo";
+import { checkWalletFormat } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 // Constants
 const router = Router();
-const passwordCheck: IsStrongPasswordOptions = {
-  minLength: 8,
-  minNumbers: 1,
-  minLowercase: 1,
-  minUppercase: 1,
-  minSymbols: 1,
-};
+
 
 /**
  * Get all users.
@@ -40,15 +26,7 @@ router.get("/all", adminMiddleWare.isAdmin, handleGetAllUser);
  */
 router.get("/current", handleCurrentUser);
 
-/**
- * Update wallet ID for the current user.
- *
- * @api PUT /api/users/update/wallet
- * @bodyParam {string} walletId - The wallet ID to update.
- * @validator checkWalletFormat - Custom wallet format validation.
- * @handler handleWalletUpdate
- */
-router.put("/update/wallet", body("walletId").custom(checkWalletFormat), handleWalletUpdate);
+// router.put("/update/wallet", body("walletId").custom(checkWalletFormat), handleWalletUpdate);
 
 /**
  * Update concent.
@@ -67,30 +45,15 @@ router.patch("/update-concent", handleUpdateConcent);
  * @bodyParam {boolean} contractBal - Indicates whether to include contract balances.
  * @handler handleGetUserBalances
  */
-router.post(
-  "/get-balances",
-  body("accountId").custom(checkWalletFormat),
-  body("contractBal").isBoolean(),
-  handleGetUserBalances
-);
+router.post("/get-balances", userInfo.getCurrentUserInfo, body("accountId").custom(checkWalletFormat), body("contractBal").isBoolean(), handleGetUserBalances);
 
-/**
- * Update password.
- *
- * @api PUT /api/users/update-password
- * @bodyParam {string} email - The user's email.
- * @bodyParam {string} password - The new password.
- * @validator checkErrResponse - Error response validation.
- * @validator body("password").isStrongPassword(passwordCheck) - Strong password validation.
- * @handler handleUpdatePassword
- */
-router.put(
-  "/update-password",
-  body("email").isEmail(),
-  body("password").isStrongPassword(passwordCheck),
-  checkErrResponse,
-  handleUpdatePassword
-);
+// router.put(
+//   "/update-password",
+//   body("email").isEmail(),
+//   body("password").isStrongPassword(passwordCheck),
+//   checkErrResponse,
+//   handleUpdatePassword
+// );
 
 /**
  * Get token balances.
@@ -98,6 +61,6 @@ router.put(
  * @api GET /api/users/token-balances
  * @handler handleTokenBalReq
  */
-router.get("/token-balances", handleTokenBalReq);
+router.get("/token-balances", userInfo.getCurrentUserInfo, handleTokenBalReq);
 
 export default router;

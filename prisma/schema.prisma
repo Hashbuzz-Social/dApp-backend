@@ -8,11 +8,11 @@ datasource db {
 }
 
 model authtoken_token {
-  key       String    @id @db.VarChar(1000)
-  created   DateTime  @default(now()) @db.Timestamptz(6)
-  user_id   BigInt    @unique
-  expirry   DateTime  @db.Timestamptz(6)
-  user_user user_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "authtoken_token_user_id_35299eff_fk_user_user_id")
+  key            String    @id @db.VarChar(1000)
+  created        DateTime  @default(now()) @db.Timestamptz(6)
+  accountAddress String    @unique
+  expiry        DateTime  @db.Timestamptz(6)
+  user_user      user_user @relation(fields: [accountAddress], references: [accountAddress], onDelete: NoAction, onUpdate: NoAction, map: "authtoken_token_user_id_35299eff_fk_user_user_id")
 
   @@index([key], map: "authtoken_token_key_10f0b77e_like")
 }
@@ -92,10 +92,10 @@ model user_twitterlogintemp {
   oauth_callback_confirmed Boolean?
   created_at               DateTime?  @db.Timestamptz(6)
   updated_at               DateTime?  @db.Timestamptz(6)
-  business_owner_id        BigInt?
-  user_user                user_user? @relation(fields: [business_owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_twitterlogintem_business_owner_id_85bb51b5_fk_user_user")
+  user_id                  BigInt
+  user_user                user_user? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_twitterlogintem_business_owner_id_85bb51b5_fk_user_user")
 
-  @@index([business_owner_id], map: "user_twitterlogintemp_business_owner_id_85bb51b5")
+  @@index([user_id], map: "user_twitterlogintemp_business_owner_id_85bb51b5")
 }
 
 model user_user {

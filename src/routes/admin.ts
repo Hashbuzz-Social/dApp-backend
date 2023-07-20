@@ -6,7 +6,6 @@ import {
   // handleUpdateEmailReq,
   handleWhiteListToken,
 } from "@controller/Admin";
-import { handleUpdatePassword } from "@controller/User";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query } from "express-validator";
@@ -45,7 +44,7 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, h
  * @validator checkErrResponse
  * @handler handleUpdatePassword
  */
-router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePassword);
+// router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePassword);
 
 /**
  * Update email.
