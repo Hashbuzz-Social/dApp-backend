@@ -1,4 +1,5 @@
 import {
+  handleAdminLogin,
   handleAuthPing,
   handleCreateChallenge,
   handleGenerateAuthAst,
@@ -6,12 +7,21 @@ import {
 } from "@controller/Auth";
 import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
 import auth from "@middleware/auth";
+import userInfo from "@middleware/userInfo";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
 
 const authRouter = Router();
 
+const passwordCheck: IsStrongPasswordOptions = {
+  minLength: 8,
+  minNumbers: 1,
+  minLowercase: 1,
+  minUppercase: 1,
+  minSymbols: 1,
+};
 // authRouter.get("/personal", handleTwitterLogin);
 
 // authRouter.get("/brand-handle", auth.isHavingValidAst, checkErrResponse, handleTwitterBrand);
@@ -63,12 +73,11 @@ authRouter.get("/business-twitter-return", handleTwitterBizRegister);
  * @validator body("password").isStrongPassword(passwordCheck)
  * @handler handleAdminLogin
  */
-// authRouter.post(
-//   "/admin-login",
-//   body("email").isEmail(),
-//   body("password").isStrongPassword(passwordCheck),
-//   handleAdminLogin
-// );
+authRouter.post(
+  "/admin-login",auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo,
+  body("password").isStrongPassword(passwordCheck),
+  handleAdminLogin
+);
 
 //dAppAccessRoutes
 authRouter.get("/ping", auth.isHavingValidAst, handleAuthPing);

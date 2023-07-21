@@ -69,12 +69,12 @@ export const handleTwitterReturnUrl = (req: Request, res: Response) => {
       const getAstForUserById = await userService.getAstForUserByAccountAddress(user.accountAddress);
 
       res.writeHead(TEMPORARY_REDIRECT, {
-        Location: `${process.env.FRONTEND_URL!}?token=${getAstForUserById?.key ?? ""}&user_id=${user.id}`,
+        Location: `${process.env.FRONTEND_URL!}?token=${getAstForUserById?.key ?? ""}&user_id=${user.id}&username=${username}`,
       });
       res.end();
     } catch (error) {
       // logger.err(error.message);
-      // console.log(error);
+      console.log(error);
       const message: string = error.message as string;
       res.writeHead(TEMPORARY_REDIRECT, {
         Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,

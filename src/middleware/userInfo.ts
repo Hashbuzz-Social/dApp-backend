@@ -10,9 +10,9 @@ const getCurrentUserInfo = (req: Request, res: Response, next: NextFunction) => 
           where: { accountAddress },
         });
         if (currentUser) req.currentUser = currentUser;
+        next();
       }
     })();
-    next();
   } catch (err) {
     next(err);
   }

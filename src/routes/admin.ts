@@ -3,10 +3,12 @@ import {
   handleGetAllCard,
   handleGetAllWLToken,
   handleTokenInfoReq,
+  handleUpdatePasswordReq,
   // handleUpdateEmailReq,
   handleWhiteListToken,
 } from "@controller/Admin";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
+import userInfo from "@middleware/userInfo";
 import { Router } from "express";
 import { body, query } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
@@ -44,7 +46,7 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, h
  * @validator checkErrResponse
  * @handler handleUpdatePassword
  */
-// router.put("/update-password", body("email").optional().isEmail(), body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePassword);
+router.put("/update-password",  userInfo.getCurrentUserInfo , body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePasswordReq);
 
 /**
  * Update email.
@@ -68,7 +70,7 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, h
  * @validator checkErrResponse
  * @handler handleTokenInfoReq
  */
-router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfoReq);
+router.post("/token-info",  body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfoReq);
 
 /**
  * List a token.

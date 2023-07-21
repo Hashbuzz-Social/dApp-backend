@@ -1,3 +1,4 @@
+import { user_user } from "@prisma/client";
 import jwt from "jsonwebtoken";
 const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 
@@ -24,10 +25,10 @@ const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 //   return refreshToken;
 // };
 
-// export const generateAdminToken = (user: user_user) => {
-//   const { id, username, personal_twitter_id, role } = user;
-//   return jwt.sign({ id: id.toString(), username, personal_twitter_id, role }, accessSecret!, { expiresIn: "24h" });
-// };
+export const generateAdminToken = (user: user_user) => {
+  const { id, role , hedera_wallet_id } = user;
+  return jwt.sign({ id: id.toString(), hedera_wallet_id , role }, accessSecret!, { expiresIn: "24h" });
+};
 
 export const generateSigningToken = () => {
   const currentTimeStamp = new Date().getTime();

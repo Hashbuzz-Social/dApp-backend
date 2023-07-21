@@ -18,7 +18,7 @@ export const twitterAuthUrl = async ({ callbackUrl, isBrand, user_id }: { callba
   await prisma.user_twitterlogintemp.create({
     data: {
       oauth_callback_confirmed: oauth_callback_confirmed === "true" ? true : false,
-      oauth_token: encrypt(oauth_token),
+      oauth_token: oauth_token,
       oauth_token_secret: encrypt(oauth_token_secret),
       created_at: moment().toISOString(),
       user_id,

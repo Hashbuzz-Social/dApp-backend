@@ -3,7 +3,7 @@ import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
-import { ParamMissingError } from "@shared/errors";
+import { ErrorWithCode, ParamMissingError } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
@@ -31,10 +31,10 @@ export const handleGetAllCard = (req: Request, res: Response, next: NextFunction
 export const handleUpdatePasswordReq = (req: Request, res: Response, next: NextFunction) => {
   (async () => {
     try {
-      const { password, oldPassword, email }: { password: string; oldPassword?: string; email?: string } = req.body;
+      const { password , oldPassword }: { password: string; oldPassword?: string; } = req.body;
 
       if (req.currentUser?.salt && req.currentUser.hash && isEmpty(oldPassword)) {
-        throw new ParamMissingError("Password rest is only allowed with old password.");
+        next(new ErrorWithCode("without old password password reset is not allowed" , BAD_REQUEST))
       }
 
       // Update normal password.
@@ -44,7 +44,7 @@ export const handleUpdatePasswordReq = (req: Request, res: Response, next: NextF
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const matchOldPassword = passwordService.validPassword(oldPassword, req.currentUser.salt, req.currentUser.hash);
         //!! if not matched throw error
-        if (!matchOldPassword) throw new ParamMissingError("Provided old password is not matching.");
+        if (!matchOldPassword) next(new ErrorWithCode("Old password is not matching" , BAD_REQUEST))
 
         //old password is match now generate salt and hash for given password.
         const { salt, hash } = passwordService.createPassword(password);
@@ -60,7 +60,7 @@ export const handleUpdatePasswordReq = (req: Request, res: Response, next: NextF
       }
 
       //!! reset password for newly created admin.
-      if (!req.currentUser?.salt && !req.currentUser?.hash && password) {
+      if (req.currentUser?.id && !req.currentUser?.salt && !req.currentUser?.hash && password) {
         // create new password key and salt
         const { salt, hash } = passwordService.createPassword(password);
         //!! Save to db.

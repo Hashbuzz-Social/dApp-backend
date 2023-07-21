@@ -1,13 +1,16 @@
 import { AccountId } from "@hashgraph/sdk";
-import { createAstToken, generateSigningToken } from "@services/authToken-service";
+import { createAstToken, generateAdminToken, generateSigningToken } from "@services/authToken-service";
 import hederaservice from "@services/hedera-service";
+import passwordService from "@services/password-service";
 import signingService from "@services/signing-service";
-import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
+import { ErrorWithCode } from "@shared/errors";
+import { base64ToUint8Array, fetchAccountIfoKey, sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
+import JSONBigInt from "json-bigint";
 
-const { OK, BAD_REQUEST } = HttpStatusCodes;
+const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
 
 /**
  * @description Update last login status for exiting user.
@@ -19,17 +22,23 @@ export const handleAuthPing = (req: Request, res: Response) => {
 
     //? Update login state or upsert the record.
     (async () => {
+      const create = {
+        accountAddress: req.accountAddress!,
+        hedera_wallet_id: accountId,
+        available_budget: 0,
+        is_active: false,
+      };
+      if (accountId === hederaservice.operatorId.toString()) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-expect-error
+        create["role"] = "SUPER_ADMIN";
+      }
       await prisma.user_user.upsert({
         where: { accountAddress: req.accountAddress },
         update: {
           last_login: new Date().toISOString(),
         },
-        create: {
-          accountAddress: req.accountAddress!,
-          hedera_wallet_id: accountId,
-          available_budget: 0,
-          is_active: false,
-        },
+        create,
       });
     })();
     return res.status(OK).json({ hedera_wallet_id: accountId });
@@ -82,8 +91,13 @@ export const handleGenerateAuthAst = (req: Request, res: Response, next: NextFun
         const accountAddress = AccountId.fromString(accountId as string).toSolidityAddress();
 
         //saving temp auth token
-        await prisma.authtoken_token.create({
-          data: {
+        await prisma.authtoken_token.upsert({
+          where: { accountAddress },
+          update: {
+            expiry,
+            key: token,
+          },
+          create: {
             accountAddress,
             expiry,
             key: token,
@@ -139,39 +153,28 @@ export const handleLogout = (req: Request, res: Response, next: NextFunction) =>
 //   }
 // };
 
-// export const handleAdminLogin = (req: Request, res: Response, next: NextFunction) => {
-//   (async () => {
-//     try {
-//       const { email, password }: { email: string; password: string } = req.body;
-//       const user = await prisma.user_user.findMany({
-//         where: {
-//           email,
-//           role: {
-//             in: ["ADMIN", "SUPER_ADMIN"],
-//           },
-//         },
-//       });
+export const handleAdminLogin = (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    try {
+      const { password }: { password: string } = req.body;
+      const user = await prisma.user_user.findUnique({
+        where: {
+          id: req.currentUser?.id,
+        },
+      });
 
-//       if (!user || isEmpty(user)) {
-//         throw new UserNotFoundError();
-//       }
-
-//       const _user = user[0];
-//       const { id } = _user;
-//       const { salt, hash } = passwordService.createPassword(password);
-//       const updatedUser = await prisma.user_user.update({
-//         where: { id },
-//         data: { salt, hash },
-//       });
-//       const adminToken = generateAdminToken(updatedUser);
-
-//       return res.status(OK).json({
-//         message: "Logged in successfully.",
-//         user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-//         adminToken,
-//       });
-//     } catch (err) {
-//       next(err);
-//     }
-//   })();
-// };
+      if (user && user.salt && user.hash) {
+        const validatePassword = passwordService.validPassword(password, user.salt, user.hash);
+        if (validatePassword) {
+          return res.status(OK).json({
+            message: "Logged in successfully.",
+            user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user))),
+            adminToken: generateAdminToken(user),
+          });
+        } else next(new ErrorWithCode("Invalid Password", BAD_REQUEST));
+      } else next(new ErrorWithCode("User not found as admin.", BAD_REQUEST));
+    } catch (err) {
+      next(new ErrorWithCode("Error while admin login processing", INTERNAL_SERVER_ERROR));
+    }
+  })();
+};

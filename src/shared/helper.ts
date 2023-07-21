@@ -1,5 +1,6 @@
 import { AccountId } from "@hashgraph/sdk";
 import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
+import hederaService from "@services/hedera-service";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -8,7 +9,8 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
 };
 
 export const sensitizeUserData = (userData: Partial<user_user>) => {
-  // const emailActive = Boolean(userData.email && userData.salt && userData.hash);
+  const accountMatch = hederaService.operatorId.toString() === userData.hedera_wallet_id;
+  const adminActive = Boolean(accountMatch && userData.salt && userData.hash);
   return {
     ...rmKeyFrmData(userData, [
       "salt",
@@ -19,7 +21,10 @@ export const sensitizeUserData = (userData: Partial<user_user>) => {
       "twitter_access_token_secret",
       "last_login",
       "date_joined",
+      "personal_twitter_id",
+      "accountAddress",
     ]),
+    adminActive,
   };
 };
 

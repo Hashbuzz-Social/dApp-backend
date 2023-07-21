@@ -1,10 +1,13 @@
 import { AccountId } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { UnauthorizeError } from "@shared/errors";
+import { ErrorWithCode, UnauthorizeError } from "@shared/errors";
 import { base64ToUint8Array } from "@shared/helper";
 import { NextFunction, Request, Response } from "express";
+import httpStatuses from "http-status-codes";
 import jwt from "jsonwebtoken";
+
+const { BAD_REQUEST } = httpStatuses;
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
@@ -27,7 +30,7 @@ const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
     const barerToken = getBarerToken(req);
     jwt.verify(barerToken, accessSecret, (err, payload) => {
       if (err) {
-        throw new UnauthorizeError(authTokenInvalidError);
+        next(new UnauthorizeError("Error from verification::" + authTokenInvalidError));
       }
 
       if (payload) {
@@ -41,11 +44,11 @@ const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
           const accountAddress = AccountId.fromString(accountId as string).toSolidityAddress();
           req.accountAddress = accountAddress;
           next();
-        } else throw new UnauthorizeError("Signature not verified");
-      } else throw new UnauthorizeError(authTokenInvalidError);
+        } else next(new UnauthorizeError("Signature not verified"));
+      } else next(new UnauthorizeError("Error from payload check::" + authTokenInvalidError));
     });
   } catch (err) {
-    next(err);
+    next(new ErrorWithCode("Error while checking auth token", BAD_REQUEST));
   }
 };
 
