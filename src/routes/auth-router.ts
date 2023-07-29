@@ -1,10 +1,4 @@
-import {
-  handleAdminLogin,
-  handleAuthPing,
-  handleCreateChallenge,
-  handleGenerateAuthAst,
-  handleLogout,
-} from "@controller/Auth";
+import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout } from "@controller/Auth";
 import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
 import auth from "@middleware/auth";
 import userInfo from "@middleware/userInfo";
@@ -34,7 +28,7 @@ const passwordCheck: IsStrongPasswordOptions = {
  * @validator checkErrResponse
  * @handler handleLogout
  */
-authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, handleLogout);
+authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
 
 /**
  * Refresh authentication token.
@@ -74,7 +68,10 @@ authRouter.get("/business-twitter-return", handleTwitterBizRegister);
  * @handler handleAdminLogin
  */
 authRouter.post(
-  "/admin-login",auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo,
+  "/admin-login",
+  auth.isHavingValidAst,
+  auth.isAdminRequesting,
+  userInfo.getCurrentUserInfo,
   body("password").isStrongPassword(passwordCheck),
   handleAdminLogin
 );

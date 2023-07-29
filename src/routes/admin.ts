@@ -91,6 +91,7 @@ router.post(
   body("tokenData").isObject(),
   body("token_type").isString(),
   checkErrResponse,
+  userInfo.getCurrentUserInfo,
   handleWhiteListToken
 );
 
