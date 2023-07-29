@@ -4,6 +4,7 @@
   "description": "This servie will handle all the backend related job that are required for dapp in hashuzz project",
   "main": "src/index.js",
   "scripts": {
+    "prebuild":"node buildContract",
     "build": "npx ts-node build.ts",
     "build:server": "./node_modules/.bin/ts-node build.ts",
     "lint": "eslint . --ext .ts",
