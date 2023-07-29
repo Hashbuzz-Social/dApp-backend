@@ -17,17 +17,17 @@ export const updateBalanceToContract = async (payerId: string, amounts: { value:
     const address = AccountId.fromString(payerId).toSolidityAddress();
     const contractAddress = ContractId.fromString(contract_id.toString());
     const deposit = true;
-    const amount = Math.floor(amounts.value * 1e8)
+    const amount = Math.floor(amounts.value * 1e8);
 
-    const gas =  new Hbar(1.75).toTinybars().toNumber();
-    console.log(gas)
+    const gas = new Hbar(1.75).toTinybars().toNumber();
+    console.log(gas);
 
     const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(gas)
       .setMaxTransactionFee(2)
       .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address).addUint256(amount).addBool(deposit))
-      .setTransactionMemo(`Top up from the account ${payerId}`)
+      .setTransactionMemo(`Top up from the account ${payerId}`);
 
     const submitTransfer = await tokenTransfer.execute(hbarservice.hederaClient);
     const tokenTransferRx = await submitTransfer.getReceipt(hbarservice.hederaClient);
@@ -66,7 +66,8 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
           .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee * Math.pow(10, decimal));
       }
     }
-
+    const transactionId = transferTx.transactionId?.toString();
+    console.log(transactionId);
     //signing and returning
     return signingService.signAndMakeBytes(transferTx, connectedAccountId);
   } else {
@@ -233,4 +234,3 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
     return { paymentTransaction, contractCallReceipt: receipt, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };
-

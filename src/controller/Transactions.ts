@@ -4,6 +4,7 @@ import htsServices from "@services/hts-services";
 import { addCampaigner, addUserToContractForHbar, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
+import { ErrorWithCode } from "@shared/errors";
 import { formatTokenBalancesObject } from "@shared/helper";
 import { NextFunction, Request, Response } from "express";
 import statusCodes from "http-status-codes";
@@ -105,15 +106,12 @@ export const handleCrateToupReq = (req: Request, res: Response, next: NextFuncti
   try {
     (async () => {
       const entity: CreateTranSactionEntity = req.body.entity;
+      const connectedAccountId = req.currentUser?.hedera_wallet_id;
 
-      const payeeId = req.currentUser?.hedera_wallet_id;
-      const connectedAccountId: string = req.body.connectedAccountId;
-
-      if (payeeId && connectedAccountId) {
+      if (connectedAccountId) {
         const transactionBytes = await createTopUpTransaction(entity, connectedAccountId);
         return res.status(CREATED).json(transactionBytes);
-      }
-      return res.status(BAD_REQUEST).json({ error: true, message: "Connect your wallet first." });
+      } else next(new ErrorWithCode("Error while processing request", BAD_REQUEST));
     })();
   } catch (err) {
     next(err);

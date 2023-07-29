@@ -30,7 +30,6 @@ const router = Router();
 router.post(
   "/create-topup-transaction",
   body("entity").custom(validateEntityObject),
-  body("connectedAccountId").custom(checkWalletFormat),
   checkErrResponse,
   handleCrateToupReq
 );
