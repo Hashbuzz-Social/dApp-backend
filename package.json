@@ -14,7 +14,6 @@
     "test:no-reloading": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./spec",
     "preReadyPrisma": "npx prisma db pull",
     "readyPrisma": "npx prisma generate",
-    "buildContract": "npx solcjs --bin --abi contract/Hashbuzz.sol -o contractBuild",
     "db:pull": "npx prisma db pull && npx prisma generate",
     "db:push": "npx prisma db push && npx prisma generate"
   },
