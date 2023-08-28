@@ -1,0 +1,1463 @@
+{
+	"compiler": {
+		"version": "0.8.18+commit.87f61d96"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					}
+				],
+				"name": "CampaignerAdded",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					}
+				],
+				"name": "CampaignerDeleted",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "tokenAddress",
+						"type": "address"
+					}
+				],
+				"name": "CreatedToken",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "FundsDeposited",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "FundsWithdrawn",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "interactor",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "InteractorPaid",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "InteractorPaidDeferred",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaignAdddress",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint32",
+						"name": "campaignType",
+						"type": "uint32"
+					}
+				],
+				"name": "NewCampaignIsAdded",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"name": "OwnerSet",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "int256",
+						"name": "responseCode",
+						"type": "int256"
+					}
+				],
+				"name": "ResponseCode",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint32",
+						"name": "campaignType",
+						"type": "uint32"
+					}
+				],
+				"name": "campaignClosed",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint32",
+						"name": "campaignType",
+						"type": "uint32"
+					}
+				],
+				"name": "campaignExpired",
+				"type": "event"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "fallback"
+			},
+			{
+				"inputs": [],
+				"name": "FUNGIBLE",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "HBAR",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "NFT",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "addCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newCampaigner",
+						"type": "address"
+					}
+				],
+				"name": "addCampaigner",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "addFungibleAndNFTCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newCampaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					}
+				],
+				"name": "addFungibleAndNFTCampaigner",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "addUser",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "balances",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaign",
+						"type": "address"
+					},
+					{
+						"internalType": "address[]",
+						"name": "campaigner",
+						"type": "address[]"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "batchFungible",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address payable",
+						"name": "receiverAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "callHbarToPayee",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "campaignBalances",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "campaignRandomNumber",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "campaignExpiryTime",
+						"type": "uint256"
+					}
+				],
+				"name": "closeCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaign",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "campaignExpiryTime",
+						"type": "uint256"
+					}
+				],
+				"name": "closeFungibleAndNFTCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenAddress",
+						"type": "address"
+					}
+				],
+				"name": "contractAssociate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "delegateTransferFrom",
+				"outputs": [
+					{
+						"internalType": "int64",
+						"name": "responseCode",
+						"type": "int64"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "serialNumber",
+						"type": "uint256"
+					}
+				],
+				"name": "delegateTransferFromNFT",
+				"outputs": [
+					{
+						"internalType": "int64",
+						"name": "responseCode",
+						"type": "int64"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					}
+				],
+				"name": "deleteCampaigner",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					}
+				],
+				"name": "deleteFungibleAndNFTCampaigner",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaign",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "distributeFungible",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaign",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "distributeNFT",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "emergencyWithdraw",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					}
+				],
+				"name": "expiryCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaign",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "expiryFungibleAndNFTCampaign",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					}
+				],
+				"name": "getBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					}
+				],
+				"name": "getCampaignBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					}
+				],
+				"name": "getFungibleAndNFTBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "res",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					}
+				],
+				"name": "getFungibleAndNFTCampaignBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "res",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getPseudorandomSeed",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "randomBytes",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "getTokenType",
+				"outputs": [
+					{
+						"internalType": "int64",
+						"name": "responseCode",
+						"type": "int64"
+					},
+					{
+						"internalType": "int32",
+						"name": "tokenType",
+						"type": "int32"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "id",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "nftCampaigner",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "payInteractorFromCampaignBalances",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address payable",
+						"name": "receiverAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "sendHbar",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenAddress",
+						"type": "address"
+					}
+				],
+				"name": "tokenAssociate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "tokenBalances",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "tokenCampaignBalances",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "tokenAddress",
+						"type": "address"
+					}
+				],
+				"name": "tokenDissociate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "serialNumber",
+						"type": "uint256"
+					}
+				],
+				"name": "transferFromNFT",
+				"outputs": [
+					{
+						"internalType": "int64",
+						"name": "responseCode",
+						"type": "int64"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address payable",
+						"name": "receiverAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "campaignAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "transferHbar",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenId",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"internalType": "int64",
+						"name": "tokenAmount",
+						"type": "int64"
+					}
+				],
+				"name": "transferTokenToContract",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "campaigner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "deposit",
+						"type": "bool"
+					}
+				],
+				"name": "updateBalance",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "receive"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"addCampaign(address,address,uint256)": {
+					"details": "add balance for the campaign;",
+					"params": {
+						"amount": "amount to be updated"
+					}
+				},
+				"addCampaigner(address)": {
+					"details": "add campaigner",
+					"params": {
+						"newCampaigner": "address of new campaigner"
+					}
+				},
+				"addFungibleAndNFTCampaign(address,address,address,int64)": {
+					"details": "add balance for the campaign;",
+					"params": {
+						"campaignAddress": "address of campaign",
+						"tokenAmount": "amount to be updated",
+						"tokenId": "address of tokenID"
+					}
+				},
+				"addFungibleAndNFTCampaigner(address,address)": {
+					"details": "add campaigner",
+					"params": {
+						"newCampaigner": "address of new campaigner",
+						"tokenId": "id of token"
+					}
+				},
+				"addUser(address)": {
+					"details": "Given the access of user.Only owner can call this function",
+					"params": {
+						"user": "address of user"
+					}
+				},
+				"batchFungible(address,address,address[],int64)": {
+					"details": "Batch fungible transaction",
+					"params": {
+						"campaign": "address of campaign",
+						"campaigner": "[] address of campaigner",
+						"tokenAmount": "amount of token",
+						"tokenId": "address of tokenId"
+					}
+				},
+				"closeFungibleAndNFTCampaign(address,address,uint256)": {
+					"params": {
+						"campaign": "address of campaign",
+						"tokenId": "id of token"
+					}
+				},
+				"contractAssociate(address)": {
+					"details": "Associate the contract it selt",
+					"params": {
+						"tokenAddress": "address of token"
+					}
+				},
+				"delegateTransferFrom(address,address,address,uint256)": {
+					"params": {
+						"amount": "The amount of tokens to transfer from `from` to `to`",
+						"from": "The account address of the owner of the token, on the behalf of which to transfer `amount` tokens",
+						"to": "The account address of the receiver of the `amount` tokens",
+						"token": "The address of the fungible Hedera token to transfer"
+					},
+					"returns": {
+						"responseCode": "The response code for the status of the request. SUCCESS is 22."
+					}
+				},
+				"delegateTransferFromNFT(address,address,address,uint256)": {
+					"params": {
+						"from": "The account address of the owner of `serialNumber` of `token`",
+						"serialNumber": "The NFT serial number to transfer",
+						"to": "The account address of the receiver of `serialNumber`",
+						"token": "The address of the non-fungible Hedera token to transfer"
+					},
+					"returns": {
+						"responseCode": "The response code for the status of the request. SUCCESS is 22."
+					}
+				},
+				"distributeFungible(address,address,address,int64)": {
+					"details": "Distribute the reward",
+					"params": {
+						"campaigner": "address of campaigner",
+						"tokenAmount": "amount of token",
+						"tokenId": "address of tokenId"
+					}
+				},
+				"distributeNFT(address,address,address,int64)": {
+					"details": "Distribute the NFT",
+					"params": {
+						"campaign": "address of campaign",
+						"campaigner": "address of campaigner",
+						"tokenAmount": "amount of token",
+						"tokenId": "address of tokenId"
+					}
+				},
+				"emergencyWithdraw(address,address,int64)": {
+					"details": "Incase of Emergency , only owner can call this function",
+					"params": {
+						"tokenAmount": "amount of token",
+						"tokenId": "address of tokenId"
+					}
+				},
+				"expiryCampaign(address,address)": {
+					"details": "close campaign while expiring the campaign;",
+					"params": {
+						"campaignAddress": "campaign address which need to be expired."
+					}
+				},
+				"expiryFungibleAndNFTCampaign(address,address,address,int64)": {
+					"details": "close campaign while expiring the campaign;",
+					"params": {
+						"campaign": "campaign address which need to be cloded.",
+						"tokenAmount": "amount of token",
+						"tokenId": "id of token"
+					}
+				},
+				"getBalance(address)": {
+					"params": {
+						"campaigner": "address of campaigner"
+					}
+				},
+				"getCampaignBalance(address)": {
+					"details": "add campaigner",
+					"params": {
+						"campaignAddress": "address of new campaigner"
+					}
+				},
+				"getFungibleAndNFTBalance(address,address)": {
+					"details": "Return balance of campaigner",
+					"params": {
+						"campaigner": "address of campaigner",
+						"tokenId": "address of tokenId"
+					}
+				},
+				"getFungibleAndNFTCampaignBalance(address,address)": {
+					"details": "Return balanec of campaign",
+					"params": {
+						"campaignAddress": "address of campaign",
+						"tokenId": "address of token"
+					}
+				},
+				"getTokenType(address)": {
+					"params": {
+						"token": "The token address"
+					},
+					"returns": {
+						"responseCode": "The response code for the status of the request. SUCCESS is 22.",
+						"tokenType": "the token type. 0 is FUNGIBLE_COMMON, 1 is NON_FUNGIBLE_UNIQUE, -1 is UNRECOGNIZED"
+					}
+				},
+				"payInteractorFromCampaignBalances(address,uint256)": {
+					"details": "pay to interactor from campaign balances",
+					"params": {
+						"amount": "amount to be updated",
+						"campaignAddress": "address of campaign"
+					}
+				},
+				"sendHbar(address,uint256)": {
+					"details": "Send Hbar token",
+					"params": {
+						"amount": "amount of Hbar",
+						"receiverAddress": "address of receiver"
+					}
+				},
+				"tokenAssociate(address,address)": {
+					"details": "Associate the token from user",
+					"params": {
+						"sender": "address of sender",
+						"tokenAddress": "address of token"
+					}
+				},
+				"tokenDissociate(address,address)": {
+					"details": "Dissociate the token from user",
+					"params": {
+						"sender": "address of sender",
+						"tokenAddress": "address of token"
+					}
+				},
+				"transferFromNFT(address,address,address,uint256)": {
+					"params": {
+						"from": "The account address of the owner of `serialNumber` of `token`",
+						"serialNumber": "The NFT serial number to transfer",
+						"to": "The account address of the receiver of `serialNumber`",
+						"token": "The address of the non-fungible Hedera token to transfer"
+					},
+					"returns": {
+						"responseCode": "The response code for the status of the request. SUCCESS is 22."
+					}
+				},
+				"transferTokenToContract(address,address,int64)": {
+					"details": "Transfer the Token from user to contract",
+					"params": {
+						"tokenAmount": "amount of token",
+						"tokenId": "address of token"
+					}
+				},
+				"updateBalance(address,uint256,bool)": {
+					"details": "update balance of the campaigner",
+					"params": {
+						"amount": "amount to be updated",
+						"deposit": "deposit or withdrawl"
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"delegateTransferFrom(address,address,address,uint256)": {
+					"notice": "Only applicable to fungible tokens"
+				},
+				"delegateTransferFromNFT(address,address,address,uint256)": {
+					"notice": "Transfers `serialNumber` of `token` from `from` to `to` using the allowance mechanism. Only applicable to NFT tokens"
+				},
+				"deleteCampaigner(address)": {
+					"notice": "dangerous function, just for testing"
+				},
+				"deleteFungibleAndNFTCampaigner(address,address)": {
+					"notice": "dangerous function, just for testing"
+				},
+				"getTokenType(address)": {
+					"notice": "Query to return the token type for a given address"
+				},
+				"transferFromNFT(address,address,address,uint256)": {
+					"notice": "Transfers `serialNumber` of `token` from `from` to `to` using the allowance mechanism. Only applicable to NFT tokens"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"Hashbuzz.sol": "HashbuzzV2"
+		},
+		"evmVersion": "paris",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"FungibleToken/ExpiryHelper.sol": {
+			"keccak256": "0x42da0049d04cd4663d7c9c0e455d889b0932b2f7726ad09bf32f7563d6fc024a",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://ef0966a2e06e7900d15ac260fdd535e1ecf187b67df79812116a6374395c2e2f",
+				"dweb:/ipfs/QmP4DTyZFuNCbT7h7G1d32AXdFT1XE5ZjAqWn51LBKV8jC"
+			]
+		},
+		"FungibleToken/HederaResponseCodes.sol": {
+			"keccak256": "0xcb93c3876fb54c95a9c903e0a10a57fecc3eecab38ae8e71b7edcc5e5ab699c2",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://8f653357f7a38f2b38e252abed1384de7003ffeaecac021c3c6dc1c8e3c4e6b7",
+				"dweb:/ipfs/QmZ5duAhi8oiJrfWnSmZzkEY18Tn3ZQMrJMorZd6Sv4vGC"
+			]
+		},
+		"FungibleToken/HederaTokenService.sol": {
+			"keccak256": "0xdf4c79045f776ff509638475c934c1461019f66acc6b96e876546e54544fb8f5",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://40006ce39c8d6b202e84309412d97b3b1e0ff6a59a6c49ce1ca6c9ffc28efeef",
+				"dweb:/ipfs/QmTdtiAKDa2tZJNbugZfEedVpSjLvunyMgmt3eeL3gzamD"
+			]
+		},
+		"FungibleToken/KeyHelper.sol": {
+			"keccak256": "0x1c445127746a07dc4bdb8ea93cd151fbec3b686c9d7ee5845c875475eb89d8c3",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://e0253869a15bd8d06a2a45b8cefdcefc64e4aee675c5ac5d5465ca2bb67d64df",
+				"dweb:/ipfs/QmabBXMqR3avxQ6nHeqFXmVhGpfNH5bZXP9zaBRDZ7WYtN"
+			]
+		},
+		"Hashbuzz.sol": {
+			"keccak256": "0xd65a00357899461f26a8c5626dc5a8f142c2a23aba3be7b9daf08d371920a868",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://a7e2b483bc503f4bcd912fb3b0c1e6102bcf9f162c06e58973e4a5be3fdd81c2",
+				"dweb:/ipfs/QmTVMV6keT8KbtmDKutJtbP4Qc7R1aBf9zdkNsdHhu4kP2"
+			]
+		},
+		"RandomNumberGenerate.sol": {
+			"keccak256": "0x56875da2b2700bfe2ef9a97031c1cf50a797756b566a4135766323d9b732af36",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://ab6e5445376e7275a9cd006af2e8cf166c3ff636928b80e14f66cc6273b03c33",
+				"dweb:/ipfs/QmeNsJpxzsG8XsccVVKi3tBTvPfR8v5YDELM9bjYMSK2MW"
+			]
+		},
+		"interface/IHederaTokenService.sol": {
+			"keccak256": "0xfd5dc41c7b7b67b8ba0d160fce9f5a19a7737979cfd58d0c57b81202e7f2fdfc",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://48656664c7c01b3304a9f0ee1e03c557b3e3566878d76e09cb2f3d76b9c88707",
+				"dweb:/ipfs/QmeekAo5B6NtfmHGfu8n2R9k9Ryv7rgcf56Rvv6QUd9VMt"
+			]
+		},
+		"interface/IRandomNumberGenerate.sol": {
+			"keccak256": "0x8731949af4b7e8de5c6c30256bffa3525f68b3fbb1a4630d347486326cc8190b",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://ca4c50f1d663b4203235b395a632e387b418d4a66dea4a90d8e57ad126bd8f1b",
+				"dweb:/ipfs/Qmcw8Sw2DDtHb2SqJ5mJMAFSXFSVNDqZwTE1uzRSVVaP46"
+			]
+		},
+		"library/Roles.sol": {
+			"keccak256": "0x0dc526b127ad7774d52d0c492a90067d05003a2973337d63882c81f5be212ae8",
+			"license": "Apache-2.0",
+			"urls": [
+				"bzz-raw://a666984b8748e278184767c1ade4f454c5ee93f9a95ebbe4cff50df381290cde",
+				"dweb:/ipfs/QmX92bEapCQWx19HNbgdRBFeKbN8zreSGiiSBDQjJoUa5Q"
+			]
+		}
+	},
+	"version": 1
+}

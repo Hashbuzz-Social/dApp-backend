@@ -4,7 +4,7 @@
   "description": "This servie will handle all the backend related job that are required for dapp in hashuzz project",
   "main": "src/index.js",
   "scripts": {
-    "prebuild":"node buildContract",
+    "prebuild": "node buildContract",
     "build": "npx ts-node build.ts",
     "build:server": "./node_modules/.bin/ts-node build.ts",
     "lint": "eslint . --ext .ts",
@@ -104,6 +104,7 @@
     "web3": "^1.7.5"
   },
   "devDependencies": {
+    "@remix-project/remixd": "^0.6.16",
     "@types/command-line-args": "^5.2.0",
     "@types/cookie-parser": "^1.4.3",
     "@types/cors": "^2.8.12",
