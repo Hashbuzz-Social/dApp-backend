@@ -1,21 +1,21 @@
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TransferTransaction, TokenInfo } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
 import { default as hbarservice, default as hederaService } from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner, sensitizeUserData } from "@shared/helper";
-import { getCampaignDetailsById } from "./campaign-service";
-import userService from "./user-service";
+import prisma from "@shared/prisma";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
-import prisma from "@shared/prisma";
+import { getCampaignDetailsById } from "./campaign-service";
+import userService from "./user-service";
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
   console.log("updateBalanceToContract::", { payerId, amounts });
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
 
-  if (contract_id) {
+  if (contractDetails?.contract_id) {
     const address = AccountId.fromString(payerId).toSolidityAddress();
-    const contractAddress = ContractId.fromString(contract_id.toString());
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8);
 
@@ -44,13 +44,13 @@ export const updateBalanceToContract = async (payerId: string, amounts: { value:
 export const createTopUpTransaction = async (entity: CreateTranSactionEntity, connectedAccountId: string) => {
   // console.log("Creating Transaction Hash with:", { payerId, amounts });
   const { value, fee, total } = entity.amount;
-  const { contract_id } = await provideActiveContract();
-  if (contract_id) {
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
     const transferTx = new TransferTransaction().setTransactionMemo("Hashbuzz balance topup");
     if (entity.entityType === "HBAR")
       transferTx
         .addHbarTransfer(connectedAccountId, -total)
-        .addHbarTransfer(contract_id?.toString(), value)
+        .addHbarTransfer(contractDetails.contract_id?.toString(), value)
         .setTransactionMemo("Hashbuzz escrow payment")
         .addHbarTransfer(hbarservice.operatorId, fee);
 
@@ -61,7 +61,7 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
         const decimal = parseInt("" + tokenInfo.decimals);
         transferTx
           .addTokenTransfer(entity.entityId, connectedAccountId, -(total * Math.pow(10, decimal)))
-          .addTokenTransfer(entity.entityId, contract_id.toString(), value * Math.pow(10, decimal))
+          .addTokenTransfer(entity.entityId, contractDetails.contract_id.toString(), value * Math.pow(10, decimal))
           .setTransactionMemo("Hashbuzz escrow payment")
           .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee * Math.pow(10, decimal));
       }
@@ -86,10 +86,10 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
 
 export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string) => {
   console.log("allocateBalanceToCampaign::start-for-campaign", campaignId);
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
 
-  if (contract_id) {
-    const contractAddress = ContractId.fromString(contract_id.toString());
+  if (contractDetails?.contract_id) {
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const campaigner = buildCampaigner(campaignerAccount);
     const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
 
@@ -109,20 +109,20 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
 
     console.log("allocateBalanceToCampaign::finished-with-transactionId", exResult.transactionId);
 
-    return { contract_id, transactionId: exResult.transactionId, receipt };
+    return { contract_id: contractDetails.contract_id, transactionId: exResult.transactionId, receipt };
   } else {
     throw new Error("Contract id not found");
   }
 };
 
 export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amount }: { campaignerAccount: string; campaignId: string; amount: number }) => {
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
 
-  if (contract_id) {
-    const contractAddress = ContractId.fromString(contract_id.toString());
+  if (contractDetails?.contract_id) {
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
 
-    console.log("Update SM balances For campaign", { campaignAddress: campaignAddress.toString(), contract_id, amount });
+    console.log("Update SM balances For campaign", { campaignAddress: campaignAddress.toString(), contract_id: contractDetails.contract_id, amount });
 
     const params = new ContractFunctionParameters().addString(campaignAddress).addUint256(amount);
 
@@ -139,13 +139,13 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
 };
 
 export const withdrawHbarFromContract = async (intracterAccount: string, amount: number) => {
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
   amount = amount / Math.pow(10, 8);
 
-  console.log({ intracterAccount, contract_id, amount, amounte8: amount * 1e8 });
+  console.log({ intracterAccount, contract_id: contractDetails?.contract_id, amount, amounte8: amount * 1e8 });
 
-  if (contract_id) {
-    const contractAddress = ContractId.fromString(contract_id.toString());
+  if (contractDetails?.contract_id) {
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const IntractorAddress = AccountId.fromString(intracterAccount).toSolidityAddress();
 
     //   //!! BUILD Parameters
@@ -164,11 +164,11 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
 };
 
 export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number, memo = "Reward payment from hashbuzz") => {
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
   amount = Math.round(amount) / 1e8;
-  if (contract_id) {
+  if (contractDetails?.contract_id) {
     const transferTx = new TransferTransaction()
-      .addHbarTransfer(contract_id?.toString(), -amount)
+      .addHbarTransfer(contractDetails.contract_id?.toString(), -amount)
       .addHbarTransfer(intracterAccount, amount)
       .setTransactionMemo(memo)
       .freezeWith(hbarservice.hederaClient);
@@ -205,11 +205,11 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint) => 
 
 export const reimbursementAmount = async (userId: number | bigint, amounts: number, accountId: string) => {
   console.log("Reimbursement::", { amounts, accountId });
-  const { contract_id } = await provideActiveContract();
+  const contractDetails = await provideActiveContract();
 
-  if (contract_id) {
+  if (contractDetails?.contract_id) {
     const address = "0x" + AccountId.fromString(accountId).toSolidityAddress();
-    const contractAddress = ContractId.fromString(contract_id.toString());
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const deposit = false;
 
     console.log("tinyAmount is Reimbursed from contract", amounts);
@@ -234,3 +234,4 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
     return { paymentTransaction, contractCallReceipt: receipt, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };
+

@@ -2,7 +2,7 @@
 // such as error handling, keys management, etc.
 
 // Step 1: Setting up the Hedera JavaScript SDK.
-const { Client, TokenCreateTransaction, Hbar, AccountId, PrivateKey , TokenMintTransaction } = require("@hashgraph/sdk");
+const { Client, TokenCreateTransaction, Hbar, AccountId, PrivateKey, TokenMintTransaction } = require("@hashgraph/sdk");
 const dotenv = require("dotenv");
 const fs = require("fs");
 dotenv.config();
@@ -12,7 +12,6 @@ dotenv.config();
 const accountId = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
 const accountPrivateKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
 
-
 // Initialize client
 const client = Client.forTestnet().setOperator(accountId, accountPrivateKey);
 
@@ -21,7 +20,7 @@ async function createToken() {
     // Step 3: Creating a token.
     // Define token parameters such as name, symbol, decimals, initial supply, etc.
     const supplyKey = PrivateKey.generateECDSA();
-    const wipeKey =  supplyKey.publicKey
+    const wipeKey = supplyKey.publicKey;
 
     const transactionId = new TokenCreateTransaction()
       .setTokenName("HbzToken2")
@@ -48,10 +47,14 @@ async function createToken() {
     const newTokenId = receipt.tokenId;
 
     console.log("The new token ID is " + newTokenId);
-    fs.appendFile("tokens.txt", newTokenId.toString() + "\n" + "supplyKey key = " + supplyKey + "\n wipeKey key = " + wipeKey + "\n =================== \n", (err) => {
-      if (err) throw err;
-      console.log("Token ID saved!");
-    });
+    fs.appendFile(
+      "tokens.txt",
+      newTokenId.toString() + "\n" + "supplyKey key = " + supplyKey + "\n wipeKey key = " + wipeKey + "\n =================== \n",
+      (err) => {
+        if (err) throw err;
+        console.log("Token ID saved!");
+      }
+    );
   } catch (error) {
     console.error("Error creating token", error);
   }
@@ -64,10 +67,13 @@ async function mintToken(tokenId, amountToMint = 10000) {
     // Define the amount to mint
     // amountToMint = 1000;
 
-    const supplyKey =  PrivateKey.fromString("3030020100300706052b8104000a04220420294307d12bb91883cc13d12e6b372739ff4341ced8a896209bfe04f4c1bc8104")
+    const supplyKey = PrivateKey.fromString("3030020100300706052b8104000a04220420294307d12bb91883cc13d12e6b372739ff4341ced8a896209bfe04f4c1bc8104");
 
     // Mint additional tokens
-    const transactionId = new TokenMintTransaction().setTokenId(tokenId).setAmount(amountToMint * 1e8).freezeWith(client);
+    const transactionId = new TokenMintTransaction()
+      .setTokenId(tokenId)
+      .setAmount(amountToMint * 1e8)
+      .freezeWith(client);
 
     // Sign transaction with your private key
     const signTx = await transactionId.sign(supplyKey);
@@ -86,4 +92,5 @@ async function mintToken(tokenId, amountToMint = 10000) {
 }
 
 // createToken();
-mintToken("0.0.350115", 15000)
+mintToken("0.0.350115", 15000);
+

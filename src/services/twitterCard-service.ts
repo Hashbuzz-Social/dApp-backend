@@ -117,7 +117,7 @@ const publishTwitter = async (cardId: number | bigint) => {
   ]);
 
   const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward } = cardDetails!;
-  const { contract_id } = contractDetails;
+  const contract_id = contractDetails?.contract_id;
 
   if (
     tweet_text &&

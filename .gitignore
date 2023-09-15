@@ -6,5 +6,4 @@ logs
 dist/
 **/**/*.log
 xxxx.txt
-contractBuild
 tokens.txt

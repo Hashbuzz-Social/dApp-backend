@@ -130,9 +130,9 @@ export const handleWhiteListToken = (req: Request, res: Response, next: NextFunc
       const token_type = req.body.token_type as string;
       const userId = req.currentUser?.id;
 
-      const { contract_id } = await provideActiveContract();
+      const contractDetails = await provideActiveContract();
 
-      if (userId && contract_id) {
+      if (userId && contractDetails?.contract_id) {
         await associateTokenToContract(tokenId);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const token = await prisma.whiteListedTokens.upsert({
@@ -146,7 +146,7 @@ export const handleWhiteListToken = (req: Request, res: Response, next: NextFunc
             token_type,
             added_by: userId,
             token_symbol: tokenInfo.symbol,
-            contract_id: contract_id.toString(),
+            contract_id: contractDetails.contract_id.toString(),
           },
           update: {
             token_id: tokenId,
