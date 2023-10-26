@@ -36,7 +36,6 @@ router.post(
 
 /**
  * Perform a top-up transaction.
- *
  * @api POST /api/top-up
  * @param {Object} req.body - The request body.
  * @param {Object} req.body.entity - The entity object.

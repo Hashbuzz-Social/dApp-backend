@@ -7,7 +7,6 @@ import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
 import integrationRouter from "./integrations";
 import auth from "@middleware/auth";
-
 // Export the base-router
 const baseRouter = Router();
 

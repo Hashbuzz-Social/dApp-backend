@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import {
   handleActiveContractInfoReq,
   handleGetAllCard,
@@ -46,7 +47,7 @@ router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, h
  * @validator checkErrResponse
  * @handler handleUpdatePassword
  */
-router.put("/update-password",  userInfo.getCurrentUserInfo , body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePasswordReq);
+router.put("/update-password", userInfo.getCurrentUserInfo, body("password").isStrongPassword(passwordCheck), checkErrResponse, handleUpdatePasswordReq);
 
 /**
  * Update email.
@@ -70,7 +71,7 @@ router.put("/update-password",  userInfo.getCurrentUserInfo , body("password").i
  * @validator checkErrResponse
  * @handler handleTokenInfoReq
  */
-router.post("/token-info",  body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfoReq);
+router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrResponse, handleTokenInfoReq);
 
 /**
  * List a token.

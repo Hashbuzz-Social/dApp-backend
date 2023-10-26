@@ -5,6 +5,7 @@ import {
   ContractCreateTransaction,
   ContractExecuteTransaction,
   ContractFunctionParameters,
+  ContractId,
   FileAppendTransaction,
   FileCreateTransaction,
   FileId,
@@ -14,7 +15,7 @@ import {
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
-import { contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
+import { backupContractByteCode, contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 
@@ -132,8 +133,8 @@ export const deployContract = async (byteCode: Buffer) => {
       .setConstructorParameters(new ContractFunctionParameters().addAddress(operatorId.toSolidityAddress()))
       .setMaxTransactionFee(20)
       .setAdminKey(operatorKey)
-      .setContractMemo("Hashbuzz logical contract")
-      .setTransactionMemo("Hashbuzz logical contract deploy transaction");
+      .setContractMemo("Hashbuzz contract")
+      .setTransactionMemo("Hashbuzz contract deploy transaction");
 
     const contractInstantiateSubmit = await contractInstantiateTx.execute(hederaClient);
 
@@ -161,6 +162,7 @@ export const deployContract = async (byteCode: Buffer) => {
     // });
     return { contract_id: contractId, contractAddress, fileId: bytecodeFileId };
   } catch (error) {
+    console.log("Error: form deploy contract")
     logger.err(error);
     throw error;
   }
@@ -183,47 +185,75 @@ const deployContractTrnx = async (byteCode: Buffer, contraParams: ContractFuncti
 };
 
 export const deployContractNew = async () => {
-  console.log("deployContractNew::->");
-  try {
-    //!! Step 1 deploy logical contract first;
-    const logocaContractDetails = await deployContract(logicalContractByteCode);
-    const logicalContract_id = logocaContractDetails.contract_id;
-    const lcFileID = logocaContractDetails.fileId?.toString();
-    console.log("Logical contract deployed successfully with logical_contract_id::", logicalContract_id);
+  const hashbuzz = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+  const availableContracts = await prisma.smartcontracts.findMany({
+    where: {
+      is_active: true,
+      network,
+    },
+  });
 
-    if (logicalContract_id) {
-      const proxyContractParams = new ContractFunctionParameters();
-      proxyContractParams.addAddress(logicalContract_id.toSolidityAddress()); // setLogical contract address as params;
-      proxyContractParams.addAddress(operatorId.toSolidityAddress()); // Admin address as params;
-
-      const proxyContractTrx = await deployContractTrnx(proxyContractByteCode, proxyContractParams);
-      const proxyContractId = proxyContractTrx.contractId;
-      const fileId = proxyContractTrx.fileId?.toString();
-
-      await prisma.smartcontracts.create({
-        data: {
-          contractAddress: proxyContractId?.toSolidityAddress() ?? "",
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          contract_id: `${proxyContractId}`,
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          logicalContract_id: `${logicalContract_id}`,
-          lcFileID: lcFileID ?? "",
-          network,
-          fileId: fileId ?? "",
-          created_at: new Date().toISOString(),
-        },
-      });
-
-      console.log(" - The new contract ID is " + proxyContractId);
-
-      const contractDetails = { contract_id: proxyContractId, contractAddress: proxyContractId?.toSolidityAddress() };
-
-      return contractDetails;
-    }
-  } catch (err) {
-    logger.err(err);
-    throw err;
+  if (availableContracts.length === 0 && hashbuzz) {
+    const { contract_id, contractAddress, logicalContract_id } = await prisma.smartcontracts.create({
+      data: {
+        contractAddress: hashbuzz,
+        contract_id: `${hashbuzz}`,
+        logicalContract_id: `${hashbuzz}`,
+        lcFileID: hashbuzz ?? "",
+        network,
+        fileId: hashbuzz ?? "",
+        created_at: new Date().toISOString(),
+      },
+    });
   }
+
+
+  // else {
+  //   console.log("deployContractNew::->");
+  //   try {
+  //     //!! Step 1 deploy logical contract first;
+  //     console.log("contract bytecode")
+  //     const logocaContractDetails = await deployContract(backupContractByteCode);
+  //     const logicalContract_id = logocaContractDetails.contract_id;
+  //     const lcFileID = logocaContractDetails.fileId?.toString();
+  //     console.log("Logical contract deployed successfully with logical_contract_id::", logicalContract_id);
+
+  //     if (logicalContract_id) {
+  //       // const proxyContractParams = new ContractFunctionParameters();
+  //       // proxyContractParams.addAddress(logicalContract_id.toSolidityAddress()); // setLogical contract address as params;
+  //       // proxyContractParams.addAddress(operatorId.toSolidityAddress()); // Admin address as params;
+
+  //       // const proxyContractTrx = await deployContractTrnx(proxyContractByteCode, proxyContractParams);
+  //       // const proxyContractId = proxyContractTrx.contractId;
+  //       // const fileId = proxyContractTrx.fileId?.toString();
+
+  //       await prisma.smartcontracts.create({
+  //         data: {
+  //           contractAddress: logicalContract_id?.toSolidityAddress() ?? "",
+  //           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+  //           contract_id: `${logicalContract_id}`,
+  //           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+  //           logicalContract_id: `${logicalContract_id}`,
+  //           lcFileID: lcFileID ?? "",
+  //           network,
+  //           fileId: lcFileID ?? "",
+  //           created_at: new Date().toISOString(),
+  //         },
+  //       });
+
+  //       console.log(" - The new contract ID is " + logicalContract_id);
+
+  //       const contractDetails = { contract_id: logicalContract_id, contractAddress: logicalContract_id?.toSolidityAddress() };
+
+  //       return contractDetails;
+  //     }
+  //   } catch (err) {
+  //     logger.err(err);
+  //     throw err;
+  //   }
+  // }
+
+
 };
 
 export const provideActiveContract = async () => {
@@ -233,16 +263,16 @@ export const provideActiveContract = async () => {
       network,
     },
   });
-
   if (availableContracts.length > 0) {
-    const { contract_id, contractAddress } = availableContracts[0];
+    const { contract_id, contractAddress, logicalContract_id } = availableContracts[0];
     // console.log("Found contract in db::", contract_id);
 
-    return { contract_id, contractAddress };
-  } else {
-    logger.info("Intiate new contract crete::");
-    return await deployContractNew();
+    return { contract_id, contractAddress, logicalContract_id };
   }
+  // else {
+  //   logger.info("Intiate new contract crete::");
+  //   return await deployContractNew();
+  // }
 };
 
 export const addCampaigner = async (accountId: string, user_id?: bigint) => {
@@ -262,11 +292,11 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
       .setFunction("addCampaigner", contractParams)
       .setTransactionMemo(
         "Hashbuzz-transaction" +
-          JSON.stringify({
-            transactionFor: "addCampaigner",
-            user_id: user_id?.toString(),
-            wallet_id: accountId.toString(),
-          })
+        JSON.stringify({
+          transactionFor: "addCampaigner",
+          user_id: user_id?.toString(),
+          wallet_id: accountId.toString(),
+        })
       );
 
     const contractExSubmit = await contractExTx.execute(hederaClient);
@@ -319,16 +349,27 @@ export const queryBalance = async (address: string) => {
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
-    const contractCallQuery = new ContractCallQuery()
-      .setContractId(contractDetails.contract_id.toString())
-      .setGas(100000)
-      .setFunction("getBalance", new ContractFunctionParameters().addString(address))
-      .setQueryPayment(new Hbar(1));
+    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+    const getBalance = new ContractCallQuery()
+      .setContractId(contractAddress)
+      .setGas(2000000)
+      .setFunction(
+        "getBalance",
+        new ContractFunctionParameters().addAddress(
+          address
+        )
+      )
+      .setQueryPayment(new Hbar(10));
 
-    const qResult = await contractCallQuery.execute(hederaClient);
-    const balances = qResult.getUint256(0).toString();
-    const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
-    return { balances, balancesObj };
+    const contractCallResult = await getBalance.execute(hederaClient);
+    const getBalanceRx = contractCallResult.getUint256();
+    console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
+    const balances = getBalanceRx.toString()
+
+    return { balances };
+    // console.log(balances, "-------");
+    // const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
+    // return { balances, balancesObj };
     // return qResult.getUint256(0);
   }
 };
@@ -358,25 +399,52 @@ export const queryCampaignBalance = async (address: string, campaignId: number |
   }
 };
 
-export const addUserToContractForHbar = async (user_wallet_id: string) => {
+export const addUserToContractForHbar = async (user_wallet_id: string, userId: bigint) => {
   console.log("addUserToContractForHbar:::->user_wallet_id", user_wallet_id);
-  const contractDetails = await provideActiveContract();
-  const address = AccountId.fromString(user_wallet_id).toSolidityAddress();
-  if (contractDetails?.contract_id) {
-    const addUser = new ContractExecuteTransaction()
-      .setContractId(contractDetails.contract_id)
-      .setGas(400000)
-      .setFunction("addUser", new ContractFunctionParameters().addAddress(address))
-      .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
 
-    const addUserTx = await addUser.execute(hederaClient);
-    const addUserRx = await addUserTx.getReceipt(hederaClient);
-    const addUserStatus = addUserRx.status;
+  const user = await prisma.user_user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
 
-    console.log(" - Add user transaction status: " + addUserStatus);
+  if (!user?.whitelistUser) {
 
-    return addUserStatus;
+    const contractDetails = await provideActiveContract();
+    const address = AccountId.fromString(user_wallet_id);
+    console.log(contractDetails, "------")
+
+    if (contractDetails?.contract_id) {
+
+      const backupContract = contractDetails?.contract_id;
+      const contractAddress = ContractId.fromString(backupContract.toString());
+
+      const addUser = new ContractExecuteTransaction()
+        .setContractId(contractAddress)
+        .setGas(400000)
+        .setFunction("addUser", new ContractFunctionParameters().addAddress(address.toSolidityAddress()))
+        .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
+
+      const addUserTx = await addUser.execute(hederaClient);
+      const addUserRx = await addUserTx.getReceipt(hederaClient);
+      const addUserStatus = addUserRx.status;
+
+      await prisma.user_user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          whitelistUser: true,
+        },
+      });
+
+
+      console.log(" - Add user transaction status: " + addUserStatus);
+
+      return addUserStatus;
+    }
   }
+
 };
 
 export const getSMInfo = async () => {

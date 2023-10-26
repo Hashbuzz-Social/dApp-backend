@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleUpdateConcent } from "@controller/User";
 import adminMiddleWare from "@middleware/admin";
 import userInfo from "@middleware/userInfo";

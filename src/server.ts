@@ -3,10 +3,11 @@ import morgan from "morgan";
 import path from "path";
 import helmet from "helmet";
 import cors from "cors";
+import { isHttpError } from "http-errors";
 
 import express, { NextFunction, Request, Response } from "express";
-import StatusCodes from "http-status-codes";
 import "express-async-errors";
+import StatusCodes from "http-status-codes";
 
 import apiRouter from "./routes";
 import authRouter from "@routes/auth-router";
@@ -17,14 +18,13 @@ import { CustomError } from "@shared/errors";
 const app = express();
 
 const options: cors.CorsOptions = {
-  origin: process.env.FRONTEND_URL??"*",
+  origin: "*",
   // methods:"GET, OPTIONS, POST, PUT, PATCH"npm r u
 };
 
 // Then pass these options to cors:
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(cors(options));
-
 
 // **** Middlewares **** //
 
@@ -48,15 +48,30 @@ if (process.env.NODE_ENV === "production") {
 
 // Add api router
 app.use("/api", apiRouter);
-app.use("/auth" , authRouter)
-// Error handling
-app.use((err: Error | CustomError, _: Request, res: Response, __: NextFunction) => {
+app.use("/auth", authRouter)
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (isHttpError(err)) {
+    return res.status(err.status).send({ error: err });
+  }
+
+  res
+    .status(500)
+    .send({
+      error: { message: "Internal Server Error", description: err.message },
+    });
+
   logger.err(err, true);
-  const status = err instanceof CustomError ? err.HttpStatus : StatusCodes.BAD_REQUEST;
-  return res.status(status).json({
-    error: err.message,
-  });
+  next(err);
 });
+
+// Error handling
+// app.use((err: Error | CustomError, _: Request, res: Response, __: NextFunction) => {
+//   logger.err(err, true);
+//   const status = err instanceof CustomError ? err.HttpStatus : StatusCodes.BAD_REQUEST;
+//   return res.status(status).json({
+//     error: err.message,
+//   });
+// });
 
 // **** Front-end content **** //
 

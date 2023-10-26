@@ -14,7 +14,7 @@ RUN npm install
 
 ENV NODE_ENV = "docker"
 
-ENV DATABASE_URL "postgresql://doadmin:AVNS_7lAo0sEh5qUFTNCW8Ea@db-postgresql-nyc3-65715-do-user-11423548-0.b.db.ondigitalocean.com:25060/new04102022?schema=public"
+ENV DATABASE_URL "postgresql://postgres:oodles@localhost:5432/hashbuzz?schema=public"
 
 ## Setup jet-logger ##
 ENV JET_LOGGER_MODE "FILE"

@@ -24,7 +24,7 @@ export const checkWalletFormat: CustomValidator = (value: string) => {
   return isMatching;
 };
 
-export const validateEntityObject:CustomValidator = (createTransactionEntity:CreateTranSactionEntity) => {
+export const validateEntityObject: CustomValidator = (createTransactionEntity: CreateTranSactionEntity) => {
   if (
     !createTransactionEntity ||
     typeof createTransactionEntity !== 'object' ||
@@ -35,12 +35,12 @@ export const validateEntityObject:CustomValidator = (createTransactionEntity:Cre
     typeof createTransactionEntity.amount.fee !== 'number' ||
     typeof createTransactionEntity.amount.total !== 'number'
   ) {
-     throw new ParamMissingError("Check entity object.it looks like in wrong format.");
+    throw new ParamMissingError("Check entity object.it looks like in wrong format.");
   }
   return true;
 }
 
-export const validateGenerateAstPayload:CustomValidator = (body:GenerateAstPayload) => {
+export const validateGenerateAstPayload: CustomValidator = (body: GenerateAstPayload) => {
   if (
     body &&
     typeof body === "object" &&
@@ -54,5 +54,5 @@ export const validateGenerateAstPayload:CustomValidator = (body:GenerateAstPaylo
     return true;
   }
 
-   throw new ParamMissingError("Signature payload format is not correct.");
+  throw new ParamMissingError("Signature payload format is not correct.");
 }

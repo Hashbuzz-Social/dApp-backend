@@ -1,4 +1,4 @@
-import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction  } from "@hashgraph/sdk";
+import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
 import logger from "jet-logger";
 
 
@@ -27,15 +27,15 @@ switch (network) {
     break;
   case "testnet":
     logger.info("Connecting to the Hedera Testnet");
-    client = Client.forTestnet();
+    client = Client.forTestnet()
     break;
   case "previewnet":
     logger.info("Connecting to the Hedera Previewnet");
     client = Client.forPreviewnet();
     break;
   default:
-    logger.err(`Invalid HEDERA_NETWORK: ${network??""}`);
-    throw new Error(`Invalid HEDERA_NETWORK: ${network??""}`);
+    logger.err(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
+    throw new Error(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
 }
 client = client.setOperator(operatorId, operatorKey);
 

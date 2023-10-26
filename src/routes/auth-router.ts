@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout } from "@controller/Auth";
 import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
-import auth from "@middleware/auth";
 import userInfo from "@middleware/userInfo";
+import auth from "@middleware/auth";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";

@@ -17,91 +17,92 @@ const { OK, BAD_REQUEST } = StatusCodes;
 /**
  * @description Get all user list by pagination.
  */
-export const handleGetAllUser = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const body = req.body;
-    const offset = body.offset ?? 10;
-    const limit = body.limit ?? 10;
-    (async () => {
-      const users = await userService.getAll({ limit, offset });
-      return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
-    })();
-  } catch (err) {
-    next(err);
-  }
+export const handleGetAllUser = async (req: Request, res: Response, next: NextFunction) => {
+  // try {
+  const body = req.body;
+  const offset = body.offset ?? 10;
+  const limit = body.limit ?? 10;
+  // (async () => {
+  const users = await userService.getAll({ limit, offset });
+  return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
+  // })();
+  // } catch (err) {
+  //   next(err);
+  // }
 };
 
-export const handleCurrentUser = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      if (req?.accountAddress) {
-        const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
-        if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
-        else throw new ParamMissingError("No record for this id.");
-      }
-    })();
-  } catch (err) {
-    next(err);
+export const handleCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
+  // try {
+  //   (async () => {
+  if (req?.accountAddress) {
+    const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
+    if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
+    else throw new ParamMissingError("No record for this id.");
   }
+  //   })();
+  // } catch (err) {
+  //   next(err);
+  // }
 };
 
-export const handleUpdateConcent = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const { consent } = req.body;
-      const updatedUser = await prisma.user_user.update({
-        where: { accountAddress: req.accountAddress },
-        data: { consent: consent },
-      });
-      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-    })();
-  } catch (err) {
-    next(err);
-  }
+export const handleUpdateConcent = async (req: Request, res: Response, next: NextFunction) => {
+  // try {
+  //   (async () => {
+  const { consent } = req.body;
+  const updatedUser = await prisma.user_user.update({
+    where: { accountAddress: req.accountAddress },
+    data: { consent: consent },
+  });
+  return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  // })();
+  // } catch (err) {
+  //   next(err);
+  // }
 };
 
 export const handleGetUserBalances = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(BAD_REQUEST).json({ errors: errors.array() });
-    }
-
-    const address: string = req.body.accountId;
-    const contractBal: boolean = req.body.contractBal;
-    if (contractBal) {
-      (async () => {
-        const balances = await queryBalance(address);
-        if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
-        logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
-        return res.status(OK).json(balances);
-      })();
-    } else {
-      return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
-    }
-  } catch (err) {
-    next(err);
+  // try {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(BAD_REQUEST).json({ errors: errors.array() });
   }
+
+  const address: string = req.body.accountId;
+  const contractBal: boolean = req.body.contractBal;
+  if (contractBal) {
+    (async () => {
+      const balances = await queryBalance(address);
+      if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
+      logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
+      return res.status(OK).json(balances);
+    })();
+  } else {
+    return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
+  }
+  // } catch (err) {
+  //   next(err);
+  // }
 };
 
-export const handleTokenBalReq = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    (async () => {
-      const tokenList = await prisma.whiteListedTokens.findMany();
-      const userBalancesForTokens = await prisma.user_balances.findMany({
-        where: {
-          user_id: req.currentUser?.id,
-        },
-      });
-      const balanceData = tokenList.map((token) => {
-        const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
-        return formatTokenBalancesObject(token, balance_record);
-      });
+export const handleTokenBalReq = async (req: Request, res: Response, next: NextFunction) => {
+  // try {
+  //   (async () => {
+  const tokenList = await prisma.whiteListedTokens.findMany();
+  const userBalancesForTokens = await prisma.user_balances.findMany({
+    where: {
+      user_id: req.currentUser?.id,
+    },
+  });
 
-      return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
-    })();
-  } catch (error) {
-    next(error);
-  }
+  const balanceData = tokenList.map((token) => {
+    const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
+    return formatTokenBalancesObject(token, balance_record);
+  });
+
+  return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
+  //   })();
+  // } catch (error) {
+  //   next(error);
+  // }
 };
 

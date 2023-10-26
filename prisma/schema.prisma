@@ -119,6 +119,7 @@ model user_user {
   hash                                 String?                 @db.VarChar
   salt                                 String?                 @db.VarChar
   hedera_wallet_id                     String                  @unique
+  whitelistUser                        Boolean?
   campaign_media                       campaign_media[]
   campaign_twittercard                 campaign_twittercard[]
   user_balances                        user_balances[]
@@ -129,16 +130,16 @@ model user_user {
 }
 
 model smartcontracts {
-  id                BigInt              @id @default(autoincrement())
-  contract_id       String              @unique @db.VarChar(50)
+  id                 BigInt              @id @default(autoincrement())
+  contract_id        String              @unique @db.VarChar(50)
   logicalContract_id String              @db.VarChar(50)
-  lcFileID             String              @db.VarChar(50)
-  is_active         Boolean             @default(true)
-  network           network?
-  created_at        DateTime?           @db.Timestamptz(6)
-  contractAddress   String              @db.VarChar(150)
-  fileId            String              @db.VarChar(50)
-  whiteListedTokens whiteListedTokens[]
+  lcFileID           String              @db.VarChar(50)
+  is_active          Boolean             @default(true)
+  network            network?
+  created_at         DateTime?           @db.Timestamptz(6)
+  contractAddress    String              @db.VarChar(150)
+  fileId             String              @db.VarChar(50)
+  whiteListedTokens  whiteListedTokens[]
 
   @@unique([id, contract_id])
 }
@@ -179,7 +180,7 @@ model transactions {
   network          network
   amount           Float
   status           String          @db.VarChar
-  transaction_data Json            @db.JsonB
+  transaction_data Json
   created_at       DateTime        @default(now()) @db.Timestamptz(6)
 }
 

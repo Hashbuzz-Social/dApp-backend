@@ -155,7 +155,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     });
     await closeCampaignSMTransaction(id);
 
-    //?? Query and update campaigner balance after closing campaign.
+    // ?? Query and update campaigner balance after closing campaign.
     const balances = await queryBalance(user_user.hedera_wallet_id!);
     if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
 

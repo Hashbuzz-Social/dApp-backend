@@ -120,16 +120,14 @@ const manageTwitterCardStatus = async () => {
                 `total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`
               );
               logger.info(
-                `Campaign with Name ${
-                  name ?? ""
+                `Campaign with Name ${name ?? ""
                 } Has no more budget available close it`
               );
               completeCampaignOperation(card);
             }
           } else {
             logger.warn(
-              `Rewards basis for the campaign card with id ${id} and name:- ${
-                name ?? ""
+              `Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""
               } is not defined`
             );
           }
@@ -167,8 +165,7 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
       if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
         //? Log card details if we are fetching comments for this card.
         logger.info(
-          `Fetching comments for the card id : ${card.id} with name ${
-            card?.name ?? ""
+          `Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
           }`
         );
 

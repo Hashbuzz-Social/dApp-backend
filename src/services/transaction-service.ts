@@ -1,5 +1,5 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
-import { default as hbarservice, default as hederaService } from "@services/hedera-service";
+// import { default as hbarservice, default as hederaService } from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
 import { buildCampaignAddress, buildCampaigner, sensitizeUserData } from "@shared/helper";
@@ -8,31 +8,50 @@ import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
+import hederaService from "@services/hedera-service";
+
+const { hederaClient, operatorKey, network, operatorId } = hederaService;
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
-  console.log("updateBalanceToContract::", { payerId, amounts });
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    const address = AccountId.fromString(payerId).toSolidityAddress();
-    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
+    const address = AccountId.fromString(payerId);
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8);
-
     const gas = new Hbar(1.75).toTinybars().toNumber();
-    console.log(gas);
+
+    const backupContract = contractDetails?.contract_id;
+    const contractAddress = ContractId.fromString(backupContract.toString());
 
     const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setGas(gas)
-      .setMaxTransactionFee(2)
-      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address).addUint256(amount).addBool(deposit))
+      .setGas(2000000)
+      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addUint256(amount).addBool(deposit))
       .setTransactionMemo(`Top up from the account ${payerId}`);
 
-    const submitTransfer = await tokenTransfer.execute(hbarservice.hederaClient);
-    const tokenTransferRx = await submitTransfer.getReceipt(hbarservice.hederaClient);
+    const submitTransfer = await tokenTransfer.execute(hederaClient);
+    const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
     const tokenStatus = tokenTransferRx.status;
     console.log(" - The updated transaction status " + tokenStatus);
+
+
+    // const tokenTransfer = new ContractExecuteTransaction()
+    //   .setContractId(backupContract)
+    //   .setGas(2000000)
+    //   .setFunction(
+    //     "updateBalance",
+    //     new ContractFunctionParameters()
+    //       .addAddress(address.toSolidityAddress())
+    //       .addUint256(amount)
+    //       .addBool(true)
+    //   );
+
+    // const submitTransfer = await tokenTransfer.execute(hederaClient);
+    // const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
+    // const tokenStatus = tokenTransferRx.status;
+    // console.log(" - The updated transaction status " + tokenStatus);
+
 
     return { transactionId: submitTransfer.transactionId, recipt: tokenTransferRx };
     // return signingService.signAndMakeBytes(contractExBalTx, payerId);
@@ -52,7 +71,7 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
         .addHbarTransfer(connectedAccountId, -total)
         .addHbarTransfer(contractDetails.contract_id?.toString(), value)
         .setTransactionMemo("Hashbuzz escrow payment")
-        .addHbarTransfer(hbarservice.operatorId, fee);
+        .addHbarTransfer(operatorId, fee);
 
     if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
       const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: entity.entityId } });
@@ -63,11 +82,11 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
           .addTokenTransfer(entity.entityId, connectedAccountId, -(total * Math.pow(10, decimal)))
           .addTokenTransfer(entity.entityId, contractDetails.contract_id.toString(), value * Math.pow(10, decimal))
           .setTransactionMemo("Hashbuzz escrow payment")
-          .addTokenTransfer(entity.entityId, hbarservice.operatorId, fee * Math.pow(10, decimal));
+          .addTokenTransfer(entity.entityId, operatorId, fee * Math.pow(10, decimal));
       }
     }
     const transactionId = transferTx.transactionId?.toString();
-    console.log(transactionId);
+    console.log(transactionId, "Transaction Id");
     //signing and returning
     return signingService.signAndMakeBytes(transferTx, connectedAccountId);
   } else {
@@ -104,8 +123,8 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
       .setTransactionMemo("Hashbuzz add balance to a campaign account" + campaignAddress)
       .setGas(10000000);
 
-    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    const receipt = await exResult.getReceipt(hbarservice.hederaClient);
+    const exResult = await contractExBalTx.execute(hederaClient);
+    const receipt = await exResult.getReceipt(hederaClient);
 
     console.log("allocateBalanceToCampaign::finished-with-transactionId", exResult.transactionId);
 
@@ -132,8 +151,8 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
       .setTransactionMemo("Hashbuzz subtracting campaign balance from campaign::" + campaignAddress)
       .setGas(1000000);
 
-    const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
-    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
+    const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
+    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
     return contractExecuteRx;
   }
 };
@@ -157,8 +176,8 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
       .setTransactionMemo("Hashbuzz rewarding to intractor with adderss" + intracterAccount)
       .setGas(1000000);
 
-    const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
-    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
+    const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
+    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
     return contractExecuteRx;
   }
 };
@@ -166,15 +185,21 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
 export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number, memo = "Reward payment from hashbuzz") => {
   const contractDetails = await provideActiveContract();
   amount = Math.round(amount) / 1e8;
+
+
   if (contractDetails?.contract_id) {
+
+    const backupContract = contractDetails?.contract_id;
+    const backupContract1 = AccountId.fromString(backupContract);
+
     const transferTx = new TransferTransaction()
-      .addHbarTransfer(contractDetails.contract_id?.toString(), -amount)
-      .addHbarTransfer(intracterAccount, amount)
+      .addHbarTransfer(backupContract1, - (amount))
+      .addHbarTransfer(intracterAccount, (amount))
       .setTransactionMemo(memo)
-      .freezeWith(hbarservice.hederaClient);
+      .freezeWith(hederaClient);
     const transferSign = await transferTx.sign(hederaService.operatorKey);
-    const transferSubmit = await transferSign.execute(hbarservice.hederaClient);
-    const transferRx = await transferSubmit.getReceipt(hbarservice.hederaClient);
+    const transferSubmit = await transferSign.execute(hederaClient);
+    const transferRx = await transferSubmit.getReceipt(hederaClient);
     return transferRx;
   }
 };
@@ -197,8 +222,8 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint) => 
       .setTransactionMemo("Hashbuzz close campaign operation for " + name)
       .setGas(1000000);
 
-    const contractExecuteSubmit = await contractExBalTx.execute(hbarservice.hederaClient);
-    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hbarservice.hederaClient);
+    const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
+    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
     return contractExecuteRx;
   }
 };
@@ -208,30 +233,32 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    const address = "0x" + AccountId.fromString(accountId).toSolidityAddress();
-    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
+    const backupContract = contractDetails?.contract_id;
+
+    const address = AccountId.fromString(accountId);
+    const contractAddress = ContractId.fromString(backupContract.toString());
     const deposit = false;
 
     console.log("tinyAmount is Reimbursed from contract", amounts);
 
-    const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts, deposit]);
+    // const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts, deposit]);
 
-    const contractExBalTx = new ContractExecuteTransaction()
+    const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
-      .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz balance update call")
-      .setGas(1000000);
-    const exResult = await contractExBalTx.execute(hbarservice.hederaClient);
-    const receipt = await exResult.getReceipt(hbarservice.hederaClient);
+      .setGas(2000000)
+      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addUint256(amounts).addBool(deposit))
+      .setTransactionMemo("Hashbuzz balance update call");
 
-    console.log(receipt.status);
+    const submitTransfer = await tokenTransfer.execute(hederaClient);
+    const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
+    const tokenStatus = tokenTransferRx.status;
+    console.log(" - The updated transaction status is " + tokenStatus);
 
     const balance = await queryBalance(accountId);
-
     const userData = await userService.topUp(userId, parseInt(balance?.balances ?? "0"), "update");
 
     const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, amounts, "Reimbursement payment from hashbuzz");
-    return { paymentTransaction, contractCallReceipt: receipt, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
+    return { paymentTransaction, contractCallReceipt: tokenTransferRx, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };
 
