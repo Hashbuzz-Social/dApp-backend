@@ -79,7 +79,7 @@
   "dependencies": {
     "@hashgraph/sdk": "^2.30.0",
     "@prisma/client": "^5.0.0",
-    "bignumber.js": "^9.1.1",
+    "bignumber.js": "^9.1.2",
     "command-line-args": "^5.2.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -101,6 +101,7 @@
     "node-fetch": "^3.3.1",
     "node-schedule": "^2.1.0",
     "solc": "^0.8.16",
+    "twit": "^2.2.11",
     "twitter-api-v2": "^1.12.3",
     "web3": "^1.7.5"
   },

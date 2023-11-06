@@ -23,7 +23,7 @@ import { scheduleJob } from "node-schedule";
  * ===================================||
  */
 const manageTwitterCardStatus = async () => {
-  logger.info("manageTwitterCardStatus::start");
+  console.log("manageTwitterCardStatus::start");
   //? get all active cards from DB
   const allActiveCard = await twitterCardService.allActiveTwitterCard();
   const activeCardsIds: string[] = [];
@@ -33,8 +33,9 @@ const manageTwitterCardStatus = async () => {
   });
 
   if (allActiveCard.length > 0) {
-    const publicMetrics = await twitterAPI.getPublicMetrics(activeCardsIds);
+    const publicMetrics = await twitterAPI.getPublicMetrics(activeCardsIds, allActiveCard[0].id);
 
+    console.log(publicMetrics, "Public Matrix")
     //! looping through each card
     await Promise.all(
       allActiveCard.map(async (card, index) => {
@@ -97,7 +98,7 @@ const manageTwitterCardStatus = async () => {
             //convert total to tiny hbar
             total_spent = Math.round(total_spent);
             console.log("campaignStats", JSON.stringify(campaignStats));
-            logger.info(
+            console.log(
               `Total amount sped for the campaign card - ${id} is:::- ${total_spent}`
             );
 
@@ -148,13 +149,15 @@ const manageTwitterCardStatus = async () => {
  * 3. formate data remove duplicate entries from the data.
  */
 const checkForRepliesAndUpdateEngagementsData = async () => {
-  logger.info("Replies check:::start");
+  // logger.info("Replies check:::start");
+  console.log("Replies check:::start")
   //!! 5 days of threshold
-  const thresholdSeconds = 4 * 24 * 60 * 60;
+  // const thresholdSeconds = 4 * 24 * 60 * 60;
+  const thresholdSeconds = 60;
+
 
   //? get all active cards from DB
   const allActiveCard = await twitterCardService.allActiveTwitterCard();
-
   //!!loop through al active card and check for comments on tweeter.
   await Promise.all(
     allActiveCard.map(async (card, index) => {
@@ -162,12 +165,15 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
       //! time diff in seconds
       const timeDiffInSeconds =
         moment().unix() - moment(last_reply_checkedAt).unix();
+      console.log(timeDiffInSeconds, thresholdSeconds, card.tweet_id)
       if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
         //? Log card details if we are fetching comments for this card.
-        logger.info(
-          `Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
-          }`
-        );
+        // logger.info(
+        //   `Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
+        //   }`
+        // );
+        console.log(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
+          }`)
 
         //!! fetch comments from tweeter and update to DB engagements records.
         await updateRepliesToDB(card.id, card.tweet_id);

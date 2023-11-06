@@ -96,9 +96,10 @@ export const handleTokenBalReq = async (req: Request, res: Response, next: NextF
 
   const balanceData = tokenList.map((token) => {
     const balance_record = userBalancesForTokens.find((b) => b.token_id === token.id);
+    console.log(token, balance_record, "X-Token")
     return formatTokenBalancesObject(token, balance_record);
   });
-
+  console.log(balanceData);
   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
   //   })();
   // } catch (error) {

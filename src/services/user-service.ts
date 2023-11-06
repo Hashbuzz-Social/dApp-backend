@@ -36,7 +36,7 @@ const getUserByAccountAddress = async (accountAddress: string) => {
   });
 };
 
-const getUserById = async (id: number | bigint) => {
+export const getUserById = async (id: number | bigint) => {
   return await prisma.user_user.findUnique({
     where: { id },
   });
@@ -50,8 +50,8 @@ const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) =
   });
 };
 
-const getAstForUserByAccountAddress = async (accountAddress:string) => {
-  return await prisma.authtoken_token.findUnique({where:{accountAddress}})
+const getAstForUserByAccountAddress = async (accountAddress: string) => {
+  return await prisma.authtoken_token.findUnique({ where: { accountAddress } })
 }
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
@@ -146,6 +146,7 @@ const updateTokenBalanceForUser = async ({
   decimal: number;
 }) => {
   const balRecord = await prisma.user_balances.findFirst({ where: { user_id, token_id } });
+  console.log(balRecord, "balRecord");
   if (balRecord) {
     return await prisma.user_balances.update({
       data: {

@@ -15,7 +15,7 @@ import {
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
-import { backupContractByteCode, contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
+import { contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 
@@ -412,7 +412,7 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
 
     const contractDetails = await provideActiveContract();
     const address = AccountId.fromString(user_wallet_id);
-    console.log(contractDetails, "------")
+    console.log(contractDetails, "------", user_wallet_id)
 
     if (contractDetails?.contract_id) {
 

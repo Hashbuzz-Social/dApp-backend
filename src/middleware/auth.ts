@@ -55,9 +55,10 @@ const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
 const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountAddress = req.accountAddress;
-    const adminAccount = process.env.HEDERA_ACCOUNT_ID;
+    const adminAccount = process.env.ADMIN_ADDRESS;
     if (accountAddress && adminAccount) {
       const accountId = AccountId.fromSolidityAddress(accountAddress).toString();
+      console.log(accountId,adminAccount)
       if (accountId === adminAccount) next();
       else throw new UnauthorizeError("Don't have necessary access for this routes");
     }

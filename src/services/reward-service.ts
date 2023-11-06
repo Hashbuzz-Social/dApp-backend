@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { campaign_tweetengagements, campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
@@ -7,9 +8,11 @@ import { getCampaignDetailsById, incrementClaimAmount } from "./campaign-service
 import { updatePaymentStatusToManyRecords } from "./engagement-servide";
 import { transferAmountFromContractUsingSDK, updateCampaignBalance } from "./transaction-service";
 import userService from "./user-service";
+import { distributeToken } from "./contract-service";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
+  console.log(card, "Inside totalRewards: ")
   let total = 0;
   data.forEach((d) => {
     switch (d.engagement_type) {
@@ -29,6 +32,7 @@ const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweete
         break;
     }
   });
+  console.log(total);
   return Math.round(total);
 };
 
@@ -61,57 +65,112 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
   const { user_user, ...card } = campaignDetails!;
   const groupedData = groupBy(engagements, "user_id");
 
-  if (user_user?.hedera_wallet_id) {
-    //!! Loop through each intractor and check if they are an existing user and then reward them.
-    await Promise.all(
-      Object.keys(groupedData).map(async (personal_twitter_id) => {
-        const user_info = await userService.getUserByTwitterId(personal_twitter_id);
-        if (user_info?.hedera_wallet_id) {
-          const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
-          logger.info(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
-          await Promise.all([
-            //* Smart-contract call for payment
-            await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
-
-            // TODO: update Payment status in db
-            await updatePaymentStatusToManyRecords(
-              groupedData[personal_twitter_id].map((d) => d.id),
-              "PAID"
-            ),
-
-            //increment reward bal
-            await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment")
-          ]);
-          totalRewardsDebited += totalRewardsTinyHbar;
-        }
-      })
-    );
-
-    await Promise.all([
-      //!!Update Amount claimed in the DB.
-      await incrementClaimAmount(cardId, totalRewardsDebited),
-
-      //!!update contract balance for this campaign.
-      await updateCampaignBalance({
-        campaignerAccount: user_user?.hedera_wallet_id,
-        campaignId: cardId.toString(),
-        amount: totalRewardsDebited,
-      }),
-    ]);
-
-    try {
-      await twitterAPI.sendDMFromHashBuzz(
-        user_user.personal_twitter_id!,
-        // eslint-disable-next-line max-len
-        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${card.name!}\nStatus: completed \nRewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+  console.log(groupedData, "Grouped data")
+  if(campaignDetails?.type === "HBAR") {
+    if (user_user?.hedera_wallet_id) {
+      //!! Loop through each intractor and check if they are an existing user and then reward them.
+      await Promise.all(
+        Object.keys(groupedData).map(async (personal_twitter_id) => {
+          const user_info = await userService.getUserByTwitterId(personal_twitter_id);
+          console.log(user_info, "Inside reward")
+          if (user_info?.hedera_wallet_id) {
+            const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
+            console.log(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
+            await Promise.all([
+              //* Smart-contract call for payment
+              await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
+  
+              // TODO: update Payment status in db
+              await updatePaymentStatusToManyRecords(
+                groupedData[personal_twitter_id].map((d) => d.id),
+                "PAID"
+              ),
+  
+              //increment reward bal
+              await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment")
+            ]);
+            totalRewardsDebited += totalRewardsTinyHbar;
+          }
+        })
       );
-    } catch (error) {
-      logger.err(error.message);
+  
+      await Promise.all([
+        //!!Update Amount claimed in the DB.
+        await incrementClaimAmount(cardId, totalRewardsDebited),
+  
+        //!!update contract balance for this campaign.
+        await updateCampaignBalance({
+          campaignerAccount: user_user?.hedera_wallet_id,
+          campaignId: cardId.toString(),
+          amount: totalRewardsDebited,
+        }),
+      ]);
+  
+      try {
+        console.log("-------------")
+        await twitterAPI.sendDMFromHashBuzz(
+          user_user.personal_twitter_id!,
+          // eslint-disable-next-line max-len
+          `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${card.name!}\nStatus: completed \nRewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+        );
+      } catch (error) {
+        logger.err(error.message);
+      }
+    }
+  
+    return groupedData;
+  } else if(campaignDetails?.type === "FUNGIBLE") {
+    console.log(campaignDetails, "FUNGIBLE");
+    if(user_user?.hedera_wallet_id ) {
+      await Promise.all(
+        Object.keys(groupedData).map(async (personal_twitter_id) => {
+          const user_info = await userService.getUserByTwitterId(personal_twitter_id);
+          console.log(user_info, "Inside reward")
+          if (user_info?.hedera_wallet_id) {
+            const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
+            console.log(totalRewardsTinyHbar, "Total Reward: ")
+            console.log(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
+            if(campaignDetails?.fungible_token_id && campaignDetails?.user_user) {
+              await Promise.all([
+                //* Smart-contract call for payment
+                // await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
+                await distributeToken(campaignDetails?.fungible_token_id, campaignDetails?.user_user?.hedera_wallet_id, user_user?.hedera_wallet_id, totalRewardsTinyHbar),
+                // TODO: update Payment status in db
+                await updatePaymentStatusToManyRecords(
+                  groupedData[personal_twitter_id].map((d) => d.id),
+                  "PAID"
+                ),
+    
+                //increment reward bal
+                await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment"),
+              ]);
+              totalRewardsDebited += totalRewardsTinyHbar;
+            }
+          }
+        })
+      );
+
+      await Promise.all([
+        //!!Update Amount claimed in the DB.
+        await incrementClaimAmount(cardId, totalRewardsDebited),
+      ]);
+
+      try {
+        console.log("-------------")
+        await twitterAPI.sendDMFromHashBuzz(
+          user_user.personal_twitter_id!,
+          // eslint-disable-next-line max-len
+          `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${card.name!}\nStatus: completed \nRewarded: ${((totalRewardsDebited / Math.round(card.campaign_budget! * 1e8)) * 100).toFixed(2)}% of campaign budget*`
+        );
+      } catch (error) {
+        logger.err(error.message);
+      }
     }
   }
 
   return groupedData;
-};
+
+  }
 
 /****
  *@description This will be used to show how much amount still pending for an user to claim.

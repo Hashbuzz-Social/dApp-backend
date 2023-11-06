@@ -1,13 +1,15 @@
-import TwitterApi, { TweetV2, UserV2 , TwitterApiV2Settings } from "twitter-api-v2";
+import TwitterApi, { TweetV2, UserV2, TwitterApiV2Settings } from "twitter-api-v2";
 import logger from 'jet-logger';
+import { decrypt } from "./encryption";
+import prisma from "./prisma";
 
 TwitterApiV2Settings.debug = true;
 
 TwitterApiV2Settings.logger = {
-  log: (msg, payload) =>{
+  log: (msg, payload) => {
     logger.err(msg);
     logger.info(payload);
-  } 
+  }
 };
 
 //Type definitions
@@ -25,7 +27,9 @@ interface PublicMetricsObject {
 
 
 // Instantiate with desired auth type (here's Bearer v2 auth)
-const twitterClient = new TwitterApi(process.env.TWITTER_APP_USER_TOKEN!);
+const twitterClient = new TwitterApi({
+  appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!,
+});
 const roClient = twitterClient.readOnly;
 
 
@@ -56,6 +60,11 @@ const getAllUsersWhoLikedOnTweetId = async (tweetId: string) => {
 const getAllRetweetOfTweetId = async (tweetId: string) => {
   const users: UserV2[] = [];
 
+  const twitterClient = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!,
+  });
+  const roClient = twitterClient.readOnly;
+  
   const getAllRetweets = await roClient.v2.tweetRetweetedBy(tweetId, {
     "user.fields": ["username"],
     asPaginator: true,
@@ -75,12 +84,12 @@ const getAllUsersWhoQuotedOnTweetId = async (tweetId: string) => {
   4;
   const data: TweetV2[] = [];
   const quotes = await roClient.v2.quotes(tweetId, {
-    expansions:["author_id"],
-    "user.fields":["username"]
+    expansions: ["author_id"],
+    "user.fields": ["username"]
   });
 
   for await (const quote of quotes) {
-    data.push({...quote});
+    data.push({ ...quote });
   }
 
   return data;
@@ -103,38 +112,81 @@ const getEngagementOnCard = async (tweetId: string) => {
  * @description  This function will return total count of for a single tweetId or for a array of tweet ids.
  */
 
-const getPublicMetrics = async (tweetIds: string | string[]) => {
-  // console.log("Ids:::", tweetIds);
+const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
+  console.log("Ids:::", tweetIds);
 
-  const result = await roClient.v2.tweets(tweetIds, {
-    "user.fields": ["username", "public_metrics", "description", "location"],
-    "tweet.fields": ["created_at", "public_metrics", "text"],
-    expansions: ["author_id", "referenced_tweets.id"],
+  const cardDetails = await prisma.campaign_twittercard.findUnique({
+    where: {
+      id: Number(cardId),
+    },
+    select: {
+      user_user:true
+    },
   });
 
-  const publicMetrics: PublicMetricsObject = {};
+  console.log(cardDetails, "Details in side matrics")
+  if(cardDetails?.user_user) {
+    const token = decrypt(cardDetails.user_user.business_twitter_access_token as string);
+    const secret = decrypt(cardDetails.user_user.business_twitter_access_token_secret as string);
+    
+    // const tweeterData = tweeterApiForUser(token, secret);
+    const tweeterApi = new TwitterApi({
+      appKey: process.env.TWITTER_API_KEY!,
+      appSecret: process.env.TWITTER_API_SECRET!,
+      accessToken:token,
+      accessSecret:secret,
+    });
 
-  result.data.forEach((d) => {
-    if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
-  });
+    const rwClient = tweeterApi.readOnly;
 
-  return publicMetrics;
+    const result = await rwClient.v2.tweets(tweetIds, {
+      "user.fields": ["username", "public_metrics", "description", "location"],
+      "tweet.fields": ["created_at", "public_metrics", "text"],
+      expansions: ["author_id", "referenced_tweets.id"],
+    });
+    
+    console.log(result.includes?.users, "result of card")
+    const publicMetrics: PublicMetricsObject = {};
+  
+    result.data.forEach((d) => {
+      if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
+    });
+  
+    return publicMetrics;
+
+    // const usersPaginated = await rwClient.v2.tweetRetweetedBy(tweetIds[0], {
+    //   asPaginator: true,
+    // });
+    // console.log(usersPaginated)
+  
+  }
 };
 
 /****
  * @description Get all users who is commented on the twitter card.
  */
 
-const getAllReplies = async (tweetID: string) => {
-  // console.log("getAllReplies::start");
-  const SearchResults = await twitterClient.v2.search(`conversation_id:${tweetID}`, {
+const getAllReplies = async (tweetID: string, token: string, secret: string) => {
+  console.log("getAllReplies::start", tweetID);
+
+  const tToken = decrypt(token);
+  const tTokenSecret = decrypt(secret);
+
+  const client = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!, accessToken: tToken, accessSecret: tTokenSecret
+  });
+  const roClient = client.readOnly;
+
+  const SearchResults = await roClient.v2.search(`in_reply_to_tweet_id:${tweetID}`, {
     expansions: ["author_id", "referenced_tweets.id"],
     "user.fields": ["username", "public_metrics", "description", "location"],
     "tweet.fields": ["created_at", "geo", "public_metrics", "text", "conversation_id", "in_reply_to_user_id"],
     max_results: 100,
   });
-
-  const tweets: TweetV2[] = [];
+  console.log(SearchResults, "searchResults");
+  // const SearchResults:any[] = [{username:"YogeshS69872960", }]
+  // const tweets: TweetV2[] = [];
+  const tweets:any[] = [];
 
   for await (const tweet of SearchResults) {
     tweets.push(tweet);
@@ -153,8 +205,7 @@ const getAllReplies = async (tweetID: string) => {
  */
 
 const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
-  // console.log({accessToken , accessSecret})
-  // console.log({apiKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET! })
+  console.log({accessToken , accessSecret})
 
   const tweeterApi = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,
@@ -162,25 +213,27 @@ const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string;
     accessToken,
     accessSecret,
   });
+
   return tweeterApi;
+
 };
 
 //!! Hashbuzz account twitter client
 const HashbuzzTwitterClient = tweeterApiForUser({
-  accessToken:process.env.HASHBUZZ_ACCESS_TOKEN!,
-  accessSecret:process.env.HASHBUZZ_ACCESS_SECRET!,
+  accessToken: process.env.HASHBUZZ_ACCESS_TOKEN!,
+  accessSecret: process.env.HASHBUZZ_ACCESS_SECRET!,
 });
 
 
 /****
  *@description Send DM from Hashbuzz to twitter user.
  */
- const sendDMFromHashBuzz =async (recipient_id:string , text:string) =>{
+const sendDMFromHashBuzz = async (recipient_id: string, text: string) => {
   return await HashbuzzTwitterClient.v1.sendDm({
-     recipient_id,
-     text,
-   })
- }
+    recipient_id,
+    text,
+  })
+}
 
 export default {
   getAllReplies,

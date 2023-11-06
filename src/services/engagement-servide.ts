@@ -1,8 +1,10 @@
+/* eslint-disable max-len */
 import twitterAPI from "@shared/twitterAPI";
 import prisma from "@shared/prisma";
 import { campaign_twittercard, payment_status } from "@prisma/client";
 import moment from "moment";
 import logger from "jet-logger";
+import { getCampaignDetailsById } from "./campaign-service";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
@@ -23,9 +25,14 @@ const getExistingRecordsIdsIfAny = async (id: string, engagement_type: engagemen
 };
 
 export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) => {
-  logger.info("UpdateReplied to DB ");
+  console.log("UpdateReplied to DB ");
+
+  const data = await getCampaignDetailsById(id);
+  console.log(data, "data");
+
+  // if (data?.user_user) {
   const [allReplies, allExistingReplyEngagements] = await Promise.all([
-    await twitterAPI.getAllReplies(tweet_Id),
+    await twitterAPI.getAllReplies(tweet_Id, data?.user_user?.business_twitter_access_token as string, data?.user_user?.business_twitter_access_token_secret as string),
     await prisma.campaign_tweetengagements.findMany({
       where: {
         tweet_id: id.toString(),
@@ -38,6 +45,8 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
       },
     }),
   ]);
+
+  console.log(allReplies, allExistingReplyEngagements, "allReplies, allExistingReplyEngagements")
   const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
 
   let formattedArray = allReplies.map((d) => ({
@@ -63,6 +72,7 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
     });
     return updates;
   } else return false;
+  // }
 };
 
 export const updateAllEngagementsForCard = async (card: campaign_twittercard) => {

@@ -1,11 +1,13 @@
+/* eslint-disable max-len */
 import { whiteListedTokens } from "@prisma/client";
 import { getCampaignDetailsById } from "@services/campaign-service";
 import htsServices from "@services/hts-services";
 import { addCampaigner, addUserToContractForHbar, provideActiveContract } from "@services/smartcontract-service";
-import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, updateBalanceToContract } from "@services/transaction-service";
+import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, reimbursementFungible, updateBalanceToContract } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { ErrorWithCode } from "@shared/errors";
 import { formatTokenBalancesObject } from "@shared/helper";
+import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statusCodes from "http-status-codes";
 import { CreateTranSactionEntity } from "src/@types/custom";
@@ -29,16 +31,21 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
     return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
   }
 
-  if (entity.entityType === "FUNGIBLE_COMMON" && entity.entityId) {
-    // console.log("topUpHandler::topUpHandler");
-    const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
+  await addUserToContractForHbar(accountId, user_id);
 
-    if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong parameters provided" });
-    const decimal = tokenDetails.tokendata.decimals;
+  if (entity.entityType === "fungible" && entity.entityId) {
+    // console.log("topUpHandler::topUpHandler");
+    await addUserToContractForHbar(accountId, user_id);
+    const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
+    console.log(tokenDetails)
+    if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong fungible token provided" });
+    console.log(amounts.value,"value")
+    const decimal = Number(tokenDetails.decimals);
     const amount = amounts.value * Math.pow(10, decimal);
 
+    console.log(amount);
     //update Balance to contract
-    await htsServices.updateTokenTopupBalanceToContract(accountId, amount, entity.entityId);
+    // await htsServices.updateTokenTopupBalanceToContract(accountId, amount, entity.entityId);
     //update Balance to db;
     const balanceRecord = await userService.updateTokenBalanceForUser({ amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id });
 
@@ -50,7 +57,6 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
   }
 
   if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
-    await addUserToContractForHbar(accountId, req.currentUser?.id);
     await updateBalanceToContract(accountId, amounts);
     const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
     return res.status(OK).json({ success: true, message: "Hbar(ℏ) budget update successfully", available_budget: topUp.available_budget });
@@ -147,18 +153,32 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
   // try {
   //   (async () => {
   const amount: number = req.body.amount;
-
+  const type: string = req.body.type;
+  const tokenId: string = req.body.token_id;
+  
   if (!req.currentUser?.id || !req.currentUser?.hedera_wallet_id) {
     return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
   }
 
-  if (!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget < amount)) {
-    return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
-  }
+  if(type === "HBAR") {
+    if (!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget < amount)) {
+      return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
+    }
+  
+    const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount, req.currentUser.hedera_wallet_id);
+    return res.status(OK).json({ message: "Reimbursement Successfully", reimbursementTransaction });
+  } 
+  else if(type === "FUNGIBLE") {
 
-  const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount, req.currentUser.hedera_wallet_id);
-  return res.status(OK).json({ message: "Reimbursement Successfully", reimbursementTransaction });
-  //   })();
+    const tokenDetails = await prisma.whiteListedTokens.findUnique({where: {token_id: tokenId}})
+
+    if(tokenDetails?.decimals) {
+      const reimbursementTransaction = await reimbursementFungible(req.currentUser.hedera_wallet_id, amount, tokenId, tokenDetails?.decimals, req.currentUser?.id, tokenDetails.id);
+      return res.status(OK).json({ message: "Reimbursement Successfully"});
+    }
+
+  }
+    //   })();
   // } catch (err) {
   //   next(err);
   // }

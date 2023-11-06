@@ -156,6 +156,7 @@ export const handleLogout = (req: Request, res: Response, next: NextFunction) =>
 export const handleAdminLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { password }: { password: string } = req.body;
+    
     const user = await prisma.user_user.findUnique({
       where: {
         id: req.currentUser?.id,

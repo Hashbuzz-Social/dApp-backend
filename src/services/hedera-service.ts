@@ -26,7 +26,8 @@ switch (network) {
     client = Client.forMainnet();
     break;
   case "testnet":
-    logger.info("Connecting to the Hedera Testnet");
+    // logger.info("Connecting to the Hedera Testnet");
+    console.log("Connecting to the Hedera Testnet");
     client = Client.forTestnet()
     break;
   case "previewnet":

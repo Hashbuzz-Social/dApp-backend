@@ -10,6 +10,8 @@ import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 import { queryBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
+import { decrypt } from "@shared/encryption";
+import { closeFungibleAndNFTCampaign, expiryCampaign, expiryFungibleCampaign } from "./contract-service";
 
 export const getCampaignDetailsById = async (campaignId: number | bigint) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -19,8 +21,11 @@ export const getCampaignDetailsById = async (campaignId: number | bigint) => {
     include: {
       user_user: {
         select: {
+          id:true,
           hedera_wallet_id: true,
           available_budget: true,
+          business_twitter_access_token: true,
+          business_twitter_access_token_secret: true,
         },
       },
     },
@@ -67,71 +72,122 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
  */
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
-  const { id, name, tweet_id, last_thread_tweet_id } = card;
+  const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
 
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
-    logger.info(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
+    console.log(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
-    const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
+    // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
-    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "hours").toISOString();
+    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "minutes").toISOString();
     //log campaign expiry
-    logger.info(`Campaign expired at ${campaignExpiry}`);
+    console.log(`Campaign expired at ${campaignExpiry}`);
 
     const tweeterApi = twitterAPI.tweeterApiForUser({
-      accessToken: card_owner.business_twitter_access_token,
-      accessSecret: card_owner.business_twitter_access_token_secret,
+      accessToken: decrypt(card_owner.business_twitter_access_token),
+      accessSecret: decrypt(card_owner.business_twitter_access_token_secret),
     });
 
-    try {
-      const updateThread = await tweeterApi.v2.reply(
-        // eslint-disable-next-line max-len
-        `Campaign ended at ${moment().toLocaleString()}✅\n Rewards being distributed \n 🚨first time user🚨please login to @hbuzzs and connect your HashPack wallet to receive your rewards.`,
-        last_thread_tweet_id!
-      );
+    if(type === "HBAR") {
+      try {
+        const updateThread = await tweeterApi.v2.reply(
+          // eslint-disable-next-line max-len
+          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to @hbuzzs with your HashPack wallet to claim your rewards.`,  
+          last_thread_tweet_id!
+        );
+  
+        await Promise.all([
+          //update Status in campaign cards
+          await prisma.campaign_twittercard.update({
+            where: {
+              id: card.id,
+            },
+            data: {
+              campaign_expiry: campaignExpiry,
+              card_status: "Completed",
+              last_thread_tweet_id: updateThread.data.id,
+            },
+          }),
+          await prisma.campaign_tweetengagements.updateMany({
+            where: {
+              tweet_id: card.id.toString(),
+            },
+            data: {
+              exprired_at: campaignExpiry,
+            },
+          }),
+          //startDistributing Rewards
+          await closeCampaignSMTransaction(card.id),
+          await SendRewardsForTheUsersHavingWallet(card.id),
+        ]);
+      } catch (e) {
+        console.log(e);
+      }
 
-      await Promise.all([
-        //update Status in campaign cards
-        await prisma.campaign_twittercard.update({
-          where: {
-            id: card.id,
-          },
-          data: {
-            campaign_expiry: campaignExpiry,
-            card_status: "Completed",
-            last_thread_tweet_id: updateThread.data.id,
-          },
-        }),
-        await prisma.campaign_tweetengagements.updateMany({
-          where: {
-            tweet_id: card.id.toString(),
-          },
-          data: {
-            exprired_at: campaignExpiry,
-          },
-        }),
-        //startDistributing Rewards
-        await SendRewardsForTheUsersHavingWallet(card.id),
-      ]);
-    } catch (e) {
-      console.log(e);
+      const date = new Date(campaignExpiry);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      scheduleJob(date, function () {
+        const cardId = id;
+        perFormCampaignExpiryOperation(cardId);
+      });
+  
+    } else if(type === "FUNGIBLE") {
+      try {
+        const updateThread = await tweeterApi.v2.reply(
+          // eslint-disable-next-line max-len
+          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to @hbuzzs with your HashPack wallet to claim your rewards.`,  
+          last_thread_tweet_id!
+        );
+  
+        await Promise.all([
+          //update Status in campaign cards
+          await prisma.campaign_twittercard.update({
+            where: {
+              id: card.id,
+            },
+            data: {
+              campaign_expiry: campaignExpiry,
+              card_status: "Completed",
+              last_thread_tweet_id: updateThread.data.id,
+            },
+          }),
+          await prisma.campaign_tweetengagements.updateMany({
+            where: {
+              tweet_id: card.id.toString(),
+            },
+            data: {
+              exprired_at: campaignExpiry,
+            },
+          }),
+          // st?artDistributing Rewards
+          await closeFungibleAndNFTCampaign(fungible_token_id, card_owner.hedera_wallet_id),
+         await SendRewardsForTheUsersHavingWallet(card.id),
+        ]);
+      } catch (e) {
+        console.log(e);
+      }
+
+      const date = new Date(campaignExpiry);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      scheduleJob(date, function () {
+        const cardId = id;
+        perFormCampaignExpiryOperation(cardId);
+      });
+
     }
 
-    const date = new Date(campaignExpiry);
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    scheduleJob(date, function () {
-      const cardId = id;
-      perFormCampaignExpiryOperation(cardId);
-    });
   }
 
-  return { message: "done" };
+  return { message: "Campaign is closed" };
 };
 
 export async function perFormCampaignExpiryOperation(id: number | bigint) {
+  console.log("perFormCampaignExpiryOperation")
+
   const campaignDetails = await prisma.campaign_twittercard.findUnique({
     where: { id },
     include: {
@@ -147,13 +203,18 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
-  const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id } = campaignDetails!;
+  const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id, type } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
-      accessToken: user_user?.business_twitter_access_token,
-      accessSecret: user_user?.business_twitter_access_token_secret,
+      accessToken: decrypt(user_user?.business_twitter_access_token),
+      accessSecret: decrypt(user_user?.business_twitter_access_token_secret),
     });
-    await closeCampaignSMTransaction(id);
+    // await closeCampaignSMTransaction(id);
+    if(type === "HBAR") {
+      await expiryCampaign(id)
+    } else if(type === "FUNGIBLE") {
+      await expiryFungibleCampaign(id)
+    }
 
     // ?? Query and update campaigner balance after closing campaign.
     const balances = await queryBalance(user_user.hedera_wallet_id!);
@@ -161,7 +222,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
 
     try {
       await userTweeterApi.v2.reply(
-        `Reward distribution is ended 🎉.\n At ${moment().toLocaleString()}\nTotal ${(amount_claimed! / 1e8).toFixed(4)} ℏ rewarded for this campaign`,
+        `Reward allocation concluded 🎉 on ${moment().toLocaleString()}. A total of  ${(amount_claimed! / 1e8).toFixed(4)} ℏ was given out for this campaign.`,
         last_thread_tweet_id!
       );
       await twitterAPI.sendDMFromHashBuzz(

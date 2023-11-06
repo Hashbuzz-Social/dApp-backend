@@ -88,8 +88,8 @@ router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrRe
  */
 router.post(
   "/list-token",
-  body("tokenId").custom(checkWalletFormat),
-  body("tokenData").isObject(),
+  body("token_id").custom(checkWalletFormat),
+  body("tokendata").isString(),
   body("token_type").isString(),
   checkErrResponse,
   userInfo.getCurrentUserInfo,

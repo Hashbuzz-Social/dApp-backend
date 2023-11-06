@@ -1,4 +1,5 @@
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, TokenInfo, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
+/* eslint-disable max-len */
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, PrivateKey, TokenInfo, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import prisma from "@shared/prisma";
 import { logicalContractAbi } from "@smartContract";
@@ -100,22 +101,24 @@ const updateTokenTopupBalanceToContract = async (payerId: string, amount: number
 
   //if a active contract is available for interaction
   if (contractDetails?.contract_id) {
-    const payerAddress = AccountId.fromString(payerId).toSolidityAddress();
-    const tokenAddress = AccountId.fromString(token_id).toSolidityAddress();
+    console.log(contractDetails?.contract_id)
+    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+    const payerAddress = AccountId.fromString(payerId);
+    const tokenAddress = AccountId.fromString(token_id);
     const topupAmount = new BigNumber(amount);
 
     //!!! create a contract execution transaction
-    const transferToken = new ContractExecuteTransaction()
-      .setContractId(contractDetails?.contract_id)
-      .setGas(2000000)
-      .setFunction("transferTokenToContract", new ContractFunctionParameters().addAddress(tokenAddress).addAddress(payerAddress).addInt64(topupAmount));
+    // const transferToken = new ContractExecuteTransaction()
+    //   .setContractId(contractDetails?.contract_id)
+    //   .setGas(2000000)
+    //   .setFunction("transferTokenToContract", new ContractFunctionParameters().addAddress(tokenAddress).addAddress(payerAddress).addInt64(topupAmount));
 
-    const transferTokenSign = await transferToken.freezeWith(hederaClient).sign(operatorKey);
+    // const transferTokenSign = await transferToken.freezeWith(hederaClient).sign(operatorKey);
 
-    const transferTokenTx = await transferTokenSign.execute(hederaClient);
-    const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
-    const tokenStatus = transferTokenRx.status;
-    return tokenStatus;
+    // const transferTokenTx = await transferTokenSign.execute(hederaClient);
+    // const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
+    // const tokenStatus = transferTokenRx.status;
+    // return tokenStatus;
     // console.log(" - The transfer transaction status " + tokenStatus);
     // /////////////////////////check contract Balance /////////////////////////
     // const query = new ContractInfoQuery().setContractId(contractId);
@@ -127,17 +130,40 @@ const updateTokenTopupBalanceToContract = async (payerId: string, amount: number
     //   " - The contract balance for token " + tokenId + " is: " + balance
     // );
     // }
+    const key = PrivateKey.fromString("0c10a01a0d19ea6a48a9ecd20180762a161c7c43dc11772f92e27bfa07afa93f");
+    const transferToken = new ContractExecuteTransaction()
+    .setContractId(contractAddress)
+    .setGas(2000000)
+    .setFunction(
+      "transferTokenToContract",
+      new ContractFunctionParameters()
+        .addAddress(tokenAddress.toSolidityAddress())
+        .addAddress(payerAddress.toSolidityAddress())
+        .addInt64(topupAmount)
+    );
+  const transferTokenSign = await transferToken
+    .freezeWith(hederaClient)
+    .sign(key);
+
+  const transferTokenTx = await transferTokenSign.execute(hederaClient);
+  const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
+  const tokenStatus = transferTokenRx.status;
+  console.log(" - The transfer transaction status " + tokenStatus);
+
+  return tokenStatus
+
   }
 };
 
 const getEntityDetailsByTokenId = async (token_id: string) => {
   const entityData = await prisma.whiteListedTokens.findUnique({ where: { token_id } });
-  if (entityData) {
-    const { tokendata, ...rest } = entityData;
-    const tokenInfo: TokenInfo = JSON.parse(JSON.stringify(tokendata));
-    return { ...rest, tokendata: tokenInfo };
-  }
-  return false;
+  // if (entityData) {
+  //   // const { tokendata, ...rest } = entityData;
+  //   // const tokenInfo: TokenInfo = JSON.parse(JSON.stringify(tokendata));
+  //   // return { ...rest, tokendata: tokenInfo };
+  //   return tokenData;
+  // }
+  return entityData;
 };
 
 export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId, updateTokenTopupBalanceToContract };

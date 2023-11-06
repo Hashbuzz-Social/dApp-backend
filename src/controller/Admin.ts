@@ -1,4 +1,5 @@
 import { TokenInfo } from "@hashgraph/sdk";
+import { associateTokentoContract } from "@services/contract-service";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
@@ -104,15 +105,19 @@ export const handleTokenInfoReq = async (req: Request, res: Response, next: Next
 };
 
 export const handleWhiteListToken = async (req: Request, res: Response, next: NextFunction) => {
-  const tokenId = req.body.tokenId as string;
-  const tokenInfo = req.body.tokenData as TokenInfo;
+  const tokenId = req.body.token_id as string;
+  const tokenInfo = req.body.tokendata;
   const token_type = req.body.token_type as string;
   const userId = req.currentUser?.id;
+  const token_symbol = req.body.token_symbol as string;
+  const decimals = req.body.decimals as number;
 
   const contractDetails = await provideActiveContract();
-
+  console.log(req.currentUser, contractDetails?.contract_id)
   if (userId && contractDetails?.contract_id) {
-    await associateTokenToContract(tokenId);
+    await associateTokentoContract(tokenId)
+    console.log(tokenId);
+    // await associateTokenToContract(tokenId);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const token = await prisma.whiteListedTokens.upsert({
       where: { token_id: tokenId },
@@ -124,7 +129,8 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
         tokendata: tokenInfo,
         token_type,
         added_by: userId,
-        token_symbol: tokenInfo.symbol,
+        token_symbol,
+        decimals,
         contract_id: contractDetails.contract_id.toString(),
       },
       update: {

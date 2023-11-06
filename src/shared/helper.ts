@@ -52,13 +52,13 @@ export const convertToTinyHbar = (amount: string) => Math.round(parseFloat(amoun
 export const convertTinyHbarToHbar = (amount: number) => amount / 1e8;
 
 export const formatTokenBalancesObject = (token: whiteListedTokens, balance_record?: user_balances) => {
-  const { name, token_id, token_symbol, token_type } = token;
+  const { name, token_id, token_symbol, token_type, decimals } = token;
   if (balance_record) {
     const decimal = parseInt(balance_record.entity_decimal.toString());
     const available_balance = parseFloat(((balance_record.entity_balance ?? 0) / Math.pow(10, decimal)).toFixed(4));
-    return { name, token_id, token_symbol, token_type, available_balance };
+    return { name, token_id, token_symbol, token_type, available_balance, decimals };
   } else {
-    return { name, token_id, token_symbol, token_type, available_balance: 0 };
+    return { name, token_id, token_symbol, token_type, available_balance: 0, decimals };
   }
 };
 

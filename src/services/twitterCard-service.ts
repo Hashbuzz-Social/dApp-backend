@@ -1,7 +1,9 @@
+/* eslint-disable max-len */
 import { convertTinyHbarToHbar } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import { provideActiveContract } from "./smartcontract-service";
+import { decrypt } from "@shared/encryption";
 
 //types
 
@@ -40,7 +42,7 @@ const twitterCardStats = async (cardId: bigint) => {
 };
 
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  // console.log("updateTwitterCardStats::withData", JSON.stringify(body));
+  console.log("updateTwitterCardStats::withData", JSON.stringify(body));
   // {"like_count":3,"quote_count":0,"retweet_count":2,"reply_count":2};
   const { like_count, quote_count, reply_count, retweet_count } = body;
 
@@ -108,21 +110,26 @@ const publishTwitter = async (cardId: number | bigint) => {
       include: {
         user_user: {
           select: {
+            twitter_access_token: true,
+            twitter_access_token_secret: true,
             business_twitter_access_token: true,
             business_twitter_access_token_secret: true,
+
           },
         },
       },
     }),
   ]);
 
-  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward } = cardDetails!;
+  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media } = cardDetails!;
   const contract_id = contractDetails?.contract_id;
 
   if (
     tweet_text &&
     user_user?.business_twitter_access_token &&
     user_user?.business_twitter_access_token_secret &&
+    user_user?.twitter_access_token &&
+    user_user?.twitter_access_token_secret &&
     contract_id &&
     like_reward &&
     quote_reward &&
@@ -132,23 +139,45 @@ const publishTwitter = async (cardId: number | bigint) => {
     const threat1 = tweet_text;
     //@ignore es-lint
     // eslint-disable-next-line max-len
-    const threat2 = `Campaign started 💥\nEngage with the main tweet to get rewarded with $hbars.The reward scheme: like ${convertTinyHbarToHbar(
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth();
+    const date = new Date().getDate();
+
+    const hours = new Date().getHours();
+    const second = new Date().getSeconds();
+    const minutes = new Date().getMinutes();	
+
+    const threat2Hbar = `Campaign initiated 💥 on ${date}/${month}/${year} at  ${hours}:${minutes}:${second} GMT+0530. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
       like_reward
     ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
-    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ\nad<create your own campaign @hbuzzs>`;
+    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ<Advertise your own campaign via @hbuzzs>`;
+
+    const threat2Fungible = `Campaign initiated 💥 on ${date}/${month}/${year} at  ${hours}:${minutes}:${second} GMT+0530. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ<Advertise your own campaign via @hbuzzs>`;
+
+
     const userTwitter = twitterAPI.tweeterApiForUser({
-      accessToken: user_user?.business_twitter_access_token,
-      accessSecret: user_user?.business_twitter_access_token_secret,
+      accessToken: decrypt(user_user?.business_twitter_access_token),
+      accessSecret: decrypt(user_user?.business_twitter_access_token_secret),
     });
-    // console.log({ threat1, threat2 });
+    // console.log({ threat1, threat2Hbar });
     //Post tweets to the tweeter;
-    try{
-      const card = await userTwitter.v2.tweet(threat1);
-      const reply = await userTwitter.v2.reply(threat2, card.data.id);
+    try {
+      const rwClient = userTwitter.readWrite;
+      console.log(rwClient)
+      console.log(threat1)
+      const card = await rwClient.v2.tweet(threat1);
+      // await rwClient.v2.reply(media, card.data.id);
+
+      let reply;
+      if(type === "HBAR") {
+        reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
+      } else if(type === "FUNGIBLE") {
+        reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
+      }
       //tweetId.
       const tweetId = card.data.id;
-      const lastThreadTweetId = reply.data.id;
+      const lastThreadTweetId = reply?.data.id;
 
       //Add TweetId to the DB
       await prisma.campaign_twittercard.update({
@@ -161,9 +190,9 @@ const publishTwitter = async (cardId: number | bigint) => {
         },
       });
       return tweetId;
-    }catch(err){
+    } catch (err) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      // console.log(err); 
+      console.log(err);
       // console.log(err.message);
       throw Error("Something wrong with tweet text.");
     }

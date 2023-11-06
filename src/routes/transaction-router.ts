@@ -47,7 +47,7 @@ router.post(
  * @validator checkErrResponse
  * @handler handleTopUp
  */
-router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").isString(), checkErrResponse, handleTopUp);
+router.post("/top-up", body("entity").custom(validateEntityObject), checkErrResponse, handleTopUp);
 
 /**
  * Add a campaigner.
