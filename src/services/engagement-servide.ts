@@ -75,66 +75,71 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
   // }
 };
 
-export const updateAllEngagementsForCard = async (card: campaign_twittercard) => {
-  const { tweet_id, id } = card;
+export const updateAllEngagementsForCard = async (card: number | bigint) => {
+  
+  const data = await getCampaignDetailsById(card);
+  console.log(data, "data");
+  // const { tweet_id, id } = data;
+  if(data?.id && data?.tweet_id && data?.user_user) {
 
-  let isDone = false;
-
-  const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(tweet_id!);
-
-  if (likes.length > 0) {
-    const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Like", updated_at: moment().toISOString() }));
-
-    const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Like");
-    const filterResult = likesForDB.filter((d) => {
-      const isExisting = existingUserIds.includes(d.user_id);
-      return !isExisting;
-    });
-    if (filterResult && filterResult.length > 0) {
-      await prisma.campaign_tweetengagements.createMany({
-        data: [...filterResult],
-        skipDuplicates: true,
+    let isDone = false;
+  
+    const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(data?.tweet_id!, data?.user_user);
+  
+    if (likes.length > 0) {
+      const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: data?.id.toString(), engagement_type: "Like", updated_at: moment().toISOString() }));
+  
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Like");
+      const filterResult = likesForDB.filter((d) => {
+        const isExisting = existingUserIds.includes(d.user_id);
+        return !isExisting;
       });
-      isDone = true;
+      if (filterResult && filterResult.length > 0) {
+        await prisma.campaign_tweetengagements.createMany({
+          data: [...filterResult],
+          skipDuplicates: true,
+        });
+        isDone = true;
+      }
     }
-  }
-
-  //Retweets lengths grater than 0;
-  if (retweets.length > 0) {
-    const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: id.toString(), engagement_type: "Retweet", updated_at: moment().toISOString() }));
-
-    const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Retweet");
-    const filterResult = retweetsForDB.filter((d) => {
-      const isExisting = existingUserIds.includes(d.user_id);
-      return !isExisting;
-    });
-    if (filterResult && filterResult.length > 0) {
-      await prisma.campaign_tweetengagements.createMany({
-        data: [...filterResult],
-        skipDuplicates: true,
+  
+    //Retweets lengths grater than 0;
+    if (retweets.length > 0) {
+      const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: data?.id.toString(), engagement_type: "Retweet", updated_at: moment().toISOString() }));
+  
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Retweet");
+      const filterResult = retweetsForDB.filter((d) => {
+        const isExisting = existingUserIds.includes(d.user_id);
+        return !isExisting;
       });
-      isDone = true;
+      if (filterResult && filterResult.length > 0) {
+        await prisma.campaign_tweetengagements.createMany({
+          data: [...filterResult],
+          skipDuplicates: true,
+        });
+        isDone = true;
+      }
     }
-  }
-
-  //Quotes lengths grater than > 0
-  if (quotes.length > 0) {
-    const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: id.toString(), engagement_type: "Quote", updated_at: moment().toISOString() }));
-
-    const existingUserIds = await getExistingRecordsIdsIfAny(id.toString(), "Quote");
-    const filterResult = quotesForDB.filter((d) => {
-      const isExisting = existingUserIds.includes(d.user_id!);
-      return !isExisting;
-    });
-    if (filterResult && filterResult.length > 0) {
-      await prisma.campaign_tweetengagements.createMany({
-        data: [...filterResult],
-        skipDuplicates: true,
+  
+    //Quotes lengths grater than > 0
+    if (quotes.length > 0) {
+      const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: data?.id.toString(), engagement_type: "Quote", updated_at: moment().toISOString() }));
+  
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Quote");
+      const filterResult = quotesForDB.filter((d) => {
+        const isExisting = existingUserIds.includes(d.user_id!);
+        return !isExisting;
       });
-      isDone = true;
+      if (filterResult && filterResult.length > 0) {
+        await prisma.campaign_tweetengagements.createMany({
+          data: [...filterResult],
+          skipDuplicates: true,
+        });
+        isDone = true;
+      }
     }
+    return isDone;
   }
-  return isDone;
 };
 
 export const updatePaymentStatusToManyRecords = async (ids: number[] | bigint[], payment_status: payment_status) => {

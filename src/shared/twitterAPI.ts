@@ -27,10 +27,10 @@ interface PublicMetricsObject {
 
 
 // Instantiate with desired auth type (here's Bearer v2 auth)
-const twitterClient = new TwitterApi({
-  appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!,
-});
-const roClient = twitterClient.readOnly;
+// const twitterClient = new TwitterApi({
+//   appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!,
+// });
+// const roClient = twitterClient.readOnly;
 
 
 
@@ -39,9 +39,21 @@ const roClient = twitterClient.readOnly;
  *@description Get the list of the users with their userId who liked the the user's tweet and list them.
  * @returns Array of UserV2;
  */
-const getAllUsersWhoLikedOnTweetId = async (tweetId: string) => {
+const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user:any) => {
   const users: UserV2[] = [];
 
+  const token = decrypt(user_user.business_twitter_access_token as string);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+
+  const twitterClient = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!,
+    appSecret: process.env.TWITTER_API_SECRET!,
+    accessToken:token,
+    accessSecret:secret,
+  });
+
+  const roClient = twitterClient.readOnly;
+  
   const usersRequest = await roClient.v2.tweetLikedBy(tweetId, {
     "user.fields": ["username"],
     asPaginator: true,
@@ -57,12 +69,19 @@ const getAllUsersWhoLikedOnTweetId = async (tweetId: string) => {
 /****
  *@description Array of all retweeted data.
  */
-const getAllRetweetOfTweetId = async (tweetId: string) => {
+const getAllRetweetOfTweetId = async (tweetId: string, user_user:any) => {
   const users: UserV2[] = [];
 
+  const token = decrypt(user_user.business_twitter_access_token as string);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+
   const twitterClient = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!,
+    appKey: process.env.TWITTER_API_KEY!,
+    appSecret: process.env.TWITTER_API_SECRET!,
+    accessToken:token,
+    accessSecret:secret,
   });
+  
   const roClient = twitterClient.readOnly;
   
   const getAllRetweets = await roClient.v2.tweetRetweetedBy(tweetId, {
@@ -80,9 +99,21 @@ const getAllRetweetOfTweetId = async (tweetId: string) => {
  * @description getAllQuotedUsers
  *
  */
-const getAllUsersWhoQuotedOnTweetId = async (tweetId: string) => {
-  4;
+const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user:any) => {
   const data: TweetV2[] = [];
+
+  const token = decrypt(user_user.business_twitter_access_token as string);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+
+  const twitterClient = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!,
+    appSecret: process.env.TWITTER_API_SECRET!,
+    accessToken:token,
+    accessSecret:secret,
+  });
+  
+  const roClient = twitterClient.readOnly;
+
   const quotes = await roClient.v2.quotes(tweetId, {
     expansions: ["author_id"],
     "user.fields": ["username"]
@@ -95,11 +126,11 @@ const getAllUsersWhoQuotedOnTweetId = async (tweetId: string) => {
   return data;
 };
 
-const getEngagementOnCard = async (tweetId: string) => {
+const getEngagementOnCard = async (tweetId: string, user_user:any) => {
   const data = await Promise.all([
-    await getAllUsersWhoLikedOnTweetId(tweetId),
-    await getAllRetweetOfTweetId(tweetId),
-    await getAllUsersWhoQuotedOnTweetId(tweetId),
+    await getAllUsersWhoLikedOnTweetId(tweetId, user_user),
+    await getAllRetweetOfTweetId(tweetId, user_user),
+    await getAllUsersWhoQuotedOnTweetId(tweetId, user_user),
   ]);
   return {
     likes: data[0],
@@ -146,13 +177,15 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
     });
     
     console.log(result.includes?.users, "result of card")
-    const publicMetrics: PublicMetricsObject = {};
-  
-    result.data.forEach((d) => {
-      if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
-    });
-  
-    return publicMetrics;
+    if(result.data) {
+      const publicMetrics: PublicMetricsObject = {};
+    
+      result.data.forEach((d) => {
+        if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
+      });
+    
+      return publicMetrics;
+    }
 
     // const usersPaginated = await rwClient.v2.tweetRetweetedBy(tweetIds[0], {
     //   asPaginator: true,
@@ -239,7 +272,6 @@ export default {
   getAllReplies,
   getPublicMetrics,
   getEngagementOnCard,
-  twitterClient,
   getAllUsersWhoLikedOnTweetId,
   getAllRetweetOfTweetId,
   getAllUsersWhoQuotedOnTweetId,

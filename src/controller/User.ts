@@ -13,7 +13,7 @@ import prisma from "@shared/prisma";
 import { validationResult } from "express-validator";
 
 const { OK, BAD_REQUEST } = StatusCodes;
-
+import twitterCardStats from "../services/twitterCard-service";
 /**
  * @description Get all user list by pagination.
  */
@@ -107,3 +107,22 @@ export const handleTokenBalReq = async (req: Request, res: Response, next: NextF
   // }
 };
 
+export const twitterCardStatsData = async (req:Request, res:Response) => {
+  const id = req.body.id as number;
+  const cardStatus = await prisma.campaign_tweetstats.findUnique({
+    where: {
+      twitter_card_id: id,
+    },
+  });
+
+  const data = {
+    id: Number(cardStatus?.id),
+    retweet_count: cardStatus?.retweet_count,
+    reply_count: cardStatus?.reply_count,
+    like_count: cardStatus?.like_count,
+    quote_count: cardStatus?.quote_count,
+    last_update: cardStatus?.last_update,
+    twitter_card_id: Number(cardStatus?.twitter_card_id)
+  }
+  return res.status(OK).json({data});
+}

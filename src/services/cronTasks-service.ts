@@ -1,8 +1,9 @@
 import {
   completeCampaignOperation,
+  getCampaignDetailsById,
   perFormCampaignExpiryOperation,
 } from "@services/campaign-service";
-import { updateRepliesToDB } from "@services/engagement-servide";
+import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, {
   TwitterStats,
 } from "@services/twitterCard-service";
@@ -174,9 +175,12 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
         // );
         console.log(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
           }`)
-
+        
+          // const { user_user, ...restCard } = data!;
+          // console.log(...restCard, "restCard");
         //!! fetch comments from tweeter and update to DB engagements records.
         await updateRepliesToDB(card.id, card.tweet_id);
+        await updateAllEngagementsForCard(card.id); 
       }
     })
   );

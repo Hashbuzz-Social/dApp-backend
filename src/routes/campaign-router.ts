@@ -1,4 +1,5 @@
 /* eslint-disable max-len */
+import { twitterCardStatsData } from "@controller/User";
 import { checkCampaignBalances, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, statusUpdateHandler, statusUpdateHandlerFungible } from "@middleware/Campaign";
 import userInfo from "@middleware/userInfo";
 import { completeCampaignOperation } from "@services/campaign-service";
@@ -15,7 +16,7 @@ router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
 router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
 router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
-
+router.get("/card-status", twitterCardStatsData);
 
 // router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
 //   const campaignId: number = _.body.campaignId;

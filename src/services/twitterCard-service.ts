@@ -121,7 +121,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     }),
   ]);
 
-  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media } = cardDetails!;
+  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media, fungible_token_id } = cardDetails!;
   const contract_id = contractDetails?.contract_id;
 
   if (
@@ -134,26 +134,28 @@ const publishTwitter = async (cardId: number | bigint) => {
     like_reward &&
     quote_reward &&
     comment_reward &&
-    retweet_reward
+    retweet_reward &&
+    fungible_token_id
   ) {
     const threat1 = tweet_text;
     //@ignore es-lint
     // eslint-disable-next-line max-len
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth();
-    const date = new Date().getDate();
+    // const year = new Date().getFullYear();
+    // const month = new Date().getMonth();
+    // const date = new Date().getDate();
 
-    const hours = new Date().getHours();
-    const second = new Date().getSeconds();
-    const minutes = new Date().getMinutes();	
+    // const hours = new Date().getHours();
+    // const second = new Date().getSeconds();
+    // const minutes = new Date().getMinutes();	
+    const date = new Date().toUTCString();
 
-    const threat2Hbar = `Campaign initiated 💥 on ${date}/${month}/${year} at  ${hours}:${minutes}:${second} GMT+0530. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
+    const threat2Hbar = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
       like_reward
     ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
     )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ<Advertise your own campaign via @hbuzzs>`;
 
-    const threat2Fungible = `Campaign initiated 💥 on ${date}/${month}/${year} at  ${hours}:${minutes}:${second} GMT+0530. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ<Advertise your own campaign via @hbuzzs>`;
+    const threat2Fungible = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ, please associate your account with this ${fungible_token_id} fungible token <Advertise your own campaign via @hbuzzs>`;
 
 
     const userTwitter = twitterAPI.tweeterApiForUser({
