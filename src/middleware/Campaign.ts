@@ -252,7 +252,6 @@ export const handleCampaignGet = async (req: Request, res: Response, next: NextF
 export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunction) => {
   const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, follow_reward, campaign_budget, media, type } = req.body;
   const { fungible_token_id } = req.body;
-
   // if (
     //   isEmpty(name) ||
     //   isEmpty(tweet_text) ||

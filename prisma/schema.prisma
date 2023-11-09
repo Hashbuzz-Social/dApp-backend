@@ -66,7 +66,7 @@ model campaign_twittercard {
   like_reward            Float?
   quote_reward           Float?
   comment_reward         Float?
-  media                  String[]                 @db.VarChar(20)
+  media                  String[]                 @db.VarChar(200)
   amount_claimed         Float?
   amount_spent           Float                    @default(0)
   name                   String?                  @db.VarChar(50)

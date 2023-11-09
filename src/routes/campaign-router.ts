@@ -5,7 +5,7 @@ import userInfo from "@middleware/userInfo";
 import { completeCampaignOperation } from "@services/campaign-service";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
-import { body, query as validateQuery } from "express-validator";
+import { body, param, query as validateQuery } from "express-validator";
 
 const router = Router();
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];

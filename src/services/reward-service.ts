@@ -125,26 +125,25 @@ export const SendRewardsForTheUsersHavingWallet = async (cardId: number | bigint
       await Promise.all(
         Object.keys(groupedData).map(async (personal_twitter_id) => {
           const user_info = await userService.getUserByTwitterId(personal_twitter_id);
-          console.log(user_info, "Inside reward")
+          console.log(user_info?.hedera_wallet_id, "Inside reward")
           if (user_info?.hedera_wallet_id) {
             const totalRewardsTinyHbar = calculateTotalRewards(card, groupedData[personal_twitter_id]);
-            console.log(totalRewardsTinyHbar, "Total Reward: ")
             console.log(`Starting payment for user::${user_info?.hedera_wallet_id} amount:: ${totalRewardsTinyHbar} `);
             if(campaignDetails?.fungible_token_id && campaignDetails?.user_user) {
-              await Promise.all([
                 //* Smart-contract call for payment
                 // await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
-                await distributeToken(campaignDetails?.fungible_token_id, campaignDetails?.user_user?.hedera_wallet_id, user_user?.hedera_wallet_id, totalRewardsTinyHbar),
+              const response =  await distributeToken(campaignDetails?.fungible_token_id, campaignDetails?.user_user?.hedera_wallet_id, user_info?.hedera_wallet_id, totalRewardsTinyHbar);
                 // TODO: update Payment status in db
-                await updatePaymentStatusToManyRecords(
-                  groupedData[personal_twitter_id].map((d) => d.id),
-                  "PAID"
-                ),
-    
-                //increment reward bal
-                await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment"),
-              ]);
-              totalRewardsDebited += totalRewardsTinyHbar;
+                if(response == 22) {
+                  await updatePaymentStatusToManyRecords(
+                    groupedData[personal_twitter_id].map((d) => d.id),
+                    "PAID"
+                  ),
+      
+                  //increment reward bal
+                  await userService.totalReward(user_info.id, totalRewardsTinyHbar , "increment"),
+                totalRewardsDebited += totalRewardsTinyHbar;
+                }
             }
           }
         })

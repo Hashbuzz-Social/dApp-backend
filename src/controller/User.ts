@@ -108,10 +108,10 @@ export const handleTokenBalReq = async (req: Request, res: Response, next: NextF
 };
 
 export const twitterCardStatsData = async (req:Request, res:Response) => {
-  const id = req.body.id as number;
+  const id = req.query.id;
   const cardStatus = await prisma.campaign_tweetstats.findUnique({
     where: {
-      twitter_card_id: id,
+      twitter_card_id: Number(id),
     },
   });
 
