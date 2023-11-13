@@ -123,7 +123,6 @@ const publishTwitter = async (cardId: number | bigint) => {
 
   const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media, fungible_token_id } = cardDetails!;
   const contract_id = contractDetails?.contract_id;
-
   if (
     tweet_text &&
     user_user?.business_twitter_access_token &&
@@ -134,8 +133,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     like_reward &&
     quote_reward &&
     comment_reward &&
-    retweet_reward &&
-    fungible_token_id
+    retweet_reward
   ) {
     const threat1 = tweet_text;
     //@ignore es-lint
@@ -155,16 +153,19 @@ const publishTwitter = async (cardId: number | bigint) => {
       2
     )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ<Advertise your own campaign via @hbuzzs>`;
 
-    const threat2Fungible = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ, please associate your account with this ${fungible_token_id} fungible token <Advertise your own campaign via @hbuzzs>`;
+    // const threat2Fungible = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ, please associate your account with this ${fungible_token_id} fungible token <Advertise your own campaign via @hbuzzs>`;
 
 
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(user_user?.business_twitter_access_token),
       accessSecret: decrypt(user_user?.business_twitter_access_token_secret),
     });
+
     // console.log({ threat1, threat2Hbar });
     //Post tweets to the tweeter;
     try {
+      // const mediaId = dataResp.data.media_id_string;
+    
       const rwClient = userTwitter.readWrite;
       console.log(rwClient)
       console.log(threat1)
@@ -175,9 +176,16 @@ const publishTwitter = async (cardId: number | bigint) => {
       if(type === "HBAR") {
         reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
       } else if(type === "FUNGIBLE") {
-        reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
+        reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
       }
       //tweetId.
+
+      // const mediaData = await userTwitter.uploadMedia({
+      //   mediaUrl: media[0],
+      // });
+    
+      // const mediaId = media.media_id_string;
+    
       const tweetId = card.data.id;
       const lastThreadTweetId = reply?.data.id;
 

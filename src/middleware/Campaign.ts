@@ -12,6 +12,7 @@ import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
+import { scheduleJob } from "node-schedule";
 
 const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT } = statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
@@ -69,6 +70,14 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
         await allocateBalanceToCampaign(campaign_data.id, amounts, campaignerAccount),
         await userService.topUp(campaignerId, amounts, "decrement"),
       ]);
+
+      const date = new Date();
+      const newDate = date.setHours(date.getHours() + 24);
+      scheduleJob(newDate, async function () {
+        const { user_user, ...restCard } = campaign_data!;
+        await completeCampaignOperation(restCard);
+      });
+
       return res.status(OK).json({ message:"Campaign status updated",transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
     }
     // }
