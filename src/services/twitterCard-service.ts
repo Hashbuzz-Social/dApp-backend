@@ -135,7 +135,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     comment_reward &&
     retweet_reward
   ) {
-    const threat1 = tweet_text;
+    const threat1 = `${tweet_text} more details here ${media[0]}`;
     //@ignore es-lint
     // eslint-disable-next-line max-len
     // const year = new Date().getFullYear();
@@ -234,6 +234,58 @@ const getAllTwitterCardByStatus = async (status: string) => {
   return data;
 };
 
+const getAllTwitterCardPendingCards = async () => {
+  const data = await prisma.campaign_twittercard.findMany({
+    where: {
+      approve: false,
+      isRejected:null,
+    },
+  });
+
+  return data;
+};
+
+
+const updateStatus = async (id:number, status:boolean) => {
+  const data = await prisma.campaign_twittercard.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if(data?.card_status === "Under Review ") {
+    if(status === true) {
+      const data = await prisma.campaign_twittercard.update({
+        where: {
+          id,
+        },
+        data:{
+          approve: true,
+          isRejected: false,
+          card_status:"Campaign Active"
+        }
+      });
+      
+      return data;
+    } else if(status === false){
+      const data = await prisma.campaign_twittercard.update({
+        where: {
+          id,
+        },
+        data:{
+          isRejected: true,
+          card_status:"Campaign Declined"
+        }
+      });
+    
+      return data;
+    }
+  }
+
+  return "Campaign Already Updated"
+};
+
+
 export default {
   allActiveTwitterCard,
   twitterCardStats,
@@ -242,4 +294,6 @@ export default {
   updateTotalSpentAmount,
   publishTwitter,
   getAllTwitterCardByStatus,
+  getAllTwitterCardPendingCards,
+  updateStatus
 } as const;

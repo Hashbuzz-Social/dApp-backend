@@ -109,7 +109,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
             },
             data: {
               campaign_expiry: campaignExpiry,
-              card_status: "Completed",
+              card_status: "Campaign Complete, Initiating Rewards",
               last_thread_tweet_id: updateThread.data.id,
             },
           }),
@@ -155,7 +155,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
             },
             data: {
               campaign_expiry: campaignExpiry,
-              card_status: "Completed",
+              card_status: "Campaign Complete, Initiating Rewards",
               last_thread_tweet_id: updateThread.data.id,
             },
           }),
@@ -208,6 +208,16 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
       },
     },
   });
+
+  await prisma.campaign_twittercard.update({
+    where: {
+      id,
+    },
+    data: {
+      card_status: "Rewards Disbursed",
+    },
+  });
+
   const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id, type } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
@@ -220,6 +230,8 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     } else if(type === "FUNGIBLE") {
       await expiryFungibleCampaign(id)
     }
+
+    
 
     // ?? Query and update campaigner balance after closing campaign.
     const balances = await queryBalance(user_user.hedera_wallet_id!);

@@ -24,6 +24,8 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
 
   const campaign_data = await getCampaignDetailsById(campaignId);
   console.log(campaign_data, "campaign");
+
+if (campaign_data?.approve === true) { 
   const current_status_of_card = campaign_data?.card_status.toLocaleLowerCase();
   const campaignerId = campaign_data?.owner_id;
   let amounts = campaign_data?.campaign_budget;
@@ -36,9 +38,9 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
   }
 
   //!! if requested state is Running or rejected then current status of card must be pending.
-  if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
-    return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
-  }
+  // if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
+  //   return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
+  // }
 
   /**** ============= Update card to Running Status operation=================== */
   if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
@@ -64,7 +66,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
     amounts = Math.round(amounts);
 
     const tweetId = await twitterCardService.publishTwitter(campaignId);
-    console.log(tweetId);
     if (tweetId) {
       const [SM_transaction, dbUserBalance] = await Promise.all([
         await allocateBalanceToCampaign(campaign_data.id, amounts, campaignerAccount),
@@ -121,9 +122,9 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
     }
 
     //!! if requested state is Running or rejected then current status of card must be pending.
-    if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
-      return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
-    }
+    // if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
+    //   return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
+    // }
     /**** ============= Update card to Running Status operation=================== */
     if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
       //? Check is there any running card for current card owner. We are allowing only one card running at a single moments.
@@ -156,6 +157,14 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
           // eslint-disable-next-line max-len
           await userService.updateTokenBalanceForUser({amount: amounts, operation: "decrement", token_id: entityData?.id, decimal:Number(entityData?.decimals), user_id:campaign_data.user_user.id}),
         ]);
+
+        const date = new Date();
+        const newDate = date.setHours(date.getHours() + 24);
+        scheduleJob(newDate, async function () {
+          const { user_user, ...restCard } = campaign_data!;
+          await completeCampaignOperation(restCard);
+        });
+  
         return res.status(OK).json({ message:"Campaign status updated", transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
       }
     }
@@ -166,7 +175,9 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
       return res.status(OK).json(completeCampaign);
     }
   }
-
+} else {
+  res.json({message:"Campaign is not approved"})
+}
 
 }
 
@@ -287,12 +298,13 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
             retweet_reward: convertToTinyHbar(retweet_reward as string),
             quote_reward: convertToTinyHbar(quote_reward as string),
             campaign_budget: convertToTinyHbar(campaign_budget as string),
-            card_status: "Pending",
+            card_status: "Under Review ",
             owner_id: req.currentUser?.id,
             amount_spent: 0,
             amount_claimed: 0,
             type:"HBAR",
-            media
+            media,
+            approve: false
           },
         });
         return res
@@ -308,13 +320,14 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
             retweet_reward: Number(retweet_reward * 10 ** Number(token?.decimals)),
             quote_reward: Number(quote_reward * 10 ** Number(token?.decimals)),
             campaign_budget: Number(campaign_budget * 10 ** Number(token?.decimals)),
-            card_status: "Pending",
+            card_status: "Under Review",
             owner_id: req.currentUser?.id,
             amount_spent: 0,
             amount_claimed: 0,
             fungible_token_id,
             type:"FUNGIBLE",
-            media
+            media,
+            approve: false
           },
         });
         return res

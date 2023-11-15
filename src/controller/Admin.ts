@@ -23,6 +23,23 @@ export const handleGetAllCard = async (req: Request, res: Response) => {
   } else res.status(OK).json([]);
 };
 
+export const handleGetAllCardPendingCards = async (req: Request, res: Response) => {
+  const data = await twitterCardService.getAllTwitterCardPendingCards();
+  console.log(data);
+  if (data && data.length > 0) {
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
+  } else res.status(OK).json([]);
+};
+
+export const handleUpdateCard = async (req: Request, res: Response) => {
+  const approve = req.body.approve as boolean;
+  const id = req.body.id as number;
+
+  const data = await twitterCardService.updateStatus(id, approve);
+  return res.status(OK).json({message :"Status updated successfully", data:JSONBigInt.parse(JSONBigInt.stringify(data))});
+};
+
+
 export const handleUpdatePasswordReq = async (req: Request, res: Response, next: NextFunction) => {
   const { password, oldPassword }: { password: string; oldPassword?: string; } = req.body;
 

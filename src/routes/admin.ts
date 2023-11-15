@@ -2,8 +2,10 @@
 import {
   handleActiveContractInfoReq,
   handleGetAllCard,
+  handleGetAllCardPendingCards,
   handleGetAllWLToken,
   handleTokenInfoReq,
+  handleUpdateCard,
   handleUpdatePasswordReq,
   // handleUpdateEmailReq,
   handleWhiteListToken,
@@ -35,6 +37,10 @@ const passwordCheck: IsStrongPasswordOptions = {
  * @handler handleGetAllCard
  */
 router.get("/twitter-card", query("status").isIn(cardTypes), checkErrResponse, handleGetAllCard);
+
+router.get("/twitter-pending-cards", checkErrResponse, handleGetAllCardPendingCards);
+
+router.put("/update-status", body("id").isNumeric(), body("approve").isBoolean(), checkErrResponse, handleUpdateCard);
 
 /**
  * Update password.
