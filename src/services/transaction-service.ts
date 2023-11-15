@@ -332,7 +332,7 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
 
 export const reimbursementFungible = async (accountId: string, amounts: number, tokenId: string, decimals: Decimal, id: bigint, idToken: bigint) => {
   const contractDetails = await provideActiveContract();
-  amounts = Math.round(amounts) / Number(decimals);
+  amounts = Math.round(amounts);
 
   if (contractDetails?.contract_id) {
     const backupContract = contractDetails?.contract_id;

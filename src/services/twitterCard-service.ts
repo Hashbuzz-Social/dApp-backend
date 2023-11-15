@@ -4,6 +4,7 @@ import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import { provideActiveContract } from "./smartcontract-service";
 import { decrypt } from "@shared/encryption";
+import moment from "moment";
 
 //types
 
@@ -135,7 +136,12 @@ const publishTwitter = async (cardId: number | bigint) => {
     comment_reward &&
     retweet_reward
   ) {
-    const threat1 = `${tweet_text} more details here ${media[0]}`;
+    let threat1;
+    if(media[0]) {
+      threat1 = `${tweet_text} ${media[0]}`;
+    }else {
+      threat1 = `${tweet_text}`;
+    }
     //@ignore es-lint
     // eslint-disable-next-line max-len
     // const year = new Date().getFullYear();
@@ -147,7 +153,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     // const minutes = new Date().getMinutes();	
     const date = new Date().toUTCString();
 
-    const threat2Hbar = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
+    const threat2Hbar = `Campaign initiated 💥 on ${moment().toLocaleString()}. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
       like_reward
     ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
@@ -253,7 +259,7 @@ const updateStatus = async (id:number, status:boolean) => {
     },
   });
 
-  if(data?.card_status === "Under Review ") {
+  if(data?.card_status === "Under Review") {
     if(status === true) {
       const data = await prisma.campaign_twittercard.update({
         where: {
@@ -281,8 +287,6 @@ const updateStatus = async (id:number, status:boolean) => {
       return data;
     }
   }
-
-  return "Campaign Already Updated"
 };
 
 

@@ -72,25 +72,26 @@ if (campaign_data?.approve === true) {
         await userService.topUp(campaignerId, amounts, "decrement"),
       ]);
 
-      const date = new Date();
-      const newDate = date.setHours(date.getHours() + 24);
-      scheduleJob(newDate, async function () {
-        const { user_user, ...restCard } = campaign_data!;
-        await completeCampaignOperation(restCard);
-      });
-
+      
       return res.status(OK).json({ message:"Campaign status updated",transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
     }
     // }
-
+    
     // if (["rejected", "deleted"].includes(requested_card_status)) {
-    //   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //   const campaignUpdates = await updateCampaignStatus(campaignId, requested_card_status === "rejected" ? "Rejected" : "Deleted");
-    //   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(campaignUpdates)));
-    // }
-
-    // next(new ErrorWithCode("Insufficient parameters", BAD_REQUEST));
-  }
+      //   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //   const campaignUpdates = await updateCampaignStatus(campaignId, requested_card_status === "rejected" ? "Rejected" : "Deleted");
+      //   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(campaignUpdates)));
+      // }
+      
+      // next(new ErrorWithCode("Insufficient parameters", BAD_REQUEST));
+    }
+    
+    const date = new Date();
+    const newDate = date.setHours(date.getHours() + 24);
+    scheduleJob(newDate, async function () {
+      const { user_user, ...restCard } = campaign_data!;
+      await completeCampaignOperation(restCard);
+    });
 
   if (requested_card_status === "completed") {
     const { user_user, ...restCard } = campaign_data!;
@@ -158,16 +159,18 @@ if (campaign_data?.approve === true) {
           await userService.updateTokenBalanceForUser({amount: amounts, operation: "decrement", token_id: entityData?.id, decimal:Number(entityData?.decimals), user_id:campaign_data.user_user.id}),
         ]);
 
-        const date = new Date();
-        const newDate = date.setHours(date.getHours() + 24);
-        scheduleJob(newDate, async function () {
-          const { user_user, ...restCard } = campaign_data!;
-          await completeCampaignOperation(restCard);
-        });
-  
+        
         return res.status(OK).json({ message:"Campaign status updated", transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
       }
     }
+
+    const date = new Date();
+    const newDate = date.setHours(date.getHours() + 24);
+    // const newDate = date.setMinutes(date.getMinutes() + 15);
+    scheduleJob(newDate, async function () {
+      const { user_user, ...restCard } = campaign_data!;
+      await completeCampaignOperation(restCard);
+    });
 
     if (requested_card_status === "completed") {
       const { user_user, ...restCard } = campaign_data!;
@@ -298,7 +301,7 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
             retweet_reward: convertToTinyHbar(retweet_reward as string),
             quote_reward: convertToTinyHbar(quote_reward as string),
             campaign_budget: convertToTinyHbar(campaign_budget as string),
-            card_status: "Under Review ",
+            card_status: "Under Review",
             owner_id: req.currentUser?.id,
             amount_spent: 0,
             amount_claimed: 0,

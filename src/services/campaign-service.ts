@@ -97,7 +97,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Campaign concluded ✅ on ${date}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
+          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
@@ -143,7 +143,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Campaign concluded ✅ on ${date}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
+          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
