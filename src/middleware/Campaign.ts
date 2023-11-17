@@ -13,6 +13,7 @@ import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import { scheduleJob } from "node-schedule";
+import crontabService from "@services/cronTasks-service";
 
 const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT } = statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
@@ -88,9 +89,9 @@ if (campaign_data?.approve === true) {
     
     const date = new Date();
     const newDate = date.setHours(date.getHours() + 24);
-    scheduleJob(newDate, async function () {
-      const { user_user, ...restCard } = campaign_data!;
-      await completeCampaignOperation(restCard);
+    scheduleJob(newDate, function () {
+      crontabService.updateCardStatus();
+      crontabService.checkForRepliesAndUpdateEngagementsData();
     });
 
   if (requested_card_status === "completed") {
@@ -167,10 +168,10 @@ if (campaign_data?.approve === true) {
     const date = new Date();
     const newDate = date.setHours(date.getHours() + 24);
     // const newDate = date.setMinutes(date.getMinutes() + 15);
-    scheduleJob(newDate, async function () {
-      const { user_user, ...restCard } = campaign_data!;
-      await completeCampaignOperation(restCard);
-    });
+    scheduleJob(newDate, function () {
+      crontabService.updateCardStatus();
+      crontabService.checkForRepliesAndUpdateEngagementsData();
+      });
 
     if (requested_card_status === "completed") {
       const { user_user, ...restCard } = campaign_data!;
