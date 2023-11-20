@@ -331,7 +331,8 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
             fungible_token_id,
             type:"FUNGIBLE",
             media,
-            approve: false
+            approve: false,
+            decimals: token?.decimals
           },
         });
         return res

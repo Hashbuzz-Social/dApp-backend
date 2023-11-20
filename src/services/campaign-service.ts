@@ -82,7 +82,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
     // console.log(commentsUpdates, isEngagementUpdated, "Fetch all the Replies");
-    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "minutes").toISOString();
+    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "hours").toISOString();
     //log campaign expiry
     console.log(`Campaign expired at ${campaignExpiry}`);
 

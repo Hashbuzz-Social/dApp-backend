@@ -81,6 +81,7 @@ model campaign_twittercard {
   fungible_token_id      String?                  @db.VarChar(20)
   approve                Boolean?
   isRejected             Boolean?
+  decimals               Decimal?                 @db.Decimal
   campaign_participation campaign_participation[]
   campaign_tweetstats    campaign_tweetstats?
   user_user              user_user?               @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
