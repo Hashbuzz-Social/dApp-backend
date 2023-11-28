@@ -8,7 +8,7 @@ import { getCampaignDetailsById } from "./campaign-service";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
-const getExistingRecordsIdsIfAny = async (id: string, engagement_type: engagements) => {
+const getExistingRecordsIdsIfAny = async (id: bigint, engagement_type: engagements) => {
   const existingRecordsIfAny = await prisma.campaign_tweetengagements.findMany({
     where: {
       tweet_id: id,
@@ -24,7 +24,7 @@ const getExistingRecordsIdsIfAny = async (id: string, engagement_type: engagemen
   return allIds;
 };
 
-export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) => {
+export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
   console.log("UpdateReplied to DB ");
 
   const data = await getCampaignDetailsById(id);
@@ -35,7 +35,7 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
     await twitterAPI.getAllReplies(tweet_Id, data?.user_user?.business_twitter_access_token as string, data?.user_user?.business_twitter_access_token_secret as string),
     await prisma.campaign_tweetengagements.findMany({
       where: {
-        tweet_id: id.toString(),
+        tweet_id: id,
         engagement_type: "Reply",
       },
       select: {
@@ -51,7 +51,7 @@ export const updateRepliesToDB = async (id: number | bigint, tweet_Id: string) =
 
   let formattedArray = allReplies.map((d) => ({
     user_id: d.author_id!,
-    tweet_id: id.toString(),
+    tweet_id: id,
     engagement_type: "Reply",
     updated_at: moment().toISOString(),
   }));
@@ -83,31 +83,41 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
   if(data?.id && data?.tweet_id && data?.user_user) {
 
     let isDone = false;
-  
-    const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(data?.tweet_id!, data?.user_user);
-  
+    
+    const details = data?.tweet_id!.toString();
+    const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(details, data?.user_user);
+    console.log(likes, retweets, quotes);
     if (likes.length > 0) {
-      const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: data?.id.toString(), engagement_type: "Like", updated_at: moment().toISOString() }));
+      const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Like", updated_at: moment().toISOString() }));
   
-      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Like");
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Like");
       const filterResult = likesForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id);
         return !isExisting;
       });
+      console.log(filterResult)
+      
       if (filterResult && filterResult.length > 0) {
+        console.log(filterResult)
         await prisma.campaign_tweetengagements.createMany({
           data: [...filterResult],
-          skipDuplicates: true,
+          // skipDuplicates: true,
         });
+
+        // await prisma.campaign_twittercard.update({
+        //   where: { id: card },
+        //   data: { last_reply_checkedAt: new Date().toISOString() },
+        // });
+    
         isDone = true;
       }
     }
   
     //Retweets lengths grater than 0;
     if (retweets.length > 0) {
-      const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: data?.id.toString(), engagement_type: "Retweet", updated_at: moment().toISOString() }));
+      const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Retweet", updated_at: moment().toISOString() }));
   
-      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Retweet");
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Retweet");
       const filterResult = retweetsForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id);
         return !isExisting;
@@ -123,9 +133,9 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
   
     //Quotes lengths grater than > 0
     if (quotes.length > 0) {
-      const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: data?.id.toString(), engagement_type: "Quote", updated_at: moment().toISOString() }));
+      const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: data?.id, engagement_type: "Quote", updated_at: moment().toISOString() }));
   
-      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id.toString(), "Quote");
+      const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Quote");
       const filterResult = quotesForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id!);
         return !isExisting;

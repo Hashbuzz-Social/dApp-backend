@@ -199,10 +199,11 @@ const scheduleExpiryTasks = async () => {
   getCompletedTask.map((card) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const date = new Date(card.campaign_expiry!);
-    scheduleJob(date, function () {
-      const cardId = card.id;
-      perFormCampaignExpiryOperation(cardId);
-    });
+      scheduleJob(date, function () {
+        const cardId = card.id;
+        const contract = card.contract_id;
+        // perFormCampaignExpiryOperation(cardId, contract);
+      });
   });
 };
 

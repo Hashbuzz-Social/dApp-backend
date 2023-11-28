@@ -107,8 +107,8 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
  * @params amounts - Amount which is allocated to the campaign in tinybar.
  */
 
-export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string) => {
-  console.log("allocateBalanceToCampaign::start-for-campaign", campaignId);
+export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string, campaignAddress: string) => {
+  console.log("allocateBalanceToCampaign::start-for-campaign", campaignId, campaignAddress);
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
@@ -117,17 +117,15 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
     // const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
     console.log(campaignerAccount, "campaignerAccount")
     const campaigner = AccountId.fromString(campaignerAccount);
-    const campaignAddress = AccountId.fromString(campaignerAccount);
 
     console.log("tinyAmount is added to contract", amounts);
 
     // const functionCallAsUint8Array = encodeFunctionCall("addCampaign", [campaigner, campaignAddress, amounts]);
     // const params = ;
-
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(10000000)
-      .setFunction("addCampaign", new ContractFunctionParameters().addAddress(campaignAddress.toSolidityAddress()).addAddress(campaigner.toSolidityAddress()).addUint256(amounts))
+      .setFunction("addCampaign", new ContractFunctionParameters().addString(campaignAddress).addAddress(campaigner.toSolidityAddress()).addUint256(amounts))
       .setTransactionMemo("Hashbuzz add balance to a campaign account" + campaignAddress)
 
     const exResult = await contractExBalTx.execute(hederaClient);
@@ -135,7 +133,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
 
     console.log("allocateBalanceToCampaign::finished-with-transactionId", exResult.transactionId);
 
-    return { contract_id: contractDetails.contract_id, transactionId: exResult.transactionId, receipt };
+    return { contract_id: campaignAddress, transactionId: exResult.transactionId, receipt };
   } else {
     throw new Error("Contract id not found");
   }
@@ -171,7 +169,7 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
         "transferHbar",
         new ContractFunctionParameters()
           .addAddress(user.toSolidityAddress())
-          .addAddress(campaign.toSolidityAddress())
+          .addString(campaignId)
           .addUint256(amount)
       ).setTransactionMemo("Update campaign details");
 
@@ -267,7 +265,7 @@ export const transferFungibleFromContractUsingSDK = async (intracterAccount: str
   }
 };
 
-export const closeCampaignSMTransaction = async (campingId: number | bigint) => {
+export const closeCampaignSMTransaction = async (campingId: number | bigint, campaign:string) => {
   const campaignDetails = await getCampaignDetailsById(campingId);
   const { user_user, id, contract_id, name } = campaignDetails!;
 
@@ -285,7 +283,7 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint) => 
       .setGas(400000)
       .setFunction("closeCampaign",
         new ContractFunctionParameters()
-          .addAddress(campaignId.toSolidityAddress())
+          .addString(campaign)
           .addUint256(600)
       )
       .setTransactionMemo("Hashbuzz close campaign operation for " + name);

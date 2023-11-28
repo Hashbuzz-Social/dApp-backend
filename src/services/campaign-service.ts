@@ -6,7 +6,7 @@ import moment from "moment";
 import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
-import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
+// import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 import { queryBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
@@ -72,11 +72,11 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
  */
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
-  const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id } = card;
+  const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id, contract_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
 
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
-    console.log(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""}`);
+    console.log(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""} ${contract_id}`);
 
     //?1. Fetch all the Replies left ot fetch from last cron task.
     // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
@@ -91,7 +91,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       accessSecret: decrypt(card_owner.business_twitter_access_token_secret),
     });
     
-    if(type === "HBAR") {
+    if(type === "HBAR" && contract_id) {
       try {
         const date = new Date().toUTCString();
 
@@ -115,15 +115,15 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
           }),
           await prisma.campaign_tweetengagements.updateMany({
             where: {
-              tweet_id: card.id.toString(),
+              tweet_id: card.id,
             },
             data: {
               exprired_at: campaignExpiry,
             },
           }),
           //startDistributing Rewards
-          await closeCampaignSMTransaction(card.id),
-          await SendRewardsForTheUsersHavingWallet(card.id),
+          await closeCampaignSMTransaction(card.id, contract_id),
+          // await SendRewardsForTheUsersHavingWallet(card.id, contract_id),
         ]);
       } catch (e) {
         console.log(e);
@@ -134,10 +134,10 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       scheduleJob(date, function () {
         const cardId = id;
-        perFormCampaignExpiryOperation(cardId);
+        perFormCampaignExpiryOperation(cardId, contract_id);
       });
   
-    } else if(type === "FUNGIBLE") {
+    } else if(type === "FUNGIBLE" && contract_id) {
       try {
         const date = new Date().toUTCString();
 
@@ -161,15 +161,15 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
           }),
           await prisma.campaign_tweetengagements.updateMany({
             where: {
-              tweet_id: card.id.toString(),
+              tweet_id: card.id,
             },
             data: {
               exprired_at: campaignExpiry,
             },
           }),
           // st?artDistributing Rewards
-          await closeFungibleAndNFTCampaign(fungible_token_id, card_owner.hedera_wallet_id),
-         await SendRewardsForTheUsersHavingWallet(card.id),
+          await closeFungibleAndNFTCampaign(fungible_token_id, card_owner.hedera_wallet_id, contract_id),
+        //  await SendRewardsForTheUsersHavingWallet(card.id, contract_id),
         ]);
       } catch (e) {
         console.log(e);
@@ -180,7 +180,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       scheduleJob(date, function () {
         const cardId = id;
-        perFormCampaignExpiryOperation(cardId);
+        perFormCampaignExpiryOperation(cardId, contract_id);
       });
 
     }
@@ -190,7 +190,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
   return { message: "Campaign is closed" };
 };
 
-export async function perFormCampaignExpiryOperation(id: number | bigint) {
+export async function perFormCampaignExpiryOperation(id: number | bigint, contract_id:string) {
   console.log("perFormCampaignExpiryOperation")
 
   const campaignDetails = await prisma.campaign_twittercard.findUnique({
@@ -226,9 +226,9 @@ export async function perFormCampaignExpiryOperation(id: number | bigint) {
     });
     // await closeCampaignSMTransaction(id);
     if(type === "HBAR") {
-      await expiryCampaign(id)
+      await expiryCampaign(id, contract_id)
     } else if(type === "FUNGIBLE") {
-      await expiryFungibleCampaign(id)
+      await expiryFungibleCampaign(id, contract_id)
     }
 
     

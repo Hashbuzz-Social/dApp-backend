@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { twitterCardStatsData } from "@controller/User";
-import { checkCampaignBalances, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, statusUpdateHandler, statusUpdateHandlerFungible } from "@middleware/Campaign";
+import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@middleware/Campaign";
 import userInfo from "@middleware/userInfo";
 import { completeCampaignOperation } from "@services/campaign-service";
 import { checkErrResponse } from "@validator/userRoutes.validator";
@@ -11,12 +11,15 @@ const router = Router();
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 
 router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, statusUpdateHandler);
-router.post("/update-status-fungible", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, statusUpdateHandlerFungible);
 router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
 router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
 router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
 router.get("/card-status", twitterCardStatsData);
+// getRewardDetails
+router.get("/reward-details", rewardDetails)
+router.put("/claim-reward",body("contract_id").isString(),body("card_id").isNumeric(), claimReward)
+
 
 // router.post("/send-rewards", body("campaignId").isNumeric(), checkErrResponse, async (_: Request, res: Response) => {
 //   const campaignId: number = _.body.campaignId;

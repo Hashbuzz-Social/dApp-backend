@@ -44,7 +44,7 @@ baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurr
  * @middleware authMiddleware.isHavingValidAst
  * @handler campaignRouter
  */
-baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
+baseRouter.use("/campaign", authMiddleware.isHavingValidAst, userInfo.getCurrentUserInfo, campaignRouter);
 
 /**
  * Admin API routes.

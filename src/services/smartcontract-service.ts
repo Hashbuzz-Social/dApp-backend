@@ -441,9 +441,11 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
 
       console.log(" - Add user transaction status: " + addUserStatus);
 
-      return addUserStatus;
+      return true;
     }
   }
+
+  return true;
 
 };
 

@@ -26,12 +26,13 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
   const user_id = req.currentUser?.id;
   const entity: CreateTranSactionEntity = req.body.entity;
   const amounts = entity.amount;
+  const address = entity?.entityId
 
-  if (!accountId || !amounts?.value || !amounts.fee || !amounts.total || !user_id) {
+  if (!accountId || !amounts?.value || !amounts.fee || !amounts.total || !user_id || !address) {
     return res.status(BAD_REQUEST).json({ error: true, message: "amounts is incorrect" });
   }
 
-  await addUserToContractForHbar(accountId, user_id);
+ const status = await addUserToContractForHbar(address, user_id);
 
   if (entity.entityType === "fungible" && entity.entityId) {
     // console.log("topUpHandler::topUpHandler");
@@ -56,8 +57,8 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
     });
   }
 
-  if (req.currentUser?.id && accountId && entity.entityType === "HBAR") {
-    await updateBalanceToContract(accountId, amounts);
+  if (req.currentUser?.id && accountId && entity.entityType === "HBAR" && status && address) {
+    await updateBalanceToContract(address, amounts);
     const topUp = await userService.topUp(req.currentUser?.id, amounts.value * 1e8, "increment");
     return res.status(OK).json({ success: true, message: "Hbar(ℏ) budget update successfully", available_budget: topUp.available_budget });
   }
@@ -130,13 +131,13 @@ export const handleCampaignFundAllocation = async (req: Request, res: Response, 
   //! get campaignById
   const campaignDetails = await getCampaignDetailsById(campaignId);
 
-  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id) {
+  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id && campaignDetails?.contract_id) {
     const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
     const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
     const campaignerId = campaignDetails.owner_id;
 
     //?  call the function to update the balances of the camp
-    const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount);
+    const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount, campaignDetails.contract_id);
     await userService.topUp(campaignerId, amounts, "decrement");
 
     return res.status(CREATED).json({ transactionId, receipt });

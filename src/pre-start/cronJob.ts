@@ -12,11 +12,11 @@ export const taskEveryMinute = cron.schedule(
 );
 
 export const taskOnEvery30Seconds = cron.schedule(
-  "0 0 * * *",
+  "*/2 * * * *",
   () => {
     // console.info("running a task every 30");
-    crontabService.updateCardStatus();
-    crontabService.checkForRepliesAndUpdateEngagementsData();
+    // crontabService.updateCardStatus();
+    // crontabService.checkForRepliesAndUpdateEngagementsData();
 
   },
   {

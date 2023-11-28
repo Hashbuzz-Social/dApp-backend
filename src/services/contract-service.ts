@@ -45,7 +45,7 @@ export async function associateTokentoContract(tokenId: string) {
   }
 }
 
-export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: number, user_id: string | undefined) {
+export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: number, user_id: string | undefined, campaign: string) {
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
@@ -62,10 +62,10 @@ export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: 
         "addFungibleAndNFTCampaign",
         new ContractFunctionParameters()
           .addAddress(token_id.toSolidityAddress())
-          .addAddress(userAddress.toSolidityAddress())
+          .addString(campaign)
           .addAddress(userAddress.toSolidityAddress())
           .addInt64(new BigNumber(amount))
-      ).setTransactionMemo("Fungible token campaign add");
+      ).setTransactionMemo(`Fungible token campaign add ${campaign}`);
 
     const addcampaignTx = await addCampaign.execute(hederaClient);
     const addcampaignRx = await addcampaignTx.getReceipt(hederaClient);
@@ -79,7 +79,7 @@ export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: 
   }
 }
 
-export async function closeFungibleAndNFTCampaign(tokenId: string | null, user_id: string | undefined) {
+export async function closeFungibleAndNFTCampaign(tokenId: string | null, user_id: string | undefined, campaign:string) {
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
@@ -95,7 +95,7 @@ export async function closeFungibleAndNFTCampaign(tokenId: string | null, user_i
         "closeFungibleAndNFTCampaign",
         new ContractFunctionParameters()
           .addAddress(token_id.toSolidityAddress())
-          .addAddress(userAddress.toSolidityAddress())
+          .addString(campaign)
           .addUint256(120)
       );
     const closeCampaignTx = await closeCampaign.execute(hederaClient);
@@ -131,7 +131,7 @@ export async function getHbarCampaignBalance(campaignId: any) {
   }
 }
 
-export async function expiryFungibleCampaign(cardId: any) {
+export async function expiryFungibleCampaign(cardId: any, contract_id:string) {
   const contractDetails = await provideActiveContract();
   const card = await prisma.campaign_twittercard.findUnique({ where: { id: cardId }, select: { user_user: true, fungible_token_id: true } })
 
@@ -152,7 +152,7 @@ export async function expiryFungibleCampaign(cardId: any) {
       .setFunction(
         "getFungibleAndNFTCampaignBalance",
         new ContractFunctionParameters()
-          .addAddress(addre1.toSolidityAddress())
+          .addString(contract_id)
           .addAddress(tokenId.toSolidityAddress())
       )
       .setQueryPayment(new Hbar(10));
@@ -168,7 +168,7 @@ export async function expiryFungibleCampaign(cardId: any) {
         "expiryFungibleAndNFTCampaign",
         new ContractFunctionParameters()
           .addAddress(tokenId.toSolidityAddress())
-          .addAddress(addre1.toSolidityAddress())
+          .addString(contract_id)
           .addAddress(addre1.toSolidityAddress())
           .addUint256(getBalanceRx)
       );
@@ -182,7 +182,7 @@ export async function expiryFungibleCampaign(cardId: any) {
   }
 }
 
-export async function expiryCampaign(cardId: any) {
+export async function expiryCampaign(cardId: any, contract_id:string) {
 
   const card = await prisma.campaign_twittercard.findUnique({ where: { id: cardId }, select: { user_user: true } })
 
@@ -198,8 +198,8 @@ export async function expiryCampaign(cardId: any) {
       .setGas(400000)
       .setFunction(
         "expiryCampaign",
-        new ContractFunctionParameters().addAddress(
-          addre1.toSolidityAddress()
+        new ContractFunctionParameters().addString(
+          contract_id
         ).addAddress(
           addre1.toSolidityAddress()
         )
@@ -214,16 +214,16 @@ export async function expiryCampaign(cardId: any) {
   }
 }
 
-export async function distributeToken(tokenId: string, campaignId: string, userId: string, amount: number) {
+export async function distributeToken(tokenId: string, userId: string, amount: number, campaign:string) {
 
   try {
     const contractDetails = await provideActiveContract();
-    console.log("Inside distributed fungible token", tokenId, campaignId, userId, amount);
+    console.log("Inside distributed fungible token", tokenId, userId, amount);
     if (contractDetails?.contract_id) {
       const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
       const contract_id = AccountId.fromString(contractDetails?.contract_id)
       const token_id = AccountId.fromString(tokenId)
-      const campaign_id = AccountId.fromString(campaignId);
+      const campaign_id = campaign;
       const user1Account = AccountId.fromString(userId);
 
       //Create the transfer transaction
@@ -251,7 +251,7 @@ export async function distributeToken(tokenId: string, campaignId: string, userI
           new ContractFunctionParameters()
             .addAddress(token_id.toSolidityAddress())
             .addAddress(user1Account.toSolidityAddress())
-            .addAddress(campaign_id.toSolidityAddress())
+            .addString(campaign_id)
             .addInt64(new BigNumber(amount))
         ).setTransactionMemo("Distribute fungible ")
 
@@ -264,5 +264,6 @@ export async function distributeToken(tokenId: string, campaignId: string, userI
     }
   } catch (err) {
     console.log(err, "Error")
+    return err;
   }
 }  
