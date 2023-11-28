@@ -261,7 +261,8 @@ export const getRewardDetails = async (data: any) => {
       token_id: string | null,
       id: bigint | null
       name: string | null,
-      type: string | null
+      type: string | null,
+      contract_id: string | null
     };
     
     const obj:CampaignTwitterCard = {
@@ -273,7 +274,8 @@ export const getRewardDetails = async (data: any) => {
       token_id: engagementDetails[i].campaign_twittercard.fungible_token_id,
       id:engagementDetails[i].campaign_twittercard.id,
       name:engagementDetails[i].campaign_twittercard.name,
-      type:engagementDetails[i].campaign_twittercard.type
+      type:engagementDetails[i].campaign_twittercard.type,
+      contract_id:engagementDetails[i].campaign_twittercard.contract_id
     }
 
     if(engagementDetails[i].engagement_type === "Like") {
