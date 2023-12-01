@@ -9,6 +9,7 @@ import { updatePaymentStatusToManyRecords } from "./engagement-servide";
 import { transferAmountFromContractUsingSDK, updateCampaignBalance } from "./transaction-service";
 import userService from "./user-service";
 import { distributeToken } from "./contract-service";
+import { Decimal } from "@prisma/client/runtime/library";
 
 const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
@@ -262,7 +263,8 @@ export const getRewardDetails = async (data: any) => {
       id: bigint | null
       name: string | null,
       type: string | null,
-      contract_id: string | null
+      contract_id: string | null,
+      decimals: Decimal | null
     };
     
     const obj:CampaignTwitterCard = {
@@ -275,7 +277,8 @@ export const getRewardDetails = async (data: any) => {
       id:engagementDetails[i].campaign_twittercard.id,
       name:engagementDetails[i].campaign_twittercard.name,
       type:engagementDetails[i].campaign_twittercard.type,
-      contract_id:engagementDetails[i].campaign_twittercard.contract_id
+      contract_id:engagementDetails[i].campaign_twittercard.contract_id,
+      decimals: engagementDetails[i].campaign_twittercard.decimals
     }
 
     if(engagementDetails[i].engagement_type === "Like") {
