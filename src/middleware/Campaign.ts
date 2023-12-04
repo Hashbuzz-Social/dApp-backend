@@ -90,16 +90,17 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
     
     const date = new Date();
     const newDate = date.setHours(date.getHours() + 24);
-    scheduleJob(newDate, function () {
-      crontabService.updateCardStatus();
-      crontabService.checkForRepliesAndUpdateEngagementsData();
-    });
+    scheduleJob(newDate, async function () {
+      const { user_user, ...restCard } = campaign_data!;
+      const completeCampaign = await completeCampaignOperation(restCard);
+      // return res.status(OK).json(completeCampaign);
+      });
 
-  if (requested_card_status === "completed") {
-    const { user_user, ...restCard } = campaign_data!;
-    const completeCampaign = await completeCampaignOperation(restCard);
-    return res.status(OK).json(completeCampaign);
-  }
+  // if (requested_card_status === "completed") {
+  //   const { user_user, ...restCard } = campaign_data!;
+  //   const completeCampaign = await completeCampaignOperation(restCard);
+  //   return res.status(OK).json(completeCampaign);
+  // }
 }
 
   if(campaign_data && campaign_data?.type === "FUNGIBLE" && campaign_data.user_user && campaign_data?.fungible_token_id) {
@@ -169,16 +170,17 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
     const date = new Date();
     const newDate = date.setHours(date.getHours() + 24);
     // const newDate = date.setMinutes(date.getMinutes() + 15);
-    scheduleJob(newDate, function () {
-      crontabService.updateCardStatus();
-      crontabService.checkForRepliesAndUpdateEngagementsData();
-      });
-
-    if (requested_card_status === "completed") {
+    scheduleJob(newDate, async function () {
       const { user_user, ...restCard } = campaign_data!;
       const completeCampaign = await completeCampaignOperation(restCard);
-      return res.status(OK).json(completeCampaign);
-    }
+      // return res.status(OK).json(completeCampaign);
+      });
+
+    // if (requested_card_status === "completed") {
+    //   const { user_user, ...restCard } = campaign_data!;
+    //   const completeCampaign = await completeCampaignOperation(restCard);
+    //   return res.status(OK).json(completeCampaign);
+    // }
   }
 } else {
   res.json({message:"Campaign is not approved"})

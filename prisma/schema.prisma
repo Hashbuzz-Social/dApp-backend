@@ -40,7 +40,7 @@ model campaign_participation {
 model campaign_tweetengagements {
   id                   BigInt               @id @default(autoincrement())
   user_id              String?              @db.VarChar(50)
-  tweet_id             BigInt              
+  tweet_id             BigInt
   engagement_type      String               @db.VarChar(50)
   updated_at           DateTime?            @db.Timestamptz(6)
   exprired_at          DateTime?            @db.Timestamptz(6)
@@ -60,33 +60,34 @@ model campaign_tweetstats {
 }
 
 model campaign_twittercard {
-  id                        BigInt                     @id @default(autoincrement())
-  tweet_id                  String?                    @db.VarChar(50)
-  tweet_text                String?                    @db.VarChar(300)
+  id                        BigInt                      @id @default(autoincrement())
+  tweet_id                  String?                     @db.VarChar(50)
+  tweet_text                String?                     @db.VarChar(300)
   retweet_reward            Float?
   like_reward               Float?
   quote_reward              Float?
   comment_reward            Float?
-  media                     String[]                   @db.VarChar(200)
+  media                     String[]                    @db.VarChar(200)
   amount_claimed            Float?
-  amount_spent              Float                      @default(0)
-  name                      String?                    @db.VarChar(50)
+  amount_spent              Float                       @default(0)
+  name                      String?                     @db.VarChar(50)
   owner_id                  BigInt?
-  card_status               String                     @db.VarChar(50)
+  card_status               String                      @db.VarChar(50)
   campaign_budget           Float?
-  campaign_expiry           DateTime?                  @db.Timestamptz(6)
-  last_reply_checkedAt      DateTime?                  @default(now()) @db.Timestamptz(6)
-  contract_id               String?                    @db.Char(20)
-  last_thread_tweet_id      String?                    @db.VarChar
-  type                      String?                    @db.VarChar
-  fungible_token_id         String?                    @db.VarChar(20)
+  campaign_expiry           DateTime?                   @db.Timestamptz(6)
+  last_reply_checkedAt      DateTime?                   @default(now()) @db.Timestamptz(6)
+  contract_id               String?                     @db.Char(20)
+  last_thread_tweet_id      String?                     @db.VarChar
+  type                      String?                     @db.VarChar
+  fungible_token_id         String?                     @db.VarChar(20)
   approve                   Boolean?
   isRejected                Boolean?
-  decimals                  Decimal?                   @db.Decimal
+  decimals                  Decimal?                    @db.Decimal
+  campaign_start_time       DateTime?                   @db.Timestamptz(6)
   campaign_participation    campaign_participation[]
   campaign_tweetengagements campaign_tweetengagements[]
   campaign_tweetstats       campaign_tweetstats?
-  user_user                 user_user?                 @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
+  user_user                 user_user?                  @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
 
   @@index([owner_id], map: "campaign_twittercard_owner_id_90f418c7")
 }
