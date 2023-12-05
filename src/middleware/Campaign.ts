@@ -74,6 +74,12 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
         await userService.topUp(campaignerId, amounts, "decrement"),
       ]);
 
+      const date = new Date();
+      const newDate = date.setHours(date.getHours() + 24);
+      scheduleJob(newDate, async function () {
+        const { user_user, ...restCard } = campaign_data!;
+        const completeCampaign = await completeCampaignOperation(restCard);
+        });  
       
       return res.status(OK).json({ message:"Campaign status updated",transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
     }
@@ -87,15 +93,7 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
       
       // next(new ErrorWithCode("Insufficient parameters", BAD_REQUEST));
     }
-    
-    const date = new Date();
-    const newDate = date.setHours(date.getHours() + 24);
-    scheduleJob(newDate, async function () {
-      const { user_user, ...restCard } = campaign_data!;
-      const completeCampaign = await completeCampaignOperation(restCard);
-      // return res.status(OK).json(completeCampaign);
-      });
-
+  // ---- For manual close campaign ------  
   // if (requested_card_status === "completed") {
   //   const { user_user, ...restCard } = campaign_data!;
   //   const completeCampaign = await completeCampaignOperation(restCard);
@@ -143,7 +141,6 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
         user_balances?.entity_balance &&
         campaign_data.campaign_budget >= user_balances?.entity_balance
       ) {
-        console.log("updated");
         return res.status(NO_CONTENT).json({ error: true, message: "Insufficient fund." });
       }
   
@@ -162,19 +159,20 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
           await userService.updateTokenBalanceForUser({amount: amounts, operation: "decrement", token_id: entityData?.id, decimal:Number(entityData?.decimals), user_id:campaign_data.user_user.id}),
         ]);
 
-        
+        const date = new Date();
+        const newDate = date.setHours(date.getHours() + 24);
+        // const newDate = date.setMinutes(date.getMinutes() + 15);
+        scheduleJob(newDate, async function () {
+          const { user_user, ...restCard } = campaign_data!;
+          const completeCampaign = await completeCampaignOperation(restCard);
+          // return res.status(OK).json(completeCampaign);
+          });
+    
         return res.status(OK).json({ message:"Campaign status updated", transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
       }
     }
 
-    const date = new Date();
-    const newDate = date.setHours(date.getHours() + 24);
-    // const newDate = date.setMinutes(date.getMinutes() + 15);
-    scheduleJob(newDate, async function () {
-      const { user_user, ...restCard } = campaign_data!;
-      const completeCampaign = await completeCampaignOperation(restCard);
-      // return res.status(OK).json(completeCampaign);
-      });
+    // ---- For manual close campaign ------  
 
     // if (requested_card_status === "completed") {
     //   const { user_user, ...restCard } = campaign_data!;
@@ -187,82 +185,6 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
 }
 
 }
-
-// statusUpdateHandlerFungible
-// export const statusUpdateHandlerFungible = async (req: Request, res: Response, next: NextFunction) => {
-//   const campaignId: number = req.body.card_id;
-//   let requested_card_status: string = req.body.card_status;
-//   requested_card_status = requested_card_status.toLowerCase();
-
-//   const campaign_data = await getCampaignDetailsById(campaignId);
-//   console.log(campaign_data, "campaign");
-
-  
-  
-//   if(campaign_data && campaign_data?.type === "FUNGIBLE" && campaign_data.user_user) {
-//     const tokenId = Number(campaign_data?.fungible_token_id);
-//     const takenIdString = tokenId.toString();
-//     const entityData = await prisma.whiteListedTokens.findUnique({ where: { token_id:takenIdString } });
-//     const user_balances = await prisma.user_balances.findFirst({ where: { user_id:campaign_data?.user_user?.id, token_id:tokenId} });
-
-
-//     const current_status_of_card = campaign_data?.card_status.toLocaleLowerCase();
-//     const campaignerId = campaign_data?.owner_id;
-//     let amounts = campaign_data?.campaign_budget;
-//     const campaignerAccount = campaign_data?.user_user?.hedera_wallet_id;
-
-//     //!! if card is in the same status don't update this card. respond with BAD_REQUEST
-//     if (current_status_of_card === requested_card_status) {
-//       return res.status(BAD_REQUEST).json({ error: true, message: "Card is currently in the same status." });
-//     }
-
-//     //!! if requested state is Running or rejected then current status of card must be pending.
-//     if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
-//       return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
-//     }
-//     /**** ============= Update card to Running Status operation=================== */
-//     if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
-//       //? Check is there any running card for current card owner. We are allowing only one card running at a single moments.
-//       const currentRunningCardOfCardOwner = await getRunningCardsOfUserId(campaign_data?.owner_id);
-  
-//       //! if any running account then status change will not allowed
-//       if (currentRunningCardOfCardOwner) { return res.status(CONFLICT).json({ error: true, message: "Only one card is allowed at once." }); }
-  
-//       //!  if any campaign_budget is grater than the card owner available_budget then status will remain same.
-//       if (
-//         campaign_data.campaign_budget &&
-//         campaign_data.user_user?.available_budget &&
-//         campaign_data.campaign_budget > campaign_data.user_user?.available_budget
-//       ) {
-//         console.log("updated");
-//         return res.status(NO_CONTENT).json({ error: true, message: "Insufficient fund." });
-//       }
-  
-//       //! Now 1. - Do smartcontrct transaction for balance update.
-//       //! 2. Decrement the balance from card owner main account in db_available_budget;
-//       //! 3. Update the card status as per the requirements.
-//       amounts = Math.round(amounts);
-  
-//       const tweetId = await twitterCardService.publishTwitter(campaignId);
-//       console.log(tweetId);
-//       if (tweetId) {
-//         const [SM_transaction, dbUserBalance] = await Promise.all([
-//           await addFungibleAndNFTCampaign(campaign_data?.fungible_token_id, amounts, campaign_data?.user_user?.hedera_wallet_id),
-//           // { amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id }
-//           await userService.updateTokenBalanceForUser({amount: amounts, operation: "decrement", token_id: tokenId, decimal:Number(entityData?.decimals), user_id:campaign_data.user_user.id}),
-//         ]);
-//         return res.status(OK).json({ transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
-//       }
-//     }
-//   }
-
-//   if (requested_card_status === "completed") {
-//     const { user_user, ...restCard } = campaign_data!;
-//     const completeCampaign = await completeCampaignOperation(restCard);
-//     return res.status(OK).json(completeCampaign);
-//   }
-
-// }
 
 export const handleCampaignGet = async (req: Request, res: Response, next: NextFunction) => {
   const allCampaigns = await prisma.campaign_twittercard.findMany({
