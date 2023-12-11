@@ -72,7 +72,7 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
     });
     return updates;
   } else return false;
-  // }
+  // }x
 };
 
 export const updateAllEngagementsForCard = async (card: number | bigint) => {

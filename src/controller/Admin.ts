@@ -130,34 +130,37 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
   const decimals = req.body.decimals as number;
 
   const contractDetails = await provideActiveContract();
-  console.log(req.currentUser, contractDetails?.contract_id)
-  if (userId && contractDetails?.contract_id) {
-    await associateTokentoContract(tokenId)
-    console.log(tokenId);
-    // await associateTokenToContract(tokenId);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const token = await prisma.whiteListedTokens.upsert({
-      where: { token_id: tokenId },
-      create: {
-        name: tokenInfo.name,
-        token_id: tokenId,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        tokendata: tokenInfo,
-        token_type,
-        added_by: userId,
-        token_symbol,
-        decimals,
-        contract_id: contractDetails.contract_id.toString(),
-      },
-      update: {
-        token_id: tokenId,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        tokendata: tokenInfo,
-      },
-    });
-    return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(token)) });
+  if (userId && contractDetails?.contract_id && tokenId) {
+    const token = await prisma.whiteListedTokens.findUnique({where:{token_id:tokenId}}) 
+    if(token) {
+      return res.status(BAD_REQUEST).json({ message: "Token already associated" });
+    } else {      
+          await associateTokentoContract(tokenId)
+          // await associateTokenToContract(tokenId);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          const newToken = await prisma.whiteListedTokens.upsert({
+            where: { token_id: tokenId },
+            create: {
+              name: tokenInfo.name,
+              token_id: tokenId,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-ignore
+              tokendata: tokenInfo,
+              token_type,
+              added_by: userId,
+              token_symbol,
+              decimals,
+              contract_id: contractDetails.contract_id.toString(),
+            },
+            update: {
+              token_id: tokenId,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-ignore
+              tokendata: tokenInfo,
+            },
+          });
+          return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(newToken)) });
+    }
   }
   return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
 };
