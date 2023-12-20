@@ -84,6 +84,8 @@ model campaign_twittercard {
   isRejected                Boolean?
   decimals                  Decimal?                    @db.Decimal
   campaign_start_time       DateTime?                   @db.Timestamptz(6)
+  campaign_close_time       DateTime?                   @db.Timestamptz(6)
+  is_added_to_queue         Boolean?                    @default(false)
   campaign_participation    campaign_participation[]
   campaign_tweetengagements campaign_tweetengagements[]
   campaign_tweetstats       campaign_tweetstats?

@@ -174,6 +174,12 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
     const tokenDetails = await prisma.whiteListedTokens.findUnique({where: {token_id: tokenId}})
 
     if(tokenDetails?.decimals) {
+      const balRecord = await prisma.user_balances.findFirst({ where: { user_id:req.currentUser?.id, token_id:tokenDetails.id } });
+
+      if (!balRecord || balRecord?.entity_balance && balRecord?.entity_balance < amount) {
+        return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
+      }
+  
       const reimbursementTransaction = await reimbursementFungible(req.currentUser.hedera_wallet_id, amount, tokenId, tokenDetails?.decimals, req.currentUser?.id, tokenDetails.id);
       return res.status(OK).json({ message: "Reimbursement Successfully"});
     }

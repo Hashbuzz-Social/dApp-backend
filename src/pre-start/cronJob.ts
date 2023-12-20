@@ -5,6 +5,18 @@ export const taskEveryMinute = cron.schedule(
   "* * * * *",
   () => {
     // console.info("running a task every minute");
+    crontabService.autoCampaignClose();
+    crontabService.updateCardStatus();
+  },
+  {
+    scheduled: false,
+  }
+);
+
+export const taskEverySeconds = cron.schedule(
+  "* * * * * *",
+  () => {
+    // console.info("running a task every minute");
   },
   {
     scheduled: false,
@@ -12,12 +24,20 @@ export const taskEveryMinute = cron.schedule(
 );
 
 export const taskOnEvery30Seconds = cron.schedule(
-  "*/20 * * * *",
+  "*/5 * * * *",
   () => {
     // console.info("running a task every 30");
-    crontabService.updateCardStatus();
-    crontabService.checkForRepliesAndUpdateEngagementsData();
+    crontabService.checkCampaignCloseTime();
+  },
+  {
+    scheduled: false,
+  }
+);
 
+export const taskOnEvery15Minutes = cron.schedule(
+  "*/10 * * * *",
+  () => {
+    crontabService.checkForRepliesAndUpdateEngagementsData();
   },
   {
     scheduled: false,
@@ -25,9 +45,9 @@ export const taskOnEvery30Seconds = cron.schedule(
 );
 
 export const taskEveryTwoMinute = cron.schedule(
-  "0 0 1 * * *",
+  "/40 * * * *",
   () => {
-    // crontabService.updateCardStatus();
+    crontabService.scheduleExpiryTasks();
     // console.info("running a task every Two minutes");
   },
   {

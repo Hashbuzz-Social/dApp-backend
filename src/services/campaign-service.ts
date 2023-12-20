@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { campaign_twittercard } from "@prisma/client";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
@@ -26,6 +27,7 @@ export const getCampaignDetailsById = async (campaignId: number | bigint) => {
           available_budget: true,
           business_twitter_access_token: true,
           business_twitter_access_token_secret: true,
+          personal_twitter_id: true,
         },
       },
     },
@@ -71,6 +73,17 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
  * 4. Distribute the amounts for the users which have already wallet connected.
  */
 
+const currentDate = new Date();
+const formattedDate = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  timeZoneName: 'short',
+}).format(currentDate);
+
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
   const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id, contract_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
@@ -82,10 +95,9 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
     // console.log(commentsUpdates, isEngagementUpdated, "Fetch all the Replies");
-    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "hours").toISOString();
+    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "minutes").toISOString();
     //log campaign expiry
     console.log(`Campaign expired at ${campaignExpiry}`);
-
     const tweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(card_owner.business_twitter_access_token),
       accessSecret: decrypt(card_owner.business_twitter_access_token_secret),
@@ -95,9 +107,16 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       try {
         const date = new Date().toUTCString();
 
+    //?1. Fetch all the Replies left ot fetch from last cron task.
+    // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
+
+    // console.log(commentsUpdates, isEngagementUpdated, "Fetch all the Replies");
+    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_HOUR!), "minutes").toISOString();
+    //log campaign expiry
+
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
+          `Promo concluded on ${formattedDate}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
@@ -143,7 +162,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Campaign concluded ✅ on ${moment().toLocaleString()}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social with your HashPack wallet to claim your rewards.`,  
+          `Promo concluded on ${formattedDate}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
@@ -218,7 +237,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
     },
   });
 
-  const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id, type } = campaignDetails!;
+  const { user_user, name, tweet_id, owner_id, campaign_budget, amount_claimed, last_thread_tweet_id, type, amount_spent, decimals, fungible_token_id } = campaignDetails!;
   if (user_user?.business_twitter_access_token && user_user?.business_twitter_access_token_secret && user_user.personal_twitter_id) {
     const userTweeterApi = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(user_user?.business_twitter_access_token),
@@ -227,31 +246,48 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
     // await closeCampaignSMTransaction(id);
     if(type === "HBAR") {
       await expiryCampaign(id, contract_id)
+
+      const balances = await queryBalance(user_user.hedera_wallet_id!);
+      if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
+  
+      try {
+        await userTweeterApi.v2.reply(
+          `Reward allocation concluded on ${formattedDate}. A total of ${(amount_spent / 1e8).toFixed(2)} HBAR was given out for this promo.`,
+          last_thread_tweet_id!
+        );
+        // await twitterAPI.sendDMFromHashBuzz(
+        //   user_user.personal_twitter_id,
+        //   // eslint-disable-next-line max-len, max-len
+        //   `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${(
+        //     (amount_claimed! / Math.round(campaign_budget!)) *
+        //     100
+        //   ).toFixed(2)}% of campaign budget*`
+        // );
+      } catch (error) {
+        logger.err(error.message);
+      }
+  
     } else if(type === "FUNGIBLE") {
       await expiryFungibleCampaign(id, contract_id)
+
+      const token = await prisma.whiteListedTokens.findUnique({where: {token_id: String(fungible_token_id)}})
+
+      const balances = await queryBalance(user_user.hedera_wallet_id!);
+      if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
+  
+      try {
+        await userTweeterApi.v2.reply(
+          `Reward allocation concluded on ${formattedDate}. A total of ${(amount_spent / (10 ** Number(decimals))).toFixed(2)} ${token?.token_symbol} was given out for this promo.`,
+          last_thread_tweet_id!
+        );
+      } catch (error) {
+        logger.err(error.message);
+      }
+  
     }
 
     
 
     // ?? Query and update campaigner balance after closing campaign.
-    const balances = await queryBalance(user_user.hedera_wallet_id!);
-    if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
-
-    try {
-      await userTweeterApi.v2.reply(
-        `Reward allocation concluded 🎉 on ${moment().toLocaleString()}. A total of  ${(amount_claimed! / 1e8).toFixed(4)} ℏ was given out for this campaign.`,
-        last_thread_tweet_id!
-      );
-      await twitterAPI.sendDMFromHashBuzz(
-        user_user.personal_twitter_id,
-        // eslint-disable-next-line max-len
-        `Greetings @${user_user.personal_twitter_handle!}\nThis is for your information only\n————————————\nCampaign: ${name!}\nStatus: Archived\nRewarded: ${(
-          (amount_claimed! / Math.round(campaign_budget!)) *
-          100
-        ).toFixed(2)}% of campaign budget*`
-      );
-    } catch (error) {
-      logger.err(error.message);
-    }
   }
 }

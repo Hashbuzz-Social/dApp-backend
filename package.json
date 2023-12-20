@@ -79,6 +79,7 @@
     "@hashgraph/sdk": "^2.30.0",
     "@prisma/client": "^5.0.0",
     "bignumber.js": "^9.1.2",
+    "bullmq": "^4.15.4",
     "command-line-args": "^5.2.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",

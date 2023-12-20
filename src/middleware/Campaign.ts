@@ -74,13 +74,16 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
         await userService.topUp(campaignerId, amounts, "decrement"),
       ]);
 
-      const date = new Date();
-      const newDate = date.setHours(date.getHours() + 24);
-      scheduleJob(newDate, async function () {
-        const { user_user, ...restCard } = campaign_data!;
-        const completeCampaign = await completeCampaignOperation(restCard);
-        });  
-      
+      // const date = new Date();
+      // const newDate = date.setHours(date.getHours() + 24);
+      // scheduleJob(newDate, async function () {
+      //   const { user_user, ...restCard } = campaign_data!;
+        // const completeCampaign = await completeCampaignOperation(restCard);
+      //   });  
+      const updated_campaign_data = await getCampaignDetailsById(campaignId);
+      console.log(updated_campaign_data, "campaign");
+      const { user_user, ...restCard } = updated_campaign_data!
+    
       return res.status(OK).json({ message:"Campaign status updated",transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
     }
     // }
@@ -159,15 +162,15 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
           await userService.updateTokenBalanceForUser({amount: amounts, operation: "decrement", token_id: entityData?.id, decimal:Number(entityData?.decimals), user_id:campaign_data.user_user.id}),
         ]);
 
-        const date = new Date();
-        const newDate = date.setHours(date.getHours() + 24);
-        // const newDate = date.setMinutes(date.getMinutes() + 15);
-        scheduleJob(newDate, async function () {
-          const { user_user, ...restCard } = campaign_data!;
-          const completeCampaign = await completeCampaignOperation(restCard);
-          // return res.status(OK).json(completeCampaign);
-          });
-    
+        // const date = new Date();
+        // const newDate = date.setHours(date.getHours() + 24);
+        // // const newDate = date.setMinutes(date.getMinutes() + 15);
+        // scheduleJob(newDate, async function () {
+        //   const { user_user, ...restCard } = campaign_data!;
+        //   const completeCampaign = await completeCampaignOperation(restCard);
+        //   // return res.status(OK).json(completeCampaign);
+        //   });
+
         return res.status(OK).json({ message:"Campaign status updated", transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
       }
     }
@@ -304,7 +307,7 @@ export const checkCampaignBalances = async (req: Request, res: Response, next: N
 }
 
 export const rewardDetails = async (req: Request, res: Response) => {
-  console.log(req.currentUser?.hedera_wallet_id, req.currentUser)
+  console.log(req.currentUser?.hedera_wallet_id, "---")
   const user = await getRewardDetails(req.currentUser?.hedera_wallet_id)
   return res.status(OK).json({rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user))});
 }

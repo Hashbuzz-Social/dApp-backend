@@ -122,7 +122,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     }),
   ]);
 
-  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media, fungible_token_id } = cardDetails!;
+  const { id, tweet_text, user_user, like_reward, quote_reward, retweet_reward, comment_reward, type, media, fungible_token_id, decimals } = cardDetails!;
   const contract_id = contractDetails?.contract_id;
   if (
     tweet_text &&
@@ -142,25 +142,31 @@ const publishTwitter = async (cardId: number | bigint) => {
     }else {
       threat1 = `${tweet_text}`;
     }
+
+    const token = await prisma.whiteListedTokens.findUnique({where: {token_id: String(fungible_token_id)}})
     //@ignore es-lint
-    // eslint-disable-next-line max-len
-    // const year = new Date().getFullYear();
-    // const month = new Date().getMonth();
-    // const date = new Date().getDate();
-
-    // const hours = new Date().getHours();
-    // const second = new Date().getSeconds();
-    // const minutes = new Date().getMinutes();	
-    const date = new Date().toUTCString();
-
-    const threat2Hbar = `Campaign initiated 💥 on ${moment().toLocaleString()}. Interact with the primary tweet to earn $hbars: like ${convertTinyHbarToHbar(
+    const currentDate = new Date();
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
+    }).format(currentDate);
+        
+    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in HBAR: ${convertTinyHbarToHbar(
       like_reward
-    ).toFixed(2)} ℏ, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} ℏ, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
+    ).toFixed(2)}, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} , quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
-    )} ℏ, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)} ℏ<Advertise your own campaign via @hbuzzs>`;
+    )}, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.` 
 
-    // const threat2Fungible = `Campaign initiated 💥 on ${date}. Interact with the primary tweet to earn $hbars: like ${like_reward} ℏ, retweet ${retweet_reward} ℏ, quote ${quote_reward} ℏ, comment ${comment_reward} ℏ, please associate your account with this ${fungible_token_id} fungible token <Advertise your own campaign via @hbuzzs>`;
-
+    const threat2Fungible = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in ${token?.token_symbol}: ${
+  (like_reward / (10 ** Number(decimals)))
+    .toFixed(2)}, retweet ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)} , quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
+      2
+    )}, comment ${(comment_reward / (10 ** Number(decimals))).toFixed(2)}.` 
 
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(user_user?.business_twitter_access_token),
@@ -182,7 +188,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       if(type === "HBAR") {
         reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
       } else if(type === "FUNGIBLE") {
-        reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
+        reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
       }
       //tweetId.
 
@@ -203,6 +209,7 @@ const publishTwitter = async (cardId: number | bigint) => {
           last_thread_tweet_id: lastThreadTweetId,
           card_status: "Running",
           campaign_start_time: new Date().toISOString(),
+          campaign_close_time: new Date(new Date().setMinutes(new Date().getMinutes() + 30)).toISOString()
         },
       });
       return tweetId;

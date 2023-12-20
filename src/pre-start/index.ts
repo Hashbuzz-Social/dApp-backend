@@ -1,10 +1,14 @@
 
-import { taskAtEveryMidNight, taskOnEvery30Seconds } from "./cronJob";
+import { taskAtEveryMidNight, taskEveryMinute, taskEverySeconds, taskEveryTwoMinute, taskOnEvery15Minutes, taskOnEvery30Seconds } from "./cronJob";
 import cronTasksService from "@services/cronTasks-service";
 
 (() => {
     taskAtEveryMidNight.start();
     taskOnEvery30Seconds.start();
+    taskEveryMinute.start();
+    taskEverySeconds.start();
+    taskEveryTwoMinute.start();
+    taskOnEvery15Minutes.start();
     cronTasksService.scheduleExpiryTasks();
 
     //reply tasks
