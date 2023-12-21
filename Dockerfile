@@ -14,7 +14,7 @@ RUN npm install
 
 ENV NODE_ENV = "docker"
 
-ENV DATABASE_URL "postgresql://postgres:kuKL8sOCjVLM26FnFtvk@hashbuzz-db.ckc8ozbyhf5k.us-east-1.rds.amazonaws.com:5432/db12072023?schema=public"
+#ENV DATABASE_URL "postgresql://postgres:kuKL8sOCjVLM26FnFtvk@hashbuzz-db.ckc8ozbyhf5k.us-east-1.rds.amazonaws.com:5432/db12072023?schema=public"
 
 ## Setup jet-logger ##
 ENV JET_LOGGER_MODE "FILE"
@@ -29,7 +29,7 @@ ENV PORT 4000
 ENV TWITTER_APP_USER_TOKEN "AAAAAAAAAAAAAAAAAAAAAHRwqwEAAAAALogJh1GYCKn2N6n7QDUEos9I814%3Dm41iosDhY9JViAazOnQUNTgz7H3hQ8EwodYTp4qzPLkfUeNdjN"
 
 ##### Blockchain Parametest ####
-ENV HEDERA_NETWORK=testnet
+ENV HEDERA_NETWORK=mainnet
 ENV HEDERA_PRIVATE_KEY=302e020100300506032b657004220420cf49adc9f4b4f4d67f2c5eb06174c64668b73bddc409f18834057c8dacbe07fc
 ENV HEDERA_PUBLIC_KEY=302a300506032b657003210090c0d3dbc99ac7c1f6124b535410d7ae4d66f2c5a7f517b6bd1f2d328ac8bd8c
 ENV HEDERA_ACCOUNT_ID=0.0.5804415
@@ -58,6 +58,7 @@ ENV ENCRYPTION_KEY=5d9280a601d97a3a3fb0f02b79da13cedbed72c1b3482312a7d1abfe84501
 ENV FRONTEND_URL="http://hashbuzz.social/dashboard"
 ENV HASHBUZZ_CONTRACT_ADDRESS=0.0.5984115
 ENV ADMIN_ADDRESS=0.0.5866123
+ENV OPEN_AI_KEY=""
 
 # Build NPM project.
 # RUN npx prisma db pull
