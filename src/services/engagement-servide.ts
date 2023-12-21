@@ -47,9 +47,18 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
   ]);
 
   console.log(allReplies, allExistingReplyEngagements, "allReplies, allExistingReplyEngagements")
+
+  const newAllReplies = [];
+
+  for (let i = 0; i < allReplies.length; i++) {
+    if (allReplies[i].author_id !== data?.user_user?.personal_twitter_id) {
+      newAllReplies.push(allReplies[i]);
+    }
+  }
+
   const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
 
-  let formattedArray = allReplies.map((d) => ({
+  let formattedArray = newAllReplies.map((d) => ({
     user_id: d.author_id!,
     tweet_id: id,
     engagement_type: "Reply",
@@ -66,6 +75,22 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
       data: [...formattedArray],
       skipDuplicates: true,
     });
+
+    // await prisma.campaign_tweetstats.upsert
+    await prisma.campaign_tweetstats.upsert({
+      where: { twitter_card_id: id },
+      update: {
+        reply_count: newAllReplies.length,
+        last_update: new Date().toISOString(),
+      },
+      create: {
+        reply_count: newAllReplies.length,
+        twitter_card_id: id,
+        last_update: new Date().toISOString(),
+      },
+    });
+
+
     await prisma.campaign_twittercard.update({
       where: { id: id },
       data: { last_reply_checkedAt: new Date().toISOString() },
@@ -76,27 +101,48 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
 };
 
 export const updateAllEngagementsForCard = async (card: number | bigint) => {
-  
+
   const data = await getCampaignDetailsById(card);
   console.log(data, "data");
   // const { tweet_id, id } = data;
-  if(data?.id && data?.tweet_id && data?.user_user) {
+  if (data?.id && data?.tweet_id && data?.user_user) {
 
     let isDone = false;
-    
+
     const details = data?.tweet_id!.toString();
     const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(details, data?.user_user);
     console.log(likes, retweets, quotes);
     if (likes.length > 0) {
-      const likesForDB = likes.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Like", updated_at: moment().toISOString() }));
-  
+      const newLikes = [];
+
+      for (let i = 0; i < likes.length; i++) {
+        if (likes[i].id !== data.user_user.personal_twitter_id) {
+          newLikes.push(likes[i]);
+        }
+      }
+
+      await prisma.campaign_tweetstats.upsert({
+        where: { twitter_card_id: data.id },
+        update: {
+          like_count: newLikes.length,
+          last_update: new Date().toISOString(),
+        },
+        create: {
+          like_count: newLikes.length,
+          twitter_card_id: data.id,
+          last_update: new Date().toISOString(),
+        },
+      });
+
+      const likesForDB = newLikes.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Like", updated_at: moment().toISOString() }));
+      console.log(likesForDB, "LIKES")
       const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Like");
       const filterResult = likesForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id);
         return !isExisting;
       });
-      console.log(filterResult)
-      
+      console.log(filterResult, "Filter result of likes")
+
       if (filterResult && filterResult.length > 0) {
         console.log(filterResult)
         await prisma.campaign_tweetengagements.createMany({
@@ -108,15 +154,36 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
         //   where: { id: card },
         //   data: { last_reply_checkedAt: new Date().toISOString() },
         // });
-    
+
         isDone = true;
       }
     }
-  
+
     //Retweets lengths grater than 0;
     if (retweets.length > 0) {
-      const retweetsForDB = retweets.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Retweet", updated_at: moment().toISOString() }));
-  
+      const newRetweet = [];
+
+      for (let i = 0; i < retweets.length; i++) {
+        if (retweets[i].id !== data.user_user.personal_twitter_id) {
+          newRetweet.push(retweets[i]);
+        }
+      }
+
+      await prisma.campaign_tweetstats.upsert({
+        where: { twitter_card_id: data.id },
+        update: {
+          retweet_count: newRetweet.length,
+          last_update: new Date().toISOString(),
+        },
+        create: {
+          retweet_count: newRetweet.length,
+          twitter_card_id: data.id,
+          last_update: new Date().toISOString(),
+        },
+      });
+
+      const retweetsForDB = newRetweet.map((d) => ({ user_id: d.id, tweet_id: data?.id, engagement_type: "Retweet", updated_at: moment().toISOString() }));
+
       const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Retweet");
       const filterResult = retweetsForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id);
@@ -130,11 +197,33 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
         isDone = true;
       }
     }
-  
+
     //Quotes lengths grater than > 0
     if (quotes.length > 0) {
-      const quotesForDB = quotes.map((d) => ({ user_id: d.author_id, tweet_id: data?.id, engagement_type: "Quote", updated_at: moment().toISOString() }));
-  
+      const newQuotes = [];
+
+      for (let i = 0; i < quotes.length; i++) {
+        if (quotes[i].id !== data.user_user.personal_twitter_id) {
+          newQuotes.push(quotes[i]);
+        }
+      }
+
+      await prisma.campaign_tweetstats.upsert({
+        where: { twitter_card_id: data.id },
+        update: {
+          quote_count: newQuotes.length,
+          last_update: new Date().toISOString(),
+        },
+        create: {
+          quote_count: newQuotes.length,
+          twitter_card_id: data.id,
+          last_update: new Date().toISOString(),
+        },
+      });
+
+
+      const quotesForDB = newQuotes.map((d) => ({ user_id: d.author_id, tweet_id: data?.id, engagement_type: "Quote", updated_at: moment().toISOString() }));
+
       const existingUserIds = await getExistingRecordsIdsIfAny(data?.id, "Quote");
       const filterResult = quotesForDB.filter((d) => {
         const isExisting = existingUserIds.includes(d.user_id!);

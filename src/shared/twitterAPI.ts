@@ -39,7 +39,7 @@ interface PublicMetricsObject {
  *@description Get the list of the users with their userId who liked the the user's tweet and list them.
  * @returns Array of UserV2;
  */
-const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user:any) => {
+const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user: any) => {
   const users: UserV2[] = [];
 
   const token = decrypt(user_user.business_twitter_access_token as string);
@@ -48,12 +48,12 @@ const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user:any) => {
   const twitterClient = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,
     appSecret: process.env.TWITTER_API_SECRET!,
-    accessToken:token,
-    accessSecret:secret,
+    accessToken: token,
+    accessSecret: secret,
   });
 
   const roClient = twitterClient.readOnly;
-  
+
   const usersRequest = await roClient.v2.tweetLikedBy(tweetId, {
     "user.fields": ["username"],
     asPaginator: true,
@@ -69,7 +69,7 @@ const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user:any) => {
 /****
  *@description Array of all retweeted data.
  */
-const getAllRetweetOfTweetId = async (tweetId: string, user_user:any) => {
+const getAllRetweetOfTweetId = async (tweetId: string, user_user: any) => {
   const users: UserV2[] = [];
 
   const token = decrypt(user_user.business_twitter_access_token as string);
@@ -78,12 +78,12 @@ const getAllRetweetOfTweetId = async (tweetId: string, user_user:any) => {
   const twitterClient = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,
     appSecret: process.env.TWITTER_API_SECRET!,
-    accessToken:token,
-    accessSecret:secret,
+    accessToken: token,
+    accessSecret: secret,
   });
-  
+
   const roClient = twitterClient.readOnly;
-  
+
   const getAllRetweets = await roClient.v2.tweetRetweetedBy(tweetId, {
     "user.fields": ["username"],
     asPaginator: true,
@@ -99,7 +99,7 @@ const getAllRetweetOfTweetId = async (tweetId: string, user_user:any) => {
  * @description getAllQuotedUsers
  *
  */
-const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user:any) => {
+const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user: any) => {
   const data: TweetV2[] = [];
 
   const token = decrypt(user_user.business_twitter_access_token as string);
@@ -108,10 +108,10 @@ const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user:any) => 
   const twitterClient = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,
     appSecret: process.env.TWITTER_API_SECRET!,
-    accessToken:token,
-    accessSecret:secret,
+    accessToken: token,
+    accessSecret: secret,
   });
-  
+
   const roClient = twitterClient.readOnly;
 
   const quotes = await roClient.v2.quotes(tweetId, {
@@ -126,7 +126,7 @@ const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user:any) => 
   return data;
 };
 
-const getEngagementOnCard = async (tweetId: string, user_user:any) => {
+const getEngagementOnCard = async (tweetId: string, user_user: any) => {
   const data = await Promise.all([
     await getAllUsersWhoLikedOnTweetId(tweetId, user_user),
     await getAllRetweetOfTweetId(tweetId, user_user),
@@ -143,7 +143,7 @@ const getEngagementOnCard = async (tweetId: string, user_user:any) => {
  * @description  This function will return total count of for a single tweetId or for a array of tweet ids.
  */
 
-const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
+const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
   console.log("Ids:::", tweetIds);
 
   const cardDetails = await prisma.campaign_twittercard.findUnique({
@@ -151,21 +151,21 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
       id: Number(cardId),
     },
     select: {
-      user_user:true
+      user_user: true
     },
   });
 
   console.log(cardDetails, "Details in side matrics")
-  if(cardDetails?.user_user) {
+  if (cardDetails?.user_user) {
     const token = decrypt(cardDetails.user_user.business_twitter_access_token as string);
     const secret = decrypt(cardDetails.user_user.business_twitter_access_token_secret as string);
-    
+
     // const tweeterData = tweeterApiForUser(token, secret);
     const tweeterApi = new TwitterApi({
       appKey: process.env.TWITTER_API_KEY!,
       appSecret: process.env.TWITTER_API_SECRET!,
-      accessToken:token,
-      accessSecret:secret,
+      accessToken: token,
+      accessSecret: secret,
     });
 
     const rwClient = tweeterApi.readOnly;
@@ -175,15 +175,17 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
       "tweet.fields": ["created_at", "public_metrics", "text"],
       expansions: ["author_id", "referenced_tweets.id"],
     });
-    
-    console.log(result.includes?.users, "result of card")
-    if(result.data) {
+
+    console.log(result.includes?.users, result.data[0].public_metrics, result.data[0].entities, "result of card---------")
+
+
+    if (result.data) {
       const publicMetrics: PublicMetricsObject = {};
-    
+
       result.data.forEach((d) => {
-        if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
+        // if (d.public_metrics) publicMetrics[d.id] = d.public_metrics;
       });
-    
+
       return publicMetrics;
     }
 
@@ -191,7 +193,7 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any ) => {
     //   asPaginator: true,
     // });
     // console.log(usersPaginated)
-  
+
   }
 };
 
@@ -219,7 +221,7 @@ const getAllReplies = async (tweetID: string, token: string, secret: string) => 
   console.log(SearchResults, "searchResults");
   // const SearchResults:any[] = [{username:"YogeshS69872960", }]
   // const tweets: TweetV2[] = [];
-  const tweets:any[] = [];
+  const tweets: any[] = [];
 
   for await (const tweet of SearchResults) {
     tweets.push(tweet);
@@ -238,7 +240,7 @@ const getAllReplies = async (tweetID: string, token: string, secret: string) => 
  */
 
 const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
-  console.log({accessToken , accessSecret})
+  console.log({ accessToken, accessSecret })
 
   const tweeterApi = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,

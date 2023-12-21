@@ -1,3 +1,4 @@
+import { Decimal } from "@prisma/client/runtime/library";
 import {
   completeCampaignOperation,
   getCampaignDetailsById,
@@ -24,7 +25,6 @@ import { scheduleJob } from "node-schedule";
  * ===================================||
  */
 const manageTwitterCardStatus = async () => {
-  console.log("manageTwitterCardStatus::start");
   //? get all active cards from DB
   const allActiveCard = await twitterCardService.allActiveTwitterCard();
   const activeCardsIds: string[] = [];
@@ -34,9 +34,9 @@ const manageTwitterCardStatus = async () => {
   });
 
   if (allActiveCard.length > 0) {
-    const publicMetrics = await twitterAPI.getPublicMetrics(activeCardsIds, allActiveCard[0].id);
+    // const publicMetrics = await twitterAPI.getPublicMetrics(activeCardsIds, allActiveCard[0].id);
 
-    console.log(publicMetrics, "Public Matrix")
+    // console.log(publicMetrics, "Public Matrix")
     //! looping through each card
     await Promise.all(
       allActiveCard.map(async (card, index) => {
@@ -53,14 +53,16 @@ const manageTwitterCardStatus = async () => {
           campaign_budget,
         } = card;
 
-        if (publicMetrics && publicMetrics[activeCardsIds[index]]) {
+       const public_metrics =  await prisma.campaign_tweetstats.findUnique({where: {twitter_card_id: id}});
+
+        if (public_metrics) {
           //? get Engagment Data on card. "like" , "Quote", "Retweet" from the twitterAPI.
-          const {
-            like_count: _likeCount,
-            reply_count: _replyCount,
-            retweet_count: _retweetCount,
-            quote_count: _quoteCount,
-          } = publicMetrics[activeCardsIds[index]];
+          // const {
+          //   like_count: _likeCount,
+          //   reply_count: _replyCount,
+          //   retweet_count: _retweetCount,
+          //   quote_count: _quoteCount,
+          // } = public_metrics;
 
           //?  get card count status of  "like" , "Quote", "Retweet" from DB(means exiting records).
           // const CurrCardStats = await twitterCardService.twitterCardStats(id);
@@ -76,18 +78,19 @@ const manageTwitterCardStatus = async () => {
           // if (reply_count && reply_count !== _replyCount) campaignStats.reply_count = _replyCount;
 
           if (retweet_reward && like_reward && quote_reward && comment_reward) {
-            campaignStats = {
-              like_count: _likeCount,
-              quote_count: _quoteCount,
-              retweet_count: _retweetCount,
-              reply_count: _replyCount,
-            };
+            // campaignStats = {
+            //   like_count: public_metrics.like_count,
+            //   quote_count: public_metrics.quote_count,
+            //   retweet_count: public_metrics.retweet_count,
+            //   reply_count: public_metrics.reply_count,
+            // };
+
             total_spent = functions.calculateTotalSpent(
               {
-                like_count: _likeCount,
-                quote_count: _quoteCount,
-                retweet_count: _retweetCount,
-                reply_count: _replyCount,
+                like_count: Number(public_metrics.like_count) ,
+                quote_count: Number(public_metrics.quote_count) ,
+                retweet_count: Number(public_metrics.retweet_count) ,
+                reply_count: Number(public_metrics.reply_count) ,
               },
               {
                 retweet_reward,
@@ -98,16 +101,15 @@ const manageTwitterCardStatus = async () => {
             );
             //convert total to tiny hbar
             total_spent = Math.round(total_spent);
-            console.log("campaignStats", JSON.stringify(campaignStats));
             console.log(
               `Total amount sped for the campaign card - ${id} is:::- ${total_spent}`
             );
 
             await Promise.all([
-              await twitterCardService.updateTwitterCardStats(
-                campaignStats,
-                id
-              ),
+              // await twitterCardService.updateTwitterCardStats(
+              //   campaignStats,
+              //   id
+              // ),
               await twitterCardService.updateTotalSpentAmount(id, total_spent),
             ]);
 
@@ -151,45 +153,44 @@ const manageTwitterCardStatus = async () => {
  */
 const checkForRepliesAndUpdateEngagementsData = async () => {
   // logger.info("Replies check:::start");
-  console.log("Replies check:::start")
   //!! 5 days of threshold
   // const thresholdSeconds = 4 * 24 * 60 * 60;
-  const thresholdSeconds = 60;
-
-
-  //? get all active cards from DB
-  const allActiveCard = await twitterCardService.allActiveTwitterCard();
-  //!!loop through al active card and check for comments on tweeter.
-  await Promise.all(
-    allActiveCard.map(async (card, index) => {
-      const { last_reply_checkedAt } = card;
-      //! time diff in seconds
-      const timeDiffInSeconds =
-        moment().unix() - moment(last_reply_checkedAt).unix();
-      console.log(timeDiffInSeconds, thresholdSeconds, card.tweet_id)
-      if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
-        //? Log card details if we are fetching comments for this card.
-        // logger.info(
-        //   `Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
-        //   }`
-        // );
-        console.log(`Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
-          }`)
-        
+  try{
+    const thresholdSeconds = 60;
+  
+    //? get all active cards from DB
+    const allActiveCard = await twitterCardService.allActiveTwitterCard();
+    //!!loop through al active card and check for comments on tweeter.
+    await Promise.all(
+      allActiveCard.map(async (card, index) => {
+        const { last_reply_checkedAt } = card;
+        //! time diff in seconds
+        const timeDiffInSeconds =
+          moment().unix() - moment(last_reply_checkedAt).unix();
+        console.log(timeDiffInSeconds, thresholdSeconds, card.tweet_id)
+        if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
+          //? Log card details if we are fetching comments for this card.
+          // logger.info(
+          //   `Fetching comments for the card id : ${card.id} with name ${card?.name ?? ""
+          //   }`
+          // );
           // const { user_user, ...restCard } = data!;
           // console.log(...restCard, "restCard");
-        //!! fetch comments from tweeter and update to DB engagements records.
-        await updateRepliesToDB(card.id, card.tweet_id);
-        await updateAllEngagementsForCard(card.id); 
-      }
-    })
-  );
+          //!! fetch comments from tweeter and update to DB engagements records.
+          await updateRepliesToDB(card.id, card.tweet_id);
+          await updateAllEngagementsForCard(card.id);
+        }
+      })
+    );
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 const scheduleExpiryTasks = async () => {
   const getCompletedTask = await prisma.campaign_twittercard.findMany({
     where: {
-      card_status: "Completed",
+      card_status: "Campaign Complete, Initiating Rewards",
       campaign_expiry: {
         gte: new Date(),
       },
@@ -199,16 +200,88 @@ const scheduleExpiryTasks = async () => {
   getCompletedTask.map((card) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const date = new Date(card.campaign_expiry!);
-      scheduleJob(date, function () {
-        const cardId = card.id;
-        const contract = card.contract_id;
-        // perFormCampaignExpiryOperation(cardId, contract);
-      });
+    scheduleJob(date, function () {
+      const cardId = card.id;
+      const contract = card.contract_id as string;
+      perFormCampaignExpiryOperation(cardId, contract);
+    });
   });
 };
+
+const autoCampaignClose = async () => {
+  const getCompletedTask = await prisma.campaign_twittercard.findMany({
+    where: {
+      card_status: "Running",
+    },
+  });
+
+  if (getCompletedTask.length > 0) {
+    for (let i = 0; i < getCompletedTask.length; i++) {
+      if ((getCompletedTask[i].campaign_budget ?? 0) <= (getCompletedTask[i].amount_spent ?? 0)) {
+        const { ...restCard } = getCompletedTask[i];
+        await completeCampaignOperation(restCard);
+      }
+    }
+  }
+};
+
+const updateQueueStatus = async (id:bigint) => {
+  const updatedRecord = await prisma.campaign_twittercard.update({
+    where: {
+      id
+    },
+    data: { is_added_to_queue: true },
+  });
+  return updatedRecord;
+}
+
+const checkCampaignCloseTime = async () => {
+  const getTask = await prisma.campaign_twittercard.findMany({
+    where: {
+      card_status: "Running",
+      is_added_to_queue: false,
+      campaign_close_time: {
+        gte: new Date(),
+      },
+    }
+  });
+
+  getTask.map(async (card) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const date = new Date(card.campaign_close_time!);
+    await updateQueueStatus(card.id)
+    scheduleJob(date, async function () {
+      await completeCampaignOperation(card);
+    });
+  });
+};
+
+const checkPreviousCampaignCloseTime = async () => {
+  const getTask = await prisma.campaign_twittercard.findMany({
+    where: {
+      card_status: "Running",
+      is_added_to_queue: true,
+    }
+  });
+
+  getTask.map(async (card) => {
+    const date = new Date(card.campaign_close_time!);
+    if(date < new Date()) {
+      await completeCampaignOperation(card);
+    } else {
+      await updateQueueStatus(card.id)
+      scheduleJob(date, async function () {
+        await completeCampaignOperation(card);
+      });
+    }
+    });
+  }
 
 export default {
   updateCardStatus: manageTwitterCardStatus,
   checkForRepliesAndUpdateEngagementsData,
   scheduleExpiryTasks,
+  autoCampaignClose,
+  checkCampaignCloseTime,
+  checkPreviousCampaignCloseTime
 } as const;

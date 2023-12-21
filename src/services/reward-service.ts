@@ -236,7 +236,7 @@ export const getRewardDetails = async (data: any) => {
   });
 
   // return user
-
+  console.log(user);
   const engagementDetails = await prisma.campaign_tweetengagements.findMany({
     where: {
       user_id: user?.personal_twitter_id,
