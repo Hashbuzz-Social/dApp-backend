@@ -8,7 +8,7 @@ import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "./engagement-servide";
 // import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
-import { queryBalance } from "./smartcontract-service";
+import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
 import { decrypt } from "@shared/encryption";
@@ -223,6 +223,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
           business_twitter_access_token_secret: true,
           hedera_wallet_id: true,
           available_budget: true,
+          id:true,
         },
       },
     },
@@ -267,13 +268,17 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
         logger.err(error.message);
       }
   
-    } else if(type === "FUNGIBLE") {
+    } else if(type === "FUNGIBLE" && fungible_token_id) {
       await expiryFungibleCampaign(id, contract_id)
 
       const token = await prisma.whiteListedTokens.findUnique({where: {token_id: String(fungible_token_id)}})
 
-      const balances = await queryBalance(user_user.hedera_wallet_id!);
-      if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
+      const balances = await queryFungibleBalance(user_user.hedera_wallet_id!, fungible_token_id);
+      if(token) {
+        const balanceRecord = await userService.updateTokenBalanceForUser({ amount:Number(balances), operation: "increment", token_id: token.id, decimal:Number(token.decimals), user_id:user_user.id });
+      }
+
+      // if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
   
       try {
         await userTweeterApi.v2.reply(

@@ -345,7 +345,39 @@ export function encodeFunctionCall(functionName: string, parameters: any[]) {
 
 export const queryBalance = async (address: string) => {
   // Execute the contract to check changes in state variable
+    address = AccountId.fromString(address).toSolidityAddress();
+  
+    const contractDetails = await provideActiveContract();
+    if (contractDetails?.contract_id) {
+      const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+      const getBalance = new ContractCallQuery()
+        .setContractId(contractAddress)
+        .setGas(2000000)
+        .setFunction(
+          "getBalance",
+          new ContractFunctionParameters().addAddress(
+            address
+          )
+        )
+        .setQueryPayment(new Hbar(10));
+  
+      const contractCallResult = await getBalance.execute(hederaClient);
+      const getBalanceRx = contractCallResult.getUint256();
+      console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
+      const balances = getBalanceRx.toString()
+  
+      return { balances };
+  // 
+    // console.log(balances, "-------");
+    // const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
+    // return { balances, balancesObj };
+    // return qResult.getUint256(0);
+  }
+};
+
+export const queryFungibleBalance = async (address: string, fungible_tokenId: string) => {
   address = AccountId.fromString(address).toSolidityAddress();
+  const tokenId = AccountId.fromString(fungible_tokenId);
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
@@ -354,24 +386,23 @@ export const queryBalance = async (address: string) => {
       .setContractId(contractAddress)
       .setGas(2000000)
       .setFunction(
-        "getBalance",
+        "getFungibleAndNFTBalance",
         new ContractFunctionParameters().addAddress(
           address
+        ).addAddress(
+          tokenId.toSolidityAddress()
         )
       )
       .setQueryPayment(new Hbar(10));
 
     const contractCallResult = await getBalance.execute(hederaClient);
     const getBalanceRx = contractCallResult.getUint256();
-    console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
+    console.log(" - The Balance of fungible token Campaigner " + getBalanceRx);
     const balances = getBalanceRx.toString()
 
-    return { balances };
-    // console.log(balances, "-------");
-    // const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
-    // return { balances, balancesObj };
-    // return qResult.getUint256(0);
-  }
+    return balances;
+}
+
 };
 
 /****
@@ -416,18 +447,18 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
 
     if (contractDetails?.contract_id) {
 
-      const backupContract = contractDetails?.contract_id;
-      const contractAddress = ContractId.fromString(backupContract.toString());
+      // const backupContract = contractDetails?.contract_id;
+      // const contractAddress = ContractId.fromString(backupContract.toString());
 
-      const addUser = new ContractExecuteTransaction()
-        .setContractId(contractAddress)
-        .setGas(400000)
-        .setFunction("addUser", new ContractFunctionParameters().addAddress(address.toSolidityAddress()))
-        .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
+      // const addUser = new ContractExecuteTransaction()
+      //   .setContractId(contractAddress)
+      //   .setGas(400000)
+      //   .setFunction("addUser", new ContractFunctionParameters().addAddress(address.toSolidityAddress()))
+      //   .setTransactionMemo(`Add user ${user_wallet_id} to contract `);
 
-      const addUserTx = await addUser.execute(hederaClient);
-      const addUserRx = await addUserTx.getReceipt(hederaClient);
-      const addUserStatus = addUserRx.status;
+      // const addUserTx = await addUser.execute(hederaClient);
+      // const addUserRx = await addUserTx.getReceipt(hederaClient);
+      // const addUserStatus = addUserRx.status;
 
       await prisma.user_user.update({
         where: {
@@ -439,7 +470,7 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
       });
 
 
-      console.log(" - Add user transaction status: " + addUserStatus);
+      // console.log(" - Add user transaction status: " + addUserStatus);
 
       return true;
     }

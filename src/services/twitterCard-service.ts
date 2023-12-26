@@ -209,7 +209,7 @@ const publishTwitter = async (cardId: number | bigint) => {
           last_thread_tweet_id: lastThreadTweetId,
           card_status: "Running",
           campaign_start_time: new Date().toISOString(),
-          campaign_close_time: new Date(new Date().setMinutes(new Date().getMinutes() + 30)).toISOString()
+          campaign_close_time: new Date(new Date().setMinutes(new Date().getMinutes() + 15)).toISOString()
         },
       });
       return tweetId;

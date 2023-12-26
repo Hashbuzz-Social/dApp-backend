@@ -281,19 +281,21 @@ export const getRewardDetails = async (data: any) => {
       decimals: engagementDetails[i].campaign_twittercard.decimals
     }
 
-    if(engagementDetails[i].engagement_type === "Like") {
-      obj.like_reward = engagementDetails[i].campaign_twittercard.like_reward
-    }
-    if(engagementDetails[i].engagement_type === "Retweet") {
-      obj.retweet_reward = engagementDetails[i].campaign_twittercard.retweet_reward
-    }
-    if(engagementDetails[i].engagement_type === "Quote") {
-      obj.quote_reward = engagementDetails[i].campaign_twittercard.quote_reward
-    }
-    if(engagementDetails[i].engagement_type === "Reply") {
-      obj.comment_reward = engagementDetails[i].campaign_twittercard.comment_reward
-    }
-    updateData.push(obj)
+    // if(engagementDetails[i].campaign_twittercard.card_status === "Campaign Complete, Initiating Rewards") {
+      if(engagementDetails[i].engagement_type === "Like") {
+        obj.like_reward = engagementDetails[i].campaign_twittercard.like_reward
+      }
+      if(engagementDetails[i].engagement_type === "Retweet") {
+        obj.retweet_reward = engagementDetails[i].campaign_twittercard.retweet_reward
+      }
+      if(engagementDetails[i].engagement_type === "Quote") {
+        obj.quote_reward = engagementDetails[i].campaign_twittercard.quote_reward
+      }
+      if(engagementDetails[i].engagement_type === "Reply") {
+        obj.comment_reward = engagementDetails[i].campaign_twittercard.comment_reward
+      }
+      updateData.push(obj)
+    // }
 
   }
 

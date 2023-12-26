@@ -45,7 +45,7 @@ export const taskOnEvery15Minutes = cron.schedule(
 );
 
 export const taskEveryTwoMinute = cron.schedule(
-  "/40 * * * *",
+  "*/30 * * * *",
   () => {
     crontabService.scheduleExpiryTasks();
     // console.info("running a task every Two minutes");
