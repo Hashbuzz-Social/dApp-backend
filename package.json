@@ -14,7 +14,8 @@
     "preReadyPrisma": "npx prisma db pull",
     "readyPrisma": "npx prisma generate",
     "db:pull": "npx prisma db pull && npx prisma generate",
-    "db:push": "npx prisma db push && npx prisma generate"
+    "db:push": "npx prisma db push && npx prisma generate",
+    "env-config": "node env.config.js"
   },
   "nodemonConfig": {
     "watch": [
@@ -76,6 +77,8 @@
   "author": "hashbuzz-dev",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.478.0",
+    "@aws-sdk/util-utf8-node": "^3.259.0",
     "@hashgraph/sdk": "^2.30.0",
     "@prisma/client": "^5.0.0",
     "bignumber.js": "^9.1.2",
@@ -135,7 +138,7 @@
     "fs-extra": "^10.1.0",
     "jsonwebtoken": "^8.5.1",
     "nodemon": "^2.0.19",
-    "prisma": "^5.0.0",
+    "prisma": "^5.7.1",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^4.7.4",
