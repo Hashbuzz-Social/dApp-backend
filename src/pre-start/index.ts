@@ -1,4 +1,5 @@
 
+import associatedTokens from "./associatedTokens";
 import { taskAtEveryMidNight, taskEveryMinute, taskEverySeconds, taskEveryTwoMinute, taskOnEvery15Minutes, taskOnEvery30Seconds } from "./cronJob";
 import cronTasksService from "@services/cronTasks-service";
 
@@ -10,6 +11,9 @@ import cronTasksService from "@services/cronTasks-service";
     taskEveryTwoMinute.start();
     taskOnEvery15Minutes.start();
     cronTasksService.scheduleExpiryTasks();
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-ignore
+    associatedTokens.checkAvailableTokens(process.env.HASHBUZZ_CONTRACT_ADDRESS);
 
     //reply tasks
     // (async () => {

@@ -1,18 +1,16 @@
 import cookieParser from "cookie-parser";
+import cors from "cors";
+import helmet from "helmet";
+import { isHttpError } from "http-errors";
 import morgan from "morgan";
 import path from "path";
-import helmet from "helmet";
-import cors from "cors";
-import { isHttpError } from "http-errors";
 
 import express, { NextFunction, Request, Response } from "express";
 import "express-async-errors";
-import StatusCodes from "http-status-codes";
 
-import apiRouter from "./routes";
 import authRouter from "@routes/auth-router";
 import logger from "jet-logger";
-import { CustomError } from "@shared/errors";
+import apiRouter from "./routes";
 
 // Constants
 const app = express();

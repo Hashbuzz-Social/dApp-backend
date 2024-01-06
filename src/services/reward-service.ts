@@ -407,7 +407,7 @@ export const claim = async (cardId: number | bigint, contract_id: string, data: 
 
           await incrementClaimAmount(cardId, totalRewardsDebited)
           return "Reward claim successful"
-        } else if (response.transactionReceipt.status._code == 184) {
+        } else if (response == 184) {
           return "TOKEN_NOT_ASSOCIATED_TO_ACCOUNT"
         }
       }

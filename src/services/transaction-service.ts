@@ -1,17 +1,17 @@
 /* eslint-disable max-len */
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
 // import { default as hbarservice, default as hederaService } from "@services/hedera-service";
+import { Decimal } from "@prisma/client/runtime/library";
+import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance } from "@services/smartcontract-service";
-import { buildCampaignAddress, buildCampaigner, sensitizeUserData } from "@shared/helper";
+import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
+import BigNumber from "bignumber.js";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
-import hederaService from "@services/hedera-service";
-import BigNumber from "bignumber.js";
-import { Decimal } from "@prisma/client/runtime/library";
 
 const { hederaClient, operatorKey, network, operatorId } = hederaService;
 
@@ -295,7 +295,8 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint, cam
 };
 
 export const reimbursementAmount = async (userId: number | bigint, amounts: number, accountId: string) => {
-  console.log("Reimbursement::", { amounts, accountId });
+  console.group("Reimbursement::") 
+  console.log({ amounts, accountId });
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
@@ -312,7 +313,7 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
     const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(2000000)
-      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addUint256(amounts).addBool(deposit))
+      .setFunction("updateBalance", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addUint256(Math.floor(amounts * 1e8)).addBool(deposit))
       .setTransactionMemo("Hashbuzz balance update call");
 
     const submitTransfer = await tokenTransfer.execute(hederaClient);
@@ -323,7 +324,8 @@ export const reimbursementAmount = async (userId: number | bigint, amounts: numb
     const balance = await queryBalance(accountId);
     const userData = await userService.topUp(userId, parseInt(balance?.balances ?? "0"), "update");
 
-    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, amounts, "Reimbursement payment from hashbuzz");
+    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, Math.floor(amounts*1e8), "Reimbursement payment from hashbuzz");
+    console.groupEnd();
     return { paymentTransaction, contractCallReceipt: tokenTransferRx, userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))) };
   }
 };

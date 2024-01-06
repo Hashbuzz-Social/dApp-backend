@@ -1,26 +1,17 @@
 import {
   AccountId,
   ContractCallQuery,
-  ContractCreateFlow,
-  ContractCreateTransaction,
   ContractExecuteTransaction,
   ContractFunctionParameters,
   ContractId,
-  FileAppendTransaction,
-  FileCreateTransaction,
-  FileId,
   Hbar,
-  Status,
-  TransferTransaction,
+  TransferTransaction
 } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
-import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
-import logger from "jet-logger";
-import { provideActiveContract } from "./smartcontract-service";
-import { getUserById } from "./user-service";
 import BigNumber from "bignumber.js";
-const { hederaClient, operatorKey, network, operatorId } = hederaService;
+import { provideActiveContract } from "./smartcontract-service";
+const { hederaClient } = hederaService;
 
 export async function associateTokentoContract(tokenId: string) {
   const contractDetails = await provideActiveContract();
@@ -264,6 +255,6 @@ export async function distributeToken(tokenId: string, userId: string, amount: n
     }
   } catch (err) {
     console.log(err, "Error")
-    return err;
+    // return err;
   }
 }  

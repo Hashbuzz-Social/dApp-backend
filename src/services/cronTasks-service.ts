@@ -1,8 +1,6 @@
-import { Decimal } from "@prisma/client/runtime/library";
 import {
   completeCampaignOperation,
-  getCampaignDetailsById,
-  perFormCampaignExpiryOperation,
+  perFormCampaignExpiryOperation
 } from "@services/campaign-service";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, {
@@ -10,7 +8,6 @@ import twitterCardService, {
 } from "@services/twitterCard-service";
 import functions from "@shared/functions";
 import prisma from "@shared/prisma";
-import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import moment from "moment";
 import { scheduleJob } from "node-schedule";
