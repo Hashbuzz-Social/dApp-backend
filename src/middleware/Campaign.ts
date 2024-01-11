@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
-import { completeCampaignOperation, getCampaignDetailsById, getRunningCardsOfUserId, updateCampaignStatus } from "@services/campaign-service";
+import { getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
+import { claim, getRewardDetails } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
@@ -12,9 +13,6 @@ import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
-import { scheduleJob } from "node-schedule";
-import crontabService from "@services/cronTasks-service";
-import { claim, getRewardDetails } from "@services/reward-service";
 
 const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT } = statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
@@ -307,7 +305,7 @@ export const checkCampaignBalances = async (req: Request, res: Response, next: N
 }
 
 export const rewardDetails = async (req: Request, res: Response) => {
-  console.log(req.currentUser?.hedera_wallet_id, "---")
+  // console.log(req.currentUser?.hedera_wallet_id, "---")
   const user = await getRewardDetails(req.currentUser?.hedera_wallet_id)
   return res.status(OK).json({rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user))});
 }

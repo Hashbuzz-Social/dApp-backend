@@ -1,10 +1,9 @@
-import { TokenInfo } from "@hashgraph/sdk";
 import { associateTokentoContract } from "@services/contract-service";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
-import { ErrorWithCode, ParamMissingError } from "@shared/errors";
+import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
@@ -13,7 +12,7 @@ import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 
 const { OK, BAD_REQUEST } = statuses;
-const { associateTokenToContract } = htsServices;
+// const { associateTokenToContract } = htsServices;
 
 export const handleGetAllCard = async (req: Request, res: Response) => {
   const status = req.query.status as any as string;

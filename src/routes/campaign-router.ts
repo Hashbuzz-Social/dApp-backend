@@ -3,10 +3,9 @@ import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
 import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@middleware/Campaign";
 import userInfo from "@middleware/userInfo";
-import { completeCampaignOperation } from "@services/campaign-service";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
-import { body, param, query as validateQuery } from "express-validator";
+import { body, query as validateQuery } from "express-validator";
 
 const router = Router();
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];

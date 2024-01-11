@@ -35,19 +35,13 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
  const status = await addUserToContractForHbar(address, user_id);
 
   if (entity.entityType === "fungible" && entity.entityId) {
-    // console.log("topUpHandler::topUpHandler");
     await addUserToContractForHbar(accountId, user_id);
     const tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
-    console.log(tokenDetails)
     if (!tokenDetails) return res.status(BAD_REQUEST).json({ error: true, message: "Wrong fungible token provided" });
-    console.log(amounts.value,"value")
+   
     const decimal = Number(tokenDetails.decimals);
     const amount = amounts.value * Math.pow(10, decimal);
-
-    console.log(amount);
-    //update Balance to contract
-    // await htsServices.updateTokenTopupBalanceToContract(accountId, amount, entity.entityId);
-    //update Balance to db;
+    
     const balanceRecord = await userService.updateTokenBalanceForUser({ amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id });
 
     return res.status(OK).json({
@@ -179,7 +173,6 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
       if (!balRecord || balRecord?.entity_balance && balRecord?.entity_balance < amount) {
         return res.status(BAD_REQUEST).json({ error: true, message: "Insufficient available amount in user's account." });
       }
-  
       const reimbursementTransaction = await reimbursementFungible(req.currentUser.hedera_wallet_id, amount, tokenId, tokenDetails?.decimals, req.currentUser?.id, tokenDetails.id);
       return res.status(OK).json({ message: "Reimbursement Successfully"});
     }

@@ -23,7 +23,7 @@ export const handleAuthPing = async (req: Request, res: Response) => {
     //? Update login state or upsert the record.
     // (async () => {
     const create = {
-      accountAddress: req.accountAddress!,
+      accountAddress: req.accountAddress,
       hedera_wallet_id: accountId,
       available_budget: 0,
       is_active: false,
@@ -49,14 +49,9 @@ export const handleAuthPing = async (req: Request, res: Response) => {
 
 export const handleCreateChallenge = (req: Request, res: Response, next: NextFunction) => {
   const params = req.query;
-  // console.log(param);
-  // try {
   const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken() } };
   const { signature, serverSigningAccount } = signingService.signData(payload);
   return res.status(OK).json({ payload, server: { signature: Buffer.from(signature).toString("base64"), account: serverSigningAccount } });
-  // } catch (err) {
-  //   next(err);
-  // }
 };
 
 export const handleGenerateAuthAst = async (req: Request, res: Response, next: NextFunction) => {
