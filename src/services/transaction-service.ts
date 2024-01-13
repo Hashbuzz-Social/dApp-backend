@@ -24,10 +24,10 @@ export const updateBalanceToContract = async (payerId: string, amounts: { value:
     const amount = Math.floor(amounts.value * 1e8);
     const gas = new Hbar(1.75).toTinybars().toNumber();
 
-    console.log(payerId, "Update balance")
+    // console.log(payerId, "Update balance")
     const backupContract = contractDetails?.contract_id;
     const contractAddress = ContractId.fromString(backupContract.toString());
-    console.log(contractDetails?.contract_id, payerId)
+    // console.log(contractDetails?.contract_id, payerId)
     const tokenTransfer = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(2000000)

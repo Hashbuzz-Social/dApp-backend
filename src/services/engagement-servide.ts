@@ -28,7 +28,7 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
   console.log("UpdateReplied to DB ");
 
   const data = await getCampaignDetailsById(id);
-  console.log(data, "data");
+  // console.log(data, "data");
 
   // if (data?.user_user) {
   const [allReplies, allExistingReplyEngagements] = await Promise.all([

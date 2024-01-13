@@ -353,14 +353,14 @@ export const claim = async (cardId: number | bigint, contract_id: string, data: 
     },
   });
 
-  console.log(user)
+  // console.log(user)
 
   if (campaignDetails?.card_status === "Campaign Complete, Initiating Rewards") {
     let totalRewardsDebited = 0;
     const { user_user, ...card } = campaignDetails!;
     const groupedData = groupBy(engagements, "user_id");
 
-    console.log(user)
+    // console.log(user)
 
     if (campaignDetails?.type === "HBAR") {
       if (user && user?.personal_twitter_id) {

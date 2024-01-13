@@ -179,8 +179,8 @@ const publishTwitter = async (cardId: number | bigint) => {
       // const mediaId = dataResp.data.media_id_string;
     
       const rwClient = userTwitter.readWrite;
-      console.log(rwClient)
-      console.log(threat1)
+      // console.log(rwClient)
+      // console.log(threat1)
       const card = await rwClient.v2.tweet(threat1);
       // await rwClient.v2.reply(media, card.data.id);
 

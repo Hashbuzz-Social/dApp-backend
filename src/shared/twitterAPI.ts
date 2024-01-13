@@ -144,7 +144,7 @@ const getEngagementOnCard = async (tweetId: string, user_user: any) => {
  */
 
 const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
-  console.log("Ids:::", tweetIds);
+  // console.log("Ids:::", tweetIds);
 
   const cardDetails = await prisma.campaign_twittercard.findUnique({
     where: {
@@ -202,7 +202,7 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
  */
 
 const getAllReplies = async (tweetID: string, token: string, secret: string) => {
-  console.log("getAllReplies::start", tweetID);
+  // console.log("getAllReplies::start", tweetID);
 
   const tToken = decrypt(token);
   const tTokenSecret = decrypt(secret);
@@ -240,7 +240,7 @@ const getAllReplies = async (tweetID: string, token: string, secret: string) => 
  */
 
 const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
-  console.log({ accessToken, accessSecret })
+  // console.log({ accessToken, accessSecret })
 
   const tweeterApi = new TwitterApi({
     appKey: process.env.TWITTER_API_KEY!,

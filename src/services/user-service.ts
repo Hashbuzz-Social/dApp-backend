@@ -55,7 +55,7 @@ const getAstForUserByAccountAddress = async (accountAddress: string) => {
 }
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
-  console.log("topUp start");
+  // console.log("topUp start");
   if (operation === "increment")
     return await prisma.user_user.update({
       where: {
@@ -146,7 +146,7 @@ const updateTokenBalanceForUser = async ({
   decimal: number;
 }) => {
   const balRecord = await prisma.user_balances.findFirst({ where: { user_id, token_id } });
-  console.log(balRecord, "balRecord");
+  // console.log(balRecord, "balRecord");
   if (balRecord) {
     return await prisma.user_balances.update({
       data: {

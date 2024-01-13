@@ -24,7 +24,7 @@ export const handleGetAllCard = async (req: Request, res: Response) => {
 
 export const handleGetAllCardPendingCards = async (req: Request, res: Response) => {
   const data = await twitterCardService.getAllTwitterCardPendingCards();
-  console.log(data);
+  // console.log(data);
   if (data && data.length > 0) {
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
   } else res.status(OK).json([]);

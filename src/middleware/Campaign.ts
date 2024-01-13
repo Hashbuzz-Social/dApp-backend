@@ -23,7 +23,7 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
   requested_card_status = requested_card_status.toLowerCase();
 
   const campaign_data = await getCampaignDetailsById(campaignId);
-  console.log(campaign_data, "campaign");
+  // console.log(campaign_data, "campaign");
 
 if (campaign_data?.approve === true && campaign_data?.contract_id) { 
   const current_status_of_card = campaign_data?.card_status.toLocaleLowerCase();
@@ -56,7 +56,7 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
       campaign_data.user_user?.available_budget &&
       campaign_data.campaign_budget > campaign_data.user_user?.available_budget
     ) {
-      console.log("updated");
+      // console.log("updated");
       return res.status(NO_CONTENT).json({ error: true, message: "Insufficient fund." });
     }
 
@@ -79,7 +79,7 @@ if (campaign_data?.approve === true && campaign_data?.contract_id) {
         // const completeCampaign = await completeCampaignOperation(restCard);
       //   });  
       const updated_campaign_data = await getCampaignDetailsById(campaignId);
-      console.log(updated_campaign_data, "campaign");
+      // console.log(updated_campaign_data, "campaign");
       const { user_user, ...restCard } = updated_campaign_data!
     
       return res.status(OK).json({ message:"Campaign status updated",transaction: SM_transaction, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))) });
@@ -225,9 +225,9 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
       (async () => {
         try {
       const token = await prisma.whiteListedTokens.findUnique({where: {token_id : fungible_token_id}, select:{decimals:true}});
-      console.log(token, "Token");
+      // console.log(token, "Token");
       if(type === "HBAR") {
-        console.log(result)
+        // console.log(result)
         const newCampaign = await prisma.campaign_twittercard.create({
           data: {
             name,
