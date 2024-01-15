@@ -156,15 +156,15 @@ const publishTwitter = async (cardId: number | bigint) => {
       timeZoneName: 'short',
     }).format(currentDate);
         
-    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in HBAR: ${convertTinyHbarToHbar(
+    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in HBAR: like ${convertTinyHbarToHbar(
       like_reward
-    ).toFixed(2)}, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)} , quote ${convertTinyHbarToHbar(quote_reward).toFixed(
+    ).toFixed(2)}, retweet ${convertTinyHbarToHbar(retweet_reward).toFixed(2)}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
     )}, comment ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.` 
 
     const threat2Fungible = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in ${token?.token_symbol}: ${
   (like_reward / (10 ** Number(decimals)))
-    .toFixed(2)}, retweet ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)} , quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
+    .toFixed(2)}, retweet ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)}, quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
       2
     )}, comment ${(comment_reward / (10 ** Number(decimals))).toFixed(2)}.` 
 

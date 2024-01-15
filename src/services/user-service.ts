@@ -42,7 +42,9 @@ export const getUserById = async (id: number | bigint) => {
   });
 };
 
-const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) => {
+const getUserByPersonalTwitterHandle = async (
+  personal_twitter_handle: string
+) => {
   return await prisma.user_user.findFirst({
     where: {
       personal_twitter_handle,
@@ -51,10 +53,14 @@ const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) =
 };
 
 const getAstForUserByAccountAddress = async (accountAddress: string) => {
-  return await prisma.authtoken_token.findUnique({ where: { accountAddress } })
-}
+  return await prisma.authtoken_token.findUnique({ where: { accountAddress } });
+};
 
-const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
+const topUp = async (
+  id: number | bigint,
+  amounts: number,
+  operation: "increment" | "decrement" | "update"
+) => {
   // console.log("topUp start");
   if (operation === "increment")
     return await prisma.user_user.update({
@@ -90,7 +96,11 @@ const topUp = async (id: number | bigint, amounts: number, operation: "increment
   //? Perform DN Query
 };
 
-const totalReward = async (userId: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
+const totalReward = async (
+  userId: number | bigint,
+  amounts: number,
+  operation: "increment" | "decrement" | "update"
+) => {
   if (operation === "increment")
     return await prisma.user_user.update({
       where: {
@@ -133,32 +143,36 @@ const getUserByTwitterId = async (personal_twitter_id: string) => {
 };
 
 const updateTokenBalanceForUser = async ({
+  cntrct_bal,
   amount,
   operation,
   token_id,
   user_id,
   decimal,
 }: {
+  cntrct_bal?: number;
   amount: number;
   operation: "increment" | "decrement";
   token_id: number | bigint;
   user_id: number | bigint;
   decimal: number;
 }) => {
-  const balRecord = await prisma.user_balances.findFirst({ where: { user_id, token_id } });
-  // console.log(balRecord, "balRecord");
-  if (balRecord) {
-    return await prisma.user_balances.update({
-      data: {
-        entity_balance: {
-          [operation]: amount,
-        },
-      },
-      where: {
-        id: balRecord.id,
-      },
-    });
-  } else {
+  // const balRecord = await prisma.user_balances.upsert({
+  //   create: {
+  //     user_id,
+  //     entity_balance: amount,
+  //     entity_decimal: parseInt(decimal.toString()),
+  //     token_id,
+  //   },
+  //   update: { entity_balance: amount },
+  //   where: { user_id, token_id },
+  // });
+  // return balRecord;
+  const balRecord = await prisma.user_balances.findFirst({
+    where: { user_id, token_id },
+  });
+
+  if (!balRecord && operation === "increment")
     return await prisma.user_balances.create({
       data: {
         user_id,
@@ -167,7 +181,33 @@ const updateTokenBalanceForUser = async ({
         token_id,
       },
     });
+
+  if (
+    operation == "decrement" &&
+    balRecord &&
+    cntrct_bal &&
+    balRecord.entity_balance &&
+    balRecord?.entity_balance - amount === cntrct_bal
+  ) {
+    return await prisma.user_balances.update({
+      data: {
+        entity_balance: cntrct_bal,
+      },
+      where: {
+        id: balRecord.id,
+      },
+    });
   }
+  return await prisma.user_balances.update({
+    data: {
+      entity_balance: {
+        [operation]:amount
+      },
+    },
+    where: {
+      id: balRecord?.id,
+    },
+  });
 };
 
 export default {
@@ -181,5 +221,6 @@ export default {
   totalReward,
   getUserByPersonalTwitterHandle,
   updateTokenBalanceForUser,
-  getAstForUserByAccountAddress
+  getAstForUserByAccountAddress,
 } as const;
+
