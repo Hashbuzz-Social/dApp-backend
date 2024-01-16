@@ -1,9 +1,8 @@
 /* eslint-disable max-len */
-import twitterAPI from "@shared/twitterAPI";
+import { payment_status } from "@prisma/client";
 import prisma from "@shared/prisma";
-import { campaign_twittercard, payment_status } from "@prisma/client";
+import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
-import logger from "jet-logger";
 import { getCampaignDetailsById } from "./campaign-service";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";

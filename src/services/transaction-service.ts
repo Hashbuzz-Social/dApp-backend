@@ -108,6 +108,7 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
  */
 
 export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string, campaignAddress: string) => {
+  console.group("AllocateBalanceToCampaign");
   console.log("allocateBalanceToCampaign::start-for-campaign", campaignId, campaignAddress);
   const contractDetails = await provideActiveContract();
 
@@ -132,6 +133,7 @@ export const allocateBalanceToCampaign = async (campaignId: bigint | number, amo
     const receipt = await exResult.getReceipt(hederaClient);
 
     console.log("allocateBalanceToCampaign::finished-with-transactionId", exResult.transactionId);
+    console.groupEnd();
 
     return { contract_id: campaignAddress, transactionId: exResult.transactionId, receipt };
   } else {

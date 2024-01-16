@@ -35,7 +35,7 @@ export const taskOnEvery30Seconds = cron.schedule(
 );
 
 export const taskOnEvery15Minutes = cron.schedule(
-  "*/10 * * * *",
+  "*/5 * * * *",
   () => {
     crontabService.checkForRepliesAndUpdateEngagementsData();
   },
