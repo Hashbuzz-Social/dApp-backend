@@ -254,7 +254,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
   
       try {
         await userTweeterApi.v2.reply(
-          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_spent / 1e8).toFixed(2)} HBAR was given out for this promo.`,
+          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_claimed??0 / 1e8).toFixed(2)} HBAR was given out for this promo.`,
           last_thread_tweet_id!
         );
         // await twitterAPI.sendDMFromHashBuzz(
@@ -283,7 +283,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
   
       try {
         await userTweeterApi.v2.reply(
-          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_spent / (10 ** Number(decimals))).toFixed(2)} ${token?.token_symbol} was given out for this promo.`,
+          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_claimed??0 / (10 ** Number(decimals))).toFixed(2)} ${token?.token_symbol} was given out for this promo.`,
           last_thread_tweet_id!
         );
       } catch (error) {
