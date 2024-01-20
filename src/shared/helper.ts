@@ -1,6 +1,7 @@
 import { AccountId } from "@hashgraph/sdk";
 import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
 import hederaService from "@services/hedera-service";
+import moment from "moment-timezone";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -88,6 +89,12 @@ export const uint8ArrayToObject = (uint8Array: Uint8Array) => {
   }
   return objectData;
 };
+
+export const formattedDateTime =(dateISo:string) =>  moment(dateISo).tz('America/New_York').format('MM/DD/YYYY,hh:mm:ssA z');
+export const addMinutesToTime = (dateISo:string , minutesToAdd:number) => {
+  const newDate = moment(dateISo).add(minutesToAdd, 'minutes').toISOString();
+  return newDate;
+}
 
 // const filterTwitterEngagementsData = () => arr.filter(element => {
 //   const isDuplicate = uniqueIds.includes(element.id);

@@ -13,6 +13,7 @@ import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
 import { decrypt } from "@shared/encryption";
 import { closeFungibleAndNFTCampaign, expiryCampaign, expiryFungibleCampaign } from "./contract-service";
+import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 
 export const getCampaignDetailsById = async (campaignId: number | bigint) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -73,20 +74,22 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
  * 4. Distribute the amounts for the users which have already wallet connected.
  */
 
-const currentDate = new Date();
-const formattedDate = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  timeZoneName: 'short',
-}).format(currentDate);
+// const currentDate = new Date();
+// const formattedDate = new Intl.DateTimeFormat('en-US', {
+//   year: 'numeric',
+//   month: '2-digit',
+//   day: '2-digit',
+//   hour: '2-digit',
+//   minute: '2-digit',
+//   second: '2-digit',
+//   timeZoneName: 'short',
+// }).format(currentDate);
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
   const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id, contract_id } = card;
   const card_owner = await prisma.user_user.findUnique({ where: { id: card.owner_id! } });
+
+  const date = new Date();
 
   if (card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret) {
     console.log(`close campaign operation:::start For id: ${id} and NAME:: ${name ?? ""} ${contract_id}`);
@@ -95,7 +98,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
     // console.log(commentsUpdates, isEngagementUpdated, "Fetch all the Replies");
-    const campaignExpiry = moment().add(parseFloat(process.env.REWARD_CALIM_DURATION!), "minutes").toISOString();
+    const campaignExpiry = addMinutesToTime(date.toISOString() , Number(process.env.REWARD_CALIM_DURATION??15))
     //log campaign expiry
     console.log(`Campaign expired at ${campaignExpiry}`);
     const tweeterApi = twitterAPI.tweeterApiForUser({
@@ -105,8 +108,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     
     if(type === "HBAR" && contract_id) {
       try {
-        const date = new Date().toUTCString();
-
+    
     //?1. Fetch all the Replies left ot fetch from last cron task.
     // const [commentsUpdates, isEngagementUpdated] = await Promise.all([await updateRepliesToDB(id, tweet_id!), await updateAllEngagementsForCard(card)]);
 
@@ -116,7 +118,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Promo concluded on ${formattedDate}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
+          `Promo concluded on ${formattedDateTime(date.toISOString())}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
@@ -147,22 +149,20 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       } catch (e) {
         console.log(e);
       }
-
-      const date = new Date(campaignExpiry);
-
+      const hbarExpriyDate = new Date(campaignExpiry);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      scheduleJob(date, function () {
+      scheduleJob(hbarExpriyDate, function () {
         const cardId = id;
         perFormCampaignExpiryOperation(cardId, contract_id);
       });
   
     } else if(type === "FUNGIBLE" && contract_id) {
       try {
-        const date = new Date().toUTCString();
+        
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Promo concluded on ${formattedDate}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
+          `Promo concluded on ${formattedDateTime(date.toISOString())}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,  
           last_thread_tweet_id!
         );
   
@@ -194,10 +194,10 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         console.log(e);
       }
 
-      const date = new Date(campaignExpiry);
-
+ 
+      const expiryFungibleSchedule = new Date(campaignExpiry);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      scheduleJob(date, function () {
+      scheduleJob(expiryFungibleSchedule, function () {
         const cardId = id;
         perFormCampaignExpiryOperation(cardId, contract_id);
       });
@@ -211,6 +211,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
 export async function perFormCampaignExpiryOperation(id: number | bigint, contract_id:string) {
   console.log("perFormCampaignExpiryOperation")
+  const date = new Date();
 
   const campaignDetails = await prisma.campaign_twittercard.findUnique({
     where: { id },
@@ -253,7 +254,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
   
       try {
         await userTweeterApi.v2.reply(
-          `Reward allocation concluded on ${formattedDate}. A total of ${(amount_spent / 1e8).toFixed(2)} HBAR was given out for this promo.`,
+          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_spent / 1e8).toFixed(2)} HBAR was given out for this promo.`,
           last_thread_tweet_id!
         );
         // await twitterAPI.sendDMFromHashBuzz(
@@ -282,7 +283,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
   
       try {
         await userTweeterApi.v2.reply(
-          `Reward allocation concluded on ${formattedDate}. A total of ${(amount_spent / (10 ** Number(decimals))).toFixed(2)} ${token?.token_symbol} was given out for this promo.`,
+          `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${(amount_spent / (10 ** Number(decimals))).toFixed(2)} ${token?.token_symbol} was given out for this promo.`,
           last_thread_tweet_id!
         );
       } catch (error) {

@@ -41,18 +41,16 @@ export const statusUpdateHandler = async (
     const current_status_of_card =
       campaign_data?.card_status.toLocaleLowerCase();
     const campaignerId = campaign_data?.owner_id;
-    let amounts = campaign_data?.campaign_budget;
+    const amounts = campaign_data?.campaign_budget;
     const campaignerAccount = campaign_data?.user_user?.hedera_wallet_id;
 
     if (campaign_data?.type === "HBAR") {
       //!! if card is in the same status don't update this card. respond with BAD_REQUEST
       if (current_status_of_card === requested_card_status) {
-        return res
-          .status(BAD_REQUEST)
-          .json({
-            error: true,
-            message: "Card is currently in the same status.",
-          });
+        return res.status(BAD_REQUEST).json({
+          error: true,
+          message: "Card is currently in the same status.",
+        });
       }
 
       //!! if requested state is Running or rejected then current status of card must be pending.
@@ -75,12 +73,10 @@ export const statusUpdateHandler = async (
 
         //! if any running account then status change will not allowed
         if (currentRunningCardOfCardOwner) {
-          return res
-            .status(CONFLICT)
-            .json({
-              error: true,
-              message: "Only one card is allowed at once.",
-            });
+          return res.status(CONFLICT).json({
+            error: true,
+            message: "Only one card is allowed at once.",
+          });
         }
 
         //!  if any campaign_budget is grater than the card owner available_budget then status will remain same.
@@ -99,7 +95,7 @@ export const statusUpdateHandler = async (
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-        amounts = Math.round(amounts);
+        // amounts = Math.round(amounts);
 
         const tweetId = await twitterCardService.publishTwitter(campaignId);
         if (tweetId) {
@@ -125,15 +121,13 @@ export const statusUpdateHandler = async (
           // console.log(updated_campaign_data, "campaign");
           const { user_user, ...restCard } = updated_campaign_data!;
 
-          return res
-            .status(OK)
-            .json({
-              message: "Campaign status updated",
-              transaction: SM_transaction,
-              user: JSONBigInt.parse(
-                JSONBigInt.stringify(sensitizeUserData(dbUserBalance))
-              ),
-            });
+          return res.status(OK).json({
+            message: "Campaign status updated",
+            transaction: SM_transaction,
+            user: JSONBigInt.parse(
+              JSONBigInt.stringify(sensitizeUserData(dbUserBalance))
+            ),
+          });
         }
         // }
 
@@ -180,12 +174,10 @@ export const statusUpdateHandler = async (
 
       //!! if card is in the same status don't update this card. respond with BAD_REQUEST
       if (current_status_of_card === requested_card_status) {
-        return res
-          .status(BAD_REQUEST)
-          .json({
-            error: true,
-            message: "Card is currently in the same status.",
-          });
+        return res.status(BAD_REQUEST).json({
+          error: true,
+          message: "Card is currently in the same status.",
+        });
       }
 
       //!! if requested state is Running or rejected then current status of card must be pending.
@@ -207,12 +199,10 @@ export const statusUpdateHandler = async (
 
         //! if any running account then status change will not allowed
         if (currentRunningCardOfCardOwner) {
-          return res
-            .status(CONFLICT)
-            .json({
-              error: true,
-              message: "Only one card is allowed at once.",
-            });
+          return res.status(CONFLICT).json({
+            error: true,
+            message: "Only one card is allowed at once.",
+          });
         }
 
         //!  if any campaign_budget is grater than the card owner available_budget then status will remain same.
@@ -229,7 +219,7 @@ export const statusUpdateHandler = async (
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-        amounts = Math.floor(amounts);
+        // amounts = amounts);
 
         const tweetId = await twitterCardService.publishTwitter(campaignId);
         // console.log(tweetId);
@@ -261,15 +251,13 @@ export const statusUpdateHandler = async (
           //   // return res.status(OK).json(completeCampaign);
           //   });
 
-          return res
-            .status(OK)
-            .json({
-              message: "Campaign status updated",
-              transaction: SM_transaction,
-              user: JSONBigInt.parse(
-                JSONBigInt.stringify(sensitizeUserData(dbUserBalance))
-              ),
-            });
+          return res.status(OK).json({
+            message: "Campaign status updated",
+            transaction: SM_transaction,
+            user: JSONBigInt.parse(
+              JSONBigInt.stringify(sensitizeUserData(dbUserBalance))
+            ),
+          });
         }
       }
 

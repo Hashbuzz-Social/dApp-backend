@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { convertTinyHbarToHbar } from "@shared/helper";
+import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import { provideActiveContract } from "./smartcontract-service";
@@ -146,15 +146,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     const token = await prisma.whiteListedTokens.findUnique({where: {token_id: String(fungible_token_id)}})
     //@ignore es-lint
     const currentDate = new Date();
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short',
-    }).format(currentDate);
+    const formattedDate = formattedDateTime(currentDate.toISOString())
         
     const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in HBAR: like ${convertTinyHbarToHbar(
       like_reward
@@ -162,7 +154,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       2
     )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.` 
 
-    const threat2Fungible = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in ${token?.token_symbol}: ${
+    const threat2Fungible = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in ${token?.token_symbol}: like ${
   (like_reward / (10 ** Number(decimals)))
     .toFixed(2)}, repost ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)}, quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
       2
@@ -208,8 +200,8 @@ const publishTwitter = async (cardId: number | bigint) => {
           tweet_id: tweetId,
           last_thread_tweet_id: lastThreadTweetId,
           card_status: "Running",
-          campaign_start_time: new Date().toISOString(),
-          campaign_close_time: new Date(new Date().setMinutes(new Date().getMinutes() + 15)).toISOString()
+          campaign_start_time: currentDate.toISOString(),
+          campaign_close_time: addMinutesToTime(currentDate.toISOString(),Number(process.env.CAMPAIGN_DURATION)??15)
         },
       });
       return tweetId;

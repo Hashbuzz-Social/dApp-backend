@@ -99,6 +99,7 @@
     "markdown-it": "^13.0.1",
     "module-alias": "^2.2.2",
     "moment": "^2.29.4",
+    "moment-timezone": "^0.5.44",
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
     "node-cron": "^3.0.1",
