@@ -8,7 +8,12 @@ declare module "express" {
   }
 }
 
-export type twitterStatus = "Rejected" | "Pending" | "Running" | "Completed" | "Deleted";
+export type twitterStatus =
+  | "Rejected"
+  | "Pending"
+  | "Running"
+  | "Completed"
+  | "Deleted";
 export enum user_roles {
   "SUPER_ADMIN",
   "ADMIN",
@@ -36,7 +41,7 @@ export type Payload = {
 
 export type GenerateAstPayload = {
   payload: Payload;
-  clientPayload:object
+  clientPayload: object;
   signatures: {
     server: string;
     wallet: {
@@ -44,4 +49,13 @@ export type GenerateAstPayload = {
       value: string;
     };
   };
+};
+
+export type Token = { token_id: string; balance: number };
+
+export type RewardsObj = {
+  retweet_reward: number;
+  like_reward: number;
+  quote_reward: number;
+  comment_reward: number;
 };

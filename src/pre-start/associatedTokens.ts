@@ -1,7 +1,8 @@
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
+import { Token } from "src/@types/custom";
 
-type Token = { token_id: string; balance: number };
+
 
 const nodeURI =
   process.env.MIRROR_NODE_LINK ?? "https://testnet.mirrornode.hedera.com";
