@@ -185,8 +185,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       const rewardDistributeTime = addMinutesToTime(date.toISOString() , 1);
       scheduleJob(rewardDistributeTime , () => {
         const cardId =  card.id;
-        const contract = contract_id
-        performAutoRewardingForEligibleUser(cardId, contract)
+        performAutoRewardingForEligibleUser(cardId)
       })
 
     } else if (type === "FUNGIBLE" && contract_id) {
