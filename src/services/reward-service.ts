@@ -391,6 +391,7 @@ const _updateEngagementsToPaid = async (ids: bigint[]) =>
   });
 
 export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
+  logger.info("Executing Auto reward process::");
   // 1. get All the UNPAID engagements for current card group by user id
 
   const engagementsByUser = await prisma.campaign_tweetengagements.groupBy({
@@ -451,6 +452,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
 
     //4 (B) In case of campaign  type FUNGIBLE
     if (cardType === "FUNGIBLE" && tokenId) {
+      logger.info("Rewarding as fungible campaign::");
       /**
        * 5(B) campaign is with fungible then we will check the token association status of the user;
        *      - If token is associated to user wallet
@@ -475,7 +477,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
               card.id
             );
             const walletId = user.hedera_wallet_id;
-
+            logger.info("Transferring as fungible of total::" + total);
             //6 (B)_.Transfer reward to the user wallet
             const response = await distributeToken(
               tokenId,
@@ -501,6 +503,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
 
     // 4(A)  In case if campaign type HBAR
     if (card && cardType === "HBAR") {
+      logger.info("Rewarding as HBAR campaign::");
       await Promise.all(
         userWithWallet.map(async (user) => {
           /** ===============  Per user reward distributions for HBAR ========================== */
@@ -514,7 +517,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
               card.id
             );
             const walletId = user.hedera_wallet_id;
-
+            logger.info("Transferring as HBAR of total::" + total);
             // 6(A) Transfer HBAR from contract to the user wallet;
             const rewardTrx = await transferAmountFromContractUsingSDK(
               walletId,
@@ -556,6 +559,8 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
         amount: totalRewardDistributed,
       });
     }
+
+    logger.warn("Total auto reward distributed::" + totalRewardDistributed);
   }
 };
 

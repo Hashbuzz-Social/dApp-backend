@@ -4,7 +4,7 @@ import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
-import {performAutoRewardingForEligibleUser} from "@services/reward-service"
+import { performAutoRewardingForEligibleUser } from "@services/reward-service";
 // import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
@@ -180,14 +180,6 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         const cardId = id;
         perFormCampaignExpiryOperation(cardId, contract_id);
       });
-
-      //?? Perform the Auto reward after one min of closing campaign
-      const rewardDistributeTime = addMinutesToTime(date.toISOString() , 1);
-      scheduleJob(rewardDistributeTime , () => {
-        const cardId =  card.id;
-        performAutoRewardingForEligibleUser(cardId)
-      })
-
     } else if (type === "FUNGIBLE" && contract_id) {
       try {
         const updateThread = await tweeterApi.v2.reply(
@@ -237,6 +229,14 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         perFormCampaignExpiryOperation(cardId, contract_id);
       });
     }
+
+    //?? Perform the Auto reward after one min of closing campaign
+    const rewardDistributeTime = new Date(addMinutesToTime(date.toISOString(), 1));
+    scheduleJob(rewardDistributeTime, () => {
+      logger.info("Reward distribution scheduled at::"+rewardDistributeTime.toISOString())
+      const cardId = card.id;
+      performAutoRewardingForEligibleUser(cardId);
+    });
   }
 
   return { message: "Campaign is closed" };
@@ -351,7 +351,9 @@ export async function perFormCampaignExpiryOperation(
           )}. A total of ${(
             (amount_claimed ?? 0) /
             10 ** Number(decimals)
-          ).toFixed(2)} ${token?.token_symbol??"HBAR"} was given out for this promo.`,
+          ).toFixed(2)} ${
+            token?.token_symbol ?? "HBAR"
+          } was given out for this promo.`,
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           last_thread_tweet_id!
         );
