@@ -6,7 +6,7 @@ import {
   handleReimbursement,
   handleTopUp,
 } from "@controller/Transactions";
-import { checkErrResponse, checkWalletFormat, validateEntityObject } from "@validator/userRoutes.validator";
+import { checkErrResponse, checkWalletFormat, validateEntityObject, validateTransactionIdString } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
 
@@ -47,7 +47,7 @@ router.post(
  * @validator checkErrResponse
  * @handler handleTopUp
  */
-router.post("/top-up", body("entity").custom(validateEntityObject), checkErrResponse, handleTopUp);
+router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").custom(validateTransactionIdString), checkErrResponse, handleTopUp);
 
 /**
  * Add a campaigner.

@@ -56,3 +56,35 @@ export const validateGenerateAstPayload: CustomValidator = (body: GenerateAstPay
 
   throw new ParamMissingError("Signature payload format is not correct.");
 }
+
+export const  validateTransactionIdString = (input: string)  => {
+  // Regular expression pattern for the given format
+  const pattern = /^0\.0\.\d{1,10}@\d+\.\d+$/;
+
+  // Check if the input string matches the pattern
+  if (!pattern.test(input)) {
+       throw new ParamMissingError("Misleading transaction id");
+  }
+
+  // Split the input string by '@' symbol
+  const parts = input.split('@');
+
+  // Extract account and timestamp from the parts
+  const account = parts[0];
+  const timestamp = parseFloat(parts[1]);
+
+  // Check if the timestamp is not more than 30 seconds before the current timestamp
+  const currentTimestamp = Date.now() / 1000; // Convert milliseconds to seconds
+  if (timestamp > currentTimestamp || currentTimestamp - timestamp > 30) {
+    throw new ParamMissingError("TransactionId is invalid. Time differ is too long");
+  }
+
+  // Check if the account format is valid (0.0.[0-9] to 10 digits)
+  const accountPattern = /^0\.0\.\d{1,10}$/;
+  if (!accountPattern.test(account)) {
+       throw new ParamMissingError("Invalid account format.");
+  }
+
+  // All validations passed
+  return true;
+}

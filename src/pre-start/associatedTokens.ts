@@ -1,11 +1,10 @@
+import { nodeURI } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import { Token } from "src/@types/custom";
 
 
 
-const nodeURI =
-  process.env.MIRROR_NODE_LINK ?? "https://testnet.mirrornode.hedera.com";
 
 const getTokenDetails = async (tokenID: string): Promise<any> => {
   const TOKEN_INFO_URI = `${nodeURI}/api/v1/tokens/${tokenID}`;
