@@ -1,6 +1,6 @@
-/* eslint-disable max-len */
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, PrivateKey, TokenInfo, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
+ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, PrivateKey, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
+import { nodeURI } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { logicalContractAbi } from "@smartContract";
 import { BigNumber } from "bignumber.js";
@@ -166,5 +166,16 @@ const getEntityDetailsByTokenId = async (token_id: string) => {
   return entityData;
 };
 
-export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId, updateTokenTopupBalanceToContract };
+
+const getTokenDetails = async (tokenID: string): Promise<any> => {
+  const TOKEN_INFO_URI = `${nodeURI}/api/v1/tokens/${tokenID}`;
+  if (!tokenID) throw new Error("Account id not defined !");
+
+  const req = await fetch(TOKEN_INFO_URI);
+  const data = await req.json();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return data;
+};
+
+export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId, updateTokenTopupBalanceToContract , getTokenDetails };
 

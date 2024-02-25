@@ -2,6 +2,7 @@ import { associateTokentoContract } from "@services/contract-service";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
+import htsService from "@services/hts-services"
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
@@ -129,6 +130,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
   const decimals = req.body.decimals as number;
 
   const contractDetails = await provideActiveContract();
+  const tokenData =  await htsService.getTokenDetails(tokenId)
   if (userId && contractDetails?.contract_id && tokenId) {
     const token = await prisma.whiteListedTokens.findUnique({where:{token_id:tokenId}}) 
     if(token) {
@@ -144,7 +146,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
               token_id: tokenId,
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               //@ts-ignore
-              tokendata: tokenInfo,
+              tokendata: tokenData,
               token_type,
               added_by: userId,
               token_symbol,

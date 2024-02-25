@@ -2,19 +2,10 @@ import { nodeURI } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import { Token } from "src/@types/custom";
+import htsService from  "@services/hts-services"
 
 
 
-
-const getTokenDetails = async (tokenID: string): Promise<any> => {
-  const TOKEN_INFO_URI = `${nodeURI}/api/v1/tokens/${tokenID}`;
-  if (!tokenID) throw new Error("Account id not defined !");
-
-  const req = await fetch(TOKEN_INFO_URI);
-  const data = await req.json();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return data;
-};
 
 const checkAvailableTokens = async (accountId: string) => {
   try {
@@ -28,7 +19,7 @@ const checkAvailableTokens = async (accountId: string) => {
 
     if (tokens && tokens.length > 0) {
       const tokensInfo = await Promise.all(
-        tokens.map(async (token) => getTokenDetails(token.token_id))
+        tokens.map(async (token) => htsService.getTokenDetails(token.token_id))
       );
 
       await Promise.all(
