@@ -1,11 +1,10 @@
 import { campaign_twittercard } from "@prisma/client";
+import { performAutoRewardingForEligibleUser } from "@services/reward-service";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
-import { performAutoRewardingForEligibleUser } from "@services/reward-service";
-// import { SendRewardsForTheUsersHavingWallet } from "./reward-service";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import {
@@ -13,9 +12,12 @@ import {
   expiryCampaign,
   expiryFungibleCampaign,
 } from "./contract-service";
+import hederaService from "./hedera-service";
 import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
+
+const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15)
 
 export const getCampaignDetailsById = async (campaignId: number | bigint) => {
   return await prisma.campaign_twittercard.findUnique({
@@ -126,7 +128,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
     // console.log(commentsUpdates, isEngagementUpdated, "Fetch all the Replies");
     const campaignExpiry = addMinutesToTime(
       date.toISOString(),
-      Number(process.env.REWARD_CALIM_DURATION ?? 15)
+      claimDuration
     );
     //log campaign expiry
     console.log(`Campaign expired at ${campaignExpiry}`);
@@ -141,9 +143,8 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Promo concluded on ${formattedDateTime(
-            date.toISOString()
-          )}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,
+          `Promo ended on ${formattedDateTime(date.toISOString())} and rewards are being allocated for the next ${claimDuration} min. First-time users: to receive your rewards log in to ${hederaService.network === "testnet" ?  "https://testnet.hashbuzz.social" : "https://hashbuzz.social"} connect your Personal X account. Then simply navigate to the **Claim Rewards** section and initiate the claim process.
+          `,
           last_thread_tweet_id!
         );
 
@@ -184,9 +185,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       try {
         const updateThread = await tweeterApi.v2.reply(
           // eslint-disable-next-line max-len
-          `Promo concluded on ${formattedDateTime(
-            date.toISOString()
-          )}. Rewards are now being allocated. First-time users: log in to https://testnet.hashbuzz.social to claim your rewards.`,
+          `Promo ended on ${formattedDateTime(date.toISOString())} and rewards are being allocated for the next ${claimDuration} min. First-time users: to receive your rewards log in to ${hederaService.network === "testnet" ?  "https://testnet.hashbuzz.social" : "https://hashbuzz.social"} connect your Personal X account. then associate Token with ID ${fungible_token_id??""} to your wallet.Then, simply navigate to the **Claim Rewards** section and initiate the claim process. `,
           last_thread_tweet_id!
         );
 

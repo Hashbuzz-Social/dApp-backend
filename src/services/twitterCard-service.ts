@@ -1,12 +1,13 @@
 /* eslint-disable max-len */
+import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import { provideActiveContract } from "./smartcontract-service";
-import { decrypt } from "@shared/encryption";
-import moment from "moment";
 
 //types
+
+const campaignDurationInMin = Number( process.env.CAMPAIGN_DURATION );
 
 export interface TwitterStats {
   like_count?: number;
@@ -148,13 +149,13 @@ const publishTwitter = async (cardId: number | bigint) => {
     const currentDate = new Date();
     const formattedDate = formattedDateTime(currentDate.toISOString())
         
-    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in HBAR: like ${convertTinyHbarToHbar(
+    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(
       like_reward
     ).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(2)}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
     )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.` 
 
-    const threat2Fungible = `Promo initiated on ${formattedDate}. Interact with the primary tweet to earn rewards in ${token?.token_symbol}: like ${
+    const threat2Fungible = `Promo initiated on ${formattedDate}. IInteract with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${token?.token_symbol??""}: like ${
   (like_reward / (10 ** Number(decimals)))
     .toFixed(2)}, repost ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)}, quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
       2
@@ -201,7 +202,7 @@ const publishTwitter = async (cardId: number | bigint) => {
           last_thread_tweet_id: lastThreadTweetId,
           card_status: "Running",
           campaign_start_time: currentDate.toISOString(),
-          campaign_close_time: addMinutesToTime(currentDate.toISOString(),Number(process.env.CAMPAIGN_DURATION)??15)
+          campaign_close_time: addMinutesToTime(currentDate.toISOString(),campaignDurationInMin??15)
         },
       });
       return tweetId;
