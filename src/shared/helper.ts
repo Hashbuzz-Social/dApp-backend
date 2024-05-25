@@ -16,6 +16,7 @@ export const sensitizeUserData = (userData: Partial<user_user>) => {
   const accountMatch = hederaService.operatorId.toString() === userData.hedera_wallet_id;
   const adminActive = Boolean(accountMatch && userData.salt && userData.hash);
   return {
+    // eslint-disable-next-line max-len
     ...rmKeyFrmData(userData, ["salt", "hash", "twitter_access_token", "business_twitter_access_token", "business_twitter_access_token_secret", "twitter_access_token_secret", "last_login", "date_joined", "personal_twitter_id", "accountAddress"]),
     adminActive,
   };
@@ -96,7 +97,7 @@ export const uint8ArrayToObject = (uint8Array: Uint8Array) => {
   return objectData;
 };
 
-export const formattedDateTime = (dateISo: string) => moment(dateISo).tz("America/New_York").format("MM/DD/YYYY,hh:mm:ssA z");
+export const formattedDateTime = (dateISo: string) => moment(dateISo).format("MM/DD/YYYY,hh:mm:ssA");
 export const addMinutesToTime = (dateISo: string, minutesToAdd: number) => {
   const newDate = moment(dateISo).add(minutesToAdd, "minutes").toISOString();
   return newDate;
@@ -127,7 +128,6 @@ export const waitFor = (ms?: number): Promise<void> => {
     }, ms ?? 3000); // 5000 milliseconds = 5 seconds
   });
 };
-
 // const filterTwitterEngagementsData = () => arr.filter(element => {
 //   const isDuplicate = uniqueIds.includes(element.id);
 
@@ -139,4 +139,3 @@ export const waitFor = (ms?: number): Promise<void> => {
 
 //   return false;
 // });
-

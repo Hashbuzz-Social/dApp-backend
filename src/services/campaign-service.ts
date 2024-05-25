@@ -153,7 +153,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       });
     } else if (type === "FUNGIBLE" && contract_id) {
       // eslint-disable-next-line max-len
-      const tweetTextFungible = `Promo ended on  ${formattedDateTime(date.toISOString())}.Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"},link Personal X account and associate token with ID ${fungible_token_id ?? ""} to your wallet`;
+      const tweetTextFungible = `Promo ended on  ${formattedDateTime(date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${fungible_token_id ?? ""} to your wallet.`;
       console.log({ tweetTextFungible });
       logger.info(`tweetTextHBAR:::${tweetTextFungible}` , true)
       try {
@@ -253,7 +253,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
 
       try {
         // eslint-disable-next-line max-len
-        const expiryCampaignText = `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${((amount_claimed ?? 0) / 1e8).toFixed(2)} HBAR was given out for this promo.`
+        const expiryCampaignText = `Reward allocation concluded on ${formattedDateTime(date.toISOString())}.A total of ${((amount_claimed ?? 0) / 1e8).toFixed(2)} HBAR was given out for this promo.`
 
         console.log({expiryCampaignText})
         logger.info(`Expiry Campaign HBAR Tweet::${expiryCampaignText}`)
@@ -284,8 +284,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
 
       try {
         // eslint-disable-next-line max-len
-        const expiryCampaignToken =   `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${((amount_claimed ?? 0) / 10 ** Number(decimals)).toFixed(2)} ${token?.token_symbol ?? "HBAR"} was 
-        given out for this promo.`
+        const expiryCampaignToken =  `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${((amount_claimed ?? 0) / 10 ** Number(decimals)).toFixed(2)} ${token?.token_symbol ?? "HBAR"} was given out for this promo.`
         console.log({expiryCampaignToken})
         logger.info(`Expiry Campaign Token Tweet::${expiryCampaignToken}`)
         
