@@ -1,13 +1,16 @@
 /* eslint-disable max-len */
+import { user_user } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
+import { Card, CmapignTypes } from "./campaignLyfcycle-service";
 import { provideActiveContract } from "./smartcontract-service";
+import { TweetV2PostTweetResult } from "twitter-api-v2";
 
 //types
 
-const campaignDurationInMin = Number( process.env.CAMPAIGN_DURATION );
+const campaignDurationInMin = Number(process.env.CAMPAIGN_DURATION);
 
 export interface TwitterStats {
   like_count?: number;
@@ -101,6 +104,71 @@ const updateTotalSpentAmount = async (id: number | bigint, amount_spent: number)
 };
 
 /**
+ * @description putlish a tweet and thread
+ */
+
+interface PublishTweetParams {
+  cardOwner: user_user,
+  tweetText: string,
+  isThread?: boolean,
+  parentTweetId?: string
+}
+
+const publishTweetORThread = async (params: PublishTweetParams) => {
+  const { cardOwner, tweetText, isThread, parentTweetId } = params;
+  if (cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret) {
+    const userTwitter = twitterAPI.tweeterApiForUser({
+      accessToken: decrypt(cardOwner.business_twitter_access_token),
+      accessSecret: decrypt(cardOwner?.business_twitter_access_token_secret),
+    });
+
+    let card: TweetV2PostTweetResult;
+
+    const rwClient = userTwitter.readWrite;
+    if (isThread && parentTweetId) {
+      card = await rwClient.v2.reply(tweetText, parentTweetId);
+    } else {
+      card = await rwClient.v2.tweet(tweetText);
+    }
+    return card.data.id;
+  }
+  throw new Error("User does not have sufficient records.");
+}
+
+
+/**
+ * @description publish first tweet 
+ * @returns string first tweet id to make threds
+ */
+
+const publistFirstTweet = async (card: Card, cardOwner: user_user) => {
+  const tweetText = card.tweet_text;
+  if (tweetText) {
+    const tweetId = publishTweetORThread({
+      tweetText,
+      cardOwner
+    })
+    return tweetId;
+  }
+}
+
+
+/**
+ * @description Publish second tweet 
+ * @returns id secod thred tweet id;
+ */
+
+const publishSecondThread = async (card: Card, cardOwner: user_user) => {
+  const cardType = card.type;
+  const { id, tweet_text, like_reward, quote_reward, retweet_reward, comment_reward, media, fungible_token_id, decimals } = card;
+  if(cardType === "HBAR") {
+
+  }
+}
+
+
+/**
+ * @deprecated
  *@description Create twitter tweet if the card is in pending state and then update the status.
  */
 
@@ -138,28 +206,27 @@ const publishTwitter = async (cardId: number | bigint) => {
     retweet_reward
   ) {
     let threat1;
-    if(media[0]) {
+    if (media[0]) {
       threat1 = `${tweet_text} ${media[0]}`;
-    }else {
+    } else {
       threat1 = `${tweet_text}`;
     }
 
-    const token = await prisma.whiteListedTokens.findUnique({where: {token_id: String(fungible_token_id)}})
+    const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: String(fungible_token_id) } })
     //@ignore es-lint
     const currentDate = new Date();
     const formattedDate = formattedDateTime(currentDate.toISOString())
-        
+
     const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(
       like_reward
     ).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(2)}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
       2
-    )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.` 
+    )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.`
 
-    const threat2Fungible = `Promo initiated on ${formattedDate}. IInteract with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${token?.token_symbol??""}: like ${
-  (like_reward / (10 ** Number(decimals)))
-    .toFixed(2)}, repost ${(retweet_reward  / (10 ** Number(decimals))).toFixed(2)}, quote ${(quote_reward  / (10 ** Number(decimals))).toFixed(
-      2
-    )}, reply ${(comment_reward / (10 ** Number(decimals))).toFixed(2)}.` 
+    const threat2Fungible = `Promo initiated on ${formattedDate}. IInteract with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${token?.token_symbol ?? ""}: like ${(like_reward / (10 ** Number(decimals)))
+      .toFixed(2)}, repost ${(retweet_reward / (10 ** Number(decimals))).toFixed(2)}, quote ${(quote_reward / (10 ** Number(decimals))).toFixed(
+        2
+      )}, reply ${(comment_reward / (10 ** Number(decimals))).toFixed(2)}.`
 
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(user_user?.business_twitter_access_token),
@@ -170,7 +237,7 @@ const publishTwitter = async (cardId: number | bigint) => {
     //Post tweets to the tweeter;
     try {
       // const mediaId = dataResp.data.media_id_string;
-    
+
       const rwClient = userTwitter.readWrite;
       // console.log(rwClient)
       // console.log(threat1)
@@ -178,9 +245,9 @@ const publishTwitter = async (cardId: number | bigint) => {
       // await rwClient.v2.reply(media, card.data.id);
 
       let reply;
-      if(type === "HBAR") {
+      if (type === "HBAR") {
         reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
-      } else if(type === "FUNGIBLE") {
+      } else if (type === "FUNGIBLE") {
         reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
       }
       //tweetId.
@@ -188,9 +255,9 @@ const publishTwitter = async (cardId: number | bigint) => {
       // const mediaData = await userTwitter.uploadMedia({
       //   mediaUrl: media[0],
       // });
-    
+
       // const mediaId = media.media_id_string;
-    
+
       const tweetId = card.data.id;
       const lastThreadTweetId = reply?.data.id;
 
@@ -202,7 +269,7 @@ const publishTwitter = async (cardId: number | bigint) => {
           last_thread_tweet_id: lastThreadTweetId,
           card_status: "Running",
           campaign_start_time: currentDate.toISOString(),
-          campaign_close_time: addMinutesToTime(currentDate.toISOString(),campaignDurationInMin??15)
+          campaign_close_time: addMinutesToTime(currentDate.toISOString(), campaignDurationInMin ?? 15)
         },
       });
       return tweetId;
@@ -244,7 +311,7 @@ const getAllTwitterCardPendingCards = async () => {
   const data = await prisma.campaign_twittercard.findMany({
     where: {
       approve: false,
-      isRejected:null,
+      isRejected: null,
     },
   });
 
@@ -252,38 +319,38 @@ const getAllTwitterCardPendingCards = async () => {
 };
 
 
-const updateStatus = async (id:number, status:boolean) => {
+const updateStatus = async (id: number, status: boolean) => {
   const data = await prisma.campaign_twittercard.findUnique({
     where: {
       id,
     },
   });
 
-  if(data?.card_status === "Under Review") {
-    if(status === true) {
+  if (data?.card_status === "Under Review") {
+    if (status === true) {
       const data = await prisma.campaign_twittercard.update({
         where: {
           id,
         },
-        data:{
+        data: {
           approve: true,
           isRejected: false,
-          card_status:"Campaign Active"
+          card_status: "Campaign Active"
         }
       });
-      
+
       return data;
-    } else if(status === false){
+    } else if (status === false) {
       const data = await prisma.campaign_twittercard.update({
         where: {
           id,
         },
-        data:{
+        data: {
           isRejected: true,
-          card_status:"Campaign Declined"
+          card_status: "Campaign Declined"
         }
       });
-    
+
       return data;
     }
   }
@@ -299,5 +366,6 @@ export default {
   publishTwitter,
   getAllTwitterCardByStatus,
   getAllTwitterCardPendingCards,
-  updateStatus
+  updateStatus,
+  publistFirstTweet
 } as const;
