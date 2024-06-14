@@ -7,6 +7,7 @@ import twitterAPI from "@shared/twitterAPI";
 import { Card, CmapignTypes } from "./campaignLyfcycle-service";
 import { provideActiveContract } from "./smartcontract-service";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
+import moment from "moment"
 
 //types
 
@@ -142,7 +143,7 @@ const publishTweetORThread = async (params: PublishTweetParams) => {
  */
 
 const publistFirstTweet = async (card: Card, cardOwner: user_user) => {
-  const tweetText = card.tweet_text;
+  const tweetText = `${card.tweet_text}${card.media[0] ? " " + card.media[0] : ""}`;
   if (tweetText) {
     const tweetId = publishTweetORThread({
       tweetText,
@@ -158,13 +159,58 @@ const publistFirstTweet = async (card: Card, cardOwner: user_user) => {
  * @returns id secod thred tweet id;
  */
 
-const publishSecondThread = async (card: Card, cardOwner: user_user) => {
-  const cardType = card.type;
-  const { id, tweet_text, like_reward, quote_reward, retweet_reward, comment_reward, media, fungible_token_id, decimals } = card;
-  if(cardType === "HBAR") {
+const publishSecondThread = async (
+  card: Card,
+  cardOwner: user_user,
+  parentTweetId: string
+): Promise<string> => {
+  const {
+    type: cardType,
+    tweet_text,
+    like_reward,
+    quote_reward,
+    retweet_reward,
+    comment_reward,
+    fungible_token_id,
+    decimals,
+  } = card;
 
+  const formattedDate = formattedDateTime(moment().toISOString());
+
+  if (!tweet_text) throw new Error("Tweet text is missing.");
+  if (!like_reward || !quote_reward || !retweet_reward || !comment_reward) {
+    throw new Error("One or more reward values are missing.");
   }
-}
+
+  const formatRewards = (reward: number, factor: number) => (reward / factor).toFixed(2);
+
+  let tweetText: string;
+
+  if (cardType === "HBAR") {
+    tweetText = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(like_reward).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(2)}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(2)}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.`;
+  } else {
+    const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: String(fungible_token_id) } });
+    if (!token) throw new Error("Token not found.");
+
+    const tokenSymbol = token.token_symbol ?? "";
+    const factor = 10 ** Number(decimals);
+
+    tweetText = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${tokenSymbol}: like ${formatRewards(like_reward, factor)}, repost ${formatRewards(retweet_reward, factor)}, quote ${formatRewards(quote_reward, factor)}, reply ${formatRewards(comment_reward, factor)}.`;
+  }
+
+  try {
+    const tweetId = await publishTweetORThread({
+      tweetText,
+      cardOwner,
+      isThread: true,
+      parentTweetId,
+    });
+
+    return tweetId;
+  } catch (error) {
+    throw new Error(`Failed to publish tweet or thread: ${error.message}`);
+  }
+};
 
 
 /**
@@ -367,5 +413,6 @@ export default {
   getAllTwitterCardByStatus,
   getAllTwitterCardPendingCards,
   updateStatus,
-  publistFirstTweet
+  publistFirstTweet,
+  publishSecondThread
 } as const;

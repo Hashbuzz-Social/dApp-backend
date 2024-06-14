@@ -14,6 +14,7 @@ import { CreateTranSactionEntity, TransactionResponse } from "src/@types/custom"
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
 import axios from "axios";
+import logger from "jet-logger";
 
 const { hederaClient, operatorKey, network, operatorId } = hederaService;
 
@@ -126,50 +127,69 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
   }
 };
 
-/****
- * @description - This function will be called after creating campaign. Calling this function will debit balance
- * from the campaigner hedera account and credit same balance to the campaign account.
- *
- * @params campaignerAccount - Campaigner account address in 0.0.123456 format.
- * @params campaignerId - Database id of the campaign
- * @params amounts - Amount which is allocated to the campaign in tinybar.
+/**
+ * @description - This function debits balance from the campaigner's Hedera account and credits the same balance to the campaign account.
+ * @param campaignId - Database ID of the campaign
+ * @param amounts - Amount allocated to the campaign in tinybar
+ * @param campaignerAccount - Campaigner account address in "0.0.123456" format
+ * @param campaignAddress - Campaign account address
+ * @returns A Promise with the transaction details
+ * @throws Will throw an error if the operation fails
  */
+export const allocateBalanceToCampaign = async (
+  campaignId: bigint | number,
+  amounts: number,
+  campaignerAccount: string,
+  campaignAddress: string
+): Promise<{ contract_id: string; transactionId: string; receipt: any }> => {
+  logger.info("=========== AllocateBalanceToCampaign ===============");
+  logger.info("Start for campaign:", { campaignId, campaignAddress });
 
-export const allocateBalanceToCampaign = async (campaignId: bigint | number, amounts: number, campaignerAccount: string, campaignAddress: string) => {
-  console.group("AllocateBalanceToCampaign");
-  console.log("allocateBalanceToCampaign::start-for-campaign", campaignId, campaignAddress);
-  const contractDetails = await provideActiveContract();
+  try {
+    const contractDetails: ContractDetails | null = await provideActiveContract();
 
-  if (contractDetails?.contract_id) {
+    if (!contractDetails || !contractDetails.contract_id) {
+      throw new Error("Active contract ID not found");
+    }
+
     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-    // const campaigner = buildCampaigner(campaignerAccount);
-    // const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
-    console.log(campaignerAccount, "campaignerAccount");
     const campaigner = AccountId.fromString(campaignerAccount);
+    logger.info("Campaigner account:", campaignerAccount);
+    logger.info("Tiny amount to be added to contract:", amounts);
 
-    console.log("tinyAmount is added to contract", amounts);
-
-    // const functionCallAsUint8Array = encodeFunctionCall("addCampaign", [campaigner, campaignAddress, amounts]);
-    // const params = ;
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(10000000)
-      .setFunction("addCampaign", new ContractFunctionParameters().addString(campaignAddress).addAddress(campaigner.toSolidityAddress()).addUint256(amounts))
-      .setTransactionMemo("Hashbuzz add balance to a campaign account" + campaignAddress);
+      .setFunction(
+        "addCampaign",
+        new ContractFunctionParameters()
+          .addString(campaignAddress)
+          .addAddress(campaigner.toSolidityAddress())
+          .addUint256(amounts)
+      )
+      .setTransactionMemo(`Hashbuzz add balance to campaign account ${campaignAddress}`);
 
     const exResult = await contractExBalTx.execute(hederaClient);
     const receipt = await exResult.getReceipt(hederaClient);
 
-    console.log("allocateBalanceToCampaign::finished-with-transactionId", exResult.transactionId);
-    console.groupEnd();
+    logger.info("Finished with transaction ID:", exResult.transactionId.toString());
+    logger.info("============== Balance Allocation ends ===========");
 
     return {
       contract_id: campaignAddress,
-      transactionId: exResult.transactionId,
+      transactionId: exResult.transactionId.toString(),
       receipt,
     };
-  } else {
-    throw new Error("Contract id not found");
+  } catch (error: any) {
+    logger.error("Error in allocateBalanceToCampaign:", error.message, {
+      campaignId,
+      campaignerAccount,
+      campaignAddress,
+      amounts,
+    });
+    logger.info("============== Balance Allocation ends with error ===========");
+
+    throw error; // Rethrow the error after logging
   }
 };
 
