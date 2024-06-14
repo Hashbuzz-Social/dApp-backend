@@ -4,6 +4,13 @@ import { createClient, RedisClientType } from 'redis';
 import util from "util"
 
 
+interface CampaignLyfCycle {
+    isCreaeted?: boolean,
+    adminReview?:boolean,
+    contractAccountCreated?: boolean,
+
+}
+
 class RedisClient {
     private client: RedisClientType;
 
@@ -13,7 +20,7 @@ class RedisClient {
         // this.client = createClient({
         //     url: 'redis://alice:foobared@awesome.redis.server:6380'
         // });
-        
+
         this.client = createClient(); // Initialize Redis client
         this.client.on('error', (err) => console.error('Redis Client Error', err));
     }
