@@ -141,7 +141,7 @@ export const allocateBalanceToCampaign = async (
   amounts: number,
   campaignerAccount: string,
   campaignAddress: string
-): Promise<{ contract_id: string; transactionId: string; receipt: any }> => {
+): Promise<{ contract_id: string; transactionId: string; receipt: any  , status:string}> => {
   logger.info("=========== AllocateBalanceToCampaign ===============");
   logger.info(`Start for campaign: ${JSON.stringify({ campaignId, campaignAddress })}`);
 
@@ -171,6 +171,7 @@ export const allocateBalanceToCampaign = async (
 
     const exResult = await contractExBalTx.execute(hederaClient);
     const receipt = await exResult.getReceipt(hederaClient);
+    const status = receipt.status.toString();
 
     logger.info(`Finished with transaction ID :: ${exResult.transactionId.toString()}`);
     logger.info("============== Balance Allocation ends ===========");
@@ -179,6 +180,7 @@ export const allocateBalanceToCampaign = async (
       contract_id: campaignAddress,
       transactionId: exResult.transactionId.toString(),
       receipt,
+      status
     };
   } catch (error: any) {
     logger.err(`Error in allocateBalanceToCampaign:, ${error.message}, ${JSON.stringify({

@@ -190,8 +190,29 @@ class CampaignLifeCycle {
 
             // Step 2: Perform smart contract transaction
             try {
-                await this.performSmartContractTransaction(card);
+                const transactionDetails = await this.performSmartContractTransaction(card);
                 logger.info(`Smart contract transaction successful for card ID: ${card.id}`);
+
+                // Step 2 (A) :: create a transation log of the campaign 
+                const transactionRecord = await this.createTransactionrecord({
+                    transaction_data: transactionDetails,
+                    transaction_id: transactionDetails.transactionId,
+                    status: transactionDetails.status,
+                    amount: Number(card.campaign_budget),
+                    transaction_type: "campaign_top_up"
+                })
+                // Step 2 (B) :: create a camapign log with the details you submited.
+                await this.logCampaignData({
+                    campaign_id: card.id,
+                    status: CmapignStauses.RUNNING,
+                    message: `Campaign balace ${card.campaign_budget} is added to the SM Contract`,
+                    data: {
+                        transaction_id: transactionDetails.transactionId,
+                        status: transactionDetails.status,
+                        amount: Number(card.campaign_budget),
+                        transactionLogId: transactionRecord.id.toString()
+                    }
+                })
             } catch (error) {
                 logger.err(`Smart contract transaction failed for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Smart contract transaction failed", error);
@@ -260,9 +281,9 @@ class CampaignLifeCycle {
         });
     }
 
-    private async performSmartContractTransaction(card: campaign_twittercard): Promise<void> {
+    private async performSmartContractTransaction(card: campaign_twittercard) {
         if (card.contract_id && card.campaign_budget && this.cardOwner?.hedera_wallet_id) {
-            await allocateBalanceToCampaign(
+            return await allocateBalanceToCampaign(
                 card.id,
                 card.campaign_budget,
                 this.cardOwner.hedera_wallet_id,
@@ -295,7 +316,7 @@ class CampaignLifeCycle {
         })
     }
 
-    private async logdCampaignData(params: NonNullable<Omit<CampaignLog, "id" | "timestamp">>) {
+    private async logCampaignData(params: NonNullable<Omit<CampaignLog, "id" | "timestamp">>) {
         const { campaign_id, status, data, message } = params;
         await prisma.campaignLog.create({
             data: {
@@ -307,9 +328,9 @@ class CampaignLifeCycle {
         })
     }
 
-    private async logTransactionRecordOfTheCampaing(params: TransactionRecord) {
+    private async createTransactionrecord(params: TransactionRecord) {
         const { amount, transaction_type, transaction_id, transaction_data, status } = params
-        const createTranction = prisma.transactions.create({
+        return await prisma.transactions.create({
             data: {
                 network: hederaService.network,
                 amount,
@@ -318,9 +339,7 @@ class CampaignLifeCycle {
                 status,
                 transaction_data: JSON.parse(JSON.stringify(transaction_data))
             }
-        })
-
-
+        });
     }
 
     private async deleteTweet(campaignId: number | bigint): Promise<void> {
