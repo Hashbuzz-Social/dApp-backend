@@ -1,0 +1,18 @@
+{
+    "card_id_string": {
+        "staus:creating": {
+            "isSuccess": true,
+            "timestamp": "timeNow"
+        },
+        "status:running": {
+            "adminApproved": {},
+            "firstTweetOut": {},
+            "SMbalanceHolding": {},
+            "seconThreadOut": {},
+            "isSuccess": true,
+            "timestamp": "timeNow"
+        },
+        "status:closing": {},
+        "staus:expiring": {}
+    }
+}

@@ -9,7 +9,7 @@ import { convertTrxString, nodeURI, sensitizeUserData, waitFor } from "@shared/h
 import prisma from "@shared/prisma";
 import BigNumber from "bignumber.js";
 import JSONBigInt from "json-bigint";
-import {} from "lodash";
+import { } from "lodash";
 import { CreateTranSactionEntity, TransactionResponse } from "src/@types/custom";
 import { getCampaignDetailsById } from "./campaign-service";
 import userService from "./user-service";
@@ -143,10 +143,10 @@ export const allocateBalanceToCampaign = async (
   campaignAddress: string
 ): Promise<{ contract_id: string; transactionId: string; receipt: any }> => {
   logger.info("=========== AllocateBalanceToCampaign ===============");
-  logger.info("Start for campaign:", { campaignId, campaignAddress });
+  logger.info(`Start for campaign: ${JSON.stringify({ campaignId, campaignAddress })}`);
 
   try {
-    const contractDetails: ContractDetails | null = await provideActiveContract();
+    const contractDetails = await provideActiveContract();
 
     if (!contractDetails || !contractDetails.contract_id) {
       throw new Error("Active contract ID not found");
@@ -154,8 +154,8 @@ export const allocateBalanceToCampaign = async (
 
     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     const campaigner = AccountId.fromString(campaignerAccount);
-    logger.info("Campaigner account:", campaignerAccount);
-    logger.info("Tiny amount to be added to contract:", amounts);
+    logger.info(`Campaigner account: ${campaignerAccount}`);
+    logger.info(`Tiny amount to be added to contract: ${amounts}`);
 
     const contractExBalTx = new ContractExecuteTransaction()
       .setContractId(contractAddress)
@@ -172,7 +172,7 @@ export const allocateBalanceToCampaign = async (
     const exResult = await contractExBalTx.execute(hederaClient);
     const receipt = await exResult.getReceipt(hederaClient);
 
-    logger.info("Finished with transaction ID:", exResult.transactionId.toString());
+    logger.info(`Finished with transaction ID :: ${exResult.transactionId.toString()}`);
     logger.info("============== Balance Allocation ends ===========");
 
     return {
@@ -181,12 +181,12 @@ export const allocateBalanceToCampaign = async (
       receipt,
     };
   } catch (error: any) {
-    logger.error("Error in allocateBalanceToCampaign:", error.message, {
+    logger.err(`Error in allocateBalanceToCampaign:, ${error.message}, ${JSON.stringify({
       campaignId,
       campaignerAccount,
       campaignAddress,
       amounts,
-    });
+    })}`);
     logger.info("============== Balance Allocation ends with error ===========");
 
     throw error; // Rethrow the error after logging

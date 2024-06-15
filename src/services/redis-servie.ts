@@ -2,13 +2,21 @@
 
 import { createClient, RedisClientType } from 'redis';
 import util from "util"
+import { LYFCycleStages } from './campaignLyfcycle-service';
+import moment from 'moment';
 
 
 interface CampaignLyfCycle {
     isCreaeted?: boolean,
-    adminReview?:boolean,
+    adminReview?: boolean,
     contractAccountCreated?: boolean,
+}
 
+interface RedisCardStatusUpdate {
+    card_contract_id: string,
+    LYFCycleStage: LYFCycleStages,
+    subTask?: string
+    isSuccess?: boolean,
 }
 
 class RedisClient {
@@ -44,6 +52,36 @@ class RedisClient {
     // Delete a record by key
     async delete(key: string): Promise<void> {
         await this.client.del(key);
+    }
+
+    public async updateCmapignCardStatus(params: RedisCardStatusUpdate) {
+        const cardData = await this.read(params.card_contract_id)
+        if (cardData) {
+            const data = JSON.parse(cardData);
+            data[params.LYFCycleStage] = params.subTask ? {
+                [params.subTask]: {
+                    isSuccess: params.isSuccess,
+                    timestamp: new Date().getTime()
+                }
+            } : {
+                isSuccess: params.isSuccess,
+                timestamp: new Date().getTime()
+            }
+            await this.update(params.card_contract_id, JSON.stringify(data))
+        } else {
+            const data = {
+                [params.LYFCycleStage]: params.subTask ? {
+                    [params.subTask]: {
+                        isSuccess: params.isSuccess,
+                        timestamp: new Date().getTime()
+                    }
+                } : {
+                    isSuccess: params.isSuccess,
+                    timestamp: new Date().getTime()
+                }
+            }
+            await this.create(params.card_contract_id, JSON.stringify(data))
+        }
     }
 }
 

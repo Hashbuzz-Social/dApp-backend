@@ -1,23 +1,54 @@
-import { campaign_twittercard, user_user } from "@prisma/client";
+import { CampaignLog, campaign_twittercard, transactions, user_user } from "@prisma/client";
 import prisma from "@shared/prisma";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import logger from "jet-logger"
+import tweetService from "@services/twitterCard-service"
+import userService from "./user-service";
+import RedisClient from "./redis-servie";
+import moment from "moment";
+import { addMinutesToTime } from "@shared/helper";
+import hederaService from "@services/hedera-service"
+
+export enum LYFCycleStages {
+    CREATED = "status:created",
+    RUNNING = "status:running",
+    PAUSED = "status:paused",
+    COMPLETED = "status:completed",
+    EXPIRED = "status:expired"
+}
 
 enum CmapignStauses {
     REJECTED = "rejected",
     RUNNING = "running",
     COMPLETED = "completed",
-    DELTED = "deleted"
+    DELTED = "deleted",
+    INTERNAL_ERROR = "internalError"
 }
 
 export type CmapignTypes = "HBAR" | "FUNGIBLE"
-export type Card = (campaign_twittercard & { runningCardCount: number })
+
+interface RedisCardStatusUpdate {
+    card_contract_id: string,
+    LYFCycleStage: LYFCycleStages,
+    subTask?: string
+    isSuccess?: boolean,
+}
+
+type TransactionRecord = NonNullable<Omit<transactions, "id" | "created_at" | "network">>
 
 class CampaignLifeCycle {
-    private campaignCard: Card | null = null;
+    private campaignCard: campaign_twittercard | null = null;
     private cardOwner: user_user | null = null;
+    private tweetId: string | null = null;
+    private lastThreadId: string | null = null;
+    private redisClient: RedisClient;
+    private campaignDurationInMin = 15
+    private runningCardCount = 0
 
-    private constructor() { }
+    private constructor() {
+        this.redisClient = new RedisClient();
+        this.campaignDurationInMin = Number(process.env.CAMPAIGN_DURATION)
+    }
 
     static async create(id: number | bigint): Promise<CampaignLifeCycle> {
         const instance = new CampaignLifeCycle();
@@ -46,7 +77,8 @@ class CampaignLifeCycle {
             });
 
             const { user_user, ...rest } = card;
-            this.campaignCard = { ...rest, runningCardCount };
+            this.campaignCard = { ...rest };
+            this.runningCardCount = runningCardCount
             if (user_user) {
                 this.cardOwner = user_user;
             } else {
@@ -58,17 +90,25 @@ class CampaignLifeCycle {
         }
     }
 
-    public createNewCampaign() {
+    public createNewCampaignOfTypeHBAR() {
         // Logic for creating a new campaign in the DB
     }
 
 
-    private ensureCampaignCardLoaded(): Card {
+    private ensureCampaignCardLoaded(): campaign_twittercard {
         if (!this.campaignCard) {
             throw new Error("Campaign card data is not loaded");
         }
 
         return this.campaignCard;
+    }
+
+    private ensureCardOwnerDataLoaded(): user_user {
+        if (!this.cardOwner) {
+            throw new Error("Campaign card data is not loaded");
+        }
+
+        return this.cardOwner;
     }
 
 
@@ -85,7 +125,7 @@ class CampaignLifeCycle {
         const card = this.ensureCampaignCardLoaded();
 
         // If there's any running card for the current card user, the campaign is not valid for running.
-        if (Number(card.runningCardCount) > 0) {
+        if (Number(this.runningCardCount) > 0) {
             return { isValid: false, message: "There is a card already in running status" };
         }
 
@@ -119,9 +159,10 @@ class CampaignLifeCycle {
         return { isValid: false, message: "Logic not decided yet" };
     }
 
-    public async makeCardRunning(): Promise<void> {
+    public async makeCardTypeHBARRunning(): Promise<void> {
         try {
             const card = this.ensureCampaignCardLoaded();
+            const cardOwner = this.ensureCardOwnerDataLoaded();
             const checkIsValidCampaign = this.isCampaignValidForMakeRunning(CmapignStauses.RUNNING, card.type as CmapignTypes);
 
             if (!checkIsValidCampaign.isValid) {
@@ -132,10 +173,17 @@ class CampaignLifeCycle {
 
             // Step 1: Publish first tweet
             try {
-                await this.publishFirstTweet(card);
+                const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
+                if (tweetId) this.tweetId = tweetId;
+                await this.redisClient.updateCmapignCardStatus({
+                    card_contract_id: card.contract_id!,
+                    LYFCycleStage: LYFCycleStages.RUNNING,
+                    isSuccess: true,
+                    subTask: "firstTweetOut",
+                });
                 logger.info(`Successfully published first tweet for card ID: ${card.id}`);
             } catch (error) {
-                logger.error(`Failed to publish first tweet for card ID: ${card.id}`, error);
+                logger.err(`Failed to publish first tweet for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Failed to publish first tweet", error);
                 return;
             }
@@ -145,7 +193,7 @@ class CampaignLifeCycle {
                 await this.performSmartContractTransaction(card);
                 logger.info(`Smart contract transaction successful for card ID: ${card.id}`);
             } catch (error) {
-                logger.error(`Smart contract transaction failed for card ID: ${card.id}`, error);
+                logger.err(`Smart contract transaction failed for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Smart contract transaction failed", error);
                 await this.deleteTweet(card.id); // Attempt to delete the tweet if the transaction fails
                 return;
@@ -156,38 +204,63 @@ class CampaignLifeCycle {
                 await this.updateBalance(card);
                 logger.info(`Balance update successful for card ID: ${card.id}`);
             } catch (error) {
-                logger.error(`Balance update failed for card ID: ${card.id}`, error);
+                logger.err(`Balance update failed for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Balance update failed", error);
                 return;
             }
 
             // Step 4: Publish second tweet thread
             try {
-                await this.publishSecondTweetThread(card);
+                if (this.tweetId) {
+                    this.lastThreadId = await tweetService.publishSecondThread(card, cardOwner, this.tweetId);
+                }
                 logger.info(`Successfully published second tweet thread for card ID: ${card.id}`);
                 // Update the status in Redis
-                await this.updateCampaignStatusInRedis(card.id, "Running:successful");
+                await this.redisClient.updateCmapignCardStatus({
+                    card_contract_id: card.contract_id!,
+                    LYFCycleStage: LYFCycleStages.RUNNING,
+                    isSuccess: true,
+                    subTask: "seconThreadOut"
+                });
             } catch (error) {
-                logger.error(`Failed to publish second tweet thread for card ID: ${card.id}`, error);
+                logger.err(`Failed to publish second tweet thread for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Failed to publish second tweet thread", error);
                 return;
             }
 
             // Step 5: Finalize the process and return success details
+
+            // Step 5(A): Update the database to make card running
+            this.campaignCard = await this.updateDBForRunningStatus(card);
             logger.info(`Campaign card running process completed successfully for card ID: ${card.id}`);
             // Return any necessary details here
 
         } catch (error) {
-            logger.error(`makeCardRunning encountered an error: ${error.message}`);
+            logger.err(`makeCardRunning encountered an error: ${error.message}`);
+            this.redisClient.updateCmapignCardStatus({
+                card_contract_id: this.campaignCard?.contract_id!,
+                LYFCycleStage: LYFCycleStages.RUNNING,
+                isSuccess: false
+            })
             throw error;
         }
     }
 
-    private async publishFirstTweet(card: Card): Promise<void> {
-        // Logic to publish the first tweet
+    private async updateDBForRunningStatus(card: campaign_twittercard): Promise<campaign_twittercard> {
+        const currentTime = moment();
+        return await prisma.campaign_twittercard.update({
+            where: { id: card.id },
+            data: {
+                tweet_id: this.tweetId,
+                last_thread_tweet_id: this.lastThreadId,
+                card_status: "Running",
+                campaign_start_time: currentTime.toISOString(),
+                campaign_close_time: addMinutesToTime(currentTime.toISOString(), this.campaignDurationInMin)
+            },
+        });
     }
 
-    private async performSmartContractTransaction(card: Card): Promise<void> {
+    private async performSmartContractTransaction(card: campaign_twittercard): Promise<void> {
         if (card.contract_id && card.campaign_budget && this.cardOwner?.hedera_wallet_id) {
             await allocateBalanceToCampaign(
                 card.id,
@@ -200,33 +273,59 @@ class CampaignLifeCycle {
         }
     }
 
-    private async updateBalance(card: Card): Promise<void> {
-        // Logic to update the balance
-    }
-
-    private async publishSecondTweetThread(card: Card): Promise<void> {
-        // Logic to publish the second tweet thread
-    }
-
-    private async updateCampaignStatusInRedis(campaignId: number | bigint, status: string): Promise<void> {
-        // Logic to update the campaign status in Redis
+    private async updateBalance(card: campaign_twittercard): Promise<void> {
+        if (card.campaign_budget && card.owner_id) {
+            //update balacne for the user from after SM transaction
+            this.cardOwner = await userService.topUp(card.owner_id, card.campaign_budget, "decrement");
+        }
     }
 
     private async handleError(campaignId: number | bigint, message: string, error: any): Promise<void> {
         // Log the error and change the campaign status to "Internal Error"
-        logger.error(`Error for campaign ID ${campaignId}: ${message}`, error);
+        logger.err(`Error for campaign ID ${campaignId}: ${message}`, error);
         // Serialize error message and keep in the DB
-        await prisma.campaign_twittercard.update({
-            where: { id: campaignId },
+
+        await prisma.campaignLog.create({
             data: {
-                card_status: "Internal Error",
-                error_message: JSON.stringify(error.message),
-            },
-        });
+                campaign_id: campaignId,
+                data: JSON.stringify(error),
+                message,
+                status: CmapignStauses.INTERNAL_ERROR
+            }
+        })
+    }
+
+    private async logdCampaignData(params: NonNullable<Omit<CampaignLog, "id" | "timestamp">>) {
+        const { campaign_id, status, data, message } = params;
+        await prisma.campaignLog.create({
+            data: {
+                campaign_id,
+                status,
+                message,
+                data: JSON.parse(JSON.stringify(data))
+            }
+        })
+    }
+
+    private async logTransactionRecordOfTheCampaing(params: TransactionRecord) {
+        const { amount, transaction_type, transaction_id, transaction_data, status } = params
+        const createTranction = prisma.transactions.create({
+            data: {
+                network: hederaService.network,
+                amount,
+                transaction_type,
+                transaction_id,
+                status,
+                transaction_data: JSON.parse(JSON.stringify(transaction_data))
+            }
+        })
+
+
     }
 
     private async deleteTweet(campaignId: number | bigint): Promise<void> {
-        // Logic to delete the tweet
+        // Logic to delete the tweet4
+        logger.warn("Need to recall cammpaign due to error")
     }
 }
 

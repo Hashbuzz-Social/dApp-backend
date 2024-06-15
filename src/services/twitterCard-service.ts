@@ -1,10 +1,10 @@
 /* eslint-disable max-len */
-import { user_user } from "@prisma/client";
+import { campaign_twittercard, user_user } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
-import { Card, CmapignTypes } from "./campaignLyfcycle-service";
+import { CmapignTypes } from "./campaignLyfcycle-service";
 import { provideActiveContract } from "./smartcontract-service";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
 import moment from "moment"
@@ -142,7 +142,7 @@ const publishTweetORThread = async (params: PublishTweetParams) => {
  * @returns string first tweet id to make threds
  */
 
-const publistFirstTweet = async (card: Card, cardOwner: user_user) => {
+const publistFirstTweet = async (card: campaign_twittercard, cardOwner: user_user) => {
   const tweetText = `${card.tweet_text}${card.media[0] ? " " + card.media[0] : ""}`;
   if (tweetText) {
     const tweetId = publishTweetORThread({
@@ -160,7 +160,7 @@ const publistFirstTweet = async (card: Card, cardOwner: user_user) => {
  */
 
 const publishSecondThread = async (
-  card: Card,
+  card: campaign_twittercard,
   cardOwner: user_user,
   parentTweetId: string
 ): Promise<string> => {
