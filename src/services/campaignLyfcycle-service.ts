@@ -175,7 +175,7 @@ class CampaignLifeCycle {
             try {
                 const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
                 if (tweetId) this.tweetId = tweetId;
-                await this.redisClient.updateCmapignCardStatus({
+                await this.redisClient.updateCampaignCardStatus({
                     card_contract_id: card.contract_id!,
                     LYFCycleStage: LYFCycleStages.RUNNING,
                     isSuccess: true,
@@ -237,7 +237,7 @@ class CampaignLifeCycle {
                 }
                 logger.info(`Successfully published second tweet thread for card ID: ${card.id}`);
                 // Update the status in Redis
-                await this.redisClient.updateCmapignCardStatus({
+                await this.redisClient.updateCampaignCardStatus({
                     card_contract_id: card.contract_id!,
                     LYFCycleStage: LYFCycleStages.RUNNING,
                     isSuccess: true,
@@ -258,7 +258,7 @@ class CampaignLifeCycle {
 
         } catch (error) {
             logger.err(`makeCardRunning encountered an error: ${error.message}`);
-            this.redisClient.updateCmapignCardStatus({
+            this.redisClient.updateCampaignCardStatus({
                 card_contract_id: this.campaignCard?.contract_id!,
                 LYFCycleStage: LYFCycleStages.RUNNING,
                 isSuccess: false
