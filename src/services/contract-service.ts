@@ -59,14 +59,18 @@ export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: 
       ).setTransactionMemo(`Fungible token campaign add ${campaign}`);
 
     const addcampaignTx = await addCampaign.execute(hederaClient);
-    const addcampaignRx = await addcampaignTx.getReceipt(hederaClient);
-    const addcampaigncontractId = addcampaignRx.status;
+    const recipt = await addcampaignTx.getReceipt(hederaClient);
+    const status = recipt.status;
 
     console.log(
       " - Add campaign transaction contractId: " +
-      addcampaigncontractId.toString()
+      status.toString()
     );
-    return addcampaigncontractId;
+    return {
+      transactionId: addcampaignTx.transactionId.toString(),
+      recipt,
+      status
+    };;
   }
 }
 

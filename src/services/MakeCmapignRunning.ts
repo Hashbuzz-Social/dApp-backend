@@ -1,18 +1,20 @@
-import CampaignLifeCycleBase, { CampaignStatuses, LYFCycleStages, CampaignTypes } from "./CampaignLifeCycleBase";
+import { campaign_twittercard, user_user, whiteListedTokens } from "@prisma/client";
+import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
-import { campaign_twittercard } from "@prisma/client"
 import tweetService from "@services/twitterCard-service";
+import prisma from "@shared/prisma";
+import logger from "jet-logger";
+import CampaignLifeCycleBase, { CampaignStatuses, LYFCycleStages } from "./CampaignLifeCycleBase";
 import userService from "./user-service";
-import logger from "jet-logger"
-import { CmapignTypes } from "./campaignLyfcycle-service";
 
 class MakeCampaignRunning extends CampaignLifeCycleBase {
+    private tokenData: whiteListedTokens | null = null;
 
     public async makeCardTypeHBARRunning(): Promise<void> {
         try {
             const card = this.ensureCampaignCardLoaded();
             const cardOwner = this.ensureCardOwnerDataLoaded();
-            const checkIsValidCampaign = this.isCampaignValidForMakeRunning(CampaignStatuses.RUNNING, card.type as CampaignTypes);
+            const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatuses.RUNNING);
 
             if (!checkIsValidCampaign.isValid) {
                 throw new Error(checkIsValidCampaign.message);
@@ -64,6 +66,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
             } catch (error) {
                 logger.err(`Smart contract transaction failed for card ID: ${card.id}`, error);
                 await this.handleError(card.id, "Smart contract transaction failed", error);
+                // Pusblished on the x will be deleted
                 await this.deleteTweet(card.id);
                 return;
             }
@@ -129,55 +132,236 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
         }
     }
 
+    protected async updateFungibleBalance(card: campaign_twittercard, cardOwner: user_user) {
+        const { campaign_budget } = card
+        if (campaign_budget && this.tokenData) {
+            return await userService.updateTokenBalanceForUser({
+                amount: campaign_budget,
+                operation: "decrement",
+                token_id: this.tokenData?.id,
+                decimal: Number(this.tokenData?.decimals),
+                user_id: cardOwner?.id,
+            })
+        }
+    };
+
     protected async deleteTweet(campaignId: number | bigint): Promise<void> {
+        // Yet to define the definitions
         logger.warn("Need to recall campaign due to error");
     }
 
-    public isCampaignValidForMakeRunning(
+
+    // checker 
+    public async isCampaignValidForMakeRunning(
         status: string,
-        type: CmapignTypes
-    ): { isValid: boolean; message?: string } {
+    ): Promise<{ isValid: boolean; message?: string }> {
         const card = this.ensureCampaignCardLoaded();
 
-        // If there's any running card for the current card user, the campaign is not valid for running.
+        // Check if there is any running card for the current card user
         if (Number(this.runningCardCount) > 0) {
             return { isValid: false, message: "There is a card already in running status" };
         }
 
-        // Check if the campaign is in the same status as requested.
+        // Common validations
         const inSameStatus = this.isStatusSameAsPerRequested(status);
-        // The campaign content should be approved by the admin.
         const campaignShouldBeApprovedByAdmin = card.approve;
-        // Should have required budget in the account to run the card.
-        const shouldHaveRequiredBudget = Number(this.cardOwner?.available_budget) > Number(card.campaign_budget);
-        // Should have a valid id to be used in contract
-        const card_contract_id = card.contract_id;
+        const hasRequiredBudget = Number(this.cardOwner?.available_budget) >= Number(card.campaign_budget);
+        const hasValidContractId = Boolean(card.contract_id);
 
-        // Check for HBAR type campaign.
-        if (type === "HBAR") {
-            // All conditions must be satisfied for the campaign to be in running state.
-            const isValid = Boolean(!inSameStatus && campaignShouldBeApprovedByAdmin && shouldHaveRequiredBudget && card_contract_id);
+        let message: string | undefined;
 
-            let message;
-            if (inSameStatus) {
-                message = "Campaign already has the same state from before";
-            } else if (!campaignShouldBeApprovedByAdmin) {
-                message = "Admin approval for content is required";
-            } else if (!shouldHaveRequiredBudget) {
-                message = "User available budget is lower than the required campaign budget";
-            } else if (!card_contract_id) {
-                message = "Id for contract is missing in the record."
-            } else {
-                message = "All checks passed";
-            }
-
-            return { isValid, message };
+        // Check if the campaign is already in the requested status
+        if (inSameStatus) {
+            message = "Campaign already has the same state from before";
+            return { isValid: false, message };
         }
 
-        // default case for FUNGIBLE TOKEN TYPE
-        return { isValid: false, message: "Logic not decided yet" };
+        // Check if the campaign is approved by admin
+        if (!campaignShouldBeApprovedByAdmin) {
+            message = "Admin approval for content is required";
+            return { isValid: false, message };
+        }
+
+        // Check if the campaign has a valid contract ID
+        if (!hasValidContractId) {
+            message = "ID for contract is missing in the record.";
+            return { isValid: false, message };
+        }
+
+        // Additional checks based on campaign type
+        if (card.type === "HBAR") {
+            // Check if the user has the required budget
+            if (!hasRequiredBudget) {
+                message = "User available budget is lower than the required campaign budget";
+                return { isValid: false, message };
+            }
+
+            message = "All checks passed";
+            return { isValid: true, message };
+        } else if (card.type === "FUNGIBLE") {
+            const tokenId = card.fungible_token_id;
+
+            // Check if the card has a valid token ID
+            if (!tokenId) {
+                message = "There is no valid token associated with the card";
+                return { isValid: false, message };
+            }
+
+            const campaignerTokenBalance = await this.getUserBalanceOfTokenOfCampaigner(tokenId);
+            const hasSufficientTokenBalance = Number(campaignerTokenBalance.balance) >= Number(card.campaign_budget);
+
+            // Check if the user has sufficient token balance
+            if (!hasSufficientTokenBalance) {
+                message = "Insufficient balance to start the campaign";
+                return { isValid: false, message };
+            }
+
+            message = "All checks passed";
+            return { isValid: true, message };
+        }
+
+        // Default case for unsupported campaign types
+        return { isValid: false, message: "Unsupported campaign type" };
     }
 
+    private async getUserBalanceOfTokenOfCampaigner(tokenId: string) {
+        this.tokenData = await prisma.whiteListedTokens.findUnique({
+            where: { token_id: tokenId },
+        });
+
+        const campaignerBalances = await prisma.user_balances.findFirst({
+            where: {
+                user_id: this.cardOwner?.id,
+                token_id: this.tokenData?.id,
+            },
+        });
+
+        return { balance: Number(campaignerBalances?.entity_balance), decimal: Number(campaignerBalances?.entity_decimal) }
+    }
+
+
+    public async makeFungibleCardRunning() {
+        try {
+            const card = this.ensureCampaignCardLoaded();
+            const cardOwner = this.ensureCardOwnerDataLoaded();
+            const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatuses.RUNNING);
+
+            if (!checkIsValidCampaign.isValid) {
+                throw new Error(checkIsValidCampaign.message);
+            }
+
+            logger.info(`Starting process to make Fungible campaign card running for card ID: ${card.id}`);
+
+            // Step 1: Publish first tweet
+            try {
+                const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
+                if (tweetId) this.tweetId = tweetId;
+                await this.redisClient.updateCampaignCardStatus({
+                    card_contract_id: card.contract_id!,
+                    LYFCycleStage: LYFCycleStages.RUNNING,
+                    isSuccess: true,
+                    subTask: "fungible.firstTweetOut",
+                });
+                logger.info(`Successfully published first tweet for fungible card ID: ${card.id}`);
+            } catch (error) {
+                logger.err(`Failed to publish first tweet for fungible card ID: ${card.id}`, error);
+                await this.handleError(card.id, "Failed to publish first fungible tweet", error);
+                throw error;
+            }
+
+            // Step 2: Perform smart contract transaction
+            try {
+                const transactionDetails = await this.performSmartContractTransactionForFungible(card, cardOwner);
+                logger.info(`Smart contract transaction successful for fungible card ID: ${card.id}`);
+
+                const transactionRecord = await this.createTransactionRecord({
+                    //@ts-ignore
+                    transaction_data: transactionDetails,
+                    transaction_id: transactionDetails?.transactionId ?? "NA",
+                    status: transactionDetails?.status.toString() ?? "Not found",
+                    amount: Number(card.campaign_budget),
+                    transaction_type: "campaign_top_up"
+                });
+
+                await this.logCampaignData({
+                    campaign_id: card.id,
+                    status: CampaignStatuses.RUNNING,
+                    message: `Fungible campaign balance ${card.campaign_budget} is added to the SM Contract`,
+                    data: {
+                        transaction_id: transactionDetails?.transactionId,
+                        status: transactionDetails?.status.toString(),
+                        amount: Number(card.campaign_budget),
+                        transactionLogId: transactionRecord.id.toString()
+                    }
+                });
+            } catch (error) {
+                logger.err(`Smart contract transaction failed for card ID: ${card.id}`, error);
+                await this.handleError(card.id, "Smart contract transaction failed", error);
+                // Pusblished on the x will be deleted
+                await this.deleteTweet(card.id);
+                throw error;
+            }
+
+            // Step 3: Perform balance update operations
+            try {
+                await this.updateFungibleBalance(card, cardOwner)
+                logger.info(`Fungible balance update successful for card ID: ${card.id}`);
+            } catch (error) {
+                logger.err(`Fungible balance update failed for card ID: ${card.id}`, error);
+                await this.handleError(card.id, "Fungible balance update failed", error);
+                throw error;
+            }
+
+            // Step 4: Publish second tweet thread
+            try {
+                if (this.tweetId) {
+                    this.lastThreadId = await tweetService.publishSecondThread(card, cardOwner, this.tweetId);
+                }
+                logger.info(`Successfully published second tweet thread for fungile card ID: ${card.id}`);
+
+                await this.redisClient.updateCampaignCardStatus({
+                    card_contract_id: card.contract_id!,
+                    LYFCycleStage: LYFCycleStages.RUNNING,
+                    isSuccess: true,
+                    subTask: "secondThreadOut"
+                });
+            } catch (error) {
+                logger.err(`Failed to publish second tweet thread for fungible card ID: ${card.id}`, error);
+                await this.handleError(card.id, "Failed to publish  second fungible tweet thread", error);
+                throw error;
+            }
+
+            this.campaignCard = await this.updateDBForRunningStatus(card);
+            logger.info(`Campaign card running process completed successfully for fungible card ID: ${card.id}`);
+        } catch (error) {
+            logger.err(`makeCardRunning encountered an fungible error: ${error.message}`);
+            this.redisClient.updateCampaignCardStatus({
+                card_contract_id: this.campaignCard?.contract_id!,
+                LYFCycleStage: LYFCycleStages.RUNNING,
+                isSuccess: false
+            });
+            throw error;
+        }
+    }
+
+
+    private async performSmartContractTransactionForFungible(card: campaign_twittercard, cardOwner: user_user) {
+        const { fungible_token_id, contract_id, campaign_budget } = card;
+        const { hedera_wallet_id } = cardOwner;
+
+        if (fungible_token_id && contract_id && campaign_budget && hedera_wallet_id) {
+
+            return await addFungibleAndNFTCampaign(
+                fungible_token_id,
+                campaign_budget,
+                hedera_wallet_id,
+                contract_id
+            );
+        } else {
+            throw new Error("Parameter for the uodate balance is missing..")
+        }
+    };
+    /// 
 }
 
 export default MakeCampaignRunning;
