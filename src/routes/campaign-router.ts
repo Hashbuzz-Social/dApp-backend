@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
-import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@controller/Campaign";
+import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleAddNewCampaignNew, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@controller/Campaign";
 import userInfo from "@middleware/userInfo";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
@@ -12,7 +12,8 @@ const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 
 router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, statusUpdateHandler);
 router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
-router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
+// router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
+router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
 router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
 router.get("/card-status", twitterCardStatsData);

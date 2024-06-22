@@ -1,4 +1,5 @@
 /* eslint-disable max-len */
+import CampaignLifeCycleBase, { createCampaignParams } from "@services/CampaignLifeCycleBase";
 import {
   getCampaignDetailsById,
   getRunningCardsOfUserId,
@@ -21,7 +22,7 @@ import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 
-const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT } =
+const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT, CREATED } =
   statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 
@@ -84,7 +85,7 @@ export const statusUpdateHandler = async (
           campaign_data.campaign_budget &&
           campaign_data.user_user?.available_budget &&
           campaign_data.campaign_budget >
-            campaign_data.user_user?.available_budget
+          campaign_data.user_user?.available_budget
         ) {
           // console.log("updated");
           return res
@@ -292,6 +293,33 @@ export const handleCampaignGet = async (
     .json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
 };
 
+export const handleAddNewCampaignNew = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.body && req.currentUser?.id) {
+      const campaign_data = req.body as any as createCampaignParams;
+      const createCampaign = await new CampaignLifeCycleBase().createNewCampaign(campaign_data, req.currentUser?.id)
+      if (createCampaign.error) {
+        return res.status(BAD_REQUEST).json({ createCampaign })
+      } else {
+        return res.status(CREATED).json(createCampaign)
+      }
+    }
+    else throw new ErrorWithCode("Request params is not sufficient", BAD_REQUEST)
+  } catch (err) {
+    next(
+      new ErrorWithCode(
+        "Error while creating new campaign",
+        INTERNAL_SERVER_ERROR
+      )
+    );
+  }
+
+}
+
 export const handleAddNewCampaign = (
   req: Request,
   res: Response,
@@ -427,6 +455,8 @@ export const handleAddNewCampaign = (
     }
   })();
 };
+
+
 
 export const handleCampaignStats = async (
   req: Request,
