@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
-import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@middleware/Campaign";
+import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleCampaignGet, handleCampaignStats, rewardDetails, statusUpdateHandler } from "@controller/Campaign";
 import userInfo from "@middleware/userInfo";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
