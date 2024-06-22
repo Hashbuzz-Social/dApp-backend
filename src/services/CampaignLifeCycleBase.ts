@@ -1,10 +1,14 @@
-import { CampaignLog, campaign_twittercard, transactions, user_user } from "@prisma/client";
+import { CampaignLog, campaign_twittercard, transactions, user_user, whiteListedTokens, Prisma } from "@prisma/client";
 import prisma from "@shared/prisma";
 import logger from "jet-logger"
 import RedisClient from "./redis-servie";
 import moment from "moment";
-import { addMinutesToTime } from "@shared/helper";
+import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
 import hederaService from "@services/hedera-service";
+import { isEmpty } from "lodash";
+import messages from "@shared/messages";
+import { error } from "console";
+import JSONBigInt from "json-bigint";
 
 export enum LYFCycleStages {
     CREATED = "status:created",
@@ -19,7 +23,8 @@ export enum CampaignStatuses {
     RUNNING = "running",
     COMPLETED = "completed",
     DELETED = "deleted",
-    INTERNAL_ERROR = "internalError"
+    INTERNAL_ERROR = "internalError",
+    UNDER_REVIEW = "Under Review"
 }
 
 export type CampaignTypes = "HBAR" | "FUNGIBLE"
@@ -31,6 +36,21 @@ interface RedisCardStatusUpdate {
     isSuccess?: boolean,
 }
 
+export interface createCampaignParams {
+    name: string,
+    tweet_text: string,
+    comment_reward: string,
+    retweet_reward: string,
+    like_reward: string,
+    quote_reward: string,
+    follow_reward: string,
+    campaign_budget: string,
+    media: Array<string>,
+    type: CampaignTypes,
+    fungible_token_id?: string;
+}
+
+
 type TransactionRecord = NonNullable<Omit<transactions, "id" | "created_at" | "network">>
 
 class CampaignLifeCycleBase {
@@ -41,6 +61,7 @@ class CampaignLifeCycleBase {
     protected redisClient: RedisClient;
     protected campaignDurationInMin = 15;
     protected runningCardCount = 0;
+    protected tokenData: whiteListedTokens | null = null;
 
     constructor() {
         this.redisClient = new RedisClient();
@@ -160,6 +181,95 @@ class CampaignLifeCycleBase {
                 transaction_data: JSON.parse(JSON.stringify(transaction_data))
             }
         });
+    }
+
+    protected generateRandomString(length: number) {
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        return Array.from({ length }, () => characters.charAt(Math.floor(Math.random() * characters.length))).join('');
+    };
+
+
+    protected async getRewardsValues(reward: string, type: CampaignTypes, tokenId?: string,) {
+        if (type === "HBAR" && !tokenId) {
+            return convertToTinyHbar(reward);
+        } else {
+            if (!this.tokenData || this.tokenData.id.toString() !== tokenId?.toString()) {
+                this.tokenData = await prisma.whiteListedTokens.findUnique({
+                    where: { token_id: tokenId?.toString() },
+                });
+            }
+
+            return Number(reward) * 10 ** (Number(this.tokenData?.decimals))
+        }
+    };
+
+    public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
+        const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
+
+        const emptyFields = Object.entries(params)
+            .filter(([, value]) => isEmpty(value))
+            .map(([key]) => key);
+
+        if (emptyFields.length > 0) {
+            return {
+                error: true,
+                message: `The following fields are required and should not be empty: ${emptyFields.join(", ")}.`,
+            };
+        }
+
+        if (type === "FUNGIBLE" && !fungible_token_id) {
+            return {
+                error: true,
+                message: `Token id feild should not empty`
+            }
+        }
+
+        const contract_id = this.generateRandomString(20);
+
+
+        try {
+            const campaignData: Prisma.XOR<Prisma.campaign_twittercardCreateInput, Prisma.campaign_twittercardUncheckedCreateInput> = {
+                name,
+                tweet_text,
+                comment_reward: await this.getRewardsValues(comment_reward, type, fungible_token_id),
+                retweet_reward: await this.getRewardsValues(retweet_reward, type, fungible_token_id),
+                like_reward: await this.getRewardsValues(like_reward, type, fungible_token_id),
+                quote_reward: await this.getRewardsValues(quote_reward, type, fungible_token_id),
+                campaign_budget: await this.getRewardsValues(campaign_budget, type, fungible_token_id),
+                card_status: CampaignStatuses.UNDER_REVIEW,
+                amount_spent: 0,
+                amount_claimed: 0,
+                media,
+                approve: false,
+                contract_id,
+                type,
+                owner_id: userId
+            }
+
+            if (type === "FUNGIBLE") {
+                campaignData.fungible_token_id = fungible_token_id?.toString();
+                campaignData.decimals = this.tokenData?.decimals || 0;
+            }
+
+            const newCampaign = await prisma.campaign_twittercard.create({
+                data: { ...campaignData }
+            });
+
+            return {
+                success: true,
+                data: JSONBigInt.parse(
+                    JSONBigInt.stringify(
+                        rmKeyFrmData(newCampaign, ["last_reply_checkedAt", "last_thread_tweet_id", "contract_id"])
+                    )
+                )
+            }
+        } catch (err) {
+            // Report error 
+            logger.err(`Error::  Erroe while creating campaign`)
+
+            // throw error
+            throw err;
+        }
     }
 }
 

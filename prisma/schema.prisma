@@ -71,7 +71,7 @@ model campaign_twittercard {
   amount_claimed            Float?
   amount_spent              Float                       @default(0)
   name                      String?                     @db.VarChar(50)
-  owner_id                  BigInt?
+  owner_id                  BigInt
   card_status               String                      @db.VarChar(50)
   campaign_budget           Float?
   campaign_expiry           DateTime?                   @db.Timestamptz(6)
