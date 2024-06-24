@@ -143,7 +143,10 @@ class CampaignLifeCycleBase {
     }
 
     protected async handleError(campaignId: number | bigint, message: string, error: any): Promise<void> {
-        logger.err(`Error for campaign ID ${campaignId}: ${message}`, error);
+        logger.err(
+            `Error for campaign ID ${campaignId}: ${message}
+            Error::${error}`
+        );
 
         await prisma.campaignLog.create({
             data: {
