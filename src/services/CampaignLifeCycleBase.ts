@@ -1,14 +1,12 @@
-import { CampaignLog, campaign_twittercard, transactions, user_user, whiteListedTokens, Prisma } from "@prisma/client";
-import prisma from "@shared/prisma";
-import logger from "jet-logger"
-import RedisClient from "./redis-servie";
-import moment from "moment";
-import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
+import { CampaignLog, Prisma, campaign_twittercard, transactions, user_user, whiteListedTokens } from "@prisma/client";
 import hederaService from "@services/hedera-service";
-import { isEmpty } from "lodash";
-import messages from "@shared/messages";
-import { error } from "console";
+import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
+import prisma from "@shared/prisma";
+import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
+import { isEmpty } from "lodash";
+import moment from "moment";
+import RedisClient from "./redis-servie";
 
 export enum LYFCycleStages {
     CREATED = "status:created",
@@ -68,8 +66,8 @@ class CampaignLifeCycleBase {
         this.campaignDurationInMin = Number(process.env.CAMPAIGN_DURATION);
     }
 
-    static async create(id: number | bigint): Promise<CampaignLifeCycleBase> {
-        const instance = new CampaignLifeCycleBase();
+    static async create<T extends CampaignLifeCycleBase>(this: new () => T, id: number | bigint): Promise<T> {
+        const instance = new this();
         await instance.loadRequiredData(id);
         return instance;
     }

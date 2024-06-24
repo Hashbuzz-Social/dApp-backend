@@ -6,11 +6,18 @@ import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import CampaignLifeCycleBase, { CampaignStatuses, LYFCycleStages } from "./CampaignLifeCycleBase";
 import userService from "./user-service";
+import JSONBigInt from "json-bigint";
+import { sensitizeUserData } from "@shared/helper";
 
 class MakeCampaignRunning extends CampaignLifeCycleBase {
-    private tokenData: whiteListedTokens | null = null;
 
-    public async makeCardTypeHBARRunning(): Promise<void> {
+
+    public async makeCardRunning() {
+        const card = this.ensureCampaignCardLoaded();
+        return card.type === "HBAR" ? await this.makeCardTypeHBARRunning() : await this.makeFungibleCardRunning();
+    }
+
+    private async makeCardTypeHBARRunning() {
         try {
             const card = this.ensureCampaignCardLoaded();
             const cardOwner = this.ensureCardOwnerDataLoaded();
@@ -102,6 +109,18 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
             this.campaignCard = await this.updateDBForRunningStatus(card);
             logger.info(`Campaign card running process completed successfully for card ID: ${card.id}`);
+
+            // ?? ==>  Make life cycle event it self to success.
+            await this.redisClient.updateCampaignCardStatus({
+                card_contract_id: card.contract_id!,
+                LYFCycleStage: LYFCycleStages.RUNNING,
+                isSuccess: true,
+            });
+            return {
+                success: true,
+                messages: "Cmapaign status is chnaged to running successfully.",
+                user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(cardOwner))),
+            }
         } catch (error) {
             logger.err(`makeCardRunning encountered an error: ${error.message}`);
             this.redisClient.updateCampaignCardStatus({
@@ -240,7 +259,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
     }
 
 
-    public async makeFungibleCardRunning() {
+    private async makeFungibleCardRunning() {
         try {
             const card = this.ensureCampaignCardLoaded();
             const cardOwner = this.ensureCardOwnerDataLoaded();
@@ -264,7 +283,8 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
                 });
                 logger.info(`Successfully published first tweet for fungible card ID: ${card.id}`);
             } catch (error) {
-                logger.err(`Failed to publish first tweet for fungible card ID: ${card.id}`, error);
+                logger.err(`Error::Failed to publish first tweet for fungible card ID: ${card.id}`, error.data.details);
+                logger.err(error);
                 await this.handleError(card.id, "Failed to publish first fungible tweet", error);
                 throw error;
             }
@@ -332,7 +352,20 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
             }
 
             this.campaignCard = await this.updateDBForRunningStatus(card);
+
+            // Make life cycle event it self to success.
+            await this.redisClient.updateCampaignCardStatus({
+                card_contract_id: card.contract_id!,
+                LYFCycleStage: LYFCycleStages.RUNNING,
+                isSuccess: true,
+            });
+
             logger.info(`Campaign card running process completed successfully for fungible card ID: ${card.id}`);
+            return {
+                success: true,
+                messages: "Cmapaign status is chnaged to running successfully.",
+                user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(cardOwner))),
+            }
         } catch (error) {
             logger.err(`makeCardRunning encountered an fungible error: ${error.message}`);
             this.redisClient.updateCampaignCardStatus({

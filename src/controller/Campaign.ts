@@ -1,9 +1,11 @@
 /* eslint-disable max-len */
-import CampaignLifeCycleBase, { createCampaignParams } from "@services/CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CampaignStatuses, createCampaignParams } from "@services/CampaignLifeCycleBase";
+import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import {
   getCampaignDetailsById,
   getRunningCardsOfUserId,
 } from "@services/campaign-service";
+import { CmapignTypes } from "@services/campaignLyfcycle-service";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { claim, getRewardDetails } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";
@@ -20,11 +22,26 @@ import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
-import { isEmpty } from "lodash";
+import { includes, isEmpty } from "lodash";
 
 const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT, CREATED } =
   statuses;
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
+
+export const makeCardRunning = async (req: Request, res: Response, next: NextFunction) => {
+  const campaignId = req.body.card_id as any as number;
+  const requetedCardStatus = req.body.card_status as any as CampaignStatuses
+  if (requetedCardStatus.toLocaleLowerCase() === CampaignStatuses.RUNNING.toLocaleLowerCase()) {
+    try {
+      // ?.. Call the method of running campaign of Campaign:Ifecycle memthod.
+      const runningCampaign = await MakeCampaignRunning.create(campaignId);
+      const data = await runningCampaign.makeCardRunning();
+      return res.status(CREATED).json(data);
+    } catch (err) {
+      next(err)
+    }
+  }
+}
 
 export const statusUpdateHandler = async (
   req: Request,
