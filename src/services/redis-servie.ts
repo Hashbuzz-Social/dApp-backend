@@ -22,7 +22,7 @@ class RedisClient {
 
     constructor() {
         // URL for Redis running in a Docker container on localhost
-        const redisUrl = 'redis://localhost:6739';
+        const redisUrl = 'redis://localhost:6379';
 
         this.client = createClient({ url: redisUrl });
         this.client.on('error', (err) => {

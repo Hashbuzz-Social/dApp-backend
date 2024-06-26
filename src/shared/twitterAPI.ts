@@ -7,8 +7,8 @@ TwitterApiV2Settings.debug = true;
 
 TwitterApiV2Settings.logger = {
   log: (msg, payload) => {
-    logger.err(msg);
-    logger.info(payload);
+    logger.info(msg);
+    logger.warn(JSON.stringify(payload));
   }
 };
 

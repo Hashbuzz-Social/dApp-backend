@@ -143,7 +143,7 @@ export const allocateBalanceToCampaign = async (
   campaignAddress: string
 ): Promise<{ contract_id: string; transactionId: string; receipt: any  , status:string}> => {
   logger.info("=========== AllocateBalanceToCampaign ===============");
-  logger.info(`Start for campaign: ${JSON.stringify({ campaignId, campaignAddress })}`);
+  logger.info(`Start for campaign: ${JSONBigInt.stringify({ campaignId, campaignAddress })}`);
 
   try {
     const contractDetails = await provideActiveContract();

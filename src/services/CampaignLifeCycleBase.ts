@@ -165,7 +165,7 @@ class CampaignLifeCycleBase {
                 campaign_id,
                 status,
                 message,
-                data: JSON.parse(JSON.stringify(data))
+                data: JSONBigInt.parse(JSONBigInt.stringify(data))
             }
         });
     }
@@ -179,7 +179,7 @@ class CampaignLifeCycleBase {
                 transaction_type,
                 transaction_id,
                 status,
-                transaction_data: JSON.parse(JSON.stringify(transaction_data))
+                transaction_data: JSONBigInt.parse(JSONBigInt.stringify(transaction_data))
             }
         });
     }
