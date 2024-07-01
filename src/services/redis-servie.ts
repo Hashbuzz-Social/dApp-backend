@@ -8,7 +8,7 @@ interface RedisCardStatusUpdate {
     isSuccess: boolean,
 }
 
-interface CampaignCardData {
+export interface CampaignCardData {
     [key: string]: any; // Replace `any` with a more specific type if known
 }
 
@@ -63,7 +63,7 @@ class RedisClient {
     public async updateCampaignCardStatus(params: RedisCardStatusUpdate) {
         try {
             const cardData = await this.read(params.card_contract_id);
-            const data = cardData ? JSON.parse(cardData) : {};
+            const data = cardData ?? {};
             this.updateData(data, params);
             await this.update(params.card_contract_id, JSON.stringify(data));
         } catch (error) {
@@ -90,6 +90,7 @@ class RedisClient {
     public async readCampaignCardStatus(card_contract_id: string): Promise<CampaignCardData | null> {
         try {
             const cardData = await this.read(card_contract_id);
+            console.log(cardData);
             return cardData ? JSON.parse(cardData) : null;
         } catch (error) {
             console.error('Error reading campaign card status:', error);

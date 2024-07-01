@@ -4,6 +4,7 @@ import {
   handleGetAllCard,
   handleGetAllCardPendingCards,
   handleGetAllWLToken,
+  handleGetCmapingLogs,
   handleTokenInfoReq,
   handleUpdateCard,
   handleUpdatePasswordReq,
@@ -92,15 +93,7 @@ router.post("/token-info", body("tokenId").custom(checkWalletFormat), checkErrRe
  * @validator checkErrResponse
  * @handler handleWhiteListToken
  */
-router.post(
-  "/list-token",
-  body("token_id").custom(checkWalletFormat),
-  body("tokendata").isString(),
-  body("token_type").isString(),
-  checkErrResponse,
-  userInfo.getCurrentUserInfo,
-  handleWhiteListToken
-);
+router.post("/list-token", body("token_id").custom(checkWalletFormat), body("tokendata").isString(), body("token_type").isString(), checkErrResponse, userInfo.getCurrentUserInfo, handleWhiteListToken);
 
 /**
  * Get all listed tokens.
@@ -117,5 +110,8 @@ router.get("/listed-tokens", handleGetAllWLToken);
  * @handler handleActiveContractInfoReq
  */
 router.get("/active-contract", handleActiveContractInfoReq);
+4;
+
+router.get("/campaign-logs/:id", handleGetCmapingLogs);
 
 export default router;

@@ -2,7 +2,7 @@ import { associateTokentoContract } from "@services/contract-service";
 import htsServices from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
-import htsService from "@services/hts-services"
+import htsService from "@services/hts-services";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
@@ -11,6 +11,7 @@ import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
+import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
 
 const { OK, BAD_REQUEST } = statuses;
 // const { associateTokenToContract } = htsServices;
@@ -36,15 +37,14 @@ export const handleUpdateCard = async (req: Request, res: Response) => {
   const id = req.body.id as number;
 
   const data = await twitterCardService.updateStatus(id, approve);
-  return res.status(OK).json({message :"Status updated successfully", data:JSONBigInt.parse(JSONBigInt.stringify(data))});
+  return res.status(OK).json({ message: "Status updated successfully", data: JSONBigInt.parse(JSONBigInt.stringify(data)) });
 };
 
-
 export const handleUpdatePasswordReq = async (req: Request, res: Response, next: NextFunction) => {
-  const { password, oldPassword }: { password: string; oldPassword?: string; } = req.body;
+  const { password, oldPassword }: { password: string; oldPassword?: string } = req.body;
 
   if (req.currentUser?.salt && req.currentUser.hash && isEmpty(oldPassword)) {
-    next(new ErrorWithCode("without old password password reset is not allowed", BAD_REQUEST))
+    next(new ErrorWithCode("without old password password reset is not allowed", BAD_REQUEST));
   }
 
   // Update normal password.
@@ -54,7 +54,7 @@ export const handleUpdatePasswordReq = async (req: Request, res: Response, next:
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const matchOldPassword = passwordService.validPassword(oldPassword, req.currentUser.salt, req.currentUser.hash);
     //!! if not matched throw error
-    if (!matchOldPassword) next(new ErrorWithCode("Old password is not matching", BAD_REQUEST))
+    if (!matchOldPassword) next(new ErrorWithCode("Old password is not matching", BAD_REQUEST));
 
     //old password is match now generate salt and hash for given password.
     const { salt, hash } = passwordService.createPassword(password);
@@ -130,37 +130,37 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
   const decimals = req.body.decimals as number;
 
   const contractDetails = await provideActiveContract();
-  const tokenData =  await htsService.getTokenDetails(tokenId)
+  const tokenData = await htsService.getTokenDetails(tokenId);
   if (userId && contractDetails?.contract_id && tokenId) {
-    const token = await prisma.whiteListedTokens.findUnique({where:{token_id:tokenId}}) 
-    if(token) {
+    const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
+    if (token) {
       return res.status(BAD_REQUEST).json({ message: "Token already associated" });
-    } else {      
-          await associateTokentoContract(tokenId)
-          // await associateTokenToContract(tokenId);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          const newToken = await prisma.whiteListedTokens.upsert({
-            where: { token_id: tokenId },
-            create: {
-              name: tokenInfo.name,
-              token_id: tokenId,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-ignore
-              tokendata: tokenData,
-              token_type,
-              added_by: userId,
-              token_symbol,
-              decimals,
-              contract_id: contractDetails.contract_id.toString(),
-            },
-            update: {
-              token_id: tokenId,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-ignore
-              tokendata: tokenInfo,
-            },
-          });
-          return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(newToken)) });
+    } else {
+      await associateTokentoContract(tokenId);
+      // await associateTokenToContract(tokenId);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const newToken = await prisma.whiteListedTokens.upsert({
+        where: { token_id: tokenId },
+        create: {
+          name: tokenInfo.name,
+          token_id: tokenId,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          //@ts-ignore
+          tokendata: tokenData,
+          token_type,
+          added_by: userId,
+          token_symbol,
+          decimals,
+          contract_id: contractDetails.contract_id.toString(),
+        },
+        update: {
+          token_id: tokenId,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          //@ts-ignore
+          tokendata: tokenInfo,
+        },
+      });
+      return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(newToken)) });
     }
   }
   return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
@@ -192,4 +192,19 @@ export const handleActiveContractInfoReq = async (_: Request, res: Response, nex
   const info = await getSMInfo();
   if (info) return res.status(OK).json(info);
   return res.status(BAD_REQUEST).json({ error: true });
+};
+
+export const handleGetCmapingLogs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const cmapignId = req.params.id as any as number;
+    const instance = await CampaignLifeCycleBase.create(cmapignId);
+    const data = await instance.getLogsOfTheCampaign();
+    res.status(OK).json({
+      success: true,
+      data,
+      message: "Cmapaing logs found successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
 };
