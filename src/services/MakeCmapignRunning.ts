@@ -332,16 +332,6 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
     }
   }
 
-  // Helper method to update campaign status on Redis
-  private async updateCampaignStatus(contractId: string, subTask?: string, isSuccess: boolean = false) {
-    await this.redisClient.updateCampaignCardStatus({
-      card_contract_id: contractId,
-      LYFCycleStage: LYFCycleStages.RUNNING,
-      isSuccess,
-      subTask,
-    });
-  }
-
   // Error handling method
   private async handleErrorWhileRunning(cardId: number | bigint, message: string, error: any) {
     logger.err(

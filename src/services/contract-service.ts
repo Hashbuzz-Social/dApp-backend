@@ -12,6 +12,7 @@ import prisma from "@shared/prisma";
 import BigNumber from "bignumber.js";
 import { provideActiveContract } from "./smartcontract-service";
 const { hederaClient } = hederaService;
+import logger from "jet-logger"
 
 export async function associateTokentoContract(tokenId: string) {
   const contractDetails = await provideActiveContract();
@@ -95,11 +96,13 @@ export async function closeFungibleAndNFTCampaign(tokenId: string | null, user_i
       );
     const closeCampaignTx = await closeCampaign.execute(hederaClient);
     const closeCampaignRx = await closeCampaignTx.getReceipt(hederaClient);
-    const closeCampaigncontractId = closeCampaignRx.status;
+    const closeCampaigncontraStatus = closeCampaignRx.status;
+    const transactionId = closeCampaignTx.transactionId;
 
-    console.log(
-      " - Close campaign transaction status: " + closeCampaigncontractId
-    );
+    const logData = `- Close campaign transaction status: ${closeCampaigncontraStatus}`;
+    console.log(logData);
+    logger.info(logData);
+    return {staus:closeCampaigncontraStatus , transactionId}
   }
 
 }

@@ -276,6 +276,16 @@ class CampaignLifeCycleBase {
     }
     return { redisLog, campaignLogData };
   }
+
+  // Helper method to update campaign status on Redis
+  protected async updateCampaignStatus(contractId: string, subTask?: string, isSuccess: boolean = false , LYFCycleStage:LYFCycleStages = LYFCycleStages.RUNNING) {
+    await this.redisClient.updateCampaignCardStatus({
+      card_contract_id: contractId,
+      LYFCycleStage: LYFCycleStages.RUNNING,
+      isSuccess,
+      subTask,
+    });
+  }
 }
 
 export default CampaignLifeCycleBase;

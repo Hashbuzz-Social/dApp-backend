@@ -414,5 +414,6 @@ export default {
   getAllTwitterCardPendingCards,
   updateStatus,
   publistFirstTweet,
-  publishSecondThread
+  publishSecondThread,
+  publishTweetORThread
 } as const;
