@@ -16,32 +16,32 @@ const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
 class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   protected date = new Date();
-  private hasValidAccessTokens(card_owner: user_user): boolean {
-    return !!(card_owner && card_owner.business_twitter_access_token && card_owner.business_twitter_access_token_secret);
+
+  private hasValidAccessTokens(cardOwner: user_user): boolean {
+    return !!(cardOwner && cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret);
   }
 
   public async performCloseCampaign() {
     const card = this.ensureCampaignCardLoaded();
     const cardOwner = this.ensureCardOwnerDataLoaded();
 
-    let data: { card: Object; message: string } = { card: {}, message: "" }; // Default initialization
-
-    if (this.hasValidAccessTokens(cardOwner)) {
-      logger.info(`close campaign operation:::start For id: ${card.id} and NAME:: ${card.name ?? ""} ${card.contract_id!}`);
-      // const campaignExpiry = addMinutesToTime(this.date.toISOString(), claimDuration);
-      if (card.type === "HBAR") {
-        data = await this.handleHBARCmapignClosing(card, cardOwner);
-      } else if (card.type === "FUNGIBLE") {
-        data = await this.handleFungibleCampaignClosing(card, cardOwner);
-      } else {
-        throw new Error("Unsupported card type"); // Optional: handle unexpected card types
-      }
-
-      this.scheduleRewardDistribution(card);
-      return data;
-    } else {
-      throw new Error("Invalid access tokens"); // Optional: handle cases where the user does not have valid access tokens
+    if (!this.hasValidAccessTokens(cardOwner)) {
+      throw new Error("Invalid access tokens");
     }
+
+    logger.info(`close campaign operation:::start For id: ${card.id} and NAME:: ${card.name ?? ""} ${card.contract_id!}`);
+
+    let data: { card: Object; message: string };
+    if (card.type === "HBAR") {
+      data = await this.handleHBARCmapignClosing(card, cardOwner);
+    } else if (card.type === "FUNGIBLE") {
+      data = await this.handleFungibleCampaignClosing(card, cardOwner);
+    } else {
+      throw new Error("Unsupported card type");
+    }
+
+    this.scheduleRewardDistribution(card);
+    return data;
   }
 
   private async updateCampaignCardToComplete(id: number | bigint, campaignExpiryTimestamp: string, last_thread_tweet_id: string) {
@@ -64,15 +64,15 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
   private async makeSMTransactionForCloseHBARCampaign(card: campaign_twittercard) {
     if (card.id && card.contract_id) {
-      logger.info("Sm tranaction for close campaign operation HBAR::" + card.id);
+      logger.info("Sm transaction for close campaign operation HBAR::" + card.id);
       return await closeCampaignSMTransaction(card.id, card.contract_id);
     }
-    throw new Error("Somethig error with card data.");
+    throw new Error("Something went wrong with card data.");
   }
 
-  private async makeSMTransactionForCloseFUNGIBLECmapign(card: campaign_twittercard) {
+  private async makeSMTransactionForCloseFUNGIBLECampaign(card: campaign_twittercard) {
     if (card.owner_id && card.contract_id) {
-      logger.info("Sm tranaction for close campaign operation FUBGIBLE::" + card.id);
+      logger.info("Sm transaction for close campaign operation FUNGIBLE::" + card.id);
       return closeFungibleAndNFTCampaign(card.fungible_token_id, card.owner_id.toString(), card.contract_id?.toString());
     }
   }
@@ -82,91 +82,84 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     scheduleJob(expiryDate, () => {
       perFormCampaignExpiryOperation(cardId, contract_id);
     });
-    logger.info(`Reward expry timestamp for cmapaign id::{${cardId}} scheduled at:: { ${expiryDate.toISOString()}.`);
+    logger.info(`Reward expiry timestamp for campaign id::{${cardId}} scheduled at:: { ${expiryDate.toISOString()}}.`);
   }
 
   private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: user_user) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
-    //##1  SM Transaction for update the campaign close status and start rewarding;
     try {
-      const transaction = this.makeSMTransactionForCloseHBARCampaign(card);
+      await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "HBAR");
+      return { card: JSONBigInt.parse(JSONBigInt.stringify(this.campaignCard)), message: "Campaign is closed" };
     } catch (err) {
+      await this.handleErrorWhileClosing(card.id, "Failed to close HBAR campaign", err);
       throw err;
     }
-
-    //##2 . update the stats of the engagement on card
-    try {
-      await this.updateTweetEngagements(card.id!, campaignExpiryTimestamp);
-    } catch (error) {
-      throw error;
-    }
-
-    //## 3 This is update the card status for rewarding;
-    try {
-      this.updateTweetEngagements(card.id, campaignExpiryTimestamp);
-    } catch (err) {
-      throw err;
-    }
-
-    // 4. Publish reward announcemnt tweet thred
-
-    const tweetTextHBAR = `Promo ended on ${formattedDateTime(this.date.toISOString())}.Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
-
-    //logger
-    logger.info(`Tweet text with string count:: ${tweetTextHBAR.length} And Content:::=> ${tweetTextHBAR}`);
-
-    const updateThread = await twitterCardService.publishTweetORThread({
-      cardOwner,
-      isThread: true,
-      tweetText: tweetTextHBAR,
-      parentTweetId: card.last_thread_tweet_id!,
-    });
-    this.campaignCard = await this.updateCampaignCardToComplete(card.id, campaignExpiryTimestamp, updateThread);
-    this.scheduleJobForExpiry(card.id, campaignExpiryTimestamp, card.contract_id!);
-
-    return { card: JSONBigInt.parse(JSONBigInt.stringify(this.campaignCard)), message: "Campaign is closed" };
   }
 
   private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: user_user) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
-    //##1  SM Transaction for update the campaign close status and start rewarding;
     try {
-      const transaction = this.makeSMTransactionForCloseFUNGIBLECmapign(card);
+      await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "FUNGIBLE");
+      return { card: JSONBigInt.parse(JSONBigInt.stringify(this.campaignCard)), message: "Campaign is closed" };
     } catch (err) {
+      await this.handleErrorWhileClosing(card.id, "Failed to close Fungible campaign", err);
       throw err;
     }
+  }
 
-    //##2 . update the stats of the engagement on card
+  private async executeCampaignClosingSteps(card: campaign_twittercard, campaignExpiryTimestamp: string, cardOwner: user_user, type: string) {
+    // Step 1: Smart Contract Transaction for campaign close status and start rewarding
     try {
-      await this.updateTweetEngagements(card.id!, campaignExpiryTimestamp);
-    } catch (error) {
-      throw error;
-    }
-
-    //## 3 This is update the card status for rewarding;
-    try {
-      this.updateTweetEngagements(card.id, campaignExpiryTimestamp);
+      logger.info(`Starting Smart Contract transaction to close ${type} campaign for card ID: ${card.id}`);
+      if (type === "HBAR") {
+        await this.makeSMTransactionForCloseHBARCampaign(card);
+      } else {
+        await this.makeSMTransactionForCloseFUNGIBLECampaign(card);
+      }
+      logger.info(`Smart Contract transaction successful for ${type} card ID: ${card.id}`);
+      await this.updateCampaignStatus(card.contract_id!, `${type.toLowerCase()}SMTransaction`, true, LYFCycleStages.COMPLETED);
     } catch (err) {
-      throw err;
+      throw new Error(`Failed to perform Smart Contract transaction for ${type} campaign: ${err.message}`);
     }
 
-    const tweetTextFungible = `Promo ended on  ${formattedDateTime(this.date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
+    // Step 2: Update the engagements of the card for rewarding
+    try {
+      logger.info(`Updating tweet engagements for card ID: ${card.id}`);
+      await this.updateTweetEngagements(card.id, campaignExpiryTimestamp);
+      logger.info(`Successfully updated tweet engagements for card ID: ${card.id}`);
+      await this.updateCampaignStatus(card.contract_id!, "engagementsStatsUpdate", true, LYFCycleStages.COMPLETED);
+    } catch (err) {
+      throw new Error(`Failed to update tweet engagements: ${err.message}`);
+    }
 
-    //logger
-    logger.info(`Tweet text for fungible tweet text string count:: ${tweetTextFungible.length} And Content:::=> ${tweetTextFungible}`);
+    // Step 3: Publish reward announcement tweet thread
+    try {
+      const tweetText = this.getRewardAnnouncementTweetText(card, type);
+      logger.info(`Tweet text for ${type} campaign tweet string count:: ${tweetText.length} And Content:::=> ${tweetText}`);
+      const updateThread = await twitterCardService.publishTweetORThread({
+        cardOwner,
+        isThread: true,
+        tweetText,
+        parentTweetId: card.last_thread_tweet_id!,
+      });
+      this.campaignCard = await this.updateCampaignCardToComplete(card.id, campaignExpiryTimestamp, updateThread);
+      logger.info(`Successfully published reward announcement tweet thread for card ID: ${card.id}`);
+      await this.updateCampaignStatus(card.contract_id!, "publishedTweetThread", true, LYFCycleStages.COMPLETED);
+    } catch (err) {
+      throw new Error(`Failed to publish reward announcement tweet thread: ${err.message}`);
+    }
 
-    const updateThread = await twitterCardService.publishTweetORThread({
-      cardOwner,
-      isThread: true,
-      tweetText: tweetTextFungible,
-      parentTweetId: card.last_thread_tweet_id!,
-    });
-    this.campaignCard = await this.updateCampaignCardToComplete(card.id, campaignExpiryTimestamp, updateThread);
     this.scheduleJobForExpiry(card.id, campaignExpiryTimestamp, card.contract_id!);
+    logger.info(`Scheduled job for expiry for card ID: ${card.id}`);
+  }
 
-    return { card: JSONBigInt.parse(JSONBigInt.stringify(this.campaignCard)), message: "Campaign is closed" };
+  private getRewardAnnouncementTweetText(card: campaign_twittercard, type: string): string {
+    if (type === "HBAR") {
+      return `Promo ended on ${formattedDateTime(this.date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
+    }
+    return `Promo ended on ${formattedDateTime(this.date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
   }
 
   private scheduleRewardDistribution = (card: campaign_twittercard) => {
@@ -177,13 +170,9 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     });
   };
 
-  // Error handling method
   private async handleErrorWhileClosing(cardId: number | bigint, message: string, error: any) {
-    logger.err(
-      `${message} for card ID: ${cardId} 
-              Error::: ${error}`
-    );
-    await this.updateCampaignStatus(this.campaignCard?.contract_id!, undefined, false , LYFCycleStages.COMPLETED);
+    logger.err(`${message} for card ID: ${cardId}. Error::: ${error}`);
+    await this.updateCampaignStatus(this.campaignCard?.contract_id!, undefined, false, LYFCycleStages.COMPLETED);
     await this.handleError(this.campaignCard?.id!, message, error);
     throw new Error(`${message}: ${error.message}`);
   }
