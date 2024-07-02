@@ -17,10 +17,20 @@ const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   protected date = new Date();
 
+  /**
+   * Check if the card owner has valid access tokens.
+   * @param {user_user} cardOwner - The owner of the card.
+   * @returns {boolean} True if the owner has valid access tokens, false otherwise.
+   */
   private hasValidAccessTokens(cardOwner: user_user): boolean {
     return !!(cardOwner && cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret);
   }
 
+  /**
+   * Perform the close campaign operation based on the type of card.
+   * @returns {Promise<{ card: Object; message: string }>} The result of the close campaign operation.
+   * @throws Will throw an error if the card type is unsupported or if the user has invalid access tokens.
+   */
   public async performCloseCampaign() {
     const card = this.ensureCampaignCardLoaded();
     const cardOwner = this.ensureCardOwnerDataLoaded();
@@ -44,6 +54,13 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     return data;
   }
 
+  /**
+   * Update the campaign card status to complete.
+   * @param {number | bigint} id - The ID of the campaign card.
+   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
+   * @param {string} last_thread_tweet_id - The ID of the last thread tweet.
+   * @returns {Promise<campaign_twittercard>} The updated campaign card.
+   */
   private async updateCampaignCardToComplete(id: number | bigint, campaignExpiryTimestamp: string, last_thread_tweet_id: string) {
     return await prisma.campaign_twittercard.update({
       where: { id },
@@ -55,29 +72,56 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     });
   }
 
+  /**
+   * Update the tweet engagements with the given expiry timestamp.
+   * @param {number | bigint} id - The ID of the tweet.
+   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
+   * @returns {Promise<void>} A promise that resolves when the update is complete.
+   */
   private async updateTweetEngagements(id: number | bigint, campaignExpiryTimestamp: string) {
-    return await prisma.campaign_tweetengagements.updateMany({
+    await prisma.campaign_tweetengagements.updateMany({
       where: { tweet_id: id },
       data: { exprired_at: campaignExpiryTimestamp },
     });
   }
 
+  /**
+   * Perform a smart contract transaction to close an HBAR campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @returns {Promise<void>} A promise that resolves when the transaction is complete.
+   * @throws Will throw an error if card data is invalid.
+   */
   private async makeSMTransactionForCloseHBARCampaign(card: campaign_twittercard) {
     if (card.id && card.contract_id) {
       logger.info("Sm transaction for close campaign operation HBAR::" + card.id);
-      return await closeCampaignSMTransaction(card.id, card.contract_id);
+      await closeCampaignSMTransaction(card.id, card.contract_id);
+    } else {
+      throw new Error("Something went wrong with card data.");
     }
-    throw new Error("Something went wrong with card data.");
   }
 
+  /**
+   * Perform a smart contract transaction to close a fungible campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @returns {Promise<void>} A promise that resolves when the transaction is complete.
+   * @throws Will throw an error if card data is invalid.
+   */
   private async makeSMTransactionForCloseFUNGIBLECampaign(card: campaign_twittercard) {
     if (card.owner_id && card.contract_id) {
       logger.info("Sm transaction for close campaign operation FUNGIBLE::" + card.id);
-      return closeFungibleAndNFTCampaign(card.fungible_token_id, card.owner_id.toString(), card.contract_id?.toString());
+      await closeFungibleAndNFTCampaign(card.fungible_token_id, card.owner_id.toString(), card.contract_id?.toString());
+    } else {
+      throw new Error("Something went wrong with card data.");
     }
   }
 
-  private async scheduleJobForExpiry(cardId: number | bigint, campaignExpiryTimestamp: string, contract_id: string) {
+  /**
+   * Schedule a job to handle campaign expiry.
+   * @param {number | bigint} cardId - The ID of the campaign card.
+   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
+   * @param {string} contract_id - The ID of the contract.
+   */
+  private scheduleJobForExpiry(cardId: number | bigint, campaignExpiryTimestamp: string, contract_id: string) {
     const expiryDate = new Date(campaignExpiryTimestamp);
     scheduleJob(expiryDate, () => {
       perFormCampaignExpiryOperation(cardId, contract_id);
@@ -85,6 +129,13 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     logger.info(`Reward expiry timestamp for campaign id::{${cardId}} scheduled at:: { ${expiryDate.toISOString()}}.`);
   }
 
+  /**
+   * Handle closing an HBAR campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @param {user_user} cardOwner - The owner of the card.
+   * @returns {Promise<{ card: Object; message: string }>} The result of the close campaign operation.
+   * @throws Will throw an error if any step in the process fails.
+   */
   private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: user_user) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
@@ -97,6 +148,13 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     }
   }
 
+  /**
+   * Handle closing a fungible campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @param {user_user} cardOwner - The owner of the card.
+   * @returns {Promise<{ card: Object; message: string }>} The result of the close campaign operation.
+   * @throws Will throw an error if any step in the process fails.
+   */
   private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: user_user) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
@@ -109,6 +167,14 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     }
   }
 
+  /**
+   * Execute the steps required to close a campaign and initiate reward distribution.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
+   * @param {user_user} cardOwner - The owner of the card.
+   * @param {string} type - The type of the campaign (e.g., "HBAR", "FUNGIBLE").
+   * @throws Will throw an error if any step in the process fails.
+   */
   private async executeCampaignClosingSteps(card: campaign_twittercard, campaignExpiryTimestamp: string, cardOwner: user_user, type: string) {
     // Step 1: Smart Contract Transaction for campaign close status and start rewarding
     try {
@@ -136,8 +202,9 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
     // Step 3: Publish reward announcement tweet thread
     try {
-      const tweetText = this.getRewardAnnouncementTweetText(card, type);
-      logger.info(`Tweet text for ${type} campaign tweet string count:: ${tweetText.length} And Content:::=> ${tweetText}`);
+      const tweetText = this.getRewardAnnouncementTweetText(type, campaignExpiryTimestamp, card);
+      logger.info(`Tweet text for ${type} tweet string count:: ${tweetText.length} And Content:::=> ${tweetText}`);
+
       const updateThread = await twitterCardService.publishTweetORThread({
         cardOwner,
         isThread: true,
@@ -155,23 +222,45 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     logger.info(`Scheduled job for expiry for card ID: ${card.id}`);
   }
 
-  private getRewardAnnouncementTweetText(card: campaign_twittercard, type: string): string {
+  /**
+   * Generate the reward announcement tweet text.
+   * @param {string} type - The type of the campaign (e.g., "HBAR", "FUNGIBLE").
+   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   * @returns {string} The generated tweet text.
+   */
+  private getRewardAnnouncementTweetText(type: string, campaignExpiryTimestamp: string, card: campaign_twittercard): string {
     if (type === "HBAR") {
-      return `Promo ended on ${formattedDateTime(this.date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
+      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
+    } else {
+      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
     }
-    return `Promo ended on ${formattedDateTime(this.date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
   }
 
-  private scheduleRewardDistribution = (card: campaign_twittercard) => {
+  /**
+   * Schedule the reward distribution for the campaign.
+   * @param {campaign_twittercard} card - The campaign card.
+   */
+  private scheduleRewardDistribution(card: campaign_twittercard) {
     const rewardDistributeTime = new Date(addMinutesToTime(this.date.toISOString(), 1));
     scheduleJob(rewardDistributeTime, () => {
       logger.info("Reward distribution scheduled at::" + rewardDistributeTime.toISOString());
       performAutoRewardingForEligibleUser(card.id);
     });
-  };
+  }
 
+  /**
+   * Handle errors that occur while closing a campaign.
+   * @param {number | bigint} cardId - The ID of the campaign card.
+   * @param {string} message - The error message.
+   * @param {any} error - The error object.
+   * @throws Will throw a new error with the provided message and original error.
+   */
   private async handleErrorWhileClosing(cardId: number | bigint, message: string, error: any) {
-    logger.err(`${message} for card ID: ${cardId}. Error::: ${error}`);
+    logger.err(
+      `${message} for card ID: ${cardId} 
+              Error::: ${error}`
+    );
     await this.updateCampaignStatus(this.campaignCard?.contract_id!, undefined, false, LYFCycleStages.COMPLETED);
     await this.handleError(this.campaignCard?.id!, message, error);
     throw new Error(`${message}: ${error.message}`);
