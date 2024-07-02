@@ -12,6 +12,7 @@ import hederaService from "./hedera-service";
 import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
+import CloseCmapignLyfCycle from "./CloseCampaign";
 
 const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
@@ -66,6 +67,12 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
   });
 };
 
+export const completeCampaignOperation = async (card: campaign_twittercard) => {
+  const closeCmapaign = await CloseCmapignLyfCycle.create(card.id);
+  const data = await closeCmapaign.performCloseCampaign();
+  return data;
+};
+
 /******
  *@description Sole function for closing the campaign end to end.
  * 1. Get all campaign engagement from tweeter and update in to local DB.
@@ -85,7 +92,7 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
 //   timeZoneName: 'short',
 // }).format(currentDate);
 
-export const completeCampaignOperation = async (card: campaign_twittercard) => {
+export const completeCampaignOperationEX = async (card: campaign_twittercard) => {
   const { id, name, tweet_id, last_thread_tweet_id, type, fungible_token_id, contract_id } = card;
   const card_owner = await prisma.user_user.findUnique({
     where: { id: card.owner_id! },
@@ -115,7 +122,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
         const tweetTextHBAR = `Promo ended on ${formattedDateTime(date.toISOString())}.Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
 
         console.log({ tweetTextHBAR });
-        logger.info(`tweetTextHBAR:::${tweetTextHBAR}` , true)
+        logger.info(`tweetTextHBAR:::${tweetTextHBAR}`, true);
         const updateThread = await tweeterApi.v2.reply(tweetTextHBAR, last_thread_tweet_id!);
 
         await Promise.all([
@@ -155,7 +162,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
       // eslint-disable-next-line max-len
       const tweetTextFungible = `Promo ended on  ${formattedDateTime(date.toISOString())}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${fungible_token_id ?? ""} to your wallet.`;
       console.log({ tweetTextFungible });
-      logger.info(`tweetTextHBAR:::${tweetTextFungible}` , true)
+      logger.info(`tweetTextHBAR:::${tweetTextFungible}`, true);
       try {
         const updateThread = await tweeterApi.v2.reply(tweetTextFungible, last_thread_tweet_id!);
 
@@ -253,10 +260,10 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
 
       try {
         // eslint-disable-next-line max-len
-        const expiryCampaignText = `Reward allocation concluded on ${formattedDateTime(date.toISOString())}.A total of ${((amount_claimed ?? 0) / 1e8).toFixed(2)} HBAR was given out for this promo.`
+        const expiryCampaignText = `Reward allocation concluded on ${formattedDateTime(date.toISOString())}.A total of ${((amount_claimed ?? 0) / 1e8).toFixed(2)} HBAR was given out for this promo.`;
 
-        console.log({expiryCampaignText})
-        logger.info(`Expiry Campaign HBAR Tweet::${expiryCampaignText}`)
+        console.log({ expiryCampaignText });
+        logger.info(`Expiry Campaign HBAR Tweet::${expiryCampaignText}`);
 
         await userTweeterApi.v2.reply(expiryCampaignText, last_thread_tweet_id!);
       } catch (error) {
@@ -284,11 +291,12 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
 
       try {
         // eslint-disable-next-line max-len
-        const expiryCampaignToken =  `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${((amount_claimed ?? 0) / 10 ** Number(decimals)).toFixed(2)} ${token?.token_symbol ?? "HBAR"} was given out for this promo.`
-        console.log({expiryCampaignToken})
-        logger.info(`Expiry Campaign Token Tweet::${expiryCampaignToken}`)
-        
-        await userTweeterApi.v2.reply(expiryCampaignToken,
+        const expiryCampaignToken = `Reward allocation concluded on ${formattedDateTime(date.toISOString())}. A total of ${((amount_claimed ?? 0) / 10 ** Number(decimals)).toFixed(2)} ${token?.token_symbol ?? "HBAR"} was given out for this promo.`;
+        console.log({ expiryCampaignToken });
+        logger.info(`Expiry Campaign Token Tweet::${expiryCampaignToken}`);
+
+        await userTweeterApi.v2.reply(
+          expiryCampaignToken,
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           last_thread_tweet_id!
         );
