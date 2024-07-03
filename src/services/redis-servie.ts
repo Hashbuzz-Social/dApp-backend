@@ -18,7 +18,7 @@ interface TaskStatus {
 }
 
 class RedisClient {
-    private client: RedisClientType;
+    public client: RedisClientType;
 
     constructor() {
         // URL for Redis running in a Docker container on localhost
