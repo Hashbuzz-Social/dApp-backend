@@ -1,3 +1,4 @@
+// RedisClient.ts
 import { createClient, RedisClientType } from 'redis';
 import { LYFCycleStages } from './campaignLyfcycle-service';
 
@@ -21,8 +22,7 @@ class RedisClient {
     public client: RedisClientType;
 
     constructor() {
-        // URL for Redis running in a Docker container on localhost
-        const redisUrl = 'redis://localhost:6379';
+        const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
         this.client = createClient({ url: redisUrl });
         this.client.on('error', (err) => {
@@ -36,25 +36,34 @@ class RedisClient {
         }
     }
 
-    // Create a new record
+    public async checkConnection() {
+        try {
+            await this.connectIfNeeded();
+            await this.client.set('connection_test', 'ok');
+            const result = await this.client.get('connection_test');
+            if (result !== 'ok') throw new Error('Redis connection test failed');
+            await this.client.del('connection_test');
+            await this.client.set('server_run_at', new Date().toISOString());
+        } catch (error) {
+            throw new Error('Failed to connect to Redis');
+        }
+    }
+
     async create(key: string, value: string): Promise<void> {
         await this.connectIfNeeded();
         await this.client.set(key, value);
     }
 
-    // Read a record by key
     async read(key: string): Promise<string | null> {
         await this.connectIfNeeded();
         return this.client.get(key);
     }
 
-    // Update a record by key
     async update(key: string, value: string): Promise<void> {
         await this.connectIfNeeded();
         await this.client.set(key, value);
     }
 
-    // Delete a record by key
     async delete(key: string): Promise<void> {
         await this.connectIfNeeded();
         await this.client.del(key);
@@ -63,7 +72,7 @@ class RedisClient {
     public async updateCampaignCardStatus(params: RedisCardStatusUpdate) {
         try {
             const cardData = await this.read(params.card_contract_id);
-            const data = cardData ?? {};
+            const data = cardData ? JSON.parse(cardData) : {};
             this.updateData(data, params);
             await this.update(params.card_contract_id, JSON.stringify(data));
         } catch (error) {
