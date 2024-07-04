@@ -362,7 +362,8 @@ export const handleAddNewCampaign = (
     isEmpty(retweet_reward) ||
     isEmpty(like_reward) ||
     isEmpty(quote_reward) ||
-    isEmpty(campaign_budget)
+    isEmpty(campaign_budget)||
+    isEmpty(req.currentUser?.id)
   ) {
     return res
       .status(BAD_REQUEST)
@@ -385,7 +386,7 @@ export const handleAddNewCampaign = (
         select: { decimals: true },
       });
       // console.log(token, "Token");
-      if (type === "HBAR") {
+      if (type === "HBAR" && req.currentUser?.id) {
         // console.log(result)
         const newCampaign = await prisma.campaign_twittercard.create({
           data: {
@@ -397,7 +398,7 @@ export const handleAddNewCampaign = (
             quote_reward: convertToTinyHbar(quote_reward as string),
             campaign_budget: convertToTinyHbar(campaign_budget as string),
             card_status: "Under Review",
-            owner_id: req.currentUser?.id,
+            owner_id:req.currentUser.id,
             amount_spent: 0,
             amount_claimed: 0,
             type: "HBAR",
@@ -419,7 +420,7 @@ export const handleAddNewCampaign = (
               )
             )
           );
-      } else if (type === "FUNGIBLE") {
+      } else if (type === "FUNGIBLE" && req.currentUser?.id) {
         const newCampaign = await prisma.campaign_twittercard.create({
           data: {
             name,

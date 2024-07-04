@@ -208,3 +208,18 @@ export const handleGetCmapingLogs = async (req: Request, res: Response, next: Ne
     next(err);
   }
 };
+
+export const handleAllowAsCampaigner = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.body.id as any as number;
+    if (!id) return res.status(BAD_REQUEST).json({ message: "User id not found." });
+    const updatedUser = await prisma.user_user.update({
+      data: { role: "USER" },
+      where: { id },
+    });
+
+    return res.status(OK).json({ success: true, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+  } catch (err) {
+    next(err);
+  }
+};

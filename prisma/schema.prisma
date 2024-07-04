@@ -86,26 +86,24 @@ model campaign_twittercard {
   campaign_start_time       DateTime?                   @db.Timestamptz(6)
   campaign_close_time       DateTime?                   @db.Timestamptz(6)
   is_added_to_queue         Boolean?                    @default(false)
+  campaignLogs              CampaignLog[]
   campaign_participation    campaign_participation[]
   campaign_tweetengagements campaign_tweetengagements[]
   campaign_tweetstats       campaign_tweetstats?
-  user_user                 user_user?                  @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
-  campaignLogs              CampaignLog[]
+  user_user                 user_user                   @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
 
   @@index([owner_id], map: "campaign_twittercard_owner_id_90f418c7")
   @@index([owner_id], map: "campaign_owner_id_index")
 }
 
 model CampaignLog {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt               @id @default(autoincrement())
   campaign_id BigInt
-  timestamp   DateTime @default(now())
-  status      String   @db.VarChar(50)
-  message     String   @db.VarChar(300)
+  timestamp   DateTime             @default(now())
+  status      String               @db.VarChar(50)
+  message     String               @db.VarChar(300)
   data        Json?
-
-  // Relations
-  campaign campaign_twittercard @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  campaign    campaign_twittercard @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
 
   @@index([campaign_id], map: "campaign_log_campaign_id_index")
 }

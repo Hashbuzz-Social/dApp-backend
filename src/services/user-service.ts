@@ -3,9 +3,8 @@ import prisma from "@shared/prisma";
 export const getAllUser = async (params: { limit: number; offset: number }) => {
   const { limit, offset } = params;
   const users = await prisma.user_user.findMany({
-    orderBy: { id: "asc" },
-    skip: offset,
     take: limit,
+    skip: offset,
   });
 
   const count = await prisma.user_user.count();
@@ -42,9 +41,7 @@ export const getUserById = async (id: number | bigint) => {
   });
 };
 
-const getUserByPersonalTwitterHandle = async (
-  personal_twitter_handle: string
-) => {
+const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) => {
   return await prisma.user_user.findFirst({
     where: {
       personal_twitter_handle,
@@ -56,11 +53,7 @@ const getAstForUserByAccountAddress = async (accountAddress: string) => {
   return await prisma.authtoken_token.findUnique({ where: { accountAddress } });
 };
 
-const topUp = async (
-  id: number | bigint,
-  amounts: number,
-  operation: "increment" | "decrement" | "update"
-) => {
+const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
   // console.log("topUp start");
   if (operation === "increment")
     return await prisma.user_user.update({
@@ -96,11 +89,7 @@ const topUp = async (
   //? Perform DN Query
 };
 
-const totalReward = async (
-  userId: number | bigint,
-  amounts: number,
-  operation: "increment" | "decrement" | "update"
-) => {
+const totalReward = async (userId: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
   if (operation === "increment")
     return await prisma.user_user.update({
       where: {
@@ -142,21 +131,7 @@ const getUserByTwitterId = async (personal_twitter_id: string) => {
   });
 };
 
-const updateTokenBalanceForUser = async ({
-  cntrct_bal,
-  amount,
-  operation,
-  token_id,
-  user_id,
-  decimal,
-}: {
-  cntrct_bal?: number;
-  amount: number;
-  operation: "increment" | "decrement";
-  token_id: number | bigint;
-  user_id: number | bigint;
-  decimal: number;
-}) => {
+const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_id, user_id, decimal }: { cntrct_bal?: number; amount: number; operation: "increment" | "decrement"; token_id: number | bigint; user_id: number | bigint; decimal: number }) => {
   // const balRecord = await prisma.user_balances.upsert({
   //   create: {
   //     user_id,
@@ -182,13 +157,7 @@ const updateTokenBalanceForUser = async ({
       },
     });
 
-  if (
-    operation == "decrement" &&
-    balRecord &&
-    cntrct_bal &&
-    balRecord.entity_balance &&
-    balRecord?.entity_balance - amount === cntrct_bal
-  ) {
+  if (operation == "decrement" && balRecord && cntrct_bal && balRecord.entity_balance && balRecord?.entity_balance - amount === cntrct_bal) {
     return await prisma.user_balances.update({
       data: {
         entity_balance: cntrct_bal,
@@ -201,7 +170,7 @@ const updateTokenBalanceForUser = async ({
   return await prisma.user_balances.update({
     data: {
       entity_balance: {
-        [operation]:amount
+        [operation]: amount,
       },
     },
     where: {
@@ -223,4 +192,3 @@ export default {
   updateTokenBalanceForUser,
   getAstForUserByAccountAddress,
 } as const;
-

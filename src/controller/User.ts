@@ -16,31 +16,27 @@ const { OK, BAD_REQUEST } = StatusCodes;
  */
 export const handleGetAllUser = async (req: Request, res: Response, next: NextFunction) => {
   const body = req.body;
-  const offset = body.offset ?? 10;
+  const offset = body.offset ?? 0;
   const limit = body.limit ?? 10;
-  const users = await userService.getAll({ limit, offset });
-  return res.status(OK).json({ users: JSONBigInt.parse(JSONBigInt.stringify(users)) });
+  const { users, count } = await userService.getAll({ limit, offset });
+  return res.status(OK).json({ users: users.map((u) => JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(u)))), count });
 };
 
 export const handleCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
-
   if (req?.accountAddress) {
     const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
     if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
     else throw new ParamMissingError("No record for this id.");
   }
- 
 };
 
 export const handleUpdateConcent = async (req: Request, res: Response, next: NextFunction) => {
-
   const { consent } = req.body;
   const updatedUser = await prisma.user_user.update({
     where: { accountAddress: req.accountAddress },
     data: { consent: consent },
   });
   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
-
 };
 
 export const handleGetUserBalances = (req: Request, res: Response, next: NextFunction) => {
@@ -62,7 +58,6 @@ export const handleGetUserBalances = (req: Request, res: Response, next: NextFun
   } else {
     return res.status(OK).json({ available_budget: req.currentUser?.available_budget });
   }
-
 };
 
 export const handleTokenBalReq = async (req: Request, res: Response, next: NextFunction) => {
@@ -80,7 +75,7 @@ export const handleTokenBalReq = async (req: Request, res: Response, next: NextF
   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(balanceData)));
 };
 
-export const twitterCardStatsData = async (req:Request, res:Response) => {
+export const twitterCardStatsData = async (req: Request, res: Response) => {
   const id = req.query.id;
   const cardStatus = await prisma.campaign_tweetstats.findUnique({
     where: {
@@ -95,7 +90,7 @@ export const twitterCardStatsData = async (req:Request, res:Response) => {
     like_count: cardStatus?.like_count,
     quote_count: cardStatus?.quote_count,
     last_update: cardStatus?.last_update,
-    twitter_card_id: Number(cardStatus?.twitter_card_id)
-  }
-  return res.status(OK).json({data});
-}
+    twitter_card_id: Number(cardStatus?.twitter_card_id),
+  };
+  return res.status(OK).json({ data });
+};

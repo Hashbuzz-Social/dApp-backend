@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import {
   handleActiveContractInfoReq,
+  handleAllowAsCampaigner,
   handleGetAllCard,
   handleGetAllCardPendingCards,
   handleGetAllWLToken,
@@ -16,6 +17,7 @@ import userInfo from "@middleware/userInfo";
 import { Router } from "express";
 import { body, query } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
+import { handleGetAllUser } from "@controller/User";
 
 const router = Router();
 
@@ -110,8 +112,10 @@ router.get("/listed-tokens", handleGetAllWLToken);
  * @handler handleActiveContractInfoReq
  */
 router.get("/active-contract", handleActiveContractInfoReq);
-4;
 
 router.get("/campaign-logs/:id", handleGetCmapingLogs);
+
+router.post("/user/all" , handleGetAllUser);
+router.patch("/user/allowCampaigner" , handleAllowAsCampaigner)
 
 export default router;
