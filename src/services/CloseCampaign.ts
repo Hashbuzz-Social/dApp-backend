@@ -1,16 +1,16 @@
 import { campaign_twittercard, user_user } from "@prisma/client";
-import CampaignLifeCycleBase, { LYFCycleStages } from "./CampaignLifeCycleBase";
-import logger from "jet-logger";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
-import hederaService from "./hedera-service";
-import twitterCardService from "./twitterCard-service";
 import prisma from "@shared/prisma";
-import { scheduleJob } from "node-schedule";
-import { closeCampaignSMTransaction } from "./transaction-service";
-import { perFormCampaignExpiryOperation } from "./campaign-service";
+import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
+import { scheduleJob } from "node-schedule";
+import { perFormCampaignExpiryOperation } from "./campaign-service";
+import CampaignLifeCycleBase, { LYFCycleStages } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";
+import hederaService from "./hedera-service";
 import { performAutoRewardingForEligibleUser } from "./reward-service";
+import { closeCampaignSMTransaction } from "./transaction-service";
+import twitterCardService from "./twitterCard-service";
 
 const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
@@ -52,24 +52,6 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
     this.scheduleRewardDistribution(card);
     return data;
-  }
-
-  /**
-   * Update the campaign card status to complete.
-   * @param {number | bigint} id - The ID of the campaign card.
-   * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
-   * @param {string} last_thread_tweet_id - The ID of the last thread tweet.
-   * @returns {Promise<campaign_twittercard>} The updated campaign card.
-   */
-  private async updateCampaignCardToComplete(id: number | bigint, campaignExpiryTimestamp: string, last_thread_tweet_id: string) {
-    return await prisma.campaign_twittercard.update({
-      where: { id },
-      data: {
-        campaign_expiry: campaignExpiryTimestamp,
-        card_status: "Campaign Complete, Initiating Rewards",
-        last_thread_tweet_id,
-      },
-    });
   }
 
   /**
@@ -211,7 +193,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
         tweetText,
         parentTweetId: card.last_thread_tweet_id!,
       });
-      this.campaignCard = await this.updateCampaignCardToComplete(card.id, campaignExpiryTimestamp, updateThread);
+      this.campaignCard = await this.updateCampaignCardToComplete(card.id, updateThread, "Campaign Complete, Initiating Rewards",campaignExpiryTimestamp);
       logger.info(`Successfully published reward announcement tweet thread for card ID: ${card.id}`);
       await this.updateCampaignStatus(card.contract_id!, "publishedTweetThread", true, LYFCycleStages.COMPLETED);
     } catch (err) {

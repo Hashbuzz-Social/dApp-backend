@@ -7,12 +7,12 @@ import {
   Hbar,
   TransferTransaction
 } from "@hashgraph/sdk";
+import { campaign_twittercard, user_user } from "@prisma/client";
 import hederaService from "@services/hedera-service";
-import prisma from "@shared/prisma";
 import BigNumber from "bignumber.js";
+import logger from "jet-logger";
 import { provideActiveContract } from "./smartcontract-service";
 const { hederaClient } = hederaService;
-import logger from "jet-logger"
 
 export async function associateTokentoContract(tokenId: string) {
   const contractDetails = await provideActiveContract();
@@ -129,35 +129,28 @@ export async function getHbarCampaignBalance(campaignId: any) {
   }
 }
 
-export async function expiryFungibleCampaign(cardId: any, contract_id:string) {
+export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwner:user_user) {
   const contractDetails = await provideActiveContract();
-  const card = await prisma.campaign_twittercard.findUnique({ where: { id: cardId }, select: { user_user: true, fungible_token_id: true } })
 
-  console.log(card, "Inside expiry fungible campaign");
+  logger.info(`Fungible campaign expiry operation for card ::::  ${card.id}`);
 
-  if (contractDetails?.contract_id && card && card.user_user) {
+  if (contractDetails?.contract_id && card.contract_id) {
     const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const addre1 = AccountId.fromString(card?.user_user.hedera_wallet_id);
+    const addre1 = AccountId.fromString(cardOwner.hedera_wallet_id);
     const tokenId = AccountId.fromString(card?.fungible_token_id as string);
-
-    // const campaignId = AccountId.fromString("0.0.5811396");
-    // const token_id = AccountId.fromString("0.0.5816944");
-    // const contractId = ContractId.fromString("0.0.5827491");
 
     const getBalance = new ContractCallQuery()
       .setContractId(contractAddress)
       .setGas(2000000)
       .setFunction(
         "getFungibleAndNFTCampaignBalance",
-        new ContractFunctionParameters()
-          .addString(contract_id)
-          .addAddress(tokenId.toSolidityAddress())
+        new ContractFunctionParameters().addString(card.contract_id).addAddress(tokenId.toSolidityAddress())
       )
       .setQueryPayment(new Hbar(10));
 
     const contractCallResult = await getBalance.execute(hederaClient);
     const getBalanceRx = contractCallResult.getUint256();
-    console.log(" - The Campaign Balance " + getBalanceRx);
+    logger.info(`- The Campaign fungible Balance  for cmapign ${card.id} ::: ${getBalanceRx.toString()}`);
 
     const closeCampaign = new ContractExecuteTransaction()
       .setContractId(contractAddress)
@@ -166,29 +159,32 @@ export async function expiryFungibleCampaign(cardId: any, contract_id:string) {
         "expiryFungibleAndNFTCampaign",
         new ContractFunctionParameters()
           .addAddress(tokenId.toSolidityAddress())
-          .addString(contract_id)
+          .addString(card.contract_id)
           .addAddress(addre1.toSolidityAddress())
           .addUint256(getBalanceRx)
       );
     const closeCampaignTx = await closeCampaign.execute(hederaClient);
-    const closeCampaignRx = await closeCampaignTx.getReceipt(hederaClient);
-    const closeCampaigncontractId = closeCampaignRx.status;
+    const recipt = await closeCampaignTx.getReceipt(hederaClient);
 
-    console.log(
-      " - Expiry campaign transaction status: " + closeCampaigncontractId
-    );
+    const closeCampaignStaus = recipt.status;
+    const transactionId = recipt.scheduledTransactionId
+
+    logger.info(`- Expiry campaign transaction status for card ${card.id} ::: ${closeCampaignStaus}`);
+    return  {staus:closeCampaignStaus , transactionId , recipt}
   }
 }
 
-export async function expiryCampaign(cardId: any, contract_id:string) {
+export async function expiryCampaign(card:campaign_twittercard , cardOwner:user_user) {
 
-  const card = await prisma.campaign_twittercard.findUnique({ where: { id: cardId }, select: { user_user: true } })
+  logger.info(`SM transaction for update expiry status of card ::  ${card.id}`);
 
-  console.log(card, "Inside expiry hbar campaign");
+  // get Active contract for transaction.
   const contractDetails = await provideActiveContract();
-  if (contractDetails?.contract_id && card?.user_user) {
-    const addre1 = AccountId.fromString(card?.user_user.hedera_wallet_id);
 
+  // check for  required coditions 
+  if (contractDetails?.contract_id && cardOwner.hedera_wallet_id && card.contract_id) {
+
+    const addre1 = AccountId.fromString(cardOwner.hedera_wallet_id);
     const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
 
     const closeCampaign = new ContractExecuteTransaction()
@@ -196,19 +192,21 @@ export async function expiryCampaign(cardId: any, contract_id:string) {
       .setGas(400000)
       .setFunction(
         "expiryCampaign",
-        new ContractFunctionParameters().addString(
-          contract_id
-        ).addAddress(
-          addre1.toSolidityAddress()
-        )
+        new ContractFunctionParameters().addString(card.contract_id).addAddress(addre1.toSolidityAddress())
       );
-    const closeCampaignTx = await closeCampaign.execute(hederaClient);
-    const closeCampaignRx = await closeCampaignTx.getReceipt(hederaClient);
-    const closeCampaigncontractId = closeCampaignRx.status;
 
-    console.log(
-      " - Expiry campaign transaction status: " + closeCampaigncontractId
-    );
+    const trnsactionRespose = await closeCampaign.execute(hederaClient);
+    const transactionRecipt = await trnsactionRespose.getReceipt(hederaClient);
+
+    const transactionStatus = transactionRecipt.status;
+    const transactionId = transactionRecipt.scheduledTransactionId
+
+    logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${transactionStatus} `);
+
+    return {staus:transactionStatus , transactionId , recipt:transactionRecipt}
+  }
+  else {
+    throw new Error("User Or card details os incorrect")
   }
 }
 

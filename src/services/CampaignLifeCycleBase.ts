@@ -4,7 +4,7 @@ import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helpe
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
-import { isEmpty } from "lodash";
+import { isEmpty, isNil } from "lodash";
 import moment from "moment";
 import RedisClient, { CampaignCardData } from "./redis-servie";
 
@@ -71,6 +71,14 @@ class CampaignLifeCycleBase {
     return instance;
   }
 
+  protected isValid(value: any): boolean {
+    return !isNil(value) && !isEmpty(value) && value !== false;
+  }
+
+  protected areAllValuesValid(...values: any[]): boolean {
+    return values.every(this.isValid);
+  }
+
   private async loadRequiredData(id: number | bigint): Promise<void> {
     try {
       // Query for the card
@@ -81,6 +89,14 @@ class CampaignLifeCycleBase {
 
       if (!card) {
         throw new Error(`Campaign card with ID ${id} not found`);
+      }
+
+      // if token id avialable for card load token data
+      if (card.fungible_token_id) {
+        const token = await prisma.whiteListedTokens.findUnique({
+          where: { token_id: String(card.fungible_token_id) },
+        });
+        if (token) this.tokenData = token;
       }
 
       // Query for the running card count
@@ -278,12 +294,31 @@ class CampaignLifeCycleBase {
   }
 
   // Helper method to update campaign status on Redis
-  protected async updateCampaignStatus(contractId: string, subTask?: string, isSuccess: boolean = false , LYFCycleStage:LYFCycleStages = LYFCycleStages.RUNNING) {
+  protected async updateCampaignStatus(contractId: string, subTask?: string, isSuccess: boolean = false, LYFCycleStage: LYFCycleStages = LYFCycleStages.RUNNING) {
     await this.redisClient.updateCampaignCardStatus({
       card_contract_id: contractId,
       LYFCycleStage: LYFCycleStages.RUNNING,
       isSuccess,
       subTask,
+    });
+  }
+
+  /**
+   * Update the campaign card status to complete.
+   * @param {number | bigint} id - The ID of the campaign card.
+   * @param {string} last_thread_tweet_id - The ID of the last thread tweet.
+   * @param {string} [card_status="Campaign Complete, Initiating Rewards"] - The status of the campaign card (optional, defaults to "Campaign Complete, Initiating Rewards").
+   * @param {string} [campaignExpiryTimestamp] - The expiry timestamp of the campaign (optional).
+   * @returns {Promise<campaign_twittercard>} The updated campaign card.
+   */
+  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status: string = "Campaign Complete, Initiating Rewards", campaignExpiryTimestamp?: string) {
+    return await prisma.campaign_twittercard.update({
+      where: { id },
+      data: {
+        card_status,
+        last_thread_tweet_id,
+        campaign_expiry: campaignExpiryTimestamp,
+      },
     });
   }
 }

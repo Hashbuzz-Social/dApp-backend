@@ -1,18 +1,18 @@
 import { campaign_twittercard } from "@prisma/client";
 import { performAutoRewardingForEligibleUser } from "@services/reward-service";
+import { decrypt } from "@shared/encryption";
+import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import { scheduleJob } from "node-schedule";
 import { twitterStatus } from "src/@types/custom";
-import { decrypt } from "@shared/encryption";
-import { addMinutesToTime, formattedDateTime } from "@shared/helper";
+import CloseCmapignLyfCycle from "./CloseCampaign";
 import { closeFungibleAndNFTCampaign, expiryCampaign, expiryFungibleCampaign } from "./contract-service";
 import hederaService from "./hedera-service";
 import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
-import CloseCmapignLyfCycle from "./CloseCampaign";
 
 const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
@@ -221,17 +221,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
   const campaignDetails = await prisma.campaign_twittercard.findUnique({
     where: { id },
     include: {
-      user_user: {
-        select: {
-          personal_twitter_id: true,
-          personal_twitter_handle: true,
-          business_twitter_access_token: true,
-          business_twitter_access_token_secret: true,
-          hedera_wallet_id: true,
-          available_budget: true,
-          id: true,
-        },
-      },
+      user_user: true,
     },
   });
 
@@ -253,7 +243,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
     });
     // await closeCampaignSMTransaction(id);
     if (type === "HBAR") {
-      await expiryCampaign(id, contract_id);
+      await expiryCampaign(campaignDetails!, user_user);
 
       const balances = await queryBalance(user_user.hedera_wallet_id!);
       if (owner_id && balances?.balances) await userService.topUp(owner_id, parseInt(balances.balances), "update");
@@ -270,7 +260,7 @@ export async function perFormCampaignExpiryOperation(id: number | bigint, contra
         logger.err(error.message);
       }
     } else if (type === "FUNGIBLE" && fungible_token_id) {
-      await expiryFungibleCampaign(id, contract_id);
+      await expiryFungibleCampaign(campaignDetails!, user_user!);
 
       const token = await prisma.whiteListedTokens.findUnique({
         where: { token_id: String(fungible_token_id) },
