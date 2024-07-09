@@ -5,7 +5,6 @@ import {
   getCampaignDetailsById,
   getRunningCardsOfUserId,
 } from "@services/campaign-service";
-import { CmapignTypes } from "@services/campaignLyfcycle-service";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { claim, getRewardDetails } from "@services/reward-service";
 import { queryCampaignBalance } from "@services/smartcontract-service";

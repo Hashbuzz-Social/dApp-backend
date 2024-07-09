@@ -4,7 +4,6 @@ import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
-import { CmapignTypes } from "./campaignLyfcycle-service";
 import { provideActiveContract } from "./smartcontract-service";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
 import moment from "moment"

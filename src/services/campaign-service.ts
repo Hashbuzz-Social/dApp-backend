@@ -13,6 +13,7 @@ import hederaService from "./hedera-service";
 import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
+import CampaignExpiryOperation from "./ExpireAndArchive";
 
 const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
@@ -214,7 +215,12 @@ export const completeCampaignOperationEX = async (card: campaign_twittercard) =>
   return { message: "Campaign is closed" };
 };
 
-export async function perFormCampaignExpiryOperation(id: number | bigint, contract_id: string) {
+export const perFormCampaignExpiryOperation = async (id: number | bigint, contract_id: string) => {
+  const expiryInstance = await CampaignExpiryOperation.create(id);
+  await expiryInstance.performCampaignExpiryOperation();
+};
+
+export async function perFormCampaignExpiryOperationEXON10072024(id: number | bigint, contract_id: string) {
   console.log("perFormCampaignExpiryOperation");
   const date = new Date();
 

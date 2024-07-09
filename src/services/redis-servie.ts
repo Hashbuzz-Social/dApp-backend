@@ -1,6 +1,6 @@
 // RedisClient.ts
 import { createClient, RedisClientType } from 'redis';
-import { LYFCycleStages } from './campaignLyfcycle-service';
+import { LYFCycleStages } from './CampaignLifeCycleBase';
 
 interface RedisCardStatusUpdate {
     card_contract_id: string,
