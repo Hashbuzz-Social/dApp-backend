@@ -1,11 +1,6 @@
-import {
-  completeCampaignOperation,
-  perFormCampaignExpiryOperation
-} from "@services/campaign-service";
+import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
-import twitterCardService, {
-  TwitterStats,
-} from "@services/twitterCard-service";
+import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
@@ -40,17 +35,9 @@ const manageTwitterCardStatus = async () => {
         let total_spent = 0;
         let campaignStats: TwitterStats;
         // refactor card object
-        const {
-          comment_reward,
-          retweet_reward,
-          like_reward,
-          quote_reward,
-          id,
-          name,
-          campaign_budget,
-        } = card;
+        const { comment_reward, retweet_reward, like_reward, quote_reward, id, name, campaign_budget } = card;
 
-       const public_metrics =  await prisma.campaign_tweetstats.findUnique({where: {twitter_card_id: id}});
+        const public_metrics = await prisma.campaign_tweetstats.findUnique({ where: { twitter_card_id: id } });
 
         if (public_metrics) {
           //? get Engagment Data on card. "like" , "Quote", "Retweet" from the twitterAPI.
@@ -84,10 +71,10 @@ const manageTwitterCardStatus = async () => {
 
             total_spent = functions.calculateTotalSpent(
               {
-                like_count: Number(public_metrics.like_count) ,
-                quote_count: Number(public_metrics.quote_count) ,
-                retweet_count: Number(public_metrics.retweet_count) ,
-                reply_count: Number(public_metrics.reply_count) ,
+                like_count: Number(public_metrics.like_count),
+                quote_count: Number(public_metrics.quote_count),
+                retweet_count: Number(public_metrics.retweet_count),
+                reply_count: Number(public_metrics.reply_count),
               },
               {
                 retweet_reward,
@@ -98,9 +85,7 @@ const manageTwitterCardStatus = async () => {
             );
             //convert total to tiny hbar
             total_spent = Math.round(total_spent);
-            console.log(
-              `Total amount sped for the campaign card - ${id} is:::- ${total_spent}`
-            );
+            console.log(`Total amount sped for the campaign card - ${id} is:::- ${total_spent}`);
 
             await Promise.all([
               // await twitterCardService.updateTwitterCardStats(
@@ -112,28 +97,19 @@ const manageTwitterCardStatus = async () => {
 
             //!! Check budget of the champaign compare it with total spent  amount::4
             //? First convert campaignBudget to tinyHabr;
-            const tiny_campaign_budget = Math.round(
-              (campaign_budget ?? 0) * Math.pow(10, 8)
-            );
+            const tiny_campaign_budget = Math.round((campaign_budget ?? 0) * Math.pow(10, 8));
 
             if (total_spent > tiny_campaign_budget) {
-              console.log(
-                `total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`
-              );
-              logger.info(
-                `Campaign with Name ${name ?? ""
-                } Has no more budget available close it`
-              );
+              console.log(`total_spent: ${total_spent} || tiny_campaign_budget::${tiny_campaign_budget}`);
+              logger.info(`Campaign with Name ${name ?? ""} Has no more budget available close it`);
               completeCampaignOperation(card);
             }
           } else {
-            logger.warn(
-              `Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""
-              } is not defined`
-            );
+            logger.warn(`Rewards basis for the campaign card with id ${id} and name:- ${name ?? ""} is not defined`);
           }
         } else {
-          logger.warn(`Public maetric not forund for  this tweetId.`);
+          // logger.warn(`Public maetric not forund for  this tweetId.`);
+          console.log("..");
         }
       })
     );
@@ -152,9 +128,9 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
   // logger.info("Replies check:::start");
   //!! 5 days of threshold
   // const thresholdSeconds = 4 * 24 * 60 * 60;
-  try{
+  try {
     const thresholdSeconds = 60;
-  
+
     //? get all active cards from DB
     const allActiveCard = await twitterCardService.allActiveTwitterCard();
     //!!loop through al active card and check for comments on tweeter.
@@ -162,9 +138,8 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
       allActiveCard.map(async (card, index) => {
         const { last_reply_checkedAt } = card;
         //! time diff in seconds
-        const timeDiffInSeconds =
-          moment().unix() - moment(last_reply_checkedAt).unix();
-        console.log(timeDiffInSeconds, thresholdSeconds, card.tweet_id)
+        const timeDiffInSeconds = moment().unix() - moment(last_reply_checkedAt).unix();
+        console.log(timeDiffInSeconds, thresholdSeconds, card.tweet_id);
         if (card.tweet_id && timeDiffInSeconds > thresholdSeconds) {
           //? Log card details if we are fetching comments for this card.
           // logger.info(
@@ -222,15 +197,15 @@ const autoCampaignClose = async () => {
   }
 };
 
-const updateQueueStatus = async (id:bigint) => {
+const updateQueueStatus = async (id: bigint) => {
   const updatedRecord = await prisma.campaign_twittercard.update({
     where: {
-      id
+      id,
     },
     data: { is_added_to_queue: true },
   });
   return updatedRecord;
-}
+};
 
 const checkCampaignCloseTime = async () => {
   const getTask = await prisma.campaign_twittercard.findMany({
@@ -240,13 +215,13 @@ const checkCampaignCloseTime = async () => {
       campaign_close_time: {
         gte: new Date(),
       },
-    }
+    },
   });
 
   getTask.map(async (card) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const date = new Date(card.campaign_close_time!);
-    await updateQueueStatus(card.id)
+    await updateQueueStatus(card.id);
     scheduleJob(date, async function () {
       await completeCampaignOperation(card);
     });
@@ -254,25 +229,51 @@ const checkCampaignCloseTime = async () => {
 };
 
 const checkPreviousCampaignCloseTime = async () => {
-  const getTask = await prisma.campaign_twittercard.findMany({
+  console.info("Cheking backlog campaigns");
+  let message = "";
+  const now = new Date();
+
+  const campaigns = await prisma.campaign_twittercard.findMany({
     where: {
-      card_status: "Running",
-      is_added_to_queue: true,
-    }
+      OR: [
+        {
+          card_status: "Running",
+          campaign_close_time: {
+            lt: now,
+          },
+        },
+        {
+          card_status: "Campaign Complete, Initiating Rewards",
+          campaign_expiry: {
+            lt: now,
+          },
+        },
+      ],
+    },
   });
 
-  getTask.map(async (card) => {
-    const date = new Date(card.campaign_close_time!);
-    if(date < new Date()) {
-      await completeCampaignOperation(card);
-    } else {
-      await updateQueueStatus(card.id)
-      scheduleJob(date, async function () {
-        await completeCampaignOperation(card);
-      });
-    }
+  if (campaigns.length > 0) {
+    message = `Total active campaigns is ${campaigns.length}`;
+    campaigns.map((campdata) => {
+      if (campdata.card_status === "Running") {
+      }
     });
+  } else {
+    message = `No active campaigns founds`;
+    console.info(message);
+    logger.info(message);
+
+    return false;
   }
+  campaigns.map(async (campData) => {
+    if (campData.card_status === "Running") {
+      // get the record of that status only
+      await completeCampaignOperation(campData);
+    } else {
+      if (campData.contract_id) await perFormCampaignExpiryOperation(campData.id, campData.contract_id);
+    }
+  });
+};
 
 export default {
   updateCardStatus: manageTwitterCardStatus,
@@ -280,5 +281,5 @@ export default {
   scheduleExpiryTasks,
   autoCampaignClose,
   checkCampaignCloseTime,
-  checkPreviousCampaignCloseTime
+  checkPreviousCampaignCloseTime,
 } as const;

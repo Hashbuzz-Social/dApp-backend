@@ -69,6 +69,7 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
 };
 
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
+  logger.warn("Complete operation started");
   const closeCmapaign = await CloseCmapignLyfCycle.create(card.id);
   const data = await closeCmapaign.performCloseCampaign();
   return data;

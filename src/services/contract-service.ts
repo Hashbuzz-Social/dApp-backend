@@ -37,7 +37,7 @@ export async function associateTokentoContract(tokenId: string) {
   }
 }
 
-export async function addFungibleAndNFTCampaign(tokenId: string | null, amount: number, user_id: string | undefined, campaign: string) {
+export async function addFungibleAndNFTCampaign(tokenId: string, amount: number, user_id: string, campaign: string) {
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {

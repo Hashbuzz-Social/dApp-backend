@@ -4,6 +4,7 @@ import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
 import { getCampaignDetailsById } from "./campaign-service";
+import logger from "jet-logger"
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
@@ -24,58 +25,53 @@ const getExistingRecordsIdsIfAny = async (id: bigint, engagement_type: engagemen
 };
 
 export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
-  console.log("UpdateReplied to DB ");
+  console.log("UpdateReplies to DB");
 
   const data = await getCampaignDetailsById(id);
-  // console.log(data, "data");
+  if (!data?.user_user && !data?.user_user.business_twitter_access_token && data?.user_user.business_twitter_access_token_secret) {
+    logger.err("No twitter account is accessible here.")
+    return false;
+  }
 
-  // if (data?.user_user) {
-  const [allReplies, allExistingReplyEngagements] = await Promise.all([
-    await twitterAPI.getAllReplies(tweet_Id, data?.user_user?.business_twitter_access_token as string, data?.user_user?.business_twitter_access_token_secret as string),
-    await prisma.campaign_tweetengagements.findMany({
+  const [allRepliesResult, allExistingReplyEngagementsResult] = await Promise.allSettled([
+    twitterAPI.getAllReplies(tweet_Id, data?.user_user.business_twitter_access_token!, data?.user_user.business_twitter_access_token_secret!),
+    prisma.campaign_tweetengagements.findMany({
       where: {
         tweet_id: id,
         engagement_type: "Reply",
       },
       select: {
         user_id: true,
-        tweet_id: true,
-        engagement_type: true,
       },
     }),
   ]);
 
-  console.log(allReplies, allExistingReplyEngagements, "allReplies, allExistingReplyEngagements")
-
-  const newAllReplies = [];
-
-  for (let i = 0; i < allReplies.length; i++) {
-    if (allReplies[i].author_id !== data?.user_user?.personal_twitter_id) {
-      newAllReplies.push(allReplies[i]);
-    }
+  if (allRepliesResult.status !== 'fulfilled' || allExistingReplyEngagementsResult.status !== 'fulfilled') {
+    console.error("Failed to fetch data");
+    return false;
   }
 
-  const existingUserIds = allExistingReplyEngagements.length > 0 && allExistingReplyEngagements.map((d) => d.user_id!);
+  const allReplies = allRepliesResult.value;
+  const allExistingReplyEngagements = allExistingReplyEngagementsResult.value;
 
-  let formattedArray = newAllReplies.map((d) => ({
-    user_id: d.author_id!,
+  const newAllReplies = allReplies.filter(reply => reply.author_id !== data?.user_user.personal_twitter_id);
+  const existingUserIds = allExistingReplyEngagements.map(d => d.user_id);
+
+  let formattedArray = newAllReplies.map(reply => ({
+    user_id: reply.author_id,
     tweet_id: id,
     engagement_type: "Reply",
-    updated_at: moment().toISOString(),
+    updated_at: new Date().toISOString(),
   }));
-  if (existingUserIds) {
-    formattedArray = formattedArray.filter((d) => {
-      const isExisting = existingUserIds.includes(d.user_id);
-      return !isExisting;
-    });
-  }
-  if (formattedArray && formattedArray.length > 0) {
-    const updates = await prisma.campaign_tweetengagements.createMany({
-      data: [...formattedArray],
+
+  formattedArray = formattedArray.filter(reply => !existingUserIds.includes(reply.user_id));
+
+  if (formattedArray.length > 0) {
+    await prisma.campaign_tweetengagements.createMany({
+      data: formattedArray,
       skipDuplicates: true,
     });
 
-    // await prisma.campaign_tweetstats.upsert
     await prisma.campaign_tweetstats.upsert({
       where: { twitter_card_id: id },
       update: {
@@ -89,15 +85,17 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
       },
     });
 
-
     await prisma.campaign_twittercard.update({
       where: { id: id },
       data: { last_reply_checkedAt: new Date().toISOString() },
     });
-    return updates;
-  } else return false;
-  // }x
+
+    return true;
+  }
+
+  return false;
 };
+
 
 export const updateAllEngagementsForCard = async (card: number | bigint) => {
 
