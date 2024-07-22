@@ -6,6 +6,7 @@ import userInfo from "@middleware/userInfo";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query as validateQuery } from "express-validator";
+import auth from "@middleware/auth";
 
 const router = Router();
 const campaignStatuses = ["rejected", "running", "completed", "deleted"];
@@ -15,7 +16,7 @@ router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
 // router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
 router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
 router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
-router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
+router.get("/balance",  validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
 router.get("/card-status", twitterCardStatsData);
 router.get("/reward-details", rewardDetails)
 router.put("/claim-reward",body("contract_id").isString(),body("card_id").isNumeric(), claimReward);

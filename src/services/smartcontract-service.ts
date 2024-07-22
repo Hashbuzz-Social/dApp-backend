@@ -1,23 +1,11 @@
-import {
-  AccountId,
-  ContractCallQuery,
-  ContractCreateFlow,
-  ContractCreateTransaction,
-  ContractExecuteTransaction,
-  ContractFunctionParameters,
-  ContractId,
-  FileAppendTransaction,
-  FileCreateTransaction,
-  FileId,
-  Hbar,
-  Status,
-} from "@hashgraph/sdk";
+import { AccountId, ContractCallQuery, ContractCreateFlow, ContractCreateTransaction, ContractExecuteTransaction, ContractFunctionParameters, ContractId, FileAppendTransaction, FileCreateTransaction, FileId, Hbar, Status } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
+import { getCampaignDetailsById } from "./campaign-service";
 
 const web3 = new Web3();
 // import JSONBigInt from "json-bigint";
@@ -74,13 +62,7 @@ const uploadFile = async (contractByteCode: Buffer) => {
     firstPartBytes = copyBytes(0, FILE_PART_SIZE, contractByteCode);
   }
 
-  const fileCreateTx = new FileCreateTransaction()
-    .setContents(firstPartBytes)
-    .setKeys([operatorKey])
-    .setMaxTransactionFee(new Hbar(20))
-    .setFileMemo("Hashbuzz smartcontract file.")
-    .setTransactionMemo("Hashbuzz file create transaction")
-    .freezeWith(hederaClient);
+  const fileCreateTx = new FileCreateTransaction().setContents(firstPartBytes).setKeys([operatorKey]).setMaxTransactionFee(new Hbar(20)).setFileMemo("Hashbuzz smartcontract file.").setTransactionMemo("Hashbuzz file create transaction").freezeWith(hederaClient);
 
   // Sign for create file
   const fileCreateSign = await fileCreateTx.sign(operatorKey);
@@ -127,14 +109,7 @@ export const deployContract = async (byteCode: Buffer) => {
     // console.log(`- The bytecode file ID is: ${bytecodeFileId} \n`);
 
     // Instantiate the smart contract
-    const contractInstantiateTx = new ContractCreateTransaction()
-      .setBytecodeFileId(bytecodeFileId!)
-      .setGas(5000000)
-      .setConstructorParameters(new ContractFunctionParameters().addAddress(operatorId.toSolidityAddress()))
-      .setMaxTransactionFee(20)
-      .setAdminKey(operatorKey)
-      .setContractMemo("Hashbuzz contract")
-      .setTransactionMemo("Hashbuzz contract deploy transaction");
+    const contractInstantiateTx = new ContractCreateTransaction().setBytecodeFileId(bytecodeFileId!).setGas(5000000).setConstructorParameters(new ContractFunctionParameters().addAddress(operatorId.toSolidityAddress())).setMaxTransactionFee(20).setAdminKey(operatorKey).setContractMemo("Hashbuzz contract").setTransactionMemo("Hashbuzz contract deploy transaction");
 
     const contractInstantiateSubmit = await contractInstantiateTx.execute(hederaClient);
 
@@ -162,7 +137,7 @@ export const deployContract = async (byteCode: Buffer) => {
     // });
     return { contract_id: contractId, contractAddress, fileId: bytecodeFileId };
   } catch (error) {
-    console.log("Error: form deploy contract")
+    console.log("Error: form deploy contract");
     logger.err(error);
     throw error;
   }
@@ -206,7 +181,6 @@ export const deployContractNew = async () => {
       },
     });
   }
-
 
   // else {
   //   console.log("deployContractNew::->");
@@ -252,8 +226,6 @@ export const deployContractNew = async () => {
   //     throw err;
   //   }
   // }
-
-
 };
 
 export const provideActiveContract = async () => {
@@ -292,11 +264,11 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
       .setFunction("addCampaigner", contractParams)
       .setTransactionMemo(
         "Hashbuzz-transaction" +
-        JSON.stringify({
-          transactionFor: "addCampaigner",
-          user_id: user_id?.toString(),
-          wallet_id: accountId.toString(),
-        })
+          JSON.stringify({
+            transactionFor: "addCampaigner",
+            user_id: user_id?.toString(),
+            wallet_id: accountId.toString(),
+          })
       );
 
     const contractExSubmit = await contractExTx.execute(hederaClient);
@@ -345,29 +317,20 @@ export function encodeFunctionCall(functionName: string, parameters: any[]) {
 
 export const queryBalance = async (address: string) => {
   // Execute the contract to check changes in state variable
-    address = AccountId.fromString(address).toSolidityAddress();
-  
-    const contractDetails = await provideActiveContract();
-    if (contractDetails?.contract_id) {
-      const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-      const getBalance = new ContractCallQuery()
-        .setContractId(contractAddress)
-        .setGas(2000000)
-        .setFunction(
-          "getBalance",
-          new ContractFunctionParameters().addAddress(
-            address
-          )
-        )
-        .setQueryPayment(new Hbar(10));
-  
-      const contractCallResult = await getBalance.execute(hederaClient);
-      const getBalanceRx = contractCallResult.getUint256();
-      console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
-      const balances = getBalanceRx.toString()
-  
-      return { balances };
-  // 
+  address = AccountId.fromString(address).toSolidityAddress();
+
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
+    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+    const getBalance = new ContractCallQuery().setContractId(contractAddress).setGas(2000000).setFunction("getBalance", new ContractFunctionParameters().addAddress(address)).setQueryPayment(new Hbar(10));
+
+    const contractCallResult = await getBalance.execute(hederaClient);
+    const getBalanceRx = contractCallResult.getUint256();
+    console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
+    const balances = getBalanceRx.toString();
+
+    return { balances };
+    //
     // console.log(balances, "-------");
     // const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
     // return { balances, balancesObj };
@@ -382,27 +345,15 @@ export const queryFungibleBalance = async (address: string, fungible_tokenId: st
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
     const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const getBalance = new ContractCallQuery()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "getFungibleAndNFTBalance",
-        new ContractFunctionParameters().addAddress(
-          address
-        ).addAddress(
-          tokenId.toSolidityAddress()
-        )
-      )
-      .setQueryPayment(new Hbar(10));
+    const getBalance = new ContractCallQuery().setContractId(contractAddress).setGas(2000000).setFunction("getFungibleAndNFTBalance", new ContractFunctionParameters().addAddress(address).addAddress(tokenId.toSolidityAddress())).setQueryPayment(new Hbar(10));
 
     const contractCallResult = await getBalance.execute(hederaClient);
     const getBalanceRx = contractCallResult.getUint256();
     console.log(" - The Balance of fungible token Campaigner " + getBalanceRx);
-    const balances = getBalanceRx.toString()
+    const balances = getBalanceRx.toString();
 
     return balances;
-}
-
+  }
 };
 
 /****
@@ -410,23 +361,22 @@ export const queryFungibleBalance = async (address: string, fungible_tokenId: st
  ***/
 
 export const queryCampaignBalance = async (address: string, campaignId: number | bigint) => {
-  // Execute the contract to check changes in state variable
-  const campaignAddress = buildCampaignAddress(address, campaignId.toString());
-  logger.info("payment enquiry for campaignAddress::: " + campaignAddress);
+  const card = await getCampaignDetailsById(campaignId);
+  logger.info("payment enquiry for campaignAddress::: " + card?.contract_id);
 
   const contractDetails = await provideActiveContract();
-  if (contractDetails?.contract_id) {
-    const contractCallQuery = new ContractCallQuery()
-      .setContractId(contractDetails.contract_id.toString())
-      .setGas(100000)
-      .setFunction("getCampaignBalance", new ContractFunctionParameters().addString(campaignAddress))
-      .setQueryPayment(new Hbar(1));
 
-    const qResult = await contractCallQuery.execute(hederaClient);
-    const balances = qResult.getUint256(0).toString();
-    const balancesObj = decodeFunctionResult("getBalance", qResult.bytes);
-    return { balances, balancesObj };
-    // return qResult.getUint256(0);
+  if (contractDetails?.contract_id && card?.contract_id) {
+    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+    const tokenId = AccountId.fromString(card?.fungible_token_id as string);
+
+    const getBalance = new ContractCallQuery().setContractId(contractAddress).setGas(2000000).setFunction("getFungibleAndNFTCampaignBalance", new ContractFunctionParameters().addString(card.contract_id).addAddress(tokenId.toSolidityAddress())).setQueryPayment(new Hbar(10));
+
+    const contractCallResult = await getBalance.execute(hederaClient);
+    const getBalanceRx = contractCallResult.getUint256();
+    logger.info(`- The Campaign fungible Balance  for cmapign ${card.id} ::: ${getBalanceRx.toString()}`);
+
+    return { balances: getBalanceRx };
   }
 };
 
@@ -440,13 +390,11 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
   });
 
   if (!user?.whitelistUser) {
-
     const contractDetails = await provideActiveContract();
     const address = AccountId.fromString(user_wallet_id);
-    console.log(contractDetails, "------", user_wallet_id)
+    console.log(contractDetails, "------", user_wallet_id);
 
     if (contractDetails?.contract_id) {
-
       // const backupContract = contractDetails?.contract_id;
       // const contractAddress = ContractId.fromString(backupContract.toString());
 
@@ -469,7 +417,6 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
         },
       });
 
-
       // console.log(" - Add user transaction status: " + addUserStatus);
 
       return true;
@@ -477,7 +424,6 @@ export const addUserToContractForHbar = async (user_wallet_id: string, userId: b
   }
 
   return true;
-
 };
 
 export const getSMInfo = async () => {
@@ -492,4 +438,3 @@ export const getSMInfo = async () => {
 
   return activeContract;
 };
-

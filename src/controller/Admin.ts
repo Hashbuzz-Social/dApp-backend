@@ -223,3 +223,12 @@ export const handleAllowAsCampaigner = async (req: Request, res: Response, next:
     next(err);
   }
 };
+
+export const handleGetAllCampaigns = async (req:Request , res:Response , next:NextFunction) => {
+  try{
+    res.status(OK).json({})
+  }
+  catch(err){
+    next(err)
+  }
+}

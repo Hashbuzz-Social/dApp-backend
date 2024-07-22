@@ -164,7 +164,7 @@ const scheduleExpiryTasks = async () => {
     where: {
       card_status: "Campaign Complete, Initiating Rewards",
       campaign_expiry: {
-        gte: new Date(),
+        lt: new Date().toISOString(), // Fetch records with expiry before now
       },
     },
   });

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleUpdateConcent } from "@controller/User";
+import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleTokenContractBal, handleUpdateConcent } from "@controller/User";
 import adminMiddleWare from "@middleware/admin";
 import userInfo from "@middleware/userInfo";
-import { checkWalletFormat } from "@validator/userRoutes.validator";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 
 // Constants
 const router = Router();
@@ -63,5 +63,7 @@ router.post("/get-balances", userInfo.getCurrentUserInfo, body("accountId").cust
  * @handler handleTokenBalReq
  */
 router.get("/token-balances", userInfo.getCurrentUserInfo, handleTokenBalReq);
+
+router.get("/token-contractbal/:tokenId" , param("tokenId").custom(checkWalletFormat) , checkErrResponse , userInfo.getCurrentUserInfo , handleTokenContractBal)
 
 export default router;

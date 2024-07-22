@@ -116,6 +116,7 @@ router.get("/active-contract", handleActiveContractInfoReq);
 router.get("/campaign-logs/:id", handleGetCmapingLogs);
 
 router.post("/user/all" , handleGetAllUser);
-router.patch("/user/allowCampaigner" , handleAllowAsCampaigner)
+router.patch("/user/allowCampaigner" , handleAllowAsCampaigner);
+router.get('campaigns/all',  )
 
 export default router;

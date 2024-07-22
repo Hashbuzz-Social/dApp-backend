@@ -249,7 +249,7 @@ export async function distributeToken(tokenId: string, userId: string, amount: n
             .addAddress(user1Account.toSolidityAddress())
             .addString(campaign_id)
             .addInt64(new BigNumber(amount))
-        ).setTransactionMemo("Distribute fungible ")
+        ).setTransactionMemo("Fungile reward distributed")
 
       // const signdistribute = await distribute.freezeWith(client).sign(privateKey);
       const submitTransfer = await distribute.execute(hederaClient);

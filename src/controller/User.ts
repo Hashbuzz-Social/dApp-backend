@@ -4,7 +4,7 @@ import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 
-import { queryBalance } from "@services/smartcontract-service";
+import { queryBalance, queryFungibleBalance } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { ParamMissingError } from "@shared/errors";
 import prisma from "@shared/prisma";
@@ -93,4 +93,19 @@ export const twitterCardStatsData = async (req: Request, res: Response) => {
     twitter_card_id: Number(cardStatus?.twitter_card_id),
   };
   return res.status(OK).json({ data });
+};
+
+export const handleTokenContractBal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const tokenId = req.params.tokenId as string;
+    console.log({tokenId})
+    if (req.currentUser?.hedera_wallet_id) {
+      const balance = await queryFungibleBalance(req.currentUser.hedera_wallet_id, tokenId);
+      console.log({balance})
+      return res.status(OK).json({ balance });
+    }
+    throw new Error("No wallet for this user");
+  } catch (err) {
+    next(err);
+  }
 };
