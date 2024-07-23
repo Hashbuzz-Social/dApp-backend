@@ -156,12 +156,11 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
       .setContractId(contractAddress)
       .setGas(400000)
       .setFunction(
-        "expiryFungibleAndNFTCampaign",
+        "expiryFungibleCampaign",
         new ContractFunctionParameters()
           .addAddress(tokenId.toSolidityAddress())
           .addString(card.contract_id)
           .addAddress(addre1.toSolidityAddress())
-          .addUint256(getBalanceRx)
       );
     const closeCampaignTx = await closeCampaign.execute(hederaClient);
     const recipt = await closeCampaignTx.getReceipt(hederaClient);

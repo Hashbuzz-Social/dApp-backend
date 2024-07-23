@@ -1,61 +1,57 @@
 import cron from "node-cron";
 import crontabService from "@services/cronTasks-service";
 
+// Common scheduling options
+const scheduleOptions = {
+  scheduled: false,
+};
+
 export const taskEveryMinute = cron.schedule(
   "* * * * *",
   () => {
-    // console.info("running a task every minute");
-    crontabService.autoCampaignClose();
     crontabService.updateCardStatus();
-  },
-  {
-    scheduled: false,
-  }
-);
-
-export const taskEverySeconds = cron.schedule(
-  "* * * * * *",
-  () => {
-    // console.info("running a task every minute");
-  },
-  {
-    scheduled: false,
-  }
-);
-
-export const taskOnEvery30Seconds = cron.schedule(
-  "*/5 * * * *",
-  () => {
-    // console.info("running a task every 30");
+    crontabService.autoCampaignClose();
     crontabService.checkCampaignCloseTime();
   },
-  {
-    scheduled: false,
-  }
+  scheduleOptions
 );
 
-export const taskOnEvery15Minutes = cron.schedule(
+export const taskEverySecond = cron.schedule(
+  "* * * * * *",
+  () => {
+    // Add functionality if needed
+  },
+  scheduleOptions
+);
+
+export const taskEvery5Minutes = cron.schedule(
   "*/5 * * * *",
   () => {
     crontabService.checkForRepliesAndUpdateEngagementsData();
   },
-  {
-    scheduled: false,
-  }
+  scheduleOptions
 );
 
-export const taskEveryTwoMinute = cron.schedule(
+export const taskEvery15Minutes = cron.schedule(
+  "*/15 * * * *",
+  () => {
+    // crontabService.checkForRepliesAndUpdateEngagementsData();
+  },
+  scheduleOptions
+);
+
+export const taskEvery40Minutes = cron.schedule(
   "*/40 * * * *",
   () => {
     crontabService.scheduleExpiryTasks();
-    // console.info("running a task every Two minutes");
   },
-  {
-    scheduled: false,
-  }
+  scheduleOptions
 );
 
-
-export const taskAtEveryMidNight = cron.schedule('0 0 0 * * *', () => {
-  crontabService.checkForRepliesAndUpdateEngagementsData();
-}, { scheduled: false })
+export const taskEveryMidnight = cron.schedule(
+  "0 0 * * *",
+  () => {
+    crontabService.checkForRepliesAndUpdateEngagementsData();
+  },
+  scheduleOptions
+);
