@@ -165,7 +165,6 @@ model user_balances {
   user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-
 model smartcontracts {
   id                 BigInt              @id @default(autoincrement())
   contract_id        String              @unique @db.VarChar(50)
@@ -198,7 +197,6 @@ model whiteListedTokens {
 
   @@index([token_id])
 }
-
 
 model transactions {
   id               BigInt          @id @default(autoincrement())
