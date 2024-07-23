@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleTokenContractBal, handleUpdateConcent } from "@controller/User";
+import { handleCurrentUser, handleGetAllUser, handleGetUserBalances, handleTokenBalReq, handleTokenContractBal, handleUpdateConcent, syncBal } from "@controller/User";
 import adminMiddleWare from "@middleware/admin";
 import userInfo from "@middleware/userInfo";
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
@@ -65,5 +65,7 @@ router.post("/get-balances", userInfo.getCurrentUserInfo, body("accountId").cust
 router.get("/token-balances", userInfo.getCurrentUserInfo, handleTokenBalReq);
 
 router.get("/token-contractbal/:tokenId" , param("tokenId").custom(checkWalletFormat) , checkErrResponse , userInfo.getCurrentUserInfo , handleTokenContractBal)
+
+router.get("/sync-bal/:tokenId" , param("tokenId").custom(checkWalletFormat) , checkErrResponse , userInfo.getCurrentUserInfo , syncBal)
 
 export default router;

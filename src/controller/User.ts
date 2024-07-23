@@ -98,11 +98,44 @@ export const twitterCardStatsData = async (req: Request, res: Response) => {
 export const handleTokenContractBal = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tokenId = req.params.tokenId as string;
-    console.log({tokenId})
+    console.log({ tokenId });
     if (req.currentUser?.hedera_wallet_id) {
       const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
-      console.log({balance})
+      console.log({ balance });
       return res.status(OK).json({ balance });
+    }
+    throw new Error("No wallet for this user");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const syncBal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const tokenId = req.params.tokenId as string;
+
+    // verify token
+
+    const tokendata = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
+    if (!tokendata) return res.status(BAD_REQUEST).json({ error: true, messages: "Unsupoorted token" });
+
+    // Go for SM query for the baalnce
+    if (req.currentUser && req.currentUser.hedera_wallet_id && req.currentUser.id) {
+      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
+
+      logger.info(`Toeken baalnce syn for the user ${req.currentUser.id} and for token ${tokenId}`);
+
+      await prisma.user_balances.updateMany({
+        where: {
+          token_id: tokendata.id,
+          user_id: req.currentUser.id,
+        },
+        data: {
+          entity_balance: Number(balance),
+        },
+      });
+
+      return res.status(OK).json({ balance:Number(balance) });
     }
     throw new Error("No wallet for this user");
   } catch (err) {
