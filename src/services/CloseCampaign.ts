@@ -1,11 +1,11 @@
-import { campaign_twittercard, user_user } from "@prisma/client";
+import { campaign_twittercard } from "@prisma/client";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { scheduleJob } from "node-schedule";
 import { perFormCampaignExpiryOperation } from "./campaign-service";
-import CampaignLifeCycleBase, { LYFCycleStages } from "./CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { LYFCycleStages , CardOwner } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";
 import hederaService from "./hedera-service";
 import { performAutoRewardingForEligibleUser } from "./reward-service";
@@ -19,10 +19,10 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
   /**
    * Check if the card owner has valid access tokens.
-   * @param {user_user} cardOwner - The owner of the card.
+   * @param {CardOwner} cardOwner - The owner of the card.
    * @returns {boolean} True if the owner has valid access tokens, false otherwise.
    */
-  private hasValidAccessTokens(cardOwner: user_user): boolean {
+  private hasValidAccessTokens(cardOwner: CardOwner): boolean {
     return !!(cardOwner && cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret);
   }
 
@@ -114,11 +114,11 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   /**
    * Handle closing an HBAR campaign.
    * @param {campaign_twittercard} card - The campaign card.
-   * @param {user_user} cardOwner - The owner of the card.
+   * @param {CardOwner} cardOwner - The owner of the card.
    * @returns {Promise<{ card: Object; message: string }>} The result of the close campaign operation.
    * @throws Will throw an error if any step in the process fails.
    */
-  private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: user_user) {
+  private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
     try {
@@ -133,11 +133,11 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   /**
    * Handle closing a fungible campaign.
    * @param {campaign_twittercard} card - The campaign card.
-   * @param {user_user} cardOwner - The owner of the card.
+   * @param {CardOwner} cardOwner - The owner of the card.
    * @returns {Promise<{ card: Object; message: string }>} The result of the close campaign operation.
    * @throws Will throw an error if any step in the process fails.
    */
-  private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: user_user) {
+  private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
     const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
 
     try {
@@ -153,11 +153,11 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * Execute the steps required to close a campaign and initiate reward distribution.
    * @param {campaign_twittercard} card - The campaign card.
    * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
-   * @param {user_user} cardOwner - The owner of the card.
+   * @param {CardOwner} cardOwner - The owner of the card.
    * @param {string} type - The type of the campaign (e.g., "HBAR", "FUNGIBLE").
    * @throws Will throw an error if any step in the process fails.
    */
-  private async executeCampaignClosingSteps(card: campaign_twittercard, campaignExpiryTimestamp: string, cardOwner: user_user, type: string) {
+  private async executeCampaignClosingSteps(card: campaign_twittercard, campaignExpiryTimestamp: string, cardOwner: CardOwner, type: string) {
     // Step 1: Smart Contract Transaction for campaign close status and start rewarding
     try {
       logger.info(`Starting Smart Contract transaction to close ${type} campaign for card ID: ${card.id}`);

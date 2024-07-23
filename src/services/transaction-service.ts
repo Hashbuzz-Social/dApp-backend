@@ -4,7 +4,7 @@ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Cont
 import { Decimal } from "@prisma/client/runtime/library";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { encodeFunctionCall, provideActiveContract, queryBalance, queryFungibleBalance } from "@services/smartcontract-service";
+import { encodeFunctionCall, provideActiveContract, queryBalance, queryFungibleBalanceOfCampaigner } from "@services/smartcontract-service";
 import { convertTrxString, nodeURI, sensitizeUserData, waitFor } from "@shared/helper";
 import prisma from "@shared/prisma";
 import BigNumber from "bignumber.js";
@@ -425,7 +425,7 @@ export const reimbursementFungible = async (accountId: string, amounts: number, 
     const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
     const tokenStatus = transferTokenRx.status;
     console.log(" - The transfer back transaction status " + tokenStatus);
-    const balance = await queryFungibleBalance(accountId, tokenId);
+    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId);
 
     const balanceRecord = await userService.updateTokenBalanceForUser({
       amount: amounts * 10 ** Number(decimals),

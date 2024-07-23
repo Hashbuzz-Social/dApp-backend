@@ -1,11 +1,12 @@
-import { campaign_twittercard, user_user } from "@prisma/client";
+import { campaign_twittercard } from "@prisma/client";
 import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall } from "@services/contract-service";
-import { queryBalance as queryBalaceFromSM, queryFungibleBalance as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
+import { queryBalance as queryBalaceFromSM, queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { formattedDateTime } from "@shared/helper";
 import logger from "jet-logger";
-import CampaignLifeCycleBase from "./CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CardOwner } from "./CampaignLifeCycleBase";
 import twitterCardService from "./twitterCard-service";
+import prisma from "@shared/prisma";
 
 /**
  * Class representing the campaign expiry operations.
@@ -20,8 +21,8 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
    * and handles the expiry based on the campaign type (HBAR or FUNGIBLE).
    */
   public async performCampaignExpiryOperation() {
-    const card = await this.ensureCampaignCardLoaded();
-    const cardOwner = await this.ensureCardOwnerDataLoaded();
+    const card = this.ensureCampaignCardLoaded();
+    const cardOwner = this.ensureCardOwnerDataLoaded();
 
     logger.info(`Campaign expiry operation started for id::: ${card.id} `);
 
@@ -36,10 +37,10 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
 
   /**
    * Check if the card owner has valid access tokens.
-   * @param {user_user} cardOwner - The card owner data.
+   * @param {CardOwner} cardOwner - The card owner data.
    * @returns {boolean} True if the card owner has valid access tokens, otherwise false.
    */
-  private hasValidAccessTokens(cardOwner: user_user): boolean {
+  private hasValidAccessTokens(cardOwner: CardOwner): boolean {
     return !!(cardOwner && cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret);
   }
 
@@ -48,9 +49,9 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
    * Performs the necessary operations to expire the HBAR campaign,
    * update the user balance, and publish a tweet about the expiry.
    * @param {campaign_twittercard} card - The campaign card data.
-   * @param {user_user} cardOwner - The card owner data.
+   * @param {CardOwner} cardOwner - The card owner data.
    */
-  private async handleHBARExpiry(card: campaign_twittercard, cardOwner: user_user) {
+  private async handleHBARExpiry(card: campaign_twittercard, cardOwner: CardOwner) {
     try {
       logger.info(`Performing HBAR expiry for card ID: ${card.id}`);
 
@@ -114,24 +115,26 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
    * Performs the necessary operations to expire the fungible token campaign,
    * update the user balance, and publish a tweet about the expiry.
    * @param {campaign_twittercard} card - The campaign card data.
-   * @param {user_user} cardOwner - The card owner data.
+   * @param {CardOwner} cardOwner - The card owner data.
    */
-  private async handleFungibleExpiry(card: campaign_twittercard, cardOwner: user_user) {
+  private async handleFungibleExpiry(card: campaign_twittercard, cardOwner: CardOwner) {
+    let camapigner_balances = 0;
+    let campaign_remaianing_balance = 0;
     try {
       logger.info(`Performing FUNGIBLE expiry for card ID: ${card.id}`);
 
       // Step 1: Smart Contract Transaction for FUNGIBLE expiry
       try {
-        await fungibleSMExpiryCall(card, cardOwner);
-        logger.info(`FUNGIBLE Smart Contract transaction successful for card ID: ${card.id}`);
+        const data = await fungibleSMExpiryCall(card, cardOwner);
+        campaign_remaianing_balance = Number(data?.contractBal);
+        logger.info(`FUNGIBLE Smart Contract transaction successful for card ID: ${card.id}, Remaiananing bal of campaign is ${campaign_remaianing_balance}`);
       } catch (err) {
         throw new Error(`Failed to perform FUNGIBLE Smart Contract transaction: ${err.message}`);
       }
 
       // Step 2: Query Balance from Smart Contract
-      let balances;
       try {
-        balances = await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!);
+        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!));
         logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id}`);
       } catch (err) {
         throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);
@@ -140,13 +143,21 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
       // Step 3: Update user balance
       try {
         if (this.tokenData) {
-          await userService.updateTokenBalanceForUser({
-            amount: Number(balances),
-            operation: "increment",
-            token_id: this.tokenData.id,
-            decimal: Number(this.tokenData.decimals),
-            user_id: cardOwner.id,
-          });
+          const balanceRecord = cardOwner.user_balances.find((bal) => bal.token_id === this.tokenData?.id);
+          if (Number(balanceRecord?.entity_balance) !== camapigner_balances) {
+            logger.warn("Campaagner balance diff is found");
+
+            // update the balance record to DB;
+            const totalBal = camapigner_balances + campaign_remaianing_balance;
+            await prisma.user_balances.update({
+              where: { id: balanceRecord?.id },
+              data: {
+                entity_balance: totalBal,
+              },
+            });
+          } else {
+            logger.info("No chnage in balance no need to update.");
+          }
           logger.info(`Updated user balance for card owner ID: ${cardOwner.id}`);
         }
       } catch (err) {

@@ -338,7 +338,7 @@ export const queryBalance = async (address: string) => {
   }
 };
 
-export const queryFungibleBalance = async (address: string, fungible_tokenId: string) => {
+export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string) => {
   address = AccountId.fromString(address).toSolidityAddress();
   const tokenId = AccountId.fromString(fungible_tokenId);
 

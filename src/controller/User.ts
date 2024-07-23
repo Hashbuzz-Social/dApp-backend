@@ -4,7 +4,7 @@ import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 
-import { queryBalance, queryFungibleBalance } from "@services/smartcontract-service";
+import { queryBalance, queryFungibleBalanceOfCampaigner } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { ParamMissingError } from "@shared/errors";
 import prisma from "@shared/prisma";
@@ -100,7 +100,7 @@ export const handleTokenContractBal = async (req: Request, res: Response, next: 
     const tokenId = req.params.tokenId as string;
     console.log({tokenId})
     if (req.currentUser?.hedera_wallet_id) {
-      const balance = await queryFungibleBalance(req.currentUser.hedera_wallet_id, tokenId);
+      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
       console.log({balance})
       return res.status(OK).json({ balance });
     }

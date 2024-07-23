@@ -131,7 +131,10 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
   protected async updateBalance(card: campaign_twittercard): Promise<void> {
     if (card.campaign_budget && card.owner_id) {
-      this.cardOwner = await userService.topUp(card.owner_id, card.campaign_budget, "decrement");
+      const user_data = await userService.topUp(card.owner_id, card.campaign_budget, "decrement");
+      if (this.cardOwner) {
+        this.cardOwner = { ...this.cardOwner, ...user_data };
+      }
     } else {
       throw new Error("Missing required data for balance update");
     }

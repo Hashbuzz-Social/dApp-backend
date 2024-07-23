@@ -132,17 +132,7 @@ const getUserByTwitterId = async (personal_twitter_id: string) => {
 };
 
 const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_id, user_id, decimal }: { cntrct_bal?: number; amount: number; operation: "increment" | "decrement"; token_id: number | bigint; user_id: number | bigint; decimal: number }) => {
-  // const balRecord = await prisma.user_balances.upsert({
-  //   create: {
-  //     user_id,
-  //     entity_balance: amount,
-  //     entity_decimal: parseInt(decimal.toString()),
-  //     token_id,
-  //   },
-  //   update: { entity_balance: amount },
-  //   where: { user_id, token_id },
-  // });
-  // return balRecord;
+
   const balRecord = await prisma.user_balances.findFirst({
     where: { user_id, token_id },
   });

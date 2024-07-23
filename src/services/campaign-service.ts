@@ -10,7 +10,7 @@ import { twitterStatus } from "src/@types/custom";
 import CloseCmapignLyfCycle from "./CloseCampaign";
 import { closeFungibleAndNFTCampaign, expiryCampaign, expiryFungibleCampaign } from "./contract-service";
 import hederaService from "./hedera-service";
-import { queryBalance, queryFungibleBalance } from "./smartcontract-service";
+import { queryBalance, queryFungibleBalanceOfCampaigner } from "./smartcontract-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import userService from "./user-service";
 import CampaignExpiryOperation from "./ExpireAndArchive";
@@ -273,7 +273,7 @@ export async function perFormCampaignExpiryOperationEXON10072024(id: number | bi
         where: { token_id: String(fungible_token_id) },
       });
 
-      const balances = await queryFungibleBalance(user_user.hedera_wallet_id!, fungible_token_id);
+      const balances = await queryFungibleBalanceOfCampaigner(user_user.hedera_wallet_id!, fungible_token_id);
       if (token) {
         const balanceRecord = await userService.updateTokenBalanceForUser({
           amount: Number(balances),

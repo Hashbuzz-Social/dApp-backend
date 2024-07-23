@@ -170,7 +170,7 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
     const transactionId = recipt.scheduledTransactionId
 
     logger.info(`- Expiry campaign transaction status for card ${card.id} ::: ${closeCampaignStaus}`);
-    return  {staus:closeCampaignStaus , transactionId , recipt}
+    return  {staus:closeCampaignStaus , transactionId , recipt , contractBal:getBalanceRx.toNumber()}
   }
 }
 

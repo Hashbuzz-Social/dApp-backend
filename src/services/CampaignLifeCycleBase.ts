@@ -1,4 +1,4 @@
-import { CampaignLog, Prisma, campaign_twittercard, transactions, user_user, whiteListedTokens } from "@prisma/client";
+import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens } from "@prisma/client";
 import hederaService from "@services/hedera-service";
 import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
 import prisma from "@shared/prisma";
@@ -50,9 +50,11 @@ export interface createCampaignParams {
 
 type TransactionRecord = NonNullable<Omit<transactions, "id" | "created_at" | "network">>;
 
+export type CardOwner =  user_user  & {user_balances:user_balances[]} 
+
 class CampaignLifeCycleBase {
   protected campaignCard: campaign_twittercard | null = null;
-  protected cardOwner: user_user | null = null;
+  protected cardOwner:CardOwner|null = null;
   protected tweetId: string | null = null;
   protected lastThreadId: string | null = null;
   protected redisClient: RedisClient;
@@ -84,7 +86,13 @@ class CampaignLifeCycleBase {
       // Query for the card
       const card = await prisma.campaign_twittercard.findUnique({
         where: { id },
-        include: { user_user: true },
+        include: {
+          user_user: {
+            include: {
+              user_balances: true,
+            },
+          },
+        },
       });
 
       if (!card) {
@@ -129,7 +137,7 @@ class CampaignLifeCycleBase {
     return this.campaignCard;
   }
 
-  protected ensureCardOwnerDataLoaded(): user_user {
+  protected ensureCardOwnerDataLoaded(): CardOwner {
     if (!this.cardOwner) {
       throw new Error("Campaign card owner data is not loaded");
     }
