@@ -119,23 +119,22 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
    */
   private async handleFungibleExpiry(card: campaign_twittercard, cardOwner: CardOwner) {
     let camapigner_balances = 0;
-    let campaign_remaianing_balance = 0;
+
     try {
       logger.info(`Performing FUNGIBLE expiry for card ID: ${card.id}`);
 
       // Step 1: Smart Contract Transaction for FUNGIBLE expiry
       try {
-        const data = await fungibleSMExpiryCall(card, cardOwner);
-        campaign_remaianing_balance = Number(data?.contractBal);
-        logger.info(`FUNGIBLE Smart Contract transaction successful for card ID: ${card.id}, Remaiananing bal of campaign is ${campaign_remaianing_balance}`);
+        await fungibleSMExpiryCall(card, cardOwner);
+        logger.info(`FUNGIBLE Smart Contract transaction successful for card ID: ${card.id}`);
       } catch (err) {
         throw new Error(`Failed to perform FUNGIBLE Smart Contract transaction: ${err.message}`);
       }
 
       // Step 2: Query Balance from Smart Contract
       try {
-        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!));
-        logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id}`);
+        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id! , false));
+        logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id} having balamce is:: ${camapigner_balances}`);
       } catch (err) {
         throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);
       }
@@ -148,7 +147,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
             logger.warn("Campaagner balance diff is found");
 
             // update the balance record to DB;
-            const totalBal = camapigner_balances + campaign_remaianing_balance;
+            const totalBal = camapigner_balances;
             await prisma.user_balances.update({
               where: { id: balanceRecord?.id },
               data: {

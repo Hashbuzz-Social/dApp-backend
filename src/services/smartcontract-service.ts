@@ -338,23 +338,32 @@ export const queryBalance = async (address: string) => {
   }
 };
 
-export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string) => {
+export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string, isNFT: boolean) => {
   address = AccountId.fromString(address).toSolidityAddress();
   const tokenId = AccountId.fromString(fungible_tokenId);
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const getBalance = new ContractCallQuery().setContractId(contractAddress).setGas(2000000).setFunction("getFungibleAndNFTBalance", new ContractFunctionParameters().addAddress(address).addAddress(tokenId.toSolidityAddress())).setQueryPayment(new Hbar(10));
+    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
+    const functionName = isNFT ? "getNFTBalance" : "getFungibleTokenBalance";
+    const getBalance = new ContractCallQuery()
+      .setContractId(contractAddress)
+      .setGas(500000) // Adjust gas limit as needed
+      .setFunction(functionName, 
+        new ContractFunctionParameters()
+          .addAddress(address)
+          .addAddress(tokenId.toSolidityAddress()))
+      .setQueryPayment(new Hbar(10));
 
     const contractCallResult = await getBalance.execute(hederaClient);
     const getBalanceRx = contractCallResult.getUint256();
-    console.log(" - The Balance of fungible token Campaigner " + getBalanceRx);
+    console.log(` - The Balance of ${isNFT ? 'NFT' : 'fungible token'} Campaigner: ` + getBalanceRx);
     const balances = getBalanceRx.toString();
 
     return balances;
   }
 };
+
 
 /****
  * @description query campaign balance from contract

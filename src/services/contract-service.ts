@@ -139,18 +139,18 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
     const addre1 = AccountId.fromString(cardOwner.hedera_wallet_id);
     const tokenId = AccountId.fromString(card?.fungible_token_id as string);
 
-    const getBalance = new ContractCallQuery()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "getFungibleAndNFTCampaignBalance",
-        new ContractFunctionParameters().addString(card.contract_id).addAddress(tokenId.toSolidityAddress())
-      )
-      .setQueryPayment(new Hbar(10));
+    // const getBalance = new ContractCallQuery()
+    //   .setContractId(contractAddress)
+    //   .setGas(2000000)
+    //   .setFunction(
+    //     "getFungibleAndNFTCampaignBalance",
+    //     new ContractFunctionParameters().addString(card.contract_id).addAddress(tokenId.toSolidityAddress())
+    //   )
+    //   .setQueryPayment(new Hbar(10));
 
-    const contractCallResult = await getBalance.execute(hederaClient);
-    const getBalanceRx = contractCallResult.getUint256();
-    logger.info(`- The Campaign fungible Balance  for cmapign ${card.id} ::: ${getBalanceRx.toString()}`);
+    // const contractCallResult = await getBalance.execute(hederaClient);
+    // const getBalanceRx = contractCallResult.getUint256();
+    // logger.info(`- The Campaign fungible Balance  for cmapign ${card.id} ::: ${getBalanceRx.toString()}`);
 
     const closeCampaign = new ContractExecuteTransaction()
       .setContractId(contractAddress)
@@ -169,7 +169,7 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
     const transactionId = recipt.scheduledTransactionId
 
     logger.info(`- Expiry campaign transaction status for card ${card.id} ::: ${closeCampaignStaus}`);
-    return  {staus:closeCampaignStaus , transactionId , recipt , contractBal:getBalanceRx.toNumber()}
+    return  {staus:closeCampaignStaus , transactionId , recipt}
   }
 }
 
