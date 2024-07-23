@@ -273,7 +273,7 @@ export async function perFormCampaignExpiryOperationEXON10072024(id: number | bi
         where: { token_id: String(fungible_token_id) },
       });
 
-      const balances = await queryFungibleBalanceOfCampaigner(user_user.hedera_wallet_id!, fungible_token_id);
+      const balances = await queryFungibleBalanceOfCampaigner(user_user.hedera_wallet_id!, fungible_token_id , false);
       if (token) {
         const balanceRecord = await userService.updateTokenBalanceForUser({
           amount: Number(balances),

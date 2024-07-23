@@ -425,7 +425,7 @@ export const reimbursementFungible = async (accountId: string, amounts: number, 
     const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
     const tokenStatus = transferTokenRx.status;
     console.log(" - The transfer back transaction status " + tokenStatus);
-    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId);
+    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId , false);
 
     const balanceRecord = await userService.updateTokenBalanceForUser({
       amount: amounts * 10 ** Number(decimals),
