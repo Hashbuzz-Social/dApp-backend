@@ -153,6 +153,19 @@ model user_user {
   @@unique([id, hedera_wallet_id, accountAddress])
 }
 
+model user_balances {
+  id                BigInt            @id @default(autoincrement())
+  user_id           BigInt
+  token_id          BigInt
+  entity_decimal    Int
+  entity_balance    Float             @default(0)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @db.Timestamptz(6)
+  whiteListedTokens whiteListedTokens @relation(fields: [token_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+
 model smartcontracts {
   id                 BigInt              @id @default(autoincrement())
   contract_id        String              @unique @db.VarChar(50)
@@ -186,17 +199,6 @@ model whiteListedTokens {
   @@index([token_id])
 }
 
-model user_balances {
-  id                BigInt            @id @default(autoincrement())
-  user_id           BigInt
-  token_id          BigInt
-  entity_decimal    Int
-  entity_balance    Float             @default(0)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @default(now()) @db.Timestamptz(6)
-  whiteListedTokens whiteListedTokens @relation(fields: [token_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_user         user_user         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
 
 model transactions {
   id               BigInt          @id @default(autoincrement())
