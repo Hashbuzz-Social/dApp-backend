@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import CampaignLifeCycleBase, { CampaignStatuses, createCampaignParams } from "@services/CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CampaignStatus, createCampaignParams } from "@services/CampaignLifeCycleBase";
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import {
   getCampaignDetailsById,
@@ -29,8 +29,8 @@ const campaignStatuses = ["rejected", "running", "completed", "deleted"];
 
 export const makeCardRunning = async (req: Request, res: Response, next: NextFunction) => {
   const campaignId = req.body.card_id as any as number;
-  const requetedCardStatus = req.body.card_status as any as CampaignStatuses
-  if (requetedCardStatus.toLocaleLowerCase() === CampaignStatuses.RUNNING.toLocaleLowerCase()) {
+  const requetedCardStatus = req.body.card_status as any as CampaignStatus
+  if (requetedCardStatus.toLocaleLowerCase() === CampaignStatus.CampaignStarted.toLocaleLowerCase()) {
     try {
       // ?.. Call the method of running campaign of Campaign:Ifecycle memthod.
       const runningCampaign = await MakeCampaignRunning.create(campaignId);

@@ -6,7 +6,7 @@ import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
-import CampaignLifeCycleBase, { CampaignStatuses, LYFCycleStages } from "./CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CampaignStatus } from "./CampaignLifeCycleBase";
 import userService from "./user-service";
 
 interface TransactionDetails {
@@ -27,7 +27,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
     try {
       const card = this.ensureCampaignCardLoaded();
       const cardOwner = this.ensureCardOwnerDataLoaded();
-      const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatuses.RUNNING);
+      const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatus.CampaignRunning);
       4;
 
       let transactionDetails: TransactionDetails;
@@ -72,7 +72,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
       // Step 2(B) // Log the campaign Data to the DB
       await this.logCampaignData({
         campaign_id: card.id,
-        status: CampaignStatuses.RUNNING,
+        status: CampaignStatus.CampaignRunning,
         message: `Campaign balance ${card.campaign_budget} is added to the SM Contract`,
         data: {
           transaction_id: transactionDetails.transactionId,
@@ -239,7 +239,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
     try {
       const card = this.ensureCampaignCardLoaded();
       const cardOwner = this.ensureCardOwnerDataLoaded();
-      const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatuses.RUNNING);
+      const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatus.CampaignRunning);
 
       if (!checkIsValidCampaign.isValid) {
         throw new Error(checkIsValidCampaign.message);
@@ -273,7 +273,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
         await this.logCampaignData({
           campaign_id: card.id,
-          status: CampaignStatuses.RUNNING,
+          status: CampaignStatus.CampaignRunning,
           message: `Fungible campaign balance ${card.campaign_budget} is added to the SM Contract`,
           data: {
             transaction_id: transactionDetails?.transactionId,

@@ -16,23 +16,53 @@ export enum LYFCycleStages {
   EXPIRED = "status:expired",
 }
 
-export enum CampaignStatuses {
-  REJECTED = "rejected",
-  RUNNING = "running",
-  COMPLETED = "completed",
-  DELETED = "deleted",
-  INTERNAL_ERROR = "internalError",
-  UNDER_REVIEW = "Under Review",
+/**
+ * Enum representing the different statuses of a campaign.
+ */
+export enum CampaignStatus {
+  /**
+   * Awaiting approval for the campaign.
+   */
+  ApprovalPending = "ApprovalPending",
+
+  /**
+   * The campaign has been approved.
+   */
+  CampaignApproved = "CampaignApproved",
+
+  /**
+   * The campaign has been declined.
+   */
+  CampaignDeclined = "CampaignDeclined",
+
+  /**
+   * The campaign has started.
+   */
+  CampaignStarted = "CampaignStarted",
+
+  /**
+   * The cmapign is running and lokkup for the engagement has started
+   */
+  CampaignRunning = "CampaignRunning",
+
+  /**
+   * The distribution of rewards is currently in progress.
+   */
+  RewardDistributionInProgress = "RewardDistributionInProgress",
+
+  /**
+   * Rewards have been successfully distributed.
+   */
+  RewardsDistributed = "RewardsDistributed",
+
+  /**
+   * Error while in campign lyfcyckes operations
+   */
+  InternalError = "InternalError"
 }
+
 
 export type CampaignTypes = "HBAR" | "FUNGIBLE";
-
-interface RedisCardStatusUpdate {
-  card_contract_id: string;
-  LYFCycleStage: LYFCycleStages;
-  subTask?: string;
-  isSuccess?: boolean;
-}
 
 export interface createCampaignParams {
   name: string;
@@ -175,7 +205,7 @@ class CampaignLifeCycleBase {
         campaign_id: campaignId,
         data: JSON.stringify(error),
         message,
-        status: CampaignStatuses.INTERNAL_ERROR,
+        status: CampaignStatus.InternalError,
       },
     });
   }
@@ -257,7 +287,7 @@ class CampaignLifeCycleBase {
         like_reward: await this.getRewardsValues(like_reward, type, fungible_token_id),
         quote_reward: await this.getRewardsValues(quote_reward, type, fungible_token_id),
         campaign_budget: await this.getRewardsValues(campaign_budget, type, fungible_token_id),
-        card_status: CampaignStatuses.UNDER_REVIEW,
+        card_status: CampaignStatus.ApprovalPending,
         amount_spent: 0,
         amount_claimed: 0,
         media,

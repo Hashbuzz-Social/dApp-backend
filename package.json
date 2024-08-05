@@ -77,7 +77,8 @@
   "author": "hashbuzz-dev",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.478.0",
+    "@aws-sdk/client-s3": "^3.617.0",
+    "@aws-sdk/client-secrets-manager": "^3.616.0",
     "@aws-sdk/util-utf8-node": "^3.259.0",
     "@hashgraph/sdk": "^2.30.0",
     "@prisma/client": "^5.15.0",
@@ -112,7 +113,8 @@
     "solc": "^0.8.16",
     "twit": "^2.2.11",
     "twitter-api-v2": "^1.12.3",
-    "web3": "^1.7.5"
+    "web3": "^1.7.5",
+    "ws": "^7.5.10"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^4.9.3",
