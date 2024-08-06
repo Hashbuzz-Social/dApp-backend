@@ -1,4 +1,5 @@
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
+import {CampaignStatus} from "@prisma/client"
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";
@@ -86,7 +87,7 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
 const scheduleExpiryTasks = async () => {
   const completedTasks = await prisma.campaign_twittercard.findMany({
     where: {
-      card_status: "Campaign Complete, Initiating Rewards",
+      card_status: CampaignStatus.RewardDistributionInProgress,
       campaign_expiry: {
         lt: new Date().toISOString(),
       },
@@ -100,7 +101,7 @@ const scheduleExpiryTasks = async () => {
 };
 
 const autoCampaignClose = async () => {
-  const runningTasks = await prisma.campaign_twittercard.findMany({ where: { card_status: "Running" } });
+  const runningTasks = await prisma.campaign_twittercard.findMany({ where: { card_status: CampaignStatus.CampaignRunning } });
 
   await Promise.all(runningTasks.map(async (task) => {
     if ((task.campaign_budget ?? 0) <= (task.amount_spent ?? 0)) {
@@ -119,7 +120,7 @@ const updateQueueStatus = async (id: bigint) => {
 const checkCampaignCloseTime = async () => {
   const tasks = await prisma.campaign_twittercard.findMany({
     where: {
-      card_status: "Running",
+      card_status: CampaignStatus.CampaignRunning,
       is_added_to_queue: false,
       campaign_close_time: { gte: new Date() },
     },
@@ -139,8 +140,8 @@ const checkPreviousCampaignCloseTime = async () => {
   const campaigns = await prisma.campaign_twittercard.findMany({
     where: {
       OR: [
-        { card_status: "Running", campaign_close_time: { lt: now } },
-        { card_status: "Campaign Complete, Initiating Rewards", campaign_expiry: { lt: now } },
+        { card_status: CampaignStatus.CampaignRunning, campaign_close_time: { lt: now } },
+        { card_status: CampaignStatus.RewardDistributionInProgress, campaign_expiry: { lt: now } },
       ],
     },
   });
@@ -157,7 +158,7 @@ const checkPreviousCampaignCloseTime = async () => {
   console.info(message);
 
   await Promise.all(campaigns.map(async (campaign) => {
-    if (campaign.card_status === "Running") {
+    if (campaign.card_status === CampaignStatus.CampaignRunning) {
       await completeCampaignOperation(campaign);
     } else if (campaign.contract_id) {
       await perFormCampaignExpiryOperation(campaign.id, campaign.contract_id);

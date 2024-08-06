@@ -1,5 +1,6 @@
 import prisma from '@shared/prisma';
 import axios from 'axios';
+import {CampaignStatus} from "@prisma/client"
 import WebSocket from 'ws';
 
 // TweetTracker class to manage real-time tweet tracking and engagement fetching
@@ -25,10 +26,10 @@ class TweetTracker {
   // Function to fetch active Tweet IDs from Prisma
   private async fetchActiveTweetIds() {
     try {
-      const activeTweets = await prisma.campaign_twittercard.findMany({where:{card_status:""}});
+      const activeTweets = await prisma.campaign_twittercard.findMany({where:{card_status:CampaignStatus.CampaignRunning}});
       activeTweets.forEach((tweet) => {
-        if (!this.tweetIdsToTrack.has(tweet.tweetId)) {
-          this.tweetIdsToTrack.set(tweet.tweetId, Date.now());
+        if (!this.tweetIdsToTrack.has(tweet.tweet_id!)) {
+          this.tweetIdsToTrack.set(tweet.tweet_id!, Date.now());
         }
       });
       console.log('Updated Tweet IDs to track:', Array.from(this.tweetIdsToTrack.keys()));

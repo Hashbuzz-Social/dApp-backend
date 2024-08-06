@@ -1,4 +1,4 @@
-import { campaign_twittercard } from "@prisma/client";
+import { campaign_twittercard, CampaignStatus } from "@prisma/client";
 import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall } from "@services/contract-service";
 import { queryBalance as queryBalaceFromSM, queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
 import userService from "@services/user-service";
@@ -99,7 +99,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
 
       // Step 5: Update card status as expired in DB
       try {
-        this.campaignCard = await this.updateCampaignCardToComplete(card.id, last_tweet_id, "Rewards Disbursed");
+        this.campaignCard = await this.updateCampaignCardToComplete(card.id, last_tweet_id, CampaignStatus.RewardsDistributed);
         logger.info(`Updated campaign card status to expired for card ID: ${card.id}`);
       } catch (err) {
         throw new Error(`Failed to update campaign card status: ${err.message}`);
@@ -180,7 +180,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
 
       // Step 5: Update card status as expired in DB
       try {
-        this.campaignCard = await this.updateCampaignCardToComplete(card.id, last_tweet_id, "Rewards Disbursed");
+        this.campaignCard = await this.updateCampaignCardToComplete(card.id, last_tweet_id, CampaignStatus.RewardsDistributed);
         logger.info(`Updated campaign card status to expired for card ID: ${card.id}`);
       } catch (err) {
         throw new Error(`Failed to update campaign card status: ${err.message}`);

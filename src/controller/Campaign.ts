@@ -1,5 +1,6 @@
 /* eslint-disable max-len */
-import CampaignLifeCycleBase, { CampaignStatus, createCampaignParams } from "@services/CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { createCampaignParams } from "@services/CampaignLifeCycleBase";
+import {CampaignStatus} from "@prisma/client"
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import {
   getCampaignDetailsById,
@@ -396,7 +397,7 @@ export const handleAddNewCampaign = (
             retweet_reward: convertToTinyHbar(retweet_reward as string),
             quote_reward: convertToTinyHbar(quote_reward as string),
             campaign_budget: convertToTinyHbar(campaign_budget as string),
-            card_status: "Under Review",
+            card_status: CampaignStatus.ApprovalPending,
             owner_id:req.currentUser.id,
             amount_spent: 0,
             amount_claimed: 0,
@@ -435,7 +436,7 @@ export const handleAddNewCampaign = (
             campaign_budget: Number(
               campaign_budget * 10 ** Number(token?.decimals)
             ),
-            card_status: "Under Review",
+            card_status:CampaignStatus.ApprovalPending,
             owner_id: req.currentUser?.id,
             amount_spent: 0,
             amount_claimed: 0,

@@ -1,4 +1,4 @@
-import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens } from "@prisma/client";
+import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens , CampaignStatus } from "@prisma/client";
 import hederaService from "@services/hedera-service";
 import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
 import prisma from "@shared/prisma";
@@ -16,50 +16,7 @@ export enum LYFCycleStages {
   EXPIRED = "status:expired",
 }
 
-/**
- * Enum representing the different statuses of a campaign.
- */
-export enum CampaignStatus {
-  /**
-   * Awaiting approval for the campaign.
-   */
-  ApprovalPending = "ApprovalPending",
 
-  /**
-   * The campaign has been approved.
-   */
-  CampaignApproved = "CampaignApproved",
-
-  /**
-   * The campaign has been declined.
-   */
-  CampaignDeclined = "CampaignDeclined",
-
-  /**
-   * The campaign has started.
-   */
-  CampaignStarted = "CampaignStarted",
-
-  /**
-   * The cmapign is running and lokkup for the engagement has started
-   */
-  CampaignRunning = "CampaignRunning",
-
-  /**
-   * The distribution of rewards is currently in progress.
-   */
-  RewardDistributionInProgress = "RewardDistributionInProgress",
-
-  /**
-   * Rewards have been successfully distributed.
-   */
-  RewardsDistributed = "RewardsDistributed",
-
-  /**
-   * Error while in campign lyfcyckes operations
-   */
-  InternalError = "InternalError"
-}
 
 
 export type CampaignTypes = "HBAR" | "FUNGIBLE";
@@ -141,7 +98,7 @@ class CampaignLifeCycleBase {
       const runningCardCount = await prisma.campaign_twittercard.count({
         where: {
           owner_id: card.owner_id,
-          card_status: "Running",
+          card_status: CampaignStatus.CampaignRunning
         },
       });
 
@@ -187,7 +144,7 @@ class CampaignLifeCycleBase {
       data: {
         tweet_id: this.tweetId,
         last_thread_tweet_id: this.lastThreadId,
-        card_status: "Running",
+        card_status: CampaignStatus.CampaignRunning,
         campaign_start_time: currentTime.toISOString(),
         campaign_close_time: addMinutesToTime(currentTime.toISOString(), this.campaignDurationInMin),
       },
@@ -349,7 +306,7 @@ class CampaignLifeCycleBase {
    * @param {string} [campaignExpiryTimestamp] - The expiry timestamp of the campaign (optional).
    * @returns {Promise<campaign_twittercard>} The updated campaign card.
    */
-  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status: string = "Campaign Complete, Initiating Rewards", campaignExpiryTimestamp?: string) {
+  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status:CampaignStatus = CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp?: string) {
     return await prisma.campaign_twittercard.update({
       where: { id },
       data: {

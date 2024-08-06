@@ -1,4 +1,4 @@
-import { campaign_twittercard } from "@prisma/client";
+import { campaign_twittercard , CampaignStatus } from "@prisma/client";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
@@ -193,7 +193,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
         tweetText,
         parentTweetId: card.last_thread_tweet_id!,
       });
-      this.campaignCard = await this.updateCampaignCardToComplete(card.id, updateThread, "Campaign Complete, Initiating Rewards",campaignExpiryTimestamp);
+      this.campaignCard = await this.updateCampaignCardToComplete(card.id, updateThread, CampaignStatus.RewardDistributionInProgress,campaignExpiryTimestamp);
       logger.info(`Successfully published reward announcement tweet thread for card ID: ${card.id}`);
       await this.updateCampaignStatus(card.contract_id!, "publishedTweetThread", true, LYFCycleStages.COMPLETED);
     } catch (err) {

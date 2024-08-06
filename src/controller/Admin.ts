@@ -12,12 +12,13 @@ import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
+import { CampaignStatus } from "@prisma/client";
 
 const { OK, BAD_REQUEST } = statuses;
 // const { associateTokenToContract } = htsServices;
 
 export const handleGetAllCard = async (req: Request, res: Response) => {
-  const status = req.query.status as any as string;
+  const status = req.query.status as any as CampaignStatus;
   const data = await twitterCardService.getAllTwitterCardByStatus(status);
   if (data && data.length > 0) {
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));

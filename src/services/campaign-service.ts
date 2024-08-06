@@ -1,4 +1,4 @@
-import { campaign_twittercard } from "@prisma/client";
+import { campaign_twittercard , CampaignStatus } from "@prisma/client";
 import { performAutoRewardingForEligibleUser } from "@services/reward-service";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
@@ -41,7 +41,7 @@ export const getRunningCardsOfUserId = async (userId: number | bigint) => {
   return await prisma.campaign_twittercard.findFirst({
     where: {
       owner_id: userId,
-      card_status: "Running",
+      card_status: CampaignStatus.CampaignRunning,
     },
   });
 };
@@ -57,7 +57,7 @@ export const incrementClaimAmount = async (cardId: number | bigint, amount: numb
   });
 };
 
-export const updateCampaignStatus = async (campaignId: number | bigint, status: twitterStatus) => {
+export const updateCampaignStatus = async (campaignId: number | bigint, status: CampaignStatus) => {
   return await prisma.campaign_twittercard.update({
     where: {
       id: campaignId,
@@ -135,7 +135,7 @@ export const completeCampaignOperationEX = async (card: campaign_twittercard) =>
             },
             data: {
               campaign_expiry: campaignExpiry,
-              card_status: "Campaign Complete, Initiating Rewards",
+              card_status:CampaignStatus.RewardDistributionInProgress,
               last_thread_tweet_id: updateThread.data.id,
             },
           }),
@@ -176,7 +176,7 @@ export const completeCampaignOperationEX = async (card: campaign_twittercard) =>
             },
             data: {
               campaign_expiry: campaignExpiry,
-              card_status: "Campaign Complete, Initiating Rewards",
+              card_status: CampaignStatus.RewardDistributionInProgress,
               last_thread_tweet_id: updateThread.data.id,
             },
           }),
@@ -237,7 +237,7 @@ export async function perFormCampaignExpiryOperationEXON10072024(id: number | bi
       id,
     },
     data: {
-      card_status: "Rewards Disbursed",
+      card_status:CampaignStatus.RewardsDistributed,
     },
   });
 

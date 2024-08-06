@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { campaign_twittercard, user_user } from "@prisma/client";
+import { campaign_twittercard, user_user , CampaignStatus } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
@@ -30,7 +30,7 @@ export const allActiveTwitterCard = async () => {
   // console.info("allActiveTwitterCard::start");
   const allActiveCards = await prisma.campaign_twittercard.findMany({
     where: {
-      card_status: "Running",
+      card_status: CampaignStatus.CampaignRunning
     },
   });
   return allActiveCards;
@@ -312,7 +312,7 @@ const publishTwitter = async (cardId: number | bigint) => {
         data: {
           tweet_id: tweetId,
           last_thread_tweet_id: lastThreadTweetId,
-          card_status: "Running",
+          card_status: CampaignStatus.CampaignRunning,
           campaign_start_time: currentDate.toISOString(),
           campaign_close_time: addMinutesToTime(currentDate.toISOString(), campaignDurationInMin ?? 15)
         },
@@ -329,7 +329,7 @@ const publishTwitter = async (cardId: number | bigint) => {
   }
 };
 
-const getAllTwitterCardByStatus = async (status: string) => {
+const getAllTwitterCardByStatus = async (status: CampaignStatus) => {
   const data = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: status,
@@ -371,7 +371,7 @@ const updateStatus = async (id: number, status: boolean) => {
     },
   });
 
-  if (data?.card_status === "Under Review") {
+  if (data?.card_status === CampaignStatus.ApprovalPending) {
     if (status === true) {
       const data = await prisma.campaign_twittercard.update({
         where: {
@@ -380,7 +380,7 @@ const updateStatus = async (id: number, status: boolean) => {
         data: {
           approve: true,
           isRejected: false,
-          card_status: "Campaign Active"
+          card_status: CampaignStatus.CampaignApproved
         }
       });
 
@@ -392,7 +392,7 @@ const updateStatus = async (id: number, status: boolean) => {
         },
         data: {
           isRejected: true,
-          card_status: "Campaign Declined"
+          card_status: CampaignStatus.CampaignDeclined
         }
       });
 

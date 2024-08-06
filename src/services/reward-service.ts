@@ -1,27 +1,27 @@
 /* eslint-disable max-len */
+import { Status } from "@hashgraph/sdk";
 import {
   campaign_tweetengagements,
   campaign_twittercard,
+  CampaignStatus
 } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
+import { checkTokenAssociation } from "@shared/helper";
 import prisma from "@shared/prisma";
-import twitterAPI from "@shared/twitterAPI";
 import logger from "jet-logger";
 import { groupBy } from "lodash";
+import { RewardsObj } from "src/@types/custom";
 import {
   getCampaignDetailsById,
   incrementClaimAmount,
 } from "./campaign-service";
+import { distributeToken } from "./contract-service";
 import { updatePaymentStatusToManyRecords } from "./engagement-servide";
 import {
   transferAmountFromContractUsingSDK,
   updateCampaignBalance,
 } from "./transaction-service";
 import userService from "./user-service";
-import { distributeToken } from "./contract-service";
-import { Decimal } from "@prisma/client/runtime/library";
-import { checkTokenAssociation } from "@shared/helper";
-import { RewardsObj } from "src/@types/custom";
-import { Status } from "@hashgraph/sdk";
 
 const calculateTotalRewards = (
   card: campaign_twittercard,
@@ -193,33 +193,8 @@ export const getRewardDetails = async (data: any) => {
         engagementDetails[i].campaign_twittercard.comment_reward;
     }
     updateData.push(obj);
-    // }
   }
-
-  // for(let i = 0; i <engagementDetails.length; i++) {
-  //   if(engagementDetails[i].tweet_id ===)
-  // }
-  //   const tweetEngagements = await prisma.campaign_tweetengagements.findMany({
-  //     where: {
-  //       user_id: user?.personal_twitter_id,
-  //       payment_status: "UNPAID"
-  // },
-  //     include: {
-  //       campaign_twittercard: {
-  //         where: {
-
-  //         },
-  //       },
-  //     },
-  //   })
-  // const totalRewardsTinyHbar = calculateTotalRewards(campaignDetails, engagementDetails);
-  // // const card = engagementDetails[0]?.campaign_twittercard
-  // // if(engagementDetails[0] && engagementDetails[0].campaign_twittercard) {
-  // //   // console.log(engagementDetails[0].campaign_twittercard)
-  // //   const totalRewardsTinyHbar = calculateTotalRewards(engagementDetails[0].campaign_twittercard, engagementDetails);
-  // //   console.log(totalRewardsTinyHbar)
   return updateData;
-  // // }
 };
 
 export const claim = async (
@@ -255,7 +230,7 @@ export const claim = async (
   // console.log(user)
 
   if (
-    campaignDetails?.card_status === "Campaign Complete, Initiating Rewards"
+    campaignDetails?.card_status === CampaignStatus.RewardDistributionInProgress
   ) {
     let totalRewardsDebited = 0;
     const { user_user, ...card } = campaignDetails;
