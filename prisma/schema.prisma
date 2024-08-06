@@ -16,6 +16,26 @@ model authtoken_token {
   @@index([accountAddress])
 }
 
+model user_sessions {
+  id            BigInt   @id @default(autoincrement())
+  user_id       BigInt
+  device_id     String   @db.VarChar(100)
+  device_type   String   @db.VarChar(50) // e.g., "mobile", "desktop", "tablet"
+  ip_address    String?  @db.VarChar(45)
+  user_agent    String?  @db.VarChar(500)
+  token         String   @unique @db.VarChar(2000)
+  refresh_token String   @unique @db.VarChar(2000)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  last_accessed DateTime @default(now()) @db.Timestamptz(6)
+  expires_at    DateTime @db.Timestamptz(6)
+
+  user_user user_user @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id], map: "user_sessions_user_id_index")
+  @@index([token], map: "user_sessions_token_index")
+  @@index([refresh_token], map: "user_sessions_refresh_token_index")
+}
+
 model campaign_media {
   id               BigInt     @id @default(autoincrement())
   media_type       String?    @db.VarChar(255)
@@ -72,7 +92,7 @@ model campaign_twittercard {
   amount_spent              Float                       @default(0)
   name                      String?                     @db.VarChar(50)
   owner_id                  BigInt
-  card_status               String                      @db.VarChar(50)
+  card_status               CampaignStatus
   campaign_budget           Float?
   campaign_expiry           DateTime?                   @db.Timestamptz(6)
   last_reply_checkedAt      DateTime?                   @default(now()) @db.Timestamptz(6)
@@ -149,6 +169,7 @@ model user_user {
   user_balances                        user_balances[]
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
+  user_sessions                        user_sessions[]
 
   @@unique([id, hedera_wallet_id, accountAddress])
 }
@@ -207,6 +228,17 @@ model transactions {
   status           String          @db.VarChar
   transaction_data Json
   created_at       DateTime        @default(now()) @db.Timestamptz(6)
+}
+
+enum CampaignStatus {
+  ApprovalPending
+  CampaignApproved
+  CampaignDeclined
+  CampaignStarted
+  CampaignRunning
+  RewardDistributionInProgress
+  RewardsDistributed
+  InternalError
 }
 
 enum network {
