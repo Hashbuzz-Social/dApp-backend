@@ -38,7 +38,7 @@ class SessionManager {
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       // Handle device ID
-      let deviceId = req.cookies.device_id;
+      let deviceId = req.deviceId ?? req.cookies.device_id;
       if (!deviceId) {
         deviceId = uuidv4();
         res.cookie("device_id", deviceId, { httpOnly: true, secure: true, sameSite: "strict" });

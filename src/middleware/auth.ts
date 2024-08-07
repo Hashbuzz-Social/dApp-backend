@@ -7,7 +7,7 @@ import { NextFunction, Request, Response } from "express";
 import httpStatuses from "http-status-codes";
 import jwt from "jsonwebtoken";
 
-const { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN } = httpStatuses;
+const { BAD_REQUEST } = httpStatuses;
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
