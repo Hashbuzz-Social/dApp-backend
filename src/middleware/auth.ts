@@ -25,6 +25,14 @@ const getBarerToken = (req: Request) => {
   return bearerHeader.split(" ")[1];
 };
 
+const extractDeviceId = (req: Request): string | undefined => {
+  // Assuming device ID is sent in headers
+  console.log("Cookies" , req.cookies);
+  console.log("header" , req.headers);
+  console.log("header" , req.headers["x-device-id"]);
+  return (req.cookies.device_id ?? req.headers['x-device-id'] ) as string;
+};
+
 const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
   try {
     const barerToken = getBarerToken(req);
@@ -43,6 +51,7 @@ const isHavingValidAst = (req: Request, _: Response, next: NextFunction) => {
         if (timeStampDiffCheck && validSignature) {
           const accountAddress = AccountId.fromString(accountId as string).toSolidityAddress();
           req.accountAddress = accountAddress;
+          req.deviceId = extractDeviceId(req);;
           next();
         } else next(new UnauthorizeError("Signature not verified"));
       } else next(new UnauthorizeError("Error from payload check::" + authTokenInvalidError));

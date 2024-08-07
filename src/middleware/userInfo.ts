@@ -9,6 +9,13 @@ const getCurrentUserInfo = async (req: Request, res: Response, next: NextFunctio
     if (accountAddress) {
       const currentUser = await prisma.user_user.findUnique({
         where: { accountAddress },
+        include: {
+          user_sessions: {
+            where: {
+              device_id: req.deviceId
+            },
+          },
+        },
       });
       if (currentUser) {
         req.currentUser = currentUser;

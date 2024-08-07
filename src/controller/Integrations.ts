@@ -65,10 +65,10 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
       },
     });
 
-    const getAstForUserById = await userService.getAstForUserByAccountAddress(user.accountAddress);
+    const getAstForUserById = await userService.getAstForUserByAccountAddress(user.id , req.deviceId!);
 
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?token=${getAstForUserById?.key ?? ""}&user_id=${user.id}&username=${username}`,
+      Location: `${process.env.FRONTEND_URL!}?token=${getAstForUserById?.token ?? ""}&user_id=${user.id}&username=${username}`,
     });
     res.end();
   } catch (error) {

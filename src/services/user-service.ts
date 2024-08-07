@@ -49,8 +49,8 @@ const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) =
   });
 };
 
-const getAstForUserByAccountAddress = async (accountAddress: string) => {
-  return await prisma.authtoken_token.findUnique({ where: { accountAddress } });
+const getAstForUserByAccountAddress = async (userId: number|bigint , deviceId:string) => {
+  return await prisma.user_sessions.findFirst({ where: { user_id:userId , device_id:deviceId } });
 };
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {

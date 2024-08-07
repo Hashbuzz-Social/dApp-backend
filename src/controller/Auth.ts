@@ -1,6 +1,4 @@
-import { AccountId } from "@hashgraph/sdk";
 import { generateAdminToken, generateSigningToken } from "@services/authToken-service";
-import hederaservice from "@services/hedera-service";
 import passwordService from "@services/password-service";
 import SessionManager from "@services/SessionManager";
 import signingService from "@services/signing-service";
@@ -17,35 +15,8 @@ const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
  * @description Update last login status for exiting user.
  * If no record in DB for this user then create a DB record for this user;
  */
-export const handleAuthPing = async (req: Request, res: Response) => {
-  if (req?.accountAddress) {
-    const accountId = AccountId.fromSolidityAddress(req?.accountAddress).toString();
-
-    //? Update login state or upsert the record.
-    // (async () => {
-    const create = {
-      accountAddress: req.accountAddress,
-      hedera_wallet_id: accountId,
-      available_budget: 0,
-      is_active: false,
-    };
-    if (accountId === hederaservice.operatorId.toString()) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-expect-error
-      create["role"] = "SUPER_ADMIN";
-    }
-    await prisma.user_user.upsert({
-      where: { accountAddress: req.accountAddress },
-      update: {
-        last_login: new Date().toISOString(),
-      },
-      create,
-    });
-    // })();
-    return res.status(OK).json({ hedera_wallet_id: accountId });
-  } else {
-    return res.status(BAD_REQUEST).json({ message: "No address found" });
-  }
+export const handleAuthPing = async (req: Request, res: Response , next: NextFunction) => {
+  return SessionManager.checkSessionForPing(req,res,next);
 };
 
 export const handleCreateChallenge = (req: Request, res: Response, next: NextFunction) => {

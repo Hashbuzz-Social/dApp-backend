@@ -5,6 +5,7 @@ declare module "express" {
   export interface Request {
     currentUser?: Partial<user_user>;
     accountAddress?: string;
+    deviceId ?:string
   }
 }
 

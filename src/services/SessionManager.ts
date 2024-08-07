@@ -6,6 +6,9 @@ import hederaService from "./hedera-service";
 import prisma from "@shared/prisma";
 import signingService from "./signing-service";
 import { createAstToken } from "./authToken-service";
+import HttpStatusCodes from "http-status-codes";
+
+const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
 
 class SessionManager {
   async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
@@ -45,11 +48,21 @@ class SessionManager {
       const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null;
       const userAgent = req.headers["user-agent"] || null;
 
-      // Fetch user ID
-      const user = await prisma.user_user.findUnique({ where: { accountAddress: AccountId.fromString(accountId as string).toSolidityAddress() } });
-      if (!user) {
-        return res.status(400).json({ auth: false, message: "User not found" });
-      }
+      const accAddress =  AccountId.fromString(accountId as string).toSolidityAddress();
+
+      const create = {
+        accountAddress:  accAddress,
+        hedera_wallet_id: accountId,
+        available_budget: 0,
+        is_active: false,
+      };
+      const user  = await prisma.user_user.upsert({
+        where: { accountAddress: accAddress },
+        update: {
+          last_login: new Date().toISOString(),
+        },
+        create,
+      });
 
       const userId = user.id;
 
@@ -61,7 +74,7 @@ class SessionManager {
         await this.createSession(userId, deviceId, deviceType, ipAddress, userAgent, token, refreshToken, expiry);
       }
 
-      res.status(200).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });
+      res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });
     } catch (err) {
       next(err);
     }
@@ -71,7 +84,7 @@ class SessionManager {
     try {
       const { token } = req.body;
       await prisma.user_sessions.delete({ where: { token } });
-      res.status(200).json({ message: "Logout Successfully" });
+      res.status(OK).json({ message: "Logout Successfully" });
     } catch (err) {
       next(err);
     }
@@ -91,7 +104,87 @@ class SessionManager {
 
       await this.updateSession(session.id, newToken, refreshToken, newExpiry);
 
-      res.status(200).json({ message: "Token Refreshed", ast: newToken });
+      return res.status(OK).json({ message: "Token Refreshed", ast: newToken });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @description Check active session for the current user with current device
+   * if any session then return sesssion details, if user exust then return wallet id of the user.
+   */
+  async checkSessionForPing(req: Request, res: Response, next: NextFunction) {
+    const accountAddress = req.accountAddress;
+    // const deviceId = req.cookies.device_id;
+    const deviceId = req.deviceId;
+
+    if (!accountAddress || !deviceId) {
+      return res.status(BAD_REQUEST).json({ message: "No address or device ID found" });
+    }
+
+    const accountId = AccountId.fromSolidityAddress(accountAddress).toString();
+    const currentTimestamp = new Date().toISOString();
+
+    try {
+      // Upsert user record or update last login
+      await prisma.user_user.upsert({
+        where: { accountAddress },
+        update: { last_login: currentTimestamp },
+        create: {
+          accountAddress,
+          hedera_wallet_id: accountId,
+          available_budget: 0,
+          is_active: false,
+          ...(accountId === hederaService.operatorId.toString() && { role: "SUPER_ADMIN" }),
+        },
+      });
+
+      // Check for an existing session on the current device
+      const currentSession = await prisma.user_sessions.findFirst({
+        where: {
+          user_user: { accountAddress },
+          device_id: deviceId,
+          expires_at: { gt: currentTimestamp },
+        },
+        include: {
+          user_user: true,
+        },
+      });
+
+      if (currentSession) {
+        return res.status(OK).json({
+          status: "active",
+          device_id: currentSession.device_id,
+          wallet_id: currentSession.user_user.hedera_wallet_id,
+        });
+      }
+
+      // Check for any other active sessions for the user
+      const otherSessions = await prisma.user_sessions.findMany({
+        where: {
+          user_user: { accountAddress },
+          device_id: { not: deviceId },
+          expires_at: { gt: currentTimestamp },
+        },
+        include: {
+          user_user: true,
+        },
+      });
+
+      if (otherSessions.length > 0) {
+        return res.status(OK).json({
+          status: "has_other_sessions",
+          other_sessions: otherSessions.map((session) => ({
+            device_id: session.device_id,
+            wallet_id: session.user_user.hedera_wallet_id,
+          })),
+          wallet_id: accountId,
+        });
+      }
+
+      // If no active sessions are found
+      return res.status(OK).json({ status: "no_active_sessions", wallet_id: accountId });
     } catch (err) {
       next(err);
     }
