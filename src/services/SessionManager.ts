@@ -1,14 +1,15 @@
-import { Request, Response, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
 import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
+import { ErrorWithCode } from "@shared/errors";
 import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
-import hederaService from "./hedera-service";
 import prisma from "@shared/prisma";
-import signingService from "./signing-service";
-import { createAstToken } from "./authToken-service";
+import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
+import { v4 as uuidv4 } from "uuid";
+import { createAstToken } from "./authToken-service";
+import hederaService from "./hedera-service";
+import signingService from "./signing-service";
 
-const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
+const { OK, BAD_REQUEST , UNAUTHORIZED} = HttpStatusCodes;
 
 class SessionManager {
   async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
@@ -82,8 +83,11 @@ class SessionManager {
 
   async handleLogout(req: Request, res: Response, next: NextFunction) {
     try {
-      const { token } = req.body;
-      await prisma.user_sessions.delete({ where: { token } });
+      const token = req.token;
+      const device_id = req.deviceId;
+      const session = await prisma.user_sessions.findFirst({where:{token}});
+      if(!session || !token || !device_id ) throw new ErrorWithCode("Unauthoriozed access requested" , UNAUTHORIZED);
+      await prisma.user_sessions.delete({ where: {id:session.id} });
       res.status(OK).json({ message: "Logout Successfully" });
     } catch (err) {
       next(err);

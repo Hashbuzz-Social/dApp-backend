@@ -6,6 +6,7 @@ declare module "express" {
     currentUser?: Partial<user_user>;
     accountAddress?: string;
     deviceId ?:string
+    token?:string;
   }
 }
 
