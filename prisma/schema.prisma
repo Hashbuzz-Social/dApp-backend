@@ -19,11 +19,11 @@ model user_sessions {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   last_accessed DateTime  @default(now()) @db.Timestamptz(6)
   expires_at    DateTime  @db.Timestamptz(6)
-  user_user     user_user @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_user     user_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_sessions_user_id")
 
-  @@index([user_id], map: "user_sessions_user_id_index")
-  @@index([token], map: "user_sessions_token_index")
-  @@index([refresh_token], map: "user_sessions_refresh_token_index")
+  @@index([refresh_token])
+  @@index([token])
+  @@index([user_id])
 }
 
 model campaign_media {
@@ -82,7 +82,6 @@ model campaign_twittercard {
   amount_spent              Float                       @default(0)
   name                      String?                     @db.VarChar(50)
   owner_id                  BigInt
-  card_status               CampaignStatus
   campaign_budget           Float?
   campaign_expiry           DateTime?                   @db.Timestamptz(6)
   last_reply_checkedAt      DateTime?                   @default(now()) @db.Timestamptz(6)
@@ -96,6 +95,7 @@ model campaign_twittercard {
   campaign_start_time       DateTime?                   @db.Timestamptz(6)
   campaign_close_time       DateTime?                   @db.Timestamptz(6)
   is_added_to_queue         Boolean?                    @default(false)
+  card_status               campaignstatus
   campaignLogs              CampaignLog[]
   campaign_participation    campaign_participation[]
   campaign_tweetengagements campaign_tweetengagements[]
@@ -220,17 +220,6 @@ model transactions {
   created_at       DateTime        @default(now()) @db.Timestamptz(6)
 }
 
-enum CampaignStatus {
-  ApprovalPending
-  CampaignApproved
-  CampaignDeclined
-  CampaignStarted
-  CampaignRunning
-  RewardDistributionInProgress
-  RewardsDistributed
-  InternalError
-}
-
 enum network {
   testnet
   mainnet
@@ -257,4 +246,15 @@ enum user_roles {
   MANAGEMENT
   USER
   GUEST_USER
+}
+
+enum campaignstatus {
+  ApprovalPending
+  CampaignApproved
+  CampaignDeclined
+  CampaignStarted
+  CampaignRunning
+  RewardDistributionInProgress
+  RewardsDistributed
+  InternalError
 }
