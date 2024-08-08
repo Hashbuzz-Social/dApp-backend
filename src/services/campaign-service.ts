@@ -1,4 +1,4 @@
-import { campaign_twittercard , CampaignStatus } from "@prisma/client";
+import { campaign_twittercard , campaignstatus as CampaignStatus } from "@prisma/client";
 import { performAutoRewardingForEligibleUser } from "@services/reward-service";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";

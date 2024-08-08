@@ -1,5 +1,5 @@
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
-import {CampaignStatus} from "@prisma/client"
+import {campaignstatus as CampaignStatus} from "@prisma/client"
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";

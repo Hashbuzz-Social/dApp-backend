@@ -1,6 +1,6 @@
 import prisma from '@shared/prisma';
 import axios from 'axios';
-import {CampaignStatus} from "@prisma/client"
+import {campaignstatus as CampaignStatus} from "@prisma/client"
 import WebSocket from 'ws';
 
 // TweetTracker class to manage real-time tweet tracking and engagement fetching

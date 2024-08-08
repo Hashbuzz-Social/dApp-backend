@@ -1,4 +1,4 @@
-import { campaign_twittercard , CampaignStatus } from "@prisma/client";
+import { campaign_twittercard , campaignstatus as CampaignStatus } from "@prisma/client";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";

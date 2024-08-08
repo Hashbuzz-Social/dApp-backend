@@ -12,7 +12,7 @@ import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
-import { CampaignStatus } from "@prisma/client";
+import { campaignstatus as CampaignStatus } from "@prisma/client";
 
 const { OK, BAD_REQUEST } = statuses;
 // const { associateTokenToContract } = htsServices;

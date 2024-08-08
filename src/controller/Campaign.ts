@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import CampaignLifeCycleBase, { createCampaignParams } from "@services/CampaignLifeCycleBase";
-import {CampaignStatus} from "@prisma/client"
+import {campaignstatus as CampaignStatus} from "@prisma/client"
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import {
   getCampaignDetailsById,

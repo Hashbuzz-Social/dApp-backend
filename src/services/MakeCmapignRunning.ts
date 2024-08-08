@@ -1,4 +1,4 @@
-import { campaign_twittercard, user_user , CampaignStatus} from "@prisma/client";
+import { campaign_twittercard, user_user , campaignstatus as CampaignStatus} from "@prisma/client";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import tweetService from "@services/twitterCard-service";

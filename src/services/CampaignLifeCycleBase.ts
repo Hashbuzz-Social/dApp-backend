@@ -1,4 +1,4 @@
-import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens , CampaignStatus } from "@prisma/client";
+import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens , campaignstatus as CampaignStatus } from "@prisma/client";
 import hederaService from "@services/hedera-service";
 import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
 import prisma from "@shared/prisma";

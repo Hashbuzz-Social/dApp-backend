@@ -3,7 +3,7 @@ import { Status } from "@hashgraph/sdk";
 import {
   campaign_tweetengagements,
   campaign_twittercard,
-  CampaignStatus
+  campaignstatus as CampaignStatus
 } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import { checkTokenAssociation } from "@shared/helper";

@@ -1,4 +1,4 @@
-import { campaign_twittercard, CampaignStatus } from "@prisma/client";
+import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
 import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall } from "@services/contract-service";
 import { queryBalance as queryBalaceFromSM, queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
 import userService from "@services/user-service";
