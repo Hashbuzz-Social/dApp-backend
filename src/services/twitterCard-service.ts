@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { campaign_twittercard, user_user , campaignstatus as CampaignStatus } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
@@ -116,6 +115,9 @@ interface PublishTweetParams {
 
 const publishTweetORThread = async (params: PublishTweetParams) => {
   const { cardOwner, tweetText, isThread, parentTweetId } = params;
+  if(tweetText.length > Number(process.env.ALLOWED_POST_CHAR ?? 280 )){
+    throw new Error("Long tweet text. Max allowed is 280 char long.")
+  }
   if (cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret) {
     const userTwitter = twitterAPI.tweeterApiForUser({
       accessToken: decrypt(cardOwner.business_twitter_access_token),
