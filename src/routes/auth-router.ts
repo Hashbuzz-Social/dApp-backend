@@ -7,6 +7,7 @@ import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRou
 import { Router } from "express";
 import { body } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
+import SessionManager from "@services/SessionManager";
 
 const authRouter = Router();
 
@@ -40,7 +41,7 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.get
  * @validator checkErrResponse
  * @handler handleRefreshToken
  */
-// authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
+authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, SessionManager.handleRefreshToken);
 
 /**
  * Handle Twitter return URL.
