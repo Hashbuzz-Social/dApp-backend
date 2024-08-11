@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout } from "@controller/Auth";
+import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout, handleRefreshToken } from "@controller/Auth";
 import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
 import userInfo from "@middleware/userInfo";
 import auth from "@middleware/auth";
@@ -41,7 +40,7 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.get
  * @validator checkErrResponse
  * @handler handleRefreshToken
  */
-authRouter.post("/refreshToken", body("refreshToken").isString(), checkErrResponse, SessionManager.handleRefreshToken);
+authRouter.post("/refresh-token",auth.isHavingValidAst, body("refreshToken").isString(),  checkErrResponse, handleRefreshToken);
 
 /**
  * Handle Twitter return URL.
