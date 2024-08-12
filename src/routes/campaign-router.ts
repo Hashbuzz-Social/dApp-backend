@@ -8,6 +8,7 @@ import { Router } from "express";
 import { body, query as validateQuery } from "express-validator";
 
 const router = Router();
+
 const AllowedCampaignStatus:campaignstatus[] = Object.values(campaignstatus)
 
 router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(AllowedCampaignStatus), checkErrResponse, makeCardRunning);
