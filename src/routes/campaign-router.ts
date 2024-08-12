@@ -1,17 +1,16 @@
-/* eslint-disable max-len */
+import { checkCampaignBalances, claimReward, handleAddNewCampaignNew, handleCampaignGet, handleCampaignStats, makeCardRunning, rewardDetails } from "@controller/Campaign";
 import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
-import { checkCampaignBalances, claimReward, handleAddNewCampaign, handleAddNewCampaignNew, handleCampaignGet, handleCampaignStats, makeCardRunning, rewardDetails, statusUpdateHandler } from "@controller/Campaign";
 import userInfo from "@middleware/userInfo";
+import { campaignstatus } from "@prisma/client";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query as validateQuery } from "express-validator";
-import auth from "@middleware/auth";
 
 const router = Router();
-const campaignStatuses = ["rejected", "running", "completed", "deleted"];
+const AllowedCampaignStatus:campaignstatus[] = Object.values(campaignstatus)
 
-router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(campaignStatuses), checkErrResponse, makeCardRunning);
+router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(AllowedCampaignStatus), checkErrResponse, makeCardRunning);
 router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
 // router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
 router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
