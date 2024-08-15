@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import CampaignLifeCycleBase, { createCampaignParams } from "@services/CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CampaignCommands, createCampaignParams } from "@services/CampaignLifeCycleBase";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import { getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
@@ -21,9 +21,9 @@ const { OK, BAD_REQUEST, CONFLICT, INTERNAL_SERVER_ERROR, NO_CONTENT, CREATED } 
 
 export const makeCardRunning = async (req: Request, res: Response, next: NextFunction) => {
   const campaignId = req.body.card_id as any as number;
-  const requetedCardStatus = req.body.card_status as any as CampaignStatus;
+  const campaign_command = req.body.campaign_command as any as CampaignCommands;
   try {
-    if (requetedCardStatus === CampaignStatus.CampaignRunning) {
+    if (campaign_command === CampaignCommands.StartCampaign) {
       // ?.. Call the method of running campaign of Campaign:Ifecycle memthod.
       const runningCampaign = await MakeCampaignRunning.create(campaignId);
       const data = await runningCampaign.makeCardRunning();

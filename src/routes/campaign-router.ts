@@ -2,16 +2,17 @@ import { checkCampaignBalances, claimReward, handleAddNewCampaignNew, handleCamp
 import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
 import userInfo from "@middleware/userInfo";
-import { campaignstatus } from "@prisma/client";
+import { CampaignCommands } from "@services/CampaignLifeCycleBase";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query as validateQuery } from "express-validator";
 
+
 const router = Router();
 
-const AllowedCampaignStatus:campaignstatus[] = Object.values(campaignstatus)
+const AllowedCampaignCommands:CampaignCommands[] = Object.values(CampaignCommands)
 
-router.post("/update-status", body("card_id").isNumeric(), body("card_status").isIn(AllowedCampaignStatus), checkErrResponse, makeCardRunning);
+router.post("/update-status", body("card_id").isNumeric(), body("campaign_command").isIn(AllowedCampaignCommands), checkErrResponse, makeCardRunning);
 router.get("/all", userInfo.getCurrentUserInfo, handleCampaignGet);
 // router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaign);
 router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaignNew);

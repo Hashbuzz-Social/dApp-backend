@@ -1,4 +1,4 @@
-import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens , campaignstatus as CampaignStatus } from "@prisma/client";
+import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens, campaignstatus as CampaignStatus } from "@prisma/client";
 import hederaService from "@services/hedera-service";
 import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
 import prisma from "@shared/prisma";
@@ -16,8 +16,12 @@ export enum LYFCycleStages {
   EXPIRED = "status:expired",
 }
 
-
-
+export enum CampaignCommands {
+  StartCampaign = "Campaign::satrt",
+  ClaimReward = "Campaign::reward-claim",
+  AdminApprovedCampaign = "Campaign::admin-approved",
+  AdminRejectedCampaign = "Campaign::admin-rejected",
+}
 
 export type CampaignTypes = "HBAR" | "FUNGIBLE";
 
@@ -37,11 +41,11 @@ export interface createCampaignParams {
 
 type TransactionRecord = NonNullable<Omit<transactions, "id" | "created_at" | "network">>;
 
-export type CardOwner =  user_user  & {user_balances:user_balances[]} 
+export type CardOwner = user_user & { user_balances: user_balances[] };
 
 class CampaignLifeCycleBase {
   protected campaignCard: campaign_twittercard | null = null;
-  protected cardOwner:CardOwner|null = null;
+  protected cardOwner: CardOwner | null = null;
   protected tweetId: string | null = null;
   protected lastThreadId: string | null = null;
   protected redisClient: RedisClient;
@@ -98,7 +102,7 @@ class CampaignLifeCycleBase {
       const runningCardCount = await prisma.campaign_twittercard.count({
         where: {
           owner_id: card.owner_id,
-          card_status: CampaignStatus.CampaignRunning
+          card_status: CampaignStatus.CampaignRunning,
         },
       });
 
@@ -306,7 +310,7 @@ class CampaignLifeCycleBase {
    * @param {string} [campaignExpiryTimestamp] - The expiry timestamp of the campaign (optional).
    * @returns {Promise<campaign_twittercard>} The updated campaign card.
    */
-  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status:CampaignStatus = CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp?: string) {
+  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status: CampaignStatus = CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp?: string) {
     return await prisma.campaign_twittercard.update({
       where: { id },
       data: {
