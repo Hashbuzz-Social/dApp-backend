@@ -213,7 +213,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    */
   private getRewardAnnouncementTweetText(type: string, campaignExpiryTimestamp: string, card: campaign_twittercard): string {
     if (type === "HBAR") {
-      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account. Then go to Claim Rewards to start the claim.`;
+      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, then link your Personal X account to receive your rewards.`;
     } else {
       return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
     }
