@@ -2,6 +2,8 @@
 import {
   handleActiveContractInfoReq,
   handleAllowAsCampaigner,
+  handleDeleteBizHanlde,
+  handleDeletePerosnalHanlde,
   handleGetAllCard,
   handleGetAllCardPendingCards,
   handleGetAllWLToken,
@@ -118,5 +120,10 @@ router.get("/campaign-logs/:id", handleGetCmapingLogs);
 router.post("/user/all" , handleGetAllUser);
 router.patch("/user/allowCampaigner" , handleAllowAsCampaigner);
 router.get('campaigns/all',  )
+
+
+router.delete('/biz-handle/:userId' , handleDeleteBizHanlde)
+
+router.delete('/personal-handle/:userId' , handleDeletePerosnalHanlde)
 
 export default router;

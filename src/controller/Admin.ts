@@ -8,7 +8,7 @@ import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
-import statuses from "http-status-codes";
+import statuses, { NOT_FOUND } from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
@@ -233,3 +233,64 @@ export const handleGetAllCampaigns = async (req:Request , res:Response , next:Ne
     next(err)
   }
 }
+
+export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:NextFunction) => {
+  try {
+    const userId = req.params.userId as any as number;
+
+    // Check if the user exists
+    const user = await prisma.user_user.findUnique({
+      where: { id: Number(userId) },
+    });
+
+    if (!user) {
+      return res.status(NOT_FOUND).json({ message: 'User not found' });
+    }
+
+    // Update specific fields to null
+    const updatedUser = await prisma.user_user.update({
+      where: { id:  Number(userId) },
+      data: {
+        business_twitter_handle: null, 
+        business_twitter_access_token: null,
+        business_twitter_access_token_secret:null
+      },
+    });
+
+    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: sensitizeUserData(updatedUser) });
+  } catch (err) {
+    next(err); // Pass error to the error handling middleware
+  }
+}
+
+export const handleDeletePerosnalHanlde =  async (req:Request , res:Response , next:NextFunction) => {
+  try {
+    const userId = req.params.userId as any as number;
+
+    // Check if the user exists
+    const user = await prisma.user_user.findUnique({
+      where: { id: Number(userId) },
+    });
+
+    if (!user) {
+      return res.status(NOT_FOUND).json({ message: 'User not found' });
+    }
+
+    // Update specific fields to null
+   const updatedUser =  await prisma.user_user.update({
+      where: { id:  Number(userId) },
+      data: {
+        personal_twitter_handle: null, 
+        personal_twitter_id: null,
+        profile_image_url:"",
+        twitter_access_token:null,
+        twitter_access_token_secret:null
+      },
+    });
+
+    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: sensitizeUserData(updatedUser) });
+  } catch (err) {
+    next(err); // Pass error to the error handling middleware
+  }
+}
+
