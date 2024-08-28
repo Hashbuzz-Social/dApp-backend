@@ -236,7 +236,7 @@ export const handleGetAllCampaigns = async (req:Request , res:Response , next:Ne
 
 export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:NextFunction) => {
   try {
-    const userId = req.params.userId as any as number;
+    const userId = req.body.userId as any as number;
 
     // Check if the user exists
     const user = await prisma.user_user.findUnique({
@@ -265,7 +265,7 @@ export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:N
 
 export const handleDeletePerosnalHanlde =  async (req:Request , res:Response , next:NextFunction) => {
   try {
-    const userId = req.params.userId as any as number;
+    const userId = req.body.userId as any as number;
 
     // Check if the user exists
     const user = await prisma.user_user.findUnique({
