@@ -122,8 +122,8 @@ router.patch("/user/allowCampaigner" , handleAllowAsCampaigner);
 router.get('campaigns/all',  )
 
 
-router.patch('/biz-handle/:userId' , handleDeleteBizHanlde)
+router.patch('/biz-handle' , body("userId").isNumeric() , checkErrResponse ,  handleDeleteBizHanlde)
 
-router.patch('/personal-handle/:userId' , handleDeletePerosnalHanlde)
+router.patch('/personal-handle' , body("userId").isNumeric() , checkErrResponse , handleDeletePerosnalHanlde)
 
 export default router;
