@@ -257,7 +257,7 @@ export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:N
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: sensitizeUserData(updatedUser) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }
@@ -288,7 +288,7 @@ export const handleDeletePerosnalHanlde =  async (req:Request , res:Response , n
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: sensitizeUserData(updatedUser) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }
