@@ -122,8 +122,8 @@ router.patch("/user/allowCampaigner" , handleAllowAsCampaigner);
 router.get('campaigns/all',  )
 
 
-router.delete('/biz-handle/:userId' , handleDeleteBizHanlde)
+router.patch('/biz-handle/:userId' , handleDeleteBizHanlde)
 
-router.delete('/personal-handle/:userId' , handleDeletePerosnalHanlde)
+router.patch('/personal-handle/:userId' , handleDeletePerosnalHanlde)
 
 export default router;
