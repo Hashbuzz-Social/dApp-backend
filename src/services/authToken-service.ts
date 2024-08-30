@@ -2,29 +2,6 @@ import { user_user } from "@prisma/client";
 import jwt from "jsonwebtoken";
 const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 
-// export const generateAccessToken = (user: user_user) => {
-//   const { id, username, personal_twitter_id } = user;
-//   return jwt.sign({ id: id.toString(), username, personal_twitter_id }, accessSecret!, { expiresIn: "20m" });
-// };
-
-// export const generateRefreshToken = async (user: user_user) => {
-//   const { id, username, personal_twitter_id } = user;
-//   const refreshToken = jwt.sign({ id: id.toString(), username, personal_twitter_id }, refreshSecret!, { expiresIn: "30m" });
-//   await prisma.authtoken_token.upsert({
-//     where: { user_id: id },
-//     create: {
-//       user_id: id,
-//       key: refreshToken,
-//       created: new Date().toISOString(),
-//     },
-//     update: {
-//       key: refreshToken,
-//     },
-//   });
-
-//   return refreshToken;
-// };
-
 export const generateAdminToken = (user: user_user) => {
   const { id, role , hedera_wallet_id } = user;
   return jwt.sign({ id: id.toString(), hedera_wallet_id , role }, accessSecret!, { expiresIn: "24h" });
