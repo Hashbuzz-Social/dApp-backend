@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 import {
   handleActiveContractInfoReq,
   handleAllowAsCampaigner,
@@ -11,15 +10,14 @@ import {
   handleTokenInfoReq,
   handleUpdateCard,
   handleUpdatePasswordReq,
-  // handleUpdateEmailReq,
   handleWhiteListToken,
 } from "@controller/Admin";
-import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
+import { handleGetAllUser } from "@controller/User";
 import userInfo from "@middleware/userInfo";
+import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-import { handleGetAllUser } from "@controller/User";
 
 const router = Router();
 

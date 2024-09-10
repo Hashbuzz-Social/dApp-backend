@@ -1,21 +1,19 @@
+import { campaignstatus as CampaignStatus } from "@prisma/client";
+import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
 import { associateTokentoContract } from "@services/contract-service";
-import htsServices from "@services/hts-services";
+import { default as htsService, default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
-import htsService from "@services/hts-services";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
-import statuses, { NOT_FOUND } from "http-status-codes";
+import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
-import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
-import { campaignstatus as CampaignStatus } from "@prisma/client";
 
-const { OK, BAD_REQUEST } = statuses;
-// const { associateTokenToContract } = htsServices;
+const { OK, BAD_REQUEST , NOT_FOUND } = statuses;
 
 export const handleGetAllCard = async (req: Request, res: Response) => {
   const status = req.query.status as any as CampaignStatus;
@@ -88,33 +86,6 @@ export const handleUpdatePasswordReq = async (req: Request, res: Response, next:
   res.status(BAD_REQUEST).json({ message: "Handler function not found" });
 };
 
-// export const handleUpdateEmailReq = (req: Request, res: Response, next: NextFunction) => {
-//   (async () => {
-//     try {
-//       const { email, password }: { email: string; password: string } = req.body;
-//       if (!req.currentUser?.hash || !req.currentUser.salt) {
-//         throw new ParamMissingError("First update your password.");
-//       }
-//       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-//       const isPasswordMatched = passwordService.validPassword(password, req.currentUser?.salt, req.currentUser?.hash);
-//       if (!isPasswordMatched) throw new ParamMissingError("Password used is incorrect");
-
-//       //if password matched then update email and send updated user's data as response;
-//       const updatedUser = await prisma.user_user.update({
-//         where: { id: req.currentUser.id },
-//         data: {
-//           email,
-//         },
-//       });
-//       return res.status(OK).json({
-//         message: "Email updated successfully",
-//         user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))),
-//       });
-//     } catch (err) {
-//       next(err);
-//     }
-//   })();
-// };
 
 export const handleTokenInfoReq = async (req: Request, res: Response, next: NextFunction) => {
   const tokenId = req.body.tokenId as string;
@@ -173,11 +144,6 @@ export const handleGetAllWLToken = async (req: Request, res: Response, next: Nex
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const tokenData = await prisma.whiteListedTokens.findUnique({
       where: { token_id: tokenId },
-      // select: {
-      //   token_id: true,
-      //   token_type: true,
-      //   tokendata: true,
-      // },
     });
     return res.status(OK).json({ tokenId, data: JSONBigInt.parse(JSONBigInt.stringify(tokenData)) });
   } else {
