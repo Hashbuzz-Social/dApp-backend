@@ -69,12 +69,12 @@ const isHavingValidAst = (req: Request, res: Response, next: NextFunction) => {
 const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountAddress = req.accountAddress;
-    const adminAccount = process.env.ADMIN_ADDRESS;
-    if (!accountAddress || !adminAccount) {
+    const adminAccounts = String(process.env.ADMIN_ADDRESS).split(",");
+    if (!accountAddress || adminAccounts.length > 0) {
       throw new UnauthorizeError("Don't have necessary access for this route");
     }
     const accountId = AccountId.fromSolidityAddress(accountAddress).toString();
-    if (accountId === adminAccount) {
+    if (adminAccounts.includes(accountId)) {
       return next();
     } else {
       throw new UnauthorizeError("Don't have necessary access for this route");
