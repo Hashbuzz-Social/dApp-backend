@@ -1,7 +1,7 @@
 import cronTasksService from "@services/cronTasks-service";
 import associatedTokens from "./associatedTokens";
 import { taskEvery5Minutes, taskEveryMidnight, taskEveryMinute } from "./cronJob";
-import setGlobalVariables from "./setglobalvariables";
+import setVariables from "./setVariables";
 
 (() => {
   taskEveryMidnight.start();
@@ -15,5 +15,5 @@ import setGlobalVariables from "./setglobalvariables";
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   //@ts-ignore
   associatedTokens.checkAvailableTokens(process.env.HASHBUZZ_CONTRACT_ADDRESS);
-  setGlobalVariables();
+  setVariables();
 })();
