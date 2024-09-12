@@ -11,7 +11,7 @@ const sessionConfig = session({
   secret: sessionSecret,
   resave: true, // Resave sessions to track issues
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === "production" },
+  cookie: { secure: true},
 });
 
 export default sessionConfig;
