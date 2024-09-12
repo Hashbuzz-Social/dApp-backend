@@ -48,7 +48,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Rate Limiting
-app.use(limiter);
+// app.use(limiter);
 
 // Session setup
 app.use(sessionConfig);
