@@ -68,10 +68,10 @@ app.use(swaggerRouter);
 app.use(errorHandler);
 
 // Front-end content
-const viewsDir = path.join(__dirname, "views");
+const viewsDir = path.join(__dirname, "../views");
 app.set("views", viewsDir);
 
-const staticDir = path.join(__dirname, "public");
+const staticDir = path.join(__dirname, "../public");
 app.use(express.static(staticDir));
 
 app.get("*", (_: Request, res: Response) => {

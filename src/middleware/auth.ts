@@ -39,18 +39,16 @@ const isHavingValidAst = (req: Request, res: Response, next: NextFunction) => {
       }
 
       if (payload) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        const { ts, accountId, signature } = payload as any;
-        const timeStampDiffCheck = new Date().getTime() - ts <= 24 * 60 * 60 * 1000;
+        const { ts, accountId, signature } = payload as { ts: number; accountId: string; signature: string };
+        const timeStampDiffCheck = Date.now() - ts <= 24 * 60 * 60 * 1000;
         const validSignature = signingService.verifyData(
           { ts, accountId },
           hederaService.operatorPublicKey!,
-          base64ToUint8Array(signature as string)
+          base64ToUint8Array(signature)
         );
 
         if (timeStampDiffCheck && validSignature) {
-          const accountAddress = AccountId.fromString(accountId as string).toSolidityAddress();
+          const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
           req.accountAddress = accountAddress;
           req.deviceId = extractDeviceId(req);
           return next();
@@ -69,12 +67,7 @@ const isHavingValidAst = (req: Request, res: Response, next: NextFunction) => {
 const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountAddress = req.accountAddress;
-    const adminAccounts = String(process.env.ADMIN_ADDRESS).split(",");
-    if (!accountAddress || adminAccounts.length > 0) {
-      throw new UnauthorizeError("Don't have necessary access for this route");
-    }
-    const accountId = AccountId.fromSolidityAddress(accountAddress).toString();
-    if (adminAccounts.includes(accountId)) {
+    if (accountAddress && globalThis.adminAddress.includes(accountAddress)) {
       return next();
     } else {
       throw new UnauthorizeError("Don't have necessary access for this route");
@@ -91,11 +84,10 @@ const havingValidPayloadToken = (req: Request, res: Response, next: NextFunction
       if (err) {
         return next(new UnauthorizeError("Invalid signature token"));
       }
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-ignore
-      const ts = payload?.ts as string;
-      const currentTimeStamp = new Date().getTime();
-      if (currentTimeStamp - parseInt(ts) <= 30 * 1000) {
+
+      const ts = (payload as { ts: number }).ts;
+      const currentTimeStamp = Date.now();
+      if (currentTimeStamp - ts <= 30 * 1000) {
         return next();
       } else {
         throw new UnauthorizeError("Signing message is expired.");

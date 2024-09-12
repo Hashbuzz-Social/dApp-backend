@@ -1,12 +1,11 @@
 import authMiddleware from "@middleware/auth";
-import userInfo from "@middleware/userInfo";
 import { Router } from "express";
 import adminRouter from "./admin";
 import campaignRouter from "./campaign-router";
+import integrationRouter from "./integrations";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
-import integrationRouter from "./integrations";
-import auth from "@middleware/auth";
+
 
 // Export the base-router
 const baseRouter = Router();
@@ -84,7 +83,7 @@ baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdmin
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/campaigns", authMiddleware.isHavingValidAst, campaignRouter);
+baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
 
 /**
  * @swagger
@@ -109,7 +108,7 @@ baseRouter.use("/campaigns", authMiddleware.isHavingValidAst, campaignRouter);
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/transactions", authMiddleware.isHavingValidAst, transactionRouter);
+baseRouter.use("/transaction", authMiddleware.isHavingValidAst, transactionRouter);
 
 /**
  * @swagger
