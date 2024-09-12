@@ -9,7 +9,7 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:4000",
+      url: process.env.TWITTER_CALLBACK_HOST?? "http://localhost:4000",
     },
   ],
   components: {

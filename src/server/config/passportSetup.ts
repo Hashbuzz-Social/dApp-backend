@@ -9,7 +9,7 @@ passport.use(
     {
       clientID: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      callbackURL: "http://localhost:4000/auth/github/callback",
+      callbackURL: `${process.env.TWITTER_CALLBACK_HOST??"http://localhost:4000"}/auth/github/callback`,
     },
     async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
       try {
