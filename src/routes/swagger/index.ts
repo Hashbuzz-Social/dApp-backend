@@ -1,7 +1,7 @@
 import ensureAuthenticated from "@middleware/ensureGitAuthenticated";
 import { Router } from "express";
-import swaggerSpec from "src/server/config/swaggerSpec";
 import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "../../server/config/swaggerSpec";
 
 const router = Router();
 
