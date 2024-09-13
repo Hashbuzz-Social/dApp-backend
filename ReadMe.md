@@ -1,30 +1,62 @@
 # HashBuzz dApp
 
-Description of the environment variable required here for creating all the details.
+HashBuzz dApp is a monolithic server built with Express.js to handle API requests from the HashBuzz dApp frontend, which is based on React. This server manages all backend-related tasks required for the HashBuzz project.
 
-    ## Environment ##
-    NODE_ENV=development
+## Table of Contents
 
-    # Environment variables declared in this file are automatically made available to Prisma.
-    # See the documentation for more detail: https://pris.ly/d/prisma-schema#accessing-environment-variables-from-the-schema
+- [Environment Variables](#environment-variables)
+- [Server Configuration](#server-configuration)
+- [Jet Logger Setup](#jet-logger-setup)
+- [Solidity Build](#solidity-build)
+- [Getting Started](#getting-started)
+- [Contributing](#contributing)
+- [License](#license)
 
-    # Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.
-    # See the documentation for all the connection string options: https://pris.ly/d/connection-strings
-    DATABASE_URL="postgresql://username:password@host:port/dbname?schema=schemaname"
+## Environment Variables
 
-    ## Server ##
+The following environment variables are required to run the server. These variables should be set in a `.env` file at the root of the project.
+
+### General Environment
+
+- `NODE_ENV`: Set to `development` for development mode.
+
+### Database Configuration
+
+- `DATABASE_URL`: Connection string for the database. Prisma supports PostgreSQL, MySQL, SQLite, SQL Server, MongoDB, and CockroachDB.
+  ```plaintext
+  DATABASE_URL="postgresql://username:password@host:port/dbname?schema=schemaname"
+  ```
+- Server Configuration
+    
+    - `PORT`: Port on which the server will run.
+    - `HOST`: Hostname for the server.
+
+    ```plaintext
     PORT=4000
     HOST=localhost
+    ```
+## Getting started
 
+### Prerequisites
 
-    ## Setup jet-logger ##
-    JET_LOGGER_MODE=CONSOLE
-    JET_LOGGER_FILEPATH=jet-logger.log
-    JET_LOGGER_TIMESTAMP=TRUE
-    JET_LOGGER_FORMAT=LINE
+- Node.js (>=14.0.0)
+- npm or yarn
+- PostgreSQL or another supported database
+- Redis Server
 
-    TWITTER_APP_USER_TOKEN=tweeter app APi auth token Auth2
+### Installation 
 
-### Cmd for the Solidity build file generation.
+1. Clone the repository: 
 
-       `npx solcjs --bin --abi SmartContract/Hashbuzz.sol -o SmartContract/build`
+```plaintext
+    git clone https://github.com/hashbuzz/dApp-backend.git
+    cd dApp-backend
+```
+
+## Contribution
+
+Contributions are welcome! Please read the contributing guidelines for more information.
+
+## Lisence
+
+This project is licensed under the ISC License. See the LICENSE file for more details.
