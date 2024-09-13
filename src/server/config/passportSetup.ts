@@ -13,9 +13,9 @@ passport.use(
     },
     async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
       try {
-        // console.log("GitHub profile:", profile);
-        // console.log("Access token:", accessToken);
-        // console.log("GITHUB_REPO:", GITHUB_REPO);
+        console.log("GitHub profile:", profile);
+        console.log("Access token:", accessToken);
+        console.log("GITHUB_REPO:", GITHUB_REPO);
 
         // Verify token scopes
         const tokenInfo = await axios.get("https://api.github.com/user", {

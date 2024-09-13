@@ -1,17 +1,17 @@
 import apiRouter from "@routes/api";
 import authRouter from "@routes/auth";
-import swaggerRouter from "@routes/swagger";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
+import swaggerUi from "swagger-ui-express";
 import corsOptions from "./config/corsOptions";
 import errorHandler from "./config/errorHandler";
 import passportConfig from "./config/passportSetup";
-import limiter from "./config/rateLimit";
 import sessionConfig from "./config/sessionConfig";
+import swaggerSpec from "./config/swaggerSpec";
 
 // Constants
 const app = express();
@@ -57,10 +57,33 @@ app.use(sessionConfig);
 app.use(passportConfig.initialize());
 app.use(passportConfig.session()); // Apply passport session middleware
 
+// GitHub OAuth Routes
+app.get("/auth/github", passportConfig.authenticate("github", { scope: ["user:email", "repo"] }));
+
+app.get(
+  "/auth/github/callback",
+  passportConfig.authenticate("github", { failureRedirect: "/non-allowed", failureMessage: true }), // Enhanced error handling
+  (req, res) => {
+    console.log("GitHub authentication successful, redirecting to API docs.");
+    res.redirect("/api-docs");
+  }
+);
+
+// Middleware to check if user is authenticated
+const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  console.log("User not authenticated, redirecting to GitHub auth.");
+  res.redirect("/auth/github");
+};
+
+// Apply session only for Swagger and routes that need authentication
+app.use("/api-docs", ensureAuthenticated, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Routes setup
 app.use(apiRouter);
 app.use(authRouter);
-app.use(swaggerRouter);
 
 /**
  * Error handling middleware
