@@ -1,5 +1,4 @@
 import { Router } from "express";
-import limiter from "../../server/config/rateLimit";
 import apiRouter from "../index";
 
 const router = Router();
@@ -13,6 +12,6 @@ const router = Router();
  *       200:
  *         description: Successful response
  */
-router.use("/api",  limiter ,  apiRouter);
+router.use("/api", apiRouter);
 
 export default router;

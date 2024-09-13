@@ -5,7 +5,6 @@ import userInfo from "@middleware/userInfo";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-import passport from "../../server/config/passportSetup";
 
 import { body } from "express-validator";
 
@@ -18,17 +17,6 @@ const passwordCheck: IsStrongPasswordOptions = {
 };
 
 const router = Router();
-
-router.get("/github", passport.authenticate("github", { scope: ["user:email", "repo"] }));
-
-router.get(
-  "/github/callback",
-  passport.authenticate("github", { failureRedirect: "/non-allowed", failureMessage: true }), // Enhanced error handling
-  (req, res) => {
-    // console.log("GitHub authentication successful, redirecting to API docs.");
-    res.redirect("/api-docs");
-  }
-);
 
 router.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
 
