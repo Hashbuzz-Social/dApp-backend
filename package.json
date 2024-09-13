@@ -1,31 +1,41 @@
 {
   "name": "dapp-backend",
   "version": "1.0.0",
-  "description": "This servie will handle all the backend related job that are required for dapp in hashbuzz project",
+  "description": "This service handles all backend-related jobs required for the dApp in the Hashbuzz project.",
   "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbuzz/dApp-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hashbuzz/dApp-backend/issues"
+  },
+  "homepage": "https://github.com/hashbuzz/dApp-backend#readme",
   "scripts": {
     "build": "npx ts-node build.ts",
-    "build:server": "./node_modules/.bin/ts-node build.ts",
+    "build:server": "ts-node build.ts",
     "lint": "eslint . --ext .ts",
     "start": "node -r module-alias/register ./dist --env=production",
     "dev": "nodemon",
     "test": "nodemon --config ./spec/nodemon.json",
-    "test:no-reloading": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./spec",
+    "test:no-reloading": "ts-node -r tsconfig-paths/register ./spec",
     "preReadyPrisma": "npx prisma db pull",
     "readyPrisma": "npx prisma generate",
     "db:pull": "npx prisma db pull && npx prisma generate",
     "db:push": "npx prisma db push && npx prisma generate",
-    "env-config": "node env.config.js"
+    "env-config": "node env.config.js",
+    "format": "prettier --write .",
+    "prepare": "husky install"
   },
   "nodemonConfig": {
     "watch": [
       "src"
     ],
-    "ext": "ts, html",
+    "ext": "ts,html",
     "ignore": [
       "src/public"
     ],
-    "exec": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./src"
+    "exec": "ts-node -r tsconfig-paths/register ./src"
   },
   "_moduleAliases": {
     "@services": "dist/services",
@@ -72,9 +82,21 @@
     "build.ts"
   ],
   "keywords": [
-    "hashbuzz"
+    "hashbuzz",
+    "dapp",
+    "backend"
   ],
   "author": "hashbuzz-dev",
+  "contributors": [
+    {
+      "name": "Om Prakash Sah",
+      "url": "https://github.com/ops295"
+    },
+    {
+      "name": "Rajat K",
+      "url": "https://github.com/rajatK012"
+    }
+  ],
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.617.0",
@@ -153,12 +175,24 @@
     "eslint": "^8.9.0",
     "find": "^0.3.0",
     "fs-extra": "^10.1.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0",
     "jsonwebtoken": "^8.5.1",
     "nodemon": "^2.0.19",
+    "prettier": "^2.7.1",
     "prisma": "^5.17.0",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^4.7.4",
     "uuid": "^8.3.2"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
