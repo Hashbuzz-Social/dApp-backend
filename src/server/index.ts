@@ -1,20 +1,34 @@
-import apiRouter from "@routes/api";
-import authRouter from "@routes/auth";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
+import { isHttpError } from "http-errors";
 import morgan from "morgan";
 import path from "path";
+import express, { NextFunction, Request, Response } from "express";
+import "express-async-errors";
+import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import corsOptions from "./config/corsOptions";
-import errorHandler from "./config/errorHandler";
-import passportConfig from "./config/passportSetup";
-import sessionConfig from "./config/sessionConfig";
-import swaggerSpec from "./config/swaggerSpec";
+import passport from "passport";
+import { Strategy as GitHubStrategy } from "passport-github2";
+import axios from "axios";
+import authRouter from "@routes/auth-router";
+import logger from "jet-logger";
+import apiRouter from "../routes/auth-router";
+import session from "express-session";
+import rateLimit from "express-rate-limit";
+import crypto from "crypto";
+import swaggerDefinition from "./condfig/swaggerDefinition";
 
 // Constants
 const app = express();
+const GITHUB_REPO = process.env.GITHUB_REPO || "owner/repo"; // Replace with your repo
+
+// Enhanced CORS options to include credentials
+const corsOptions: cors.CorsOptions = {
+  origin: process.env.CORS_ORIGIN || "*",
+  methods: "GET, OPTIONS, POST, PUT, PATCH",
+  credentials: true, // Allow credentials (cookies) to be sent
+};
 
 // Middleware setup
 app.use(cors(corsOptions));
@@ -48,21 +62,97 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Rate Limiting
-// app.use(limiter);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+});
+app.use(limiter);
+
+// Generate a random string for session secret
+const generateRandomString = (length: number) => {
+  return crypto.randomBytes(length).toString("hex");
+};
+
+const sessionSecret = process.env.SESSION_SECRET || generateRandomString(32);
 
 // Session setup
-app.use(sessionConfig);
+const swaggerSession = session({
+  secret: sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === "production" }, // Secure cookies in production
+});
 
-// Passport setup
-app.use(passportConfig.initialize());
-app.use(passportConfig.session()); // Apply passport session middleware
+app.use(swaggerSession); // Apply session middleware globally
+
+// Enhanced Passport GitHub Strategy with logging
+passport.use(
+  new GitHubStrategy(
+    {
+      clientID: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      callbackURL: `${process.env.TWITTER_CALLBACK_HOST ?? "http://localhost:4000"}/auth/github/callback`,
+    },
+    async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
+      try {
+        console.log("GitHub profile:", profile);
+        console.log("Access token:", accessToken);
+        console.log("GITHUB_REPO:", GITHUB_REPO);
+
+        // Verify token scopes
+        const tokenInfo = await axios.get("https://api.github.com/user", {
+          headers: { Authorization: `token ${accessToken}` },
+        });
+        console.log("Token scopes:", tokenInfo.headers["x-oauth-scopes"]);
+
+        // Construct the API URL
+        const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/collaborators/${profile.username}`;
+        console.log("GitHub API URL:", apiUrl);
+
+        // Verify if the user has access to the specified repository
+        const response = await axios.get(apiUrl, {
+          headers: {
+            Authorization: `token ${accessToken}`,
+          },
+        });
+
+        if (response.status === 204) {
+          console.log("User has access to the repository.");
+          return done(null, profile);
+        } else {
+          console.log("User does not have access to the repository.");
+          return done(null, false, { message: "You do not have access to this repository." });
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.error("GitHub API error:", error.response?.data);
+        } else {
+          console.error("Unexpected error:", error);
+        }
+        return done(null, false, { message: "Error verifying repository access." });
+      }
+    }
+  )
+);
+
+passport.serializeUser((user: Express.User, done: (err: any, id?: any) => void) => {
+  done(null, user);
+});
+
+passport.deserializeUser((obj: any, done: (err: any, user?: any) => void) => {
+  done(null, obj);
+});
+
+app.use(passport.initialize());
+app.use(passport.session()); // Apply passport session middleware
 
 // GitHub OAuth Routes
-app.get("/auth/github", passportConfig.authenticate("github", { scope: ["user:email", "repo"] }));
+app.get("/auth/github", passport.authenticate("github", { scope: ["user:email", "repo"] }));
 
 app.get(
   "/auth/github/callback",
-  passportConfig.authenticate("github", { failureRedirect: "/non-allowed", failureMessage: true }), // Enhanced error handling
+  passport.authenticate("github", { failureRedirect: "/non-allowed", failureMessage: true }), // Enhanced error handling
   (req, res) => {
     console.log("GitHub authentication successful, redirecting to API docs.");
     res.redirect("/api-docs");
@@ -78,23 +168,44 @@ const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) =>
   res.redirect("/auth/github");
 };
 
+// Options for the swagger docs
+const options = {
+  swaggerDefinition,
+  apis: ["./src/routes/*.ts"], // Path to the API docs
+};
+
+// Initialize swagger-jsdoc
+const swaggerSpec = swaggerJsdoc(options);
+
 // Apply session only for Swagger and routes that need authentication
 app.use("/api-docs", ensureAuthenticated, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Routes setup
-app.use(apiRouter);
-app.use(authRouter);
+// Routes setup without session for /api and /auth
+app.use("/api", apiRouter);
+app.use("/auth", authRouter);
 
 /**
  * Error handling middleware
  */
-app.use(errorHandler);
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (isHttpError(err)) {
+    return res.status(err.status).send({ error: err });
+  }
+
+  console.error("Internal Server Error:", err.message); // Logging error details
+  res.status(500).send({
+    error: { message: "Internal Server Error", description: err.message },
+  });
+
+  logger.err(err, true);
+  next(err);
+});
 
 // Front-end content
-const viewsDir = path.join(__dirname, "../views");
+const viewsDir = path.join(__dirname, "views");
 app.set("views", viewsDir);
 
-const staticDir = path.join(__dirname, "../public");
+const staticDir = path.join(__dirname, "public");
 app.use(express.static(staticDir));
 
 app.get("*", (_: Request, res: Response) => {
