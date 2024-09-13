@@ -13,7 +13,7 @@ import { Strategy as GitHubStrategy } from "passport-github2";
 import axios from "axios";
 import authRouter from "@routes/auth-router";
 import logger from "jet-logger";
-import apiRouter from "../routes/auth-router";
+import apiRouter from "@routes/index";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
@@ -96,9 +96,9 @@ passport.use(
     },
     async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
       try {
-        console.log("GitHub profile:", profile);
-        console.log("Access token:", accessToken);
-        console.log("GITHUB_REPO:", GITHUB_REPO);
+        // console.log("GitHub profile:", profile);
+        // console.log("Access token:", accessToken);
+        // console.log("GITHUB_REPO:", GITHUB_REPO);
 
         // Verify token scopes
         const tokenInfo = await axios.get("https://api.github.com/user", {

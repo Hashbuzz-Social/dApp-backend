@@ -6,7 +6,7 @@ import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRou
 import { Router } from "express";
 import { body } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-import SessionManager from "@services/SessionManager";
+
 
 const authRouter = Router();
 
