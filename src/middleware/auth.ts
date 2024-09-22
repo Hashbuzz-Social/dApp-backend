@@ -1,5 +1,6 @@
 import { AccountId } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
+import SessionManager from "@services/SessionManager";
 import signingService from "@services/signing-service";
 import { ErrorWithCode, UnauthorizeError } from "@shared/errors";
 import { base64ToUint8Array } from "@shared/helper";
@@ -7,7 +8,7 @@ import { NextFunction, Request, Response } from "express";
 import httpStatuses from "http-status-codes";
 import jwt from "jsonwebtoken";
 
-const { BAD_REQUEST } = httpStatuses;
+const { BAD_REQUEST, FORBIDDEN } = httpStatuses;
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
@@ -26,35 +27,40 @@ const getBearerToken = (req: Request): string => {
   return token;
 };
 
-const extractDeviceId = (req: Request): string | undefined => {
-  return (req.cookies.device_id ?? req.headers['x-device-id']) as string;
+const getHeadersData = (req: Request) => {
+  const deviceId = (req.cookies.device_id ?? req.headers["x-device-id"]) as string;
+  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+  return { deviceId, ipAddress, userAgent };
 };
 
 const isHavingValidAst = (req: Request, res: Response, next: NextFunction) => {
   try {
     const bearerToken = getBearerToken(req);
-    jwt.verify(bearerToken, accessSecret, (err, payload) => {
+    jwt.verify(bearerToken, accessSecret, async (err, payload) => {
       if (err) {
         return next(new UnauthorizeError(authTokenInvalidError));
       }
 
       if (payload) {
-        const { ts, accountId, signature } = payload as { ts: number; accountId: string; signature: string };
-        const timeStampDiffCheck = Date.now() - ts <= 24 * 60 * 60 * 1000;
-        const validSignature = signingService.verifyData(
-          { ts, accountId },
-          hederaService.operatorPublicKey!,
-          base64ToUint8Array(signature)
-        );
+        const { ts, accountId, signature, id } = payload as { ts: number; accountId: string; signature: string; id: string };
+        // const timeStampDiffCheck = Date.now() - ts <= 24 * 60 * 60 * 1000;
+        const validSignature = signingService.verifyData({ ts, accountId }, hederaService.operatorPublicKey!, base64ToUint8Array(signature));
+        const { deviceId, ipAddress, userAgent } = getHeadersData(req);
 
-        if (timeStampDiffCheck && validSignature) {
-          const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
-          req.accountAddress = accountAddress;
-          req.deviceId = extractDeviceId(req);
-          return next();
-        } else {
+        if (!validSignature) {
           return next(new UnauthorizeError("Signature not verified"));
         }
+        // Session check and respose
+        const session = await SessionManager.findSession(Number(id), deviceId);
+        if (session.ipAddress !== ipAddress || session.userAgent !== userAgent) {
+          // Terminate the session or flag for further validation
+          return next(new ErrorWithCode("Not a valid request ", FORBIDDEN));
+        }
+        const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
+        req.accountAddress = accountAddress;
+        req.deviceId = deviceId;
+        return next();
       } else {
         return next(new UnauthorizeError(authTokenInvalidError));
       }

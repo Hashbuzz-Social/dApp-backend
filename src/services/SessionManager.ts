@@ -5,13 +5,19 @@ import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import { v4 as uuidv4 } from "uuid";
-import { createAstToken } from "./authToken-service";
+import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import hederaService from "./hedera-service";
 import signingService from "./signing-service";
+import { decrypt, encrypt } from "@shared/encryption";
+import RedisClient from "./redis-servie";
 
-const { OK, BAD_REQUEST , UNAUTHORIZED} = HttpStatusCodes;
+const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
 
 class SessionManager {
+  private redisclinet: RedisClient;
+  constructor() {
+    this.redisclinet = new RedisClient();
+  }
   async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
     try {
       const {
@@ -25,6 +31,8 @@ class SessionManager {
 
       // Fetch and verify public key
       const clientAccountPublicKey = await fetchAccountIfoKey(accountId as string);
+
+      // Validate signatures
       const isServerSigValid = this.verifySignature(payload, hederaService.operatorKey.publicKey.toStringRaw(), server);
       const isClientSigValid = this.verifySignature(clientPayload, clientAccountPublicKey, value);
 
@@ -32,42 +40,41 @@ class SessionManager {
         return res.status(400).json({ auth: false, message: "Invalid signature." });
       }
 
-      // Generate tokens
-      const token = this.createToken(accountId);
-      const refreshToken = uuidv4();
-      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      // Handle device ID
+      // Handle device ID securely
       let deviceId = req.deviceId ?? req.cookies.device_id;
+
+      // decrypt it to check in the database
+
       if (!deviceId) {
-        deviceId = uuidv4();
+        deviceId = encrypt(uuidv4()); // Encrypt device ID
         res.cookie("device_id", deviceId, { httpOnly: true, secure: true, sameSite: "strict" });
       }
 
-      // Determine device type
-      const deviceType = req.headers["user-agent"]?.includes("Mobi") ? "mobile" : "desktop";
+      const deviceType: string = req.headers["user-agent"]?.includes("Mobi") ? "mobile" : "desktop";
       const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null;
       const userAgent = req.headers["user-agent"] || null;
 
-      const accAddress =  AccountId.fromString(accountId as string).toSolidityAddress();
+      const accAddress = AccountId.fromString(accountId).toSolidityAddress();
 
-      const create = {
-        accountAddress:  accAddress,
-        hedera_wallet_id: accountId,
-        available_budget: 0,
-        is_active: false,
-      };
-      const user  = await prisma.user_user.upsert({
+      // Upsert user data with secure handling
+      const user = await prisma.user_user.upsert({
         where: { accountAddress: accAddress },
-        update: {
-          last_login: new Date().toISOString(),
+        update: { last_login: new Date().toISOString() },
+        create: {
+          accountAddress: accAddress,
+          hedera_wallet_id: accountId,
+          available_budget: 0,
+          is_active: false,
         },
-        create,
       });
 
-      const userId = user.id;
+      // Generate JWT and refresh tokens
+      const token = this.createToken(accountId, user.id.toString());
+      const refreshToken = this.createRefreshToken(accountId, user.id.toString()); // Use a strong refresh token creation method
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      // Create or update session
+      // Check and update session securely
+      const userId = user.id;
       const existingSession = await this.findSession(userId, deviceId);
       if (existingSession) {
         await this.updateSession(existingSession.id, token, refreshToken, expiry);
@@ -85,9 +92,9 @@ class SessionManager {
     try {
       const token = req.token;
       const device_id = req.deviceId;
-      const session = await prisma.user_sessions.findFirst({where:{token}});
-      if(!session || !token || !device_id ) throw new ErrorWithCode("Unauthoriozed access requested" , UNAUTHORIZED);
-      await prisma.user_sessions.delete({ where: {id:session.id} });
+      const session = await prisma.user_sessions.findFirst({ where: { token } });
+      if (!session || !token || !device_id) throw new ErrorWithCode("Unauthoriozed access requested", UNAUTHORIZED);
+      await prisma.user_sessions.delete({ where: { id: session.id } });
       res.status(OK).json({ message: "Logout Successfully" });
     } catch (err) {
       next(err);
@@ -97,13 +104,13 @@ class SessionManager {
   async handleRefreshToken(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = req.body;
-      const session = await prisma.user_sessions.findUnique({ where: { refresh_token: refreshToken } });
+      const session = await prisma.user_sessions.findUnique({ where: { refresh_token: refreshToken }, include: { user_user: true } });
 
       if (!session) {
         return res.status(401).json({ message: "Invalid refresh token" });
       }
 
-      const newToken = this.createToken(session.user_id.toString());
+      const newToken = this.createToken(session.user_user.hedera_wallet_id, session.user_id.toString());
       const newExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       await this.updateSession(session.id, newToken, refreshToken, newExpiry);
@@ -194,7 +201,25 @@ class SessionManager {
     }
   }
 
-  private async findSession(userId: bigint | number, deviceId: string) {
+  public async findSession(userId: bigint | number, deviceId: string) {
+    const sessionKey = `session:${userId}:${deviceId}`;
+    if (this.redisclinet.client) {
+      const session = await this.redisclinet.read(sessionKey);
+      if (session) {
+        return JSON.parse(session);
+      } else {
+        const session = await prisma.user_sessions.findFirst({
+          where: {
+            user_id: userId,
+            device_id: deviceId,
+          },
+        });
+        if (session) {
+          await this.redisclinet.create(sessionKey, JSON.stringify(session));
+        }
+        return session;
+      }
+    }
     return await prisma.user_sessions.findFirst({
       where: {
         user_id: userId,
@@ -234,10 +259,16 @@ class SessionManager {
     return signingService.verifyData(payload, publicKey, base64ToUint8Array(signature));
   }
 
-  private createToken(accountId: string): string {
+  private createToken(accountId: string, id: string): string {
     const ts = Date.now();
     const { signature } = signingService.signData({ ts, accountId });
-    return createAstToken({ ts, accountId, signature: Buffer.from(signature).toString("base64") });
+    return createAstToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
+  }
+
+  private createRefreshToken(accountId: string, id: string): string {
+    const ts = Date.now();
+    const { signature } = signingService.signData({ ts, accountId });
+    return genrateRefreshToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
   }
 }
 
