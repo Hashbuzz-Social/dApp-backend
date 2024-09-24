@@ -5,8 +5,28 @@ import userInfo from "@middleware/userInfo";
 import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
-
 import { body } from "express-validator";
+
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *   schemas:
+ *     RefreshToken:
+ *       type: object
+ *       required:
+ *         - refreshToken
+ *       properties:
+ *         refreshToken:
+ *           type: string
+ *           description: The refresh token
+ *       example:
+ *         refreshToken: your_refresh_token_here
+ */
 
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
@@ -18,18 +38,128 @@ const passwordCheck: IsStrongPasswordOptions = {
 
 const router = Router();
 
-router.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
+/**
+ * @swagger
+ * /logout:
+ *   post:
+ *     summary: Logout the user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully logged out
+ */
+router.post("logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
 
-router.post("/refresh-token", auth.isHavingValidAst, body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
+/**
+ * @swagger
+ * /refresh-token:
+ *   post:
+ *     summary: Refresh the access token
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshToken'
+ *     responses:
+ *       200:
+ *         description: Successfully refreshed token
+ */
+router.post("refresh-token", auth.isHavingValidAst, body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
 
-router.get("/twitter-return", handleTwitterReturnUrl);
+/**
+ * @swagger
+ * /twitter-return:
+ *   get:
+ *     summary: Handle Twitter return URL
+ *     responses:
+ *       200:
+ *         description: Successfully handled Twitter return
+ */
+router.get("twitter-return", handleTwitterReturnUrl);
 
+/**
+ * @swagger
+ * /business-twitter-return:
+ *   get:
+ *     summary: Handle Twitter business registration return URL
+ *     responses:
+ *       200:
+ *         description: Successfully handled Twitter business registration return
+ */
 router.get("/business-twitter-return", handleTwitterBizRegister);
 
-router.post("/admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo, body("password").isStrongPassword(passwordCheck), handleAdminLogin);
+/**
+ * @swagger
+ * /admin-login:
+ *   post:
+ *     summary: Admin login
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 description: The admin password
+ *     responses:
+ *       200:
+ *         description: Successfully logged in as admin
+ */
+router.post("admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo, body("password").isStrongPassword(passwordCheck), handleAdminLogin);
 
-router.get("/ping", auth.isHavingValidAst, handleAuthPing);
-router.get("/challenge", handleCreateChallenge);
-router.post("/generate", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
+/**
+ * @swagger
+ * /ping:
+ *   get:
+ *     summary: Ping the server to check authentication status
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully pinged
+ */
+router.get("ping", auth.isHavingValidAst, handleAuthPing);
+
+/**
+ * @swagger
+ * /challenge:
+ *   get:
+ *     summary: Create a challenge
+ *     responses:
+ *       200:
+ *         description: Successfully created challenge
+ */
+router.get("challenge", handleCreateChallenge);
+
+/**
+ * @swagger
+ * /generate:
+ *   post:
+ *     summary: Generate authentication AST
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               payload:
+ *                 type: string
+ *                 description: The payload to generate AST
+ *     responses:
+ *       200:
+ *         description: Successfully generated AST
+ */
+router.post("generate", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
 
 export default router;

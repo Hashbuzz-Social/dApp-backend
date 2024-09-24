@@ -11,7 +11,7 @@ export const generateSigningToken = () => {
   const currentTimeStamp = new Date().getTime();
   return jwt.sign({ ts: currentTimeStamp }, accessSecret!, {
     algorithm: "HS512", // or RS256 for asymmetrical keys
-    expiresIn: "30s", // Keep this short for high-security requirements
+    expiresIn: "5m", // Keep this short for high-security requirements
   });
 };
 
@@ -38,7 +38,7 @@ interface CreateAstTokenParams {
    * user db id
    */
 
-  id: string
+  id: string;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authRoutes from "./routes";
+import walletConnectRoutes from "./walletConnect";
 
 const router = Router();
 /**
@@ -12,6 +13,7 @@ const router = Router();
  *       200:
  *         description: Successful response
  */
-router.use("/auth", authRoutes);
+router.use("/", authRoutes);
+router.use("/walletConnect/", walletConnectRoutes);
 
 export default router;

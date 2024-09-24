@@ -139,6 +139,7 @@
     "swagger-ui-express": "^5.0.1",
     "twit": "^2.2.11",
     "twitter-api-v2": "^1.12.3",
+    "uuidv4": "^6.2.13",
     "web3": "^1.7.5",
     "ws": "^7.5.10"
   },
@@ -176,8 +177,8 @@
     "find": "^0.3.0",
     "fs-extra": "^10.1.0",
     "husky": "^8.0.0",
-    "lint-staged": "^13.0.0",
     "jsonwebtoken": "^8.5.1",
+    "lint-staged": "^13.0.0",
     "nodemon": "^2.0.19",
     "prettier": "^2.7.1",
     "prisma": "^5.17.0",

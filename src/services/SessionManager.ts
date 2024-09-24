@@ -1,4 +1,5 @@
 import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
+import { encrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
 import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
 import prisma from "@shared/prisma";
@@ -7,9 +8,8 @@ import HttpStatusCodes from "http-status-codes";
 import { v4 as uuidv4 } from "uuid";
 import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import hederaService from "./hedera-service";
-import signingService from "./signing-service";
-import { decrypt, encrypt } from "@shared/encryption";
 import RedisClient from "./redis-servie";
+import signingService from "./signing-service";
 
 const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
 

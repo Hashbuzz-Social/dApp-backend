@@ -1,12 +1,10 @@
-import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
+import { AccountBalanceQuery, AccountId, Client, PrivateKey, PublicKey, TopicCreateTransaction, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 import logger from "jet-logger";
-
 
 const network = process.env.HEDERA_NETWORK;
 const operatorPrivateKey = process.env.HEDERA_PRIVATE_KEY;
 const operatorPublicKey = process.env.HEDERA_PUBLIC_KEY;
 const operatorAccount = process.env.HEDERA_ACCOUNT_ID;
-
 
 //build key
 const operatorId = AccountId.fromString(operatorAccount!);
@@ -28,7 +26,7 @@ switch (network) {
   case "testnet":
     // logger.info("Connecting to the Hedera Testnet");
     console.log("Connecting to the Hedera Testnet");
-    client = Client.forTestnet()
+    client = Client.forTestnet();
     break;
   case "previewnet":
     logger.info("Connecting to the Hedera Previewnet");
@@ -65,6 +63,35 @@ const getAccountBalances = async (accountId: string) => {
   return accountBalance;
 };
 
+// Create a new HCS topic if not already created
+const createHcsTopic = async () => {
+  const adminKey = PublicKey.fromString(operatorPublicKey!);
+  const topicTransaction = new TopicCreateTransaction().setAdminKey(adminKey);
+  const response = await topicTransaction.execute(client);
+  const receipt = await response.getReceipt(client);
+  const topicId = receipt.topicId?.toString();
+  console.log("New HCS Topic ID:", topicId);
+  logger.info(`New HCS Topic ID:: ${topicId}`);
+
+  return { topicId, transaction: receipt.toJSON(), adminKey: operatorPublicKey };
+};
+
+const submiHcstMessageToTopic = async ({ topicId, message }: { topicId: string; message: string }) => {
+  // Send message to private topic
+  let submitMsgTx = await new TopicMessageSubmitTransaction({
+    topicId,
+    message,
+  })
+    .freezeWith(client)
+    .sign(operatorKey);
+
+  let submitMsgTxSubmit = await submitMsgTx.execute(client);
+  // Get the receipt of the transaction
+  let getReceipt = await submitMsgTxSubmit.getReceipt(client);
+  // Get the status of the transaction
+  const transactionStatus = getReceipt.status;
+  console.log("The message transaction status " + transactionStatus.toString());
+};
 
 export default {
   hederaClient: client,
@@ -75,4 +102,6 @@ export default {
   operatorKey,
   operatorPublicKey,
   getAccountBalances,
+  createHcsTopic,
+  submiHcstMessageToTopic,
 } as const;
