@@ -6,6 +6,6 @@ import { body } from "express-validator";
 const router = Router();
 
 router.get("create-challange", createChallenge);
-router.post("signed-challange", body().isObject(), checkErrResponse, vertifyResponseAndGenrateToekn);
+router.post("verify-response", body().isObject(), checkErrResponse, vertifyResponseAndGenrateToekn);
 
 export default router;
