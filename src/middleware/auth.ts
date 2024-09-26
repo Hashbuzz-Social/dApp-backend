@@ -3,6 +3,7 @@ import hederaService from "@services/hedera-service";
 import SessionManager from "@services/SessionManager";
 import signingService from "@services/signing-service";
 import { ErrorWithCode, UnauthorizeError } from "@shared/errors";
+import { verifyAccessToken } from "@shared/Verify";
 import { base64ToUint8Array } from "@shared/helper";
 import { NextFunction, Request, Response } from "express";
 import httpStatuses from "http-status-codes";
@@ -34,37 +35,35 @@ const getHeadersData = (req: Request) => {
   return { deviceId, ipAddress, userAgent };
 };
 
-const isHavingValidAst = (req: Request, res: Response, next: NextFunction) => {
+const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
+  const bearerToken = getBearerToken(req);
+
   try {
-    const bearerToken = getBearerToken(req);
-    jwt.verify(bearerToken, accessSecret, async (err, payload) => {
-      if (err) {
-        return next(new UnauthorizeError(authTokenInvalidError));
-      }
+    const payload = verifyAccessToken(bearerToken) as { ts: number; accountId: string; signature: string; id: string };
+    const { ts, accountId, signature, id } = payload;
 
-      if (payload) {
-        const { ts, accountId, signature, id } = payload as { ts: number; accountId: string; signature: string; id: string };
-        // const timeStampDiffCheck = Date.now() - ts <= 24 * 60 * 60 * 1000;
-        const validSignature = signingService.verifyData({ ts, accountId }, hederaService.operatorPublicKey!, base64ToUint8Array(signature));
-        const { deviceId, ipAddress, userAgent } = getHeadersData(req);
+    // Verify the signature of the payload
+    const validSignature = signingService.verifyData({ ts, accountId }, hederaService.operatorPublicKey!, base64ToUint8Array(signature));
+    const { deviceId, ipAddress, userAgent } = getHeadersData(req);
 
-        if (!validSignature) {
-          return next(new UnauthorizeError("Signature not verified"));
-        }
-        // Session check and respose
-        const session = await SessionManager.findSession(Number(id), deviceId);
-        if (session.ipAddress !== ipAddress || session.userAgent !== userAgent) {
-          // Terminate the session or flag for further validation
-          return next(new ErrorWithCode("Not a valid request ", FORBIDDEN));
-        }
-        const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
-        req.accountAddress = accountAddress;
-        req.deviceId = deviceId;
-        return next();
-      } else {
-        return next(new UnauthorizeError(authTokenInvalidError));
-      }
-    });
+    if (!validSignature) {
+      return next(new UnauthorizeError("Signature not verified"));
+    }
+    const session = await SessionManager.findSession(Number(id), deviceId);
+
+    // Check if the session is valid and coming from the same device
+    if (session.ipAddress !== ipAddress || session.userAgent !== userAgent) {
+      // Terminate the session or flag for further validation
+      return next(new ErrorWithCode("User session invalidated or tempered.", FORBIDDEN));
+    }
+
+    // set the data to request object
+    const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
+    req.accountAddress = accountAddress;
+    req.deviceId = deviceId;
+
+    // move to next middleware
+    return next();
   } catch (err) {
     return next(new ErrorWithCode("Error while checking auth token", BAD_REQUEST));
   }
