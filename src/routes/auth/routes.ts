@@ -128,38 +128,4 @@ router.post("admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userIn
  */
 router.get("ping", auth.isHavingValidAst, handleAuthPing);
 
-/**
- * @swagger
- * /challenge:
- *   get:
- *     summary: Create a challenge
- *     responses:
- *       200:
- *         description: Successfully created challenge
- */
-router.get("challenge", handleCreateChallenge);
-
-/**
- * @swagger
- * /generate:
- *   post:
- *     summary: Generate authentication AST
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               payload:
- *                 type: string
- *                 description: The payload to generate AST
- *     responses:
- *       200:
- *         description: Successfully generated AST
- */
-router.post("generate", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
-
 export default router;

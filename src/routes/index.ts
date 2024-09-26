@@ -6,7 +6,6 @@ import integrationRouter from "./integrations";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
 
-
 // Export the base-router
 const baseRouter = Router();
 
@@ -19,7 +18,7 @@ const baseRouter = Router();
 
 /**
  * @swagger
- * /users:
+ * /api/users:
  *   get:
  *     summary: Get user information
  *     tags: [Users]
@@ -44,7 +43,7 @@ baseRouter.use("/users", authMiddleware.isHavingValidAst, userRouter);
 
 /**
  * @swagger
- * /admin:
+ * /api/admin:
  *   get:
  *     summary: Admin API routes
  *     tags: [Admin]
@@ -69,7 +68,7 @@ baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdmin
 
 /**
  * @swagger
- * /campaigns:
+ * /api/campaigns:
  *   get:
  *     summary: Campaign API routes
  *     tags: [Campaigns]
@@ -94,7 +93,7 @@ baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
 
 /**
  * @swagger
- * /transactions:
+ * /api/transactions:
  *   get:
  *     summary: Transaction API routes
  *     tags: [Transactions]
@@ -119,7 +118,7 @@ baseRouter.use("/transaction", authMiddleware.isHavingValidAst, transactionRoute
 
 /**
  * @swagger
- * /integrations:
+ * /api/integrations:
  *   get:
  *     summary: Integration API routes
  *     tags: [Integrations]

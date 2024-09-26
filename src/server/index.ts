@@ -169,21 +169,21 @@ const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) =>
   res.redirect("/auth/github");
 };
 
-// Options for the swagger docs
 const options = {
   swaggerDefinition,
-  apis: ["./src/routes/*.ts"], // Path to the API docs
+  apis: ["./src/routes/**/*.ts"], // Recursively scan all .ts files in routes and subfolders
 };
-
 // Initialize swagger-jsdoc
 const swaggerSpec = swaggerJsdoc(options);
 
 // Apply session only for Swagger and routes that need authentication
 app.use("/api-docs", ensureAuthenticated, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Routes setup without session for /api and /auth
+// // Routes setup without session for /api and /auth
 app.use("/api", apiRouter);
 app.use("/auth", authRouter);
+
+// app.use(apiRoutes)
 
 /**
  * Error handling middleware
