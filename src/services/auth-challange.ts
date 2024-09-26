@@ -7,16 +7,33 @@ import RedisClient from "./redis-servie";
 
 const redis = new RedisClient();
 
+type privatePlayload = {
+  id: string;
+  url: string;
+  timestamp: number;
+  ip: string;
+  fingurePrint: string;
+};
+
 const provideAuthChllanageTopicId = async () => {
   try {
-    const activeTopic = await prisma.hcsTopics.findFirst({
+    // first check id redis
+    const localtopicId = await redis.read("TOPIC_ID:AUTH_CHALLENGE:ACTIVE");
+    if (localtopicId) {
+      return localtopicId;
+    }
+
+    // not found check in DB
+    const activeDBTopicRecord = await prisma.hcsTopics.findFirst({
       where: { purpose: "AUTH_CHALLENGE", status: "ACTIVE" },
     });
 
-    if (activeTopic?.topicId) {
-      return activeTopic.topicId;
+    if (activeDBTopicRecord?.topicId) {
+      await redis.create("TOPIC_ID:AUTH_CHALLENGE:ACTIVE", activeDBTopicRecord.topicId);
+      return activeDBTopicRecord.topicId;
     }
 
+    // No record found in DB create a new topic
     const { topicId, transaction, adminKey } = await hederaService.createHcsTopic();
     if (topicId && adminKey) {
       await prisma.hcsTopics.create({
@@ -44,6 +61,17 @@ const generateHash = (payload: object): string => {
   return hash;
 };
 
+const verifyHash = (payload: object, hash: string): boolean => {
+  // Create a sorted string representation of the payload
+  const payloadString = JSON.stringify(payload, Object.keys(payload).sort());
+
+  // Generate a SHA-256 hash of the payload string
+  const generatedHash = crypto.createHash("sha256").update(payloadString).digest("hex");
+
+  // Compare the generated hash to the provided hash
+  return hash === generatedHash;
+};
+
 export const generateChallenge = async (ip: string, fingurePrint: string) => {
   try {
     const id = uuid();
@@ -54,17 +82,16 @@ export const generateChallenge = async (ip: string, fingurePrint: string) => {
 
     if (hashString && topicId) {
       const message = {
-        event: "Challenge Created",
+        event: "HASHBUZZ_AUTH_CHALLENGE",
         challengeId: id,
         timestamp,
       };
       await Promise.allSettled([
-        // storing chalange in metaData in RDS
+        // storing chalange  metaData in RDS
         await redis.create(
-          `authChallenge:${id}`,
+          `AUTH_CHALLENGE:${id}`,
           JSON.stringify({
             payload,
-            hashString,
             topicId,
           }),
           300
@@ -76,5 +103,23 @@ export const generateChallenge = async (ip: string, fingurePrint: string) => {
     }
   } catch (err) {
     throw new Error("Error while generating auth chalange");
+  }
+};
+
+export const verifyPayloadChlange = async ({ id, message }: { id: string; message: string; timestamp: number }) => {
+  try {
+    const chalangeData = await redis.read(`AUTH_CHALLENGE:${id}`);
+    if (!chalangeData) {
+      throw new Error("Invalid challenge id");
+    }
+    const { payload, topicId } = JSON.parse(chalangeData) as { payload: privatePlayload; topicId: string };
+    const isValid = verifyHash(payload, message);
+    if (!isValid) {
+      throw new Error("Invalid challenge message");
+    }
+
+    return { payload, topicId };
+  } catch (err) {
+    throw new Error("Error while verifying auth chalange");
   }
 };

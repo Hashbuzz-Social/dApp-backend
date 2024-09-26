@@ -20,71 +20,84 @@ class SessionManager {
   }
   async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
     try {
-      const {
-        payload,
-        clientPayload,
-        signatures: {
-          server,
-          wallet: { value, accountId },
-        },
-      } = req.body;
+      const { payload, clientPayload, signatures } = req.body;
+      const { server, wallet } = signatures;
+      const { value, accountId } = wallet;
 
-      // Fetch and verify public key
-      const clientAccountPublicKey = await fetchAccountIfoKey(accountId as string);
+      const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(accountId);
+      const isSignaturesValid = this.validateSignatures(payload, clientPayload, server, value, clientAccountPublicKey);
 
-      // Validate signatures
-      const isServerSigValid = this.verifySignature(payload, hederaService.operatorKey.publicKey.toStringRaw(), server);
-      const isClientSigValid = this.verifySignature(clientPayload, clientAccountPublicKey, value);
-
-      if (!isServerSigValid || !isClientSigValid) {
+      if (!isSignaturesValid) {
         return res.status(400).json({ auth: false, message: "Invalid signature." });
       }
 
-      // Handle device ID securely
-      let deviceId = req.deviceId ?? req.cookies.device_id;
-
-      // decrypt it to check in the database
-
-      if (!deviceId) {
-        deviceId = encrypt(uuidv4()); // Encrypt device ID
-        res.cookie("device_id", deviceId, { httpOnly: true, secure: true, sameSite: "strict" });
-      }
-
-      const deviceType: string = req.headers["user-agent"]?.includes("Mobi") ? "mobile" : "desktop";
-      const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null;
-      const userAgent = req.headers["user-agent"] || null;
-
+      let deviceId = this.handleDeviceId(req, res);
+      const { deviceType, ipAddress, userAgent } = this.getDeviceInfo(req);
       const accAddress = AccountId.fromString(accountId).toSolidityAddress();
 
-      // Upsert user data with secure handling
-      const user = await prisma.user_user.upsert({
-        where: { accountAddress: accAddress },
-        update: { last_login: new Date().toISOString() },
-        create: {
-          accountAddress: accAddress,
-          hedera_wallet_id: accountId,
-          available_budget: 0,
-          is_active: false,
-        },
-      });
+      const user = await this.upsertUserData(accAddress, accountId);
+      const { token, refreshToken, expiry } = this.generateTokens(accountId, user.id.toString());
 
-      // Generate JWT and refresh tokens
-      const token = this.createToken(accountId, user.id.toString());
-      const refreshToken = this.createRefreshToken(accountId, user.id.toString()); // Use a strong refresh token creation method
-      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      // Check and update session securely
-      const userId = user.id;
-      const existingSession = await this.findSession(userId, deviceId);
-      if (existingSession) {
-        await this.updateSession(existingSession.id, token, refreshToken, expiry);
-      } else {
-        await this.createSession(userId, deviceId, deviceType, ipAddress, userAgent, token, refreshToken, expiry);
-      }
+      await this.checkAndUpdateSession(user.id, deviceId, deviceType, ipAddress, userAgent, token, refreshToken, expiry);
 
       res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });
     } catch (err) {
       next(err);
+    }
+  }
+
+  private async fetchAndVerifyPublicKey(accountId: string) {
+    return await fetchAccountIfoKey(accountId);
+  }
+
+  private validateSignatures(payload: object, clientPayload: object, server: string, value: string, clientAccountPublicKey: string) {
+    const isServerSigValid = this.verifySignature(payload, hederaService.operatorKey.publicKey.toStringRaw(), server);
+    const isClientSigValid = this.verifySignature(clientPayload, clientAccountPublicKey, value);
+    return isServerSigValid && isClientSigValid;
+  }
+
+  handleDeviceId(req: Request, res: Response) {
+    let deviceId = req.deviceId ?? req.cookies.device_id;
+    if (!deviceId) {
+      deviceId = encrypt(uuidv4());
+      res.cookie("device_id", deviceId, { httpOnly: true, secure: true, sameSite: "strict" });
+    }
+    return deviceId;
+  }
+
+  getDeviceInfo(req: Request) {
+    const deviceType = req.headers["user-agent"]?.includes("Mobi") ? "mobile" : "desktop";
+    const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null;
+    const userAgent = req.headers["user-agent"] || null;
+    return { deviceType, ipAddress, userAgent };
+  }
+
+  async upsertUserData(accAddress: string, accountId: string) {
+    return await prisma.user_user.upsert({
+      where: { accountAddress: accAddress },
+      update: { last_login: new Date().toISOString() },
+      create: {
+        accountAddress: accAddress,
+        hedera_wallet_id: accountId,
+        available_budget: 0,
+        is_active: false,
+      },
+    });
+  }
+
+  generateTokens(accountId: string, userId: string) {
+    const token = this.createToken(accountId, userId);
+    const refreshToken = this.createRefreshToken(accountId, userId);
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    return { token, refreshToken, expiry };
+  }
+
+  async checkAndUpdateSession(userId: bigint, deviceId: string, deviceType: string, ipAddress: string | null, userAgent: string | null, token: string, refreshToken: string, expiry: Date) {
+    const existingSession = await this.findSession(userId, deviceId);
+    if (existingSession) {
+      await this.updateSession(existingSession.id, token, refreshToken, expiry);
+    } else {
+      await this.createSession(userId, deviceId, deviceType, ipAddress, userAgent, token, refreshToken, expiry);
     }
   }
 
