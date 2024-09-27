@@ -31,7 +31,7 @@ router.use("/", authRoutes);
 
 /**
  * @swagger
- * /auth/walletConnect:
+ * /auth/walletconnect:
  *   get:
  *     summary: WalletConnect related endpoints
  *     description: Entry point for WalletConnect related operations.
@@ -40,11 +40,11 @@ router.use("/", authRoutes);
  *       200:
  *         description: Successful response
  */
-router.use("/walletConnect/", walletConnectRoutes);
+router.use("/walletconnect", walletConnectRoutes);
 
 /**
  * @swagger
- * /auth/hashConnect:
+ * /auth/hashconnect:
  *   get:
  *     summary: HashConnect related endpoints
  *     description: Entry point for HashConnect related operations.
@@ -53,6 +53,6 @@ router.use("/walletConnect/", walletConnectRoutes);
  *       200:
  *         description: Successful response
  */
-router.use("/hashConnect/", hashConnectRoutes);
+router.use("/hashconnect", hashConnectRoutes);
 
 export default router;

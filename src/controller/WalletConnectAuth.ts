@@ -15,7 +15,7 @@ export const createChallenge = async (req: Request, res: Response, next: NextFun
   try {
     const ip = req.headers["x-forwarded-for"] as string;
     const fingerPrint = req.headers["x-device-fingerPrint"] as string;
-    const payload = generateChallenge(ip, fingerPrint);
+    const payload = await generateChallenge(ip, fingerPrint);
 
     return res.status(200).json({ payload });
   } catch (error) {
