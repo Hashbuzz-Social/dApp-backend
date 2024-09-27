@@ -1,8 +1,9 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { getPublicKey } from "@shared/KeyManager";
+import { CreateAstTokenParams } from "@services/authToken-service";
 
 // Function to verify Access Token
-export const verifyAccessToken = (token: string): JwtPayload | string => {
+export const verifyAccessToken = (token: string) => {
   // Decode token header to get kid
   const decodedHeader = jwt.decode(token, { complete: true });
   if (!decodedHeader || typeof decodedHeader === "string") {
@@ -20,13 +21,13 @@ export const verifyAccessToken = (token: string): JwtPayload | string => {
   }
 
   // Verify token with the corresponding public key
-  const decoded = jwt.verify(token, publicKey, {
+  const payload = jwt.verify(token, publicKey, {
     algorithms: ["RS256"],
     issuer: "hashbuzz.social",
     audience: "hashbuzz-frontend",
-  });
+  }) as any as CreateAstTokenParams;
 
-  return decoded;
+  return { payload, kid };
 };
 
 // Function to verify Refresh Token (similar to Access Token)
@@ -48,11 +49,11 @@ export const verifyRefreshToken = (token: string): JwtPayload | string => {
   }
 
   // Verify token with the corresponding public key
-  const decoded = jwt.verify(token, publicKey, {
+  const payload = jwt.verify(token, publicKey, {
     algorithms: ["RS256"],
     issuer: "hashbuzz.social",
     audience: "hashbuzz-frontend",
   });
 
-  return decoded;
+  return { payload, kid };
 };

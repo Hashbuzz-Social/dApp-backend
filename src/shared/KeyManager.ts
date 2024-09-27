@@ -14,7 +14,7 @@ interface KeyPair {
 }
 
 // Path to Key Store
-const keyStorePath = path.join(__dirname, "../keys/keyStore.json");
+const keyStorePath = path.join(__dirname, "../.keys/keyStore.json");
 
 // Load existing keys or initialize empty array
 let keyStore: KeyPair[] = [];
@@ -66,7 +66,14 @@ if (keyStore.length === 0) {
 
 // Function to get the current key pair (latest)
 export const getCurrentKeyPair = (): KeyPair => {
-  return keyStore[keyStore.length - 1];
+  const currentKey = keyStore[keyStore.length - 1];
+  if (!currentKey) {
+    console.warn("No key pair found! Rotating keys...");
+    rotateKeys();
+    return getCurrentKeyPair();
+  } else {
+    return currentKey;
+  }
 };
 
 // Function to get public key by kid

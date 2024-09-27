@@ -100,7 +100,7 @@ export const handleTokenContractBal = async (req: Request, res: Response, next: 
     const tokenId = req.params.tokenId as string;
     console.log({ tokenId });
     if (req.currentUser?.hedera_wallet_id) {
-      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId , false);
+      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId, false);
       console.log({ balance });
       return res.status(OK).json({ balance });
     }
@@ -121,7 +121,7 @@ export const syncBal = async (req: Request, res: Response, next: NextFunction) =
 
     // Go for SM query for the baalnce
     if (req.currentUser && req.currentUser.hedera_wallet_id && req.currentUser.id) {
-      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId , false);
+      const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId, false);
 
       logger.info(`Toeken baalnce syn for the user ${req.currentUser.id} and for token ${tokenId}`);
 
@@ -135,7 +135,7 @@ export const syncBal = async (req: Request, res: Response, next: NextFunction) =
         },
       });
 
-      return res.status(OK).json({ balance:Number(balance) });
+      return res.status(OK).json({ balance: Number(balance) });
     }
     throw new Error("No wallet for this user");
   } catch (err) {

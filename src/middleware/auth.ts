@@ -39,24 +39,16 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
   const bearerToken = getBearerToken(req);
 
   try {
-    const payload = verifyAccessToken(bearerToken) as { ts: number; accountId: string; signature: string; id: string };
+    const { payload } = verifyAccessToken(bearerToken);
     const { ts, accountId, signature, id } = payload;
 
     // Verify the signature of the payload
     const validSignature = signingService.verifyData({ ts, accountId }, hederaService.operatorPublicKey!, base64ToUint8Array(signature));
-    const { deviceId, ipAddress, userAgent } = getHeadersData(req);
+    const { deviceId } = getHeadersData(req);
 
     if (!validSignature) {
       return next(new UnauthorizeError("Signature not verified"));
     }
-    const session = await SessionManager.findSession(Number(id), deviceId);
-
-    // Check if the session is valid and coming from the same device
-    if (session.ipAddress !== ipAddress || session.userAgent !== userAgent) {
-      // Terminate the session or flag for further validation
-      return next(new ErrorWithCode("User session invalidated or tempered.", FORBIDDEN));
-    }
-
     // set the data to request object
     const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
     req.accountAddress = accountAddress;
@@ -65,6 +57,7 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
     // move to next middleware
     return next();
   } catch (err) {
+    console.error(err);
     return next(new ErrorWithCode("Error while checking auth token", BAD_REQUEST));
   }
 };

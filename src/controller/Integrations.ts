@@ -11,17 +11,11 @@ const { OK, INTERNAL_SERVER_ERROR, TEMPORARY_REDIRECT } = HttpStatusCodes;
 const callbackUrlTwitter = process.env.TWITTER_CALLBACK_HOST;
 
 export const handlePersonalTwitterHandle = async (req: Request, res: Response, next: NextFunction) => {
-  // try {
-  //   (async () => {
   const user_id = req.currentUser?.id;
   if (user_id) {
     const url = await twitterAuthUrl({ callbackUrl: `${callbackUrlTwitter!}/auth/twitter-return/`, user_id });
     return res.status(OK).json({ url });
   }
-  //   })();
-  // } catch (err) {
-  //   next(err);
-  // }
 };
 
 export const handleBizTwitterHandle = (req: Request, res: Response, next: NextFunction) => {
@@ -65,10 +59,10 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
       },
     });
 
-    const getAstForUserById = await userService.getAstForUserByAccountAddress(user.id , req.deviceId!);
+    // const getAstForUserById = await userService.getAstForUserByAccountAddress(user.id , req.deviceId!);
 
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?token=${getAstForUserById?.token ?? ""}&user_id=${user.id}&username=${username}`,
+      Location: `${process.env.FRONTEND_URL!}?user_id=${user.id}&username=${username}`,
     });
     res.end();
   } catch (error) {

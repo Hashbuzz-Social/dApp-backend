@@ -10,19 +10,17 @@ datasource db {
 model user_sessions {
   id            BigInt    @id @default(autoincrement())
   user_id       BigInt
-  device_id     String    @db.VarChar(100)
+  device_id     String    @db.VarChar(200)
   device_type   String    @db.VarChar(50)
   ip_address    String?   @db.VarChar(45)
   user_agent    String?   @db.VarChar(500)
-  token         String    @unique @db.VarChar(2000)
-  refresh_token String    @unique @db.VarChar(2000)
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   last_accessed DateTime  @default(now()) @db.Timestamptz(6)
   expires_at    DateTime  @db.Timestamptz(6)
+  kid           String?   @unique @db.VarChar(100)
   user_user     user_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_sessions_user_id")
 
-  @@index([refresh_token])
-  @@index([token])
+  @@index([kid])
   @@index([user_id])
 }
 
@@ -221,13 +219,13 @@ model transactions {
 }
 
 model HcsTopics {
-  id             BigInt         @id @default(autoincrement())
-  topicId        String         @unique
-  purpose        TopicPurpose
-  adminKey       String         
-  tcTransaction  Json
-  status         TopicStatus    @default(ACTIVE)  // Default status set to active
-  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  id            BigInt       @id @default(autoincrement())
+  topicId       String       @unique
+  purpose       TopicPurpose
+  adminKey      String
+  tcTransaction Json
+  status        TopicStatus  @default(ACTIVE)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
 }
 
 enum TopicPurpose {

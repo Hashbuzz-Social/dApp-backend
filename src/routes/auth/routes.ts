@@ -49,7 +49,7 @@ const router = Router();
  *       200:
  *         description: Successfully logged out
  */
-router.post("logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
+router.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
 
 /**
  * @swagger
@@ -79,7 +79,7 @@ router.post("refresh-token", auth.isHavingValidAst, body("refreshToken").isStrin
  *       200:
  *         description: Successfully handled Twitter return
  */
-router.get("twitter-return", handleTwitterReturnUrl);
+router.get("/twitter-return", handleTwitterReturnUrl);
 
 /**
  * @swagger
@@ -113,7 +113,7 @@ router.get("/business-twitter-return", handleTwitterBizRegister);
  *       200:
  *         description: Successfully logged in as admin
  */
-router.post("admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo, body("password").isStrongPassword(passwordCheck), handleAdminLogin);
+router.post("/admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userInfo.getCurrentUserInfo, body("password").isStrongPassword(passwordCheck), handleAdminLogin);
 
 /**
  * @swagger
@@ -126,6 +126,6 @@ router.post("admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userIn
  *       200:
  *         description: Successfully pinged
  */
-router.get("ping", auth.isHavingValidAst, handleAuthPing);
+router.get("/ping", auth.isHavingValidAst, handleAuthPing);
 
 export default router;

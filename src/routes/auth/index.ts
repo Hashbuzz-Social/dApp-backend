@@ -18,19 +18,6 @@ const router = Router();
 
 /**
  * @swagger
- * /auth:
- *   get:
- *     summary: Entry point for the API server
- *     description: This is the entry point for the API server.
- *     tags: [General]
- *     responses:
- *       200:
- *         description: Successful response
- */
-router.use("/", authRoutes);
-
-/**
- * @swagger
  * /auth/walletconnect:
  *   get:
  *     summary: WalletConnect related endpoints
@@ -54,5 +41,18 @@ router.use("/walletconnect", walletConnectRoutes);
  *         description: Successful response
  */
 router.use("/hashconnect", hashConnectRoutes);
+
+/**
+ * @swagger
+ * /auth:
+ *   get:
+ *     summary: Entry point for the API server
+ *     description: This is the entry point for the API server.
+ *     tags: [General]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
+router.use(authRoutes);
 
 export default router;

@@ -7,7 +7,7 @@ import { getCurrentKeyPair } from "@shared/KeyManager";
 /**
  * Parameters for creating an AST token.
  */
-interface CreateAstTokenParams {
+export interface CreateAstTokenParams {
   /**
    * Current timestamp.
    */
@@ -62,7 +62,7 @@ export const genrateRefreshTokenEx = (params: CreateAstTokenParams) => {
  * @param payload [CreateAstTokenParams]
  * @returns token [JWT Token]
  */
-export const createAstToken = (payload: CreateAstTokenParams): string => {
+export const createAstToken = (payload: CreateAstTokenParams) => {
   const currentKey = getCurrentKeyPair();
 
   const token = jwt.sign(
@@ -83,7 +83,7 @@ export const createAstToken = (payload: CreateAstTokenParams): string => {
     }
   );
 
-  return token;
+  return { token, kid: currentKey.kid };
 };
 
 /**
