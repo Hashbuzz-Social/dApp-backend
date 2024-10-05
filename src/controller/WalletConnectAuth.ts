@@ -1,13 +1,13 @@
-import { generateChallenge, verifyPayloadChlange } from "@services/auth-challange";
-import { NextFunction, Request, Response } from "express";
-import { base64ToUint8Array, fetchAccountInfoKey } from "@shared/helper";
-import { isEmpty } from "lodash";
-import { StatusCodes } from "http-status-codes";
-import signingService from "@services/signing-service";
-import hederaService from "@services/hedera-service";
-import moment from "moment";
-import SessionManager from "@services/SessionManager";
 import { AccountId, PublicKey } from "@hashgraph/sdk";
+import { generateChallenge, verifyPayloadChlange } from "@services/auth-challange";
+import hederaService from "@services/hedera-service";
+import SessionManager from "@services/SessionManager";
+import signingService from "@services/signing-service";
+import { fetchAccountInfoKey } from "@shared/helper";
+import { NextFunction, Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { isEmpty } from "lodash";
+import moment from "moment";
 
 const { BAD_REQUEST, OK } = StatusCodes;
 
