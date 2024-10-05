@@ -14,7 +14,13 @@ interface KeyPair {
 }
 
 // Path to Key Store
-const keyStorePath = path.join(__dirname, "../.keys/keyStore.json");
+const keyStorePath = path.join(__dirname, "../../.keys/keyStore.json");
+const keyStoreDir = path.dirname(keyStorePath);
+
+// Ensure the directory exists
+if (!fs.existsSync(keyStoreDir)) {
+  fs.mkdirSync(keyStoreDir, { recursive: true });
+}
 
 // Load existing keys or initialize empty array
 let keyStore: KeyPair[] = [];
