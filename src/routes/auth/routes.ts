@@ -1,11 +1,13 @@
-import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout, handleRefreshToken } from "@controller/Auth";
+import { handleAdminLogin, handleAuthPing, handleLogout, handleRefreshToken } from "@controller/Auth";
 import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
 import auth from "@middleware/auth";
 import userInfo from "@middleware/userInfo";
-import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
+import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
 import { body } from "express-validator";
+import { IsStrongPasswordOptions } from "express-validator/src/options";
+import hashConnectRoutes from "./hashconnect";
+import walletConnectRoutes from "./walletConnect";
 
 /**
  * @swagger
@@ -127,5 +129,31 @@ router.post("/admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userI
  *         description: Successfully pinged
  */
 router.get("/ping", auth.isHavingValidAst, handleAuthPing);
+
+/**
+ * @swagger
+ * /auth/walletconnect:
+ *   get:
+ *     summary: WalletConnect related endpoints
+ *     description: Entry point for WalletConnect related operations.
+ *     tags: [WalletConnect]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
+router.use("/walletconnect", walletConnectRoutes);
+
+/**
+ * @swagger
+ * /auth/hashconnect:
+ *   get:
+ *     summary: HashConnect related endpoints
+ *     description: Entry point for HashConnect related operations.
+ *     tags: [HashConnect]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
+router.use("/hashconnect", hashConnectRoutes);
 
 export default router;

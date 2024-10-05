@@ -1,15 +1,15 @@
 import { generateChallenge, verifyPayloadChlange } from "@services/auth-challange";
 import { NextFunction, Request, Response } from "express";
-import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
+import { base64ToUint8Array, fetchAccountInfoKey } from "@shared/helper";
 import { isEmpty } from "lodash";
-import { OK, StatusCodes } from "http-status-codes";
+import { StatusCodes } from "http-status-codes";
 import signingService from "@services/signing-service";
 import hederaService from "@services/hedera-service";
 import moment from "moment";
 import SessionManager from "@services/SessionManager";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, PublicKey } from "@hashgraph/sdk";
 
-const { BAD_REQUEST } = StatusCodes;
+const { BAD_REQUEST, OK } = StatusCodes;
 
 export const createChallenge = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -36,10 +36,11 @@ export const vertifyResponseAndGenrateToekn = async (req: Request, res: Response
     const { topicId, payload } = await verifyPayloadChlange(originalPayload);
 
     //? 2. Then get the public key from network
-    const key = await fetchAccountIfoKey(signingAccount);
+    const key = await fetchAccountInfoKey(signingAccount);
+    const publicKey = PublicKey.fromString(key);
 
     // 3. then verify signatire using heders SDK
-    const isValiClinetSignature = signingService.verifyData(originalPayload, key, base64ToUint8Array(signature));
+    const isValiClinetSignature = signingService.verifyMessageSignature(JSON.stringify(originalPayload), signature, publicKey);
 
     // !! if signature is invalid then return 400
     if (!isValiClinetSignature) {
@@ -57,7 +58,7 @@ export const vertifyResponseAndGenrateToekn = async (req: Request, res: Response
     await SessionManager.checkAndUpdateSession(user.id, deviceId, deviceType, ipAddress, userAgent, kid, expiry);
 
     // 6. return success response
-    res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });
+    return res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });
   } catch (error) {
     next(error);
   }

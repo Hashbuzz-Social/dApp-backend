@@ -22,7 +22,7 @@ const router = Router();
  *       200:
  *         description: Successfully created challenge
  */
-router.get("/create-challenge", createChallenge);
+router.get("/create-challange", createChallenge);
 
 /**
  * @swagger

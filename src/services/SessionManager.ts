@@ -1,7 +1,7 @@
 import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
 import { encrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
-import { base64ToUint8Array, fetchAccountIfoKey } from "@shared/helper";
+import { base64ToUint8Array, fetchAccountInfoKey } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { verifyRefreshToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
@@ -49,7 +49,7 @@ class SessionManager {
   }
 
   private async fetchAndVerifyPublicKey(accountId: string) {
-    return await fetchAccountIfoKey(accountId);
+    return await fetchAccountInfoKey(accountId);
   }
 
   private validateSignatures(payload: object, clientPayload: object, server: string, value: string, clientAccountPublicKey: string) {
@@ -233,7 +233,7 @@ class SessionManager {
   }
 
   public async findSession(userId: bigint | number, deviceId: string) {
-    const sessionKey = `session:${userId}:${deviceId}`;
+    const sessionKey = `session::${userId}::${deviceId}`;
     if (this.redisclinet.client) {
       const session = await this.redisclinet.read(sessionKey);
       if (session) {

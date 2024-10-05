@@ -1,4 +1,5 @@
 import { AccountId, PrivateKey, PublicKey, Transaction, TransactionId } from "@hashgraph/sdk";
+import { proto } from "@hashgraph/proto";
 
 import hederaService from "./hedera-service";
 
@@ -62,9 +63,33 @@ const verifyData = (data: object, publicKey: string, signature: Uint8Array): boo
   return verify;
 };
 
+const prefixMessageToSign = (message: string) => {
+  return "\x19Hedera Signed Message:\n" + message.length + message;
+};
+
+/**
+ * Converts a Base64-encoded string to a `proto.SignatureMap`.
+ * @param base64string - Base64-encoded string
+ * @returns `proto.SignatureMap`
+ */
+const base64StringToSignatureMap = (base64string: string): proto.SignatureMap => {
+  const encoded = Buffer.from(base64string, "base64");
+  return proto.SignatureMap.decode(encoded);
+};
+
+export const verifyMessageSignature = (message: string, base64SignatureMap: string, publicKey: PublicKey): boolean => {
+  const signatureMap = base64StringToSignatureMap(base64SignatureMap);
+  const signature = signatureMap.sigPair[0].ed25519 || signatureMap.sigPair[0].ECDSASecp256k1;
+
+  if (!signature) throw new Error("Signature not found in signature map");
+
+  return publicKey.verify(Buffer.from(prefixMessageToSign(message)), signature);
+};
+
 export default {
   signAndMakeBytes,
   makeBytes,
   verifyData,
   signData,
+  verifyMessageSignature,
 } as const;
