@@ -15,7 +15,7 @@ const router = Router();
  *       200:
  *         description: Successfully created challenge
  */
-router.get("/create-challange", handleCreateChallenge);
+router.get("/create-challange", auth.deviceIdIsRequired, handleCreateChallenge);
 
 /**
  * @swagger
@@ -38,6 +38,6 @@ router.get("/create-challange", handleCreateChallenge);
  *       200:
  *         description: Successfully generated AST
  */
-router.post("/verify-response", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
+router.post("/verify-response", auth.deviceIdIsRequired, auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
 
 export default router;

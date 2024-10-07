@@ -1,4 +1,5 @@
 import { createChallenge, vertifyResponseAndGenrateToekn } from "@controller/WalletConnectAuth";
+import auth from "@middleware/auth";
 import { checkErrResponse } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
@@ -22,7 +23,7 @@ const router = Router();
  *       200:
  *         description: Successfully created challenge
  */
-router.get("/create-challange", createChallenge);
+router.get("/create-challange", auth.deviceIdIsRequired, createChallenge);
 
 /**
  * @swagger
@@ -46,6 +47,6 @@ router.get("/create-challange", createChallenge);
  *       400:
  *         description: Invalid request
  */
-router.post("/verify-response", body().isObject(), checkErrResponse, vertifyResponseAndGenrateToekn);
+router.post("/verify-response", auth.deviceIdIsRequired, body().isObject(), checkErrResponse, vertifyResponseAndGenrateToekn);
 
 export default router;

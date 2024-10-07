@@ -1,24 +1,24 @@
+import axios from "axios";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import express, { NextFunction, Request, Response } from "express";
+import "express-async-errors";
 import helmet from "helmet";
 import { isHttpError } from "http-errors";
 import morgan from "morgan";
-import path from "path";
-import express, { NextFunction, Request, Response } from "express";
-import "express-async-errors";
-import swaggerJsdoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
-import axios from "axios";
-// import authRouter from "@routes/auth-router";
+import path from "path";
+import swaggerJsdoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
 import authRouter from "@routes/auth";
-import logger from "jet-logger";
 import apiRouter from "@routes/index";
-import session from "express-session";
-import rateLimit from "express-rate-limit";
 import crypto from "crypto";
-import swaggerDefinition from "./condfig/swaggerDefinition";
+import rateLimit from "express-rate-limit";
+import session from "express-session";
+import logger from "jet-logger";
+import responseFormatter from "./config/responseFormatter";
+import swaggerDefinition from "./config/swaggerDefinition";
 
 // Constants
 const app = express();
@@ -36,6 +36,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(responseFormatter);
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));

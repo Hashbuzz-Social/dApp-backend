@@ -1,15 +1,15 @@
 import { AccountId } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
-import SessionManager from "@services/SessionManager";
 import signingService from "@services/signing-service";
+import { encrypt } from "@shared/encryption";
 import { ErrorWithCode, UnauthorizeError } from "@shared/errors";
-import { verifyAccessToken } from "@shared/Verify";
 import { base64ToUint8Array } from "@shared/helper";
+import { verifyAccessToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import httpStatuses from "http-status-codes";
 import jwt from "jsonwebtoken";
 
-const { BAD_REQUEST, FORBIDDEN } = httpStatuses;
+const { BAD_REQUEST } = httpStatuses;
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
@@ -29,10 +29,20 @@ const getBearerToken = (req: Request): string => {
 };
 
 const getHeadersData = (req: Request) => {
-  const deviceId = (req.cookies.device_id ?? req.headers["x-device-id"]) as string;
+  let deviceId = (req.cookies.device_id ?? req.headers["x-device-id"]) as string;
   const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
   const userAgent = req.headers["user-agent"];
+  deviceId = encrypt(deviceId);
   return { deviceId, ipAddress, userAgent };
+};
+
+const deviceIdIsRequired = (req: Request, res: Response, next: NextFunction) => {
+  const { deviceId } = getHeadersData(req);
+  if (!deviceId) {
+    return next(new UnauthorizeError("Device Id is required"));
+  }
+  req.deviceId = deviceId;
+  return next();
 };
 
 const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
@@ -100,4 +110,5 @@ export default {
   isAdminRequesting,
   havingValidPayloadToken,
   isHavingValidAst,
+  deviceIdIsRequired,
 } as const;

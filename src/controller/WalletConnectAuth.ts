@@ -51,11 +51,16 @@ export const vertifyResponseAndGenrateToekn = async (req: Request, res: Response
 
     //!! 5. Generate token and refresh token and update session
     let deviceId = SessionManager.handleDeviceId(req, res);
+
+    if (!deviceId) {
+      return res.status(BAD_REQUEST).json({ message: "Device Id is required" });
+    }
+
     const { deviceType, ipAddress, userAgent } = SessionManager.getDeviceInfo(req);
     const accAddress = AccountId.fromString(signingAccount).toSolidityAddress();
     const user = await SessionManager.upsertUserData(accAddress, signingAccount);
     const { token, refreshToken, expiry, kid } = SessionManager.generateTokens(signingAccount, user.id.toString());
-    await SessionManager.checkAndUpdateSession(user.id, deviceId, deviceType, ipAddress, userAgent, kid, expiry);
+    await SessionManager.checkAndUpdateSession(user.id, deviceId as string, deviceType, ipAddress, userAgent, kid, expiry);
 
     // 6. return success response
     return res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId });

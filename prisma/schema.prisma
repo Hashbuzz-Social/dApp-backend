@@ -17,7 +17,7 @@ model user_sessions {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   last_accessed DateTime  @default(now()) @db.Timestamptz(6)
   expires_at    DateTime  @db.Timestamptz(6)
-  kid           String?   @unique @db.VarChar(100)
+  kid           String?   @db.VarChar(100)
   user_user     user_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_sessions_user_id")
 
   @@index([kid])

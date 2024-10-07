@@ -1,25 +1,33 @@
 import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
-import { encrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
 import { base64ToUint8Array, fetchAccountInfoKey } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { verifyRefreshToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
-import { v4 as uuidv4 } from "uuid";
+import BJSON from "json-bigint";
 import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import hederaService from "./hedera-service";
 import RedisClient from "./redis-servie";
 import signingService from "./signing-service";
-import BJSON from "json-bigint";
 
 const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
 
 class SessionManager {
   private redisclinet: RedisClient;
+
+  /** Constructor Methods */
   constructor() {
     this.redisclinet = new RedisClient();
   }
+
+  /** Public Methods
+   * @description Generate auth AST token for the user
+   * @param {Request} req
+   * @param {Response} res
+   * @param {NextFunction} next
+   * @returns {Promise<void>}
+   */
   async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
     try {
       const { payload, clientPayload, signatures } = req.body;
@@ -34,6 +42,11 @@ class SessionManager {
       }
 
       let deviceId = this.handleDeviceId(req, res);
+
+      if (!deviceId) {
+        return res.error("Device ID not found", BAD_REQUEST);
+      }
+
       const { deviceType, ipAddress, userAgent } = this.getDeviceInfo(req);
       const accAddress = AccountId.fromString(accountId).toSolidityAddress();
 
@@ -59,9 +72,8 @@ class SessionManager {
   }
 
   handleDeviceId(req: Request, res: Response) {
-    let deviceId = req.deviceId ?? req.cookies.device_id;
-    if (!deviceId) {
-      deviceId = encrypt(uuidv4());
+    let deviceId = req.deviceId;
+    if (deviceId) {
       res.cookie("device_id", deviceId, { httpOnly: true, secure: true, sameSite: "strict" });
     }
     return deviceId;
@@ -130,12 +142,13 @@ class SessionManager {
   async handleRefreshToken(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = req.body;
+      const deviceId = req.deviceId;
 
       const { id, kid } = this.tokenResolver(refreshToken);
 
       if (!id && !kid) throw new ErrorWithCode("Invalid refresh token", UNAUTHORIZED);
 
-      const session = await prisma.user_sessions.findUnique({ where: { user_id: Number(id), kid }, include: { user_user: true } });
+      const session = await prisma.user_sessions.findFirst({ where: { user_id: Number(id), kid, device_id: deviceId }, include: { user_user: true } });
 
       if (!session) {
         return res.status(401).json({ message: "Invalid refresh token" });
