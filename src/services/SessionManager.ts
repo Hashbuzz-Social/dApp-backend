@@ -10,6 +10,7 @@ import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import hederaService from "./hedera-service";
 import RedisClient from "./redis-servie";
 import signingService from "./signing-service";
+import { decrypt } from "@shared/encryption";
 
 const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
 
@@ -210,7 +211,7 @@ class SessionManager {
       if (currentSession) {
         return res.status(OK).json({
           status: "active",
-          device_id: currentSession.device_id,
+          device_id: decrypt(currentSession.device_id),
           wallet_id: currentSession.user_user.hedera_wallet_id,
         });
       }
@@ -231,7 +232,7 @@ class SessionManager {
         return res.status(OK).json({
           status: "has_other_sessions",
           other_sessions: otherSessions.map((session) => ({
-            device_id: session.device_id,
+            device_id: decrypt(session.device_id),
             wallet_id: session.user_user.hedera_wallet_id,
           })),
           wallet_id: accountId,

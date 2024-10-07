@@ -12,12 +12,12 @@ export const verifyAccessToken = (token: string) => {
 
   const kid = decodedHeader.header.kid;
   if (!kid) {
-    throw new Error("No kid found in token");
+    throw new Error("Access token is not valid or suspended");
   }
 
   const publicKey = getPublicKey(kid);
   if (!publicKey) {
-    throw new Error(`Public key not found for kid: ${kid}`);
+    throw new Error(`Keys is not founf for: ${kid}`);
   }
 
   // Verify token with the corresponding public key

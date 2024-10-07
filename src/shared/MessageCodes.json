@@ -1,0 +1,9 @@
+[
+  {
+    "id": "1",
+    "message": "User created successfully",
+    "key": "user.created",
+    "description": "When user is created successfully",
+    "type": "success"
+  }
+]

@@ -50,7 +50,7 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
 
   try {
     const { payload } = verifyAccessToken(bearerToken);
-    const { ts, accountId, signature, id } = payload;
+    const { ts, accountId, signature } = payload;
 
     // Verify the signature of the payload
     const validSignature = signingService.verifyData({ ts, accountId }, hederaService.operatorPublicKey!, base64ToUint8Array(signature));
