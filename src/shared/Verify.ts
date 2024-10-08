@@ -17,7 +17,7 @@ export const verifyAccessToken = (token: string) => {
 
   const publicKey = getPublicKey(kid);
   if (!publicKey) {
-    throw new Error(`Keys is not founf for: ${kid}`);
+    throw new Error(`Keys is not found for: ${kid}`);
   }
 
   // Verify token with the corresponding public key

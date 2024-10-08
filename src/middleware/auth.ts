@@ -2,14 +2,11 @@ import { AccountId } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encrypt } from "@shared/encryption";
-import { ErrorWithCode, UnauthorizeError } from "@shared/errors";
+import { UnauthorizeError } from "@shared/errors";
 import { base64ToUint8Array } from "@shared/helper";
 import { verifyAccessToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
-import httpStatuses from "http-status-codes";
 import jwt from "jsonwebtoken";
-
-const { BAD_REQUEST } = httpStatuses;
 
 const authTokenNotPresentErr = "Authentication token not found.";
 const authTokenInvalidError = "Authentication token is invalid.";
@@ -68,7 +65,7 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
     return next();
   } catch (err) {
     console.error(err);
-    return next(new ErrorWithCode("Error while checking auth token", BAD_REQUEST));
+    return next(new UnauthorizeError("Error while checking auth token"));
   }
 };
 
@@ -102,7 +99,7 @@ const havingValidPayloadToken = (req: Request, res: Response, next: NextFunction
       }
     });
   } catch (err) {
-    return next(new ErrorWithCode("Error while validating payload token", BAD_REQUEST));
+    return next(new UnauthorizeError("Error while validating payload token"));
   }
 };
 

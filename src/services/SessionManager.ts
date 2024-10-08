@@ -152,7 +152,7 @@ class SessionManager {
       const session = await prisma.user_sessions.findFirst({ where: { user_id: Number(id), kid, device_id: deviceId }, include: { user_user: true } });
 
       if (!session) {
-        return res.status(401).json({ message: "Invalid refresh token" });
+        return res.status(UNAUTHORIZED).json({ message: "Invalid refresh token" });
       }
 
       const { token: newToken, kid: newkid } = this.createToken(session.user_user.hedera_wallet_id, session.user_id.toString());
@@ -174,6 +174,8 @@ class SessionManager {
     const accountAddress = req.accountAddress;
     // const deviceId = req.cookies.device_id;
     const deviceId = req.deviceId;
+
+    console.log("deviceId", deviceId);
 
     if (!accountAddress || !deviceId) {
       return res.status(BAD_REQUEST).json({ message: "No address or device ID found" });
@@ -216,31 +218,7 @@ class SessionManager {
         });
       }
 
-      // Check for any other active sessions for the user
-      const otherSessions = await prisma.user_sessions.findMany({
-        where: {
-          user_user: { accountAddress },
-          device_id: { not: deviceId },
-          expires_at: { gt: currentTimestamp },
-        },
-        include: {
-          user_user: true,
-        },
-      });
-
-      if (otherSessions.length > 0) {
-        return res.status(OK).json({
-          status: "has_other_sessions",
-          other_sessions: otherSessions.map((session) => ({
-            device_id: decrypt(session.device_id),
-            wallet_id: session.user_user.hedera_wallet_id,
-          })),
-          wallet_id: accountId,
-        });
-      }
-
-      // If no active sessions are found
-      return res.status(OK).json({ status: "no_active_sessions", wallet_id: accountId });
+      return res.unauthorized("No active session found for current device");
     } catch (err) {
       next(err);
     }

@@ -19,6 +19,7 @@ import session from "express-session";
 import logger from "jet-logger";
 import responseFormatter from "./config/responseFormatter";
 import swaggerDefinition from "./config/swaggerDefinition";
+import { CustomError } from "@shared/errors";
 
 // Constants
 const app = express();
@@ -192,6 +193,12 @@ app.use("/auth", authRouter);
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   if (isHttpError(err)) {
     return res.status(err.status).send({ error: err });
+  }
+
+  if (err instanceof CustomError) {
+    return res.status(err.HttpStatus).send({
+      error: { message: err.message, description: err.message },
+    });
   }
 
   console.error("Internal Server Error:", err.message); // Logging error details

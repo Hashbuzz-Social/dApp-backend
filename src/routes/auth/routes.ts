@@ -128,7 +128,7 @@ router.post("/admin-login", auth.isHavingValidAst, auth.isAdminRequesting, userI
  *       200:
  *         description: Successfully pinged
  */
-router.get("/ping", auth.isHavingValidAst, handleAuthPing);
+router.get("/ping", auth.deviceIdIsRequired, auth.isHavingValidAst, handleAuthPing);
 
 /**
  * @swagger
