@@ -25,7 +25,9 @@ export const handleGetAllUser = async (req: Request, res: Response, next: NextFu
 export const handleCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
   if (req?.accountAddress) {
     const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
-    if (currentUser) return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))));
+    const contractAddress = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+    const collecterAddress = process.env.HEDERA_ACCOUNT_ID;
+    if (currentUser) return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))), config: { contractAddress, collecterAddress } });
     else throw new ParamMissingError("No record for this id.");
   }
 };

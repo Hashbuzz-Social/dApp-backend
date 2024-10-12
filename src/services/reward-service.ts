@@ -1,32 +1,19 @@
 /* eslint-disable max-len */
 import { Status } from "@hashgraph/sdk";
-import {
-  campaign_tweetengagements,
-  campaign_twittercard,
-  campaignstatus as CampaignStatus
-} from "@prisma/client";
+import { campaign_tweetengagements, campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import { checkTokenAssociation } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import { groupBy } from "lodash";
 import { RewardsObj } from "src/@types/custom";
-import {
-  getCampaignDetailsById,
-  incrementClaimAmount,
-} from "./campaign-service";
+import { getCampaignDetailsById, incrementClaimAmount } from "./campaign-service";
 import { distributeToken } from "./contract-service";
 import { updatePaymentStatusToManyRecords } from "./engagement-servide";
-import {
-  transferAmountFromContractUsingSDK,
-  updateCampaignBalance,
-} from "./transaction-service";
+import { transferAmountFromContractUsingSDK, updateCampaignBalance } from "./transaction-service";
 import userService from "./user-service";
 
-const calculateTotalRewards = (
-  card: campaign_twittercard,
-  data: campaign_tweetengagements[]
-) => {
+const calculateTotalRewards = (card: campaign_twittercard, data: campaign_tweetengagements[]) => {
   const { like_reward, quote_reward, retweet_reward, comment_reward } = card;
   console.log(card, "Inside totalRewards: ");
   let total = 0;
@@ -58,25 +45,18 @@ const calculateTotalRewards = (
  * @param personal_twitter_id Twitter id of the current user's come to claim their total pending rewards for claiming.
  * @param intractor_hedera_wallet_id hedera wallet id of the user's who is claiming their rewards in format `0.0.01245`.
  */
-export const totalPendingReward = async (
-  personal_twitter_id: string,
-  intractor_hedera_wallet_id: string
-) => {
-  console.log(
-    "Reward calculation and transfer for user::",
-    intractor_hedera_wallet_id
-  );
+export const totalPendingReward = async (personal_twitter_id: string, intractor_hedera_wallet_id: string) => {
+  console.log("Reward calculation and transfer for user::", intractor_hedera_wallet_id);
   //TODO:  Query all activeEngagements of this users from DB.
-  const allUnpaidEngagementsForAnUser =
-    await prisma.campaign_tweetengagements.findMany({
-      where: {
-        user_id: personal_twitter_id,
-        payment_status: "UNPAID",
-        exprired_at: {
-          gte: new Date(),
-        },
+  const allUnpaidEngagementsForAnUser = await prisma.campaign_tweetengagements.findMany({
+    where: {
+      user_id: personal_twitter_id,
+      payment_status: "UNPAID",
+      exprired_at: {
+        gte: new Date(),
       },
-    });
+    },
+  });
   console.log("allUnpaidEngagementsForAnUser", allUnpaidEngagementsForAnUser);
   const groupedData = groupBy(allUnpaidEngagementsForAnUser, "tweet_id"); //? Grouping all engagements regards og their campaign_card(DB).
 
@@ -88,9 +68,7 @@ export const totalPendingReward = async (
 
       const totalForCard = calculateTotalRewards(card, groupedData[d]); //TODO: Wll calculate total for a single card.
 
-      logger.info(
-        `Card::${card.id} userWallet:${intractor_hedera_wallet_id} totalForThisCard::${totalForCard}`
-      );
+      logger.info(`Card::${card.id} userWallet:${intractor_hedera_wallet_id} totalForThisCard::${totalForCard}`);
       //!!===== Transfer begins==============!!
       if (card && groupedData[d].length > 0 && user_user?.hedera_wallet_id) {
         //!! SM record update call;
@@ -101,11 +79,7 @@ export const totalPendingReward = async (
         });
 
         //!! Transferring that much amount from smart contract to user's wallet.
-        await transferAmountFromContractUsingSDK(
-          intractor_hedera_wallet_id,
-          totalForCard,
-          `Hashbuzz reward payments for engagements`
-        ),
+        await transferAmountFromContractUsingSDK(intractor_hedera_wallet_id, totalForCard, `Hashbuzz reward payments for engagements`),
           //!! Update Payment status in DB.
           await updatePaymentStatusToManyRecords(
             groupedData[d].map((d) => d.id),
@@ -114,11 +88,7 @@ export const totalPendingReward = async (
 
         //!! Increment claim amount in localDB.
         await incrementClaimAmount(card.id, totalForCard);
-        await userService.totalReward(
-          card.owner_id!,
-          totalForCard,
-          "increment"
-        );
+        await userService.totalReward(card.owner_id!, totalForCard, "increment");
       }
     }),
   ]);
@@ -182,26 +152,20 @@ export const getRewardDetails = async (data: any) => {
       obj.like_reward = engagementDetails[i].campaign_twittercard.like_reward;
     }
     if (engagementDetails[i].engagement_type === "Retweet") {
-      obj.retweet_reward =
-        engagementDetails[i].campaign_twittercard.retweet_reward;
+      obj.retweet_reward = engagementDetails[i].campaign_twittercard.retweet_reward;
     }
     if (engagementDetails[i].engagement_type === "Quote") {
       obj.quote_reward = engagementDetails[i].campaign_twittercard.quote_reward;
     }
     if (engagementDetails[i].engagement_type === "Reply") {
-      obj.comment_reward =
-        engagementDetails[i].campaign_twittercard.comment_reward;
+      obj.comment_reward = engagementDetails[i].campaign_twittercard.comment_reward;
     }
     updateData.push(obj);
   }
   return updateData;
 };
 
-export const claim = async (
-  cardId: number | bigint,
-  contract_id: string,
-  data: any
-) => {
+export const claim = async (cardId: number | bigint, contract_id: string, data: any) => {
   const user = await prisma.user_user.findUnique({
     where: {
       hedera_wallet_id: data,
@@ -229,9 +193,7 @@ export const claim = async (
 
   // console.log(user)
 
-  if (
-    campaignDetails?.card_status === CampaignStatus.RewardDistributionInProgress
-  ) {
+  if (campaignDetails?.card_status === CampaignStatus.RewardDistributionInProgress) {
     let totalRewardsDebited = 0;
     const { user_user, ...card } = campaignDetails;
     const groupedData = groupBy(engagements, "user_id");
@@ -241,22 +203,13 @@ export const claim = async (
     if (campaignDetails?.type === "HBAR") {
       if (user && user?.personal_twitter_id) {
         const totalRewardsTinyHbar = calculateTotalRewards(card, engagements);
-        console.log(
-          `Starting payment for user::${user?.personal_twitter_id} amount:: ${totalRewardsTinyHbar} `
-        );
-        await transferAmountFromContractUsingSDK(
-          user?.hedera_wallet_id,
-          totalRewardsTinyHbar
-        ),
+        console.log(`Starting payment for user::${user?.personal_twitter_id} amount:: ${totalRewardsTinyHbar} `);
+        await transferAmountFromContractUsingSDK(user?.hedera_wallet_id, totalRewardsTinyHbar),
           await updatePaymentStatusToManyRecords(
             engagements.map((d) => d.id),
             "PAID"
           ),
-          await userService.totalReward(
-            user.id,
-            totalRewardsTinyHbar,
-            "increment"
-          );
+          await userService.totalReward(user.id, totalRewardsTinyHbar, "increment");
         totalRewardsDebited += totalRewardsTinyHbar;
         await incrementClaimAmount(cardId, totalRewardsDebited),
           await updateCampaignBalance({
@@ -269,23 +222,12 @@ export const claim = async (
       return "Reward claim successful";
     } else if (campaignDetails?.type === "FUNGIBLE") {
       console.log(campaignDetails, "FUNGIBLE");
-      if (
-        user &&
-        user?.personal_twitter_id &&
-        campaignDetails?.fungible_token_id
-      ) {
+      if (user && user?.personal_twitter_id && campaignDetails?.fungible_token_id) {
         const totalRewardsTinyHbar = calculateTotalRewards(card, engagements);
-        console.log(
-          `Starting payment for user::${user?.personal_twitter_id} amount:: ${totalRewardsTinyHbar} `
-        );
+        console.log(`Starting payment for user::${user?.personal_twitter_id} amount:: ${totalRewardsTinyHbar} `);
         //* Smart-contract call for payment
         // await transferAmountFromContractUsingSDK(user_info.hedera_wallet_id, totalRewardsTinyHbar),
-        const response = await distributeToken(
-          campaignDetails?.fungible_token_id,
-          user?.hedera_wallet_id,
-          totalRewardsTinyHbar,
-          contract_id
-        );
+        const response = await distributeToken(campaignDetails?.fungible_token_id, user?.hedera_wallet_id, totalRewardsTinyHbar, contract_id);
         // TODO: update Payment status in db
         if (response == 22) {
           await updatePaymentStatusToManyRecords(
@@ -293,11 +235,7 @@ export const claim = async (
             "PAID"
           ),
             //increment reward bal
-            await userService.totalReward(
-              user.id,
-              totalRewardsTinyHbar,
-              "increment"
-            ),
+            await userService.totalReward(user.id, totalRewardsTinyHbar, "increment"),
             (totalRewardsDebited += totalRewardsTinyHbar);
 
           await incrementClaimAmount(cardId, totalRewardsDebited);
@@ -323,11 +261,7 @@ const _getRewardsFromCard = (card: campaign_twittercard): RewardsObj => {
   return rewards;
 };
 
-const _calculateTotalRewardForAnUser = async (
-  rewards: RewardsObj,
-  engagedUserID: string,
-  cardID: bigint | number
-): Promise<{ total: number; ids: bigint[] }> => {
+const _calculateTotalRewardForAnUser = async (rewards: RewardsObj, engagedUserID: string, cardID: bigint | number): Promise<{ total: number; ids: bigint[] }> => {
   const { like_reward, retweet_reward, quote_reward, comment_reward } = rewards;
   let total = 0;
   const ids: bigint[] = [];
@@ -378,16 +312,14 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
   });
 
   // 2. List of all engaged users x user id;
-  const engagedUsers = engagementsByUser
-    .map((engagement) => engagement.user_id)
-    .filter((id) => Boolean(id));
+  const engagedUsers = engagementsByUser.map((engagement) => engagement.user_id).filter((id) => Boolean(id));
 
   //2. Get the Details of engaged users;
   const usersRecords = await prisma.user_user.findMany({
     where: {
       personal_twitter_id: {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
+        // @ts-ignore
         in: [...engagedUsers],
       },
     },
@@ -400,9 +332,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
   });
 
   //3. Filter our user without wallet;
-  const userWithWallet = usersRecords.filter((user) =>
-    Boolean(user.hedera_wallet_id)
-  );
+  const userWithWallet = usersRecords.filter((user) => Boolean(user.hedera_wallet_id));
 
   if (userWithWallet.length > 0) {
     //4. Get the card details
@@ -436,30 +366,13 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
       await Promise.all(
         userWithWallet.map(async (user) => {
           /** ===============  Per user reward distributions for FUNGIBLE ========================== */
-          const isCampaignTokenIsAssociated = await checkTokenAssociation(
-            tokenId,
-            user.hedera_wallet_id
-          );
-          if (
-            isCampaignTokenIsAssociated &&
-            user.personal_twitter_id &&
-            user.hedera_wallet_id &&
-            card.contract_id
-          ) {
-            const { total, ids } = await _calculateTotalRewardForAnUser(
-              rewards,
-              user.personal_twitter_id,
-              card.id
-            );
+          const isCampaignTokenIsAssociated = await checkTokenAssociation(tokenId, user.hedera_wallet_id);
+          if (isCampaignTokenIsAssociated && user.personal_twitter_id && user.hedera_wallet_id && card.contract_id) {
+            const { total, ids } = await _calculateTotalRewardForAnUser(rewards, user.personal_twitter_id, card.id);
             const walletId = user.hedera_wallet_id;
             logger.info("Transferring as fungible of total::" + total);
             //6 (B)_.Transfer reward to the user wallet
-            const response = await distributeToken(
-              tokenId,
-              walletId,
-              total,
-              card.contract_id
-            );
+            const response = await distributeToken(tokenId, walletId, total, card.contract_id);
             if (response == 22) {
               //7(B) If transaction become successful;
               totalRewardDistributed += total;
@@ -486,21 +399,11 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
             /**
              * 5(A) Calculate the total reward of the user with respect to campaign;
              *  */
-            const { total, ids } = await _calculateTotalRewardForAnUser(
-              rewards,
-              user.personal_twitter_id,
-              card.id
-            );
+            const { total, ids } = await _calculateTotalRewardForAnUser(rewards, user.personal_twitter_id, card.id);
             const walletId = user.hedera_wallet_id;
             logger.info("Transferring as HBAR of total::" + total);
             // 6(A) Transfer HBAR from contract to the user wallet;
-            const rewardTrx = await transferAmountFromContractUsingSDK(
-              walletId,
-              total,
-              `Rewards payment form hashbuzzz:: ${
-                card.name ?? "For enactments on campaign"
-              }`
-            );
+            const rewardTrx = await transferAmountFromContractUsingSDK(walletId, total, `Rewards payment form hashbuzzz:: ${card.name ?? "For enactments on campaign"}`);
             if (rewardTrx?.status === Status.Success) {
               //7(A) Total amount distributed form the contract
               totalRewardDistributed += total;
@@ -522,11 +425,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
     // 10 Update the SM records with total amount distributed;
     await incrementClaimAmount(cardId, totalRewardDistributed);
 
-    if (
-      cardType === "HBAR" &&
-      campaigner?.hedera_wallet_id &&
-      card.contract_id
-    ) {
+    if (cardType === "HBAR" && campaigner?.hedera_wallet_id && card.contract_id) {
       // 11 (A) Update the SM records for total amount distributed
       await updateCampaignBalance({
         campaignerAccount: campaigner.hedera_wallet_id,
@@ -538,4 +437,3 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
     logger.warn("Total auto reward distributed::" + totalRewardDistributed);
   }
 };
-

@@ -1,25 +1,25 @@
+import authRouter from "@routes/auth";
+import apiRouter from "@routes/index";
+import { CustomError } from "@shared/errors";
 import axios from "axios";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import crypto from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import "express-async-errors";
+import rateLimit from "express-rate-limit";
+import session from "express-session";
 import helmet from "helmet";
 import { isHttpError } from "http-errors";
+import logger from "jet-logger";
 import morgan from "morgan";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import path from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import authRouter from "@routes/auth";
-import apiRouter from "@routes/index";
-import crypto from "crypto";
-import rateLimit from "express-rate-limit";
-import session from "express-session";
-import logger from "jet-logger";
 import responseFormatter from "./config/responseFormatter";
 import swaggerDefinition from "./config/swaggerDefinition";
-import { CustomError } from "@shared/errors";
 
 // Constants
 const app = express();
@@ -66,8 +66,8 @@ if (process.env.NODE_ENV === "production") {
 
 // Rate Limiting
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 450, // Limit each IP to 450 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
 });
 // app.use(limiter);
@@ -99,9 +99,6 @@ passport.use(
     },
     async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
       try {
-        // console.log("GitHub profile:", profile);
-        // console.log("Access token:", accessToken);
-        // console.log("GITHUB_REPO:", GITHUB_REPO);
 
         // Verify token scopes
         const tokenInfo = await axios.get("https://api.github.com/user", {
