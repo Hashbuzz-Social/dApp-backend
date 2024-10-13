@@ -9,6 +9,7 @@ declare module "express" {
     token?: string;
     ipAddress?: string | string[];
     userAgent?: string;
+    userId?: number;
   }
 }
 

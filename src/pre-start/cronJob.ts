@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import crontabService from "@services/cronTasks-service";
+import cronTasksService from "@services/cronTasks-service";
 
 // Common scheduling options
 const scheduleOptions = {
@@ -52,6 +53,7 @@ export const taskEveryMidnight = cron.schedule(
   "0 0 * * *",
   () => {
     crontabService.checkForRepliesAndUpdateEngagementsData();
+    cronTasksService.checkForExpriredSessionsAndDelete();
   },
   scheduleOptions
 );

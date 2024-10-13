@@ -1,5 +1,5 @@
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
-import {campaignstatus as CampaignStatus} from "@prisma/client"
+import { campaignstatus as CampaignStatus } from "@prisma/client"
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";
@@ -166,6 +166,16 @@ const checkPreviousCampaignCloseTime = async () => {
   }));
 };
 
+const checkForExpriredSessionsAndDelete = async () => {
+  await prisma.user_sessions.deleteMany({
+    where: {
+      expires_at: {
+        lt: new Date().toISOString(),
+      }
+    }
+  });
+};
+
 export default {
   updateCardStatus: manageTwitterCardStatus,
   checkForRepliesAndUpdateEngagementsData,
@@ -173,4 +183,5 @@ export default {
   autoCampaignClose,
   checkCampaignCloseTime,
   checkPreviousCampaignCloseTime,
+  checkForExpriredSessionsAndDelete,
 } as const;

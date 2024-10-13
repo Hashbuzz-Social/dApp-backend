@@ -1,7 +1,7 @@
 import { AccountId } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { encrypt } from "@shared/encryption";
+import { d_encrypt } from "@shared/encryption";
 import { UnauthorizeError } from "@shared/errors";
 import { base64ToUint8Array } from "@shared/helper";
 import { verifyAccessToken } from "@shared/Verify";
@@ -41,13 +41,14 @@ const getHeadersData = (req: Request) => {
     throw new UnauthorizeError(ERROR_WHILE_FINDINF_DEVICE_ID);
   }
 
-  deviceId = encrypt(deviceId);
+  deviceId = d_encrypt(deviceId);
   const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
   const userAgent = req.headers["user-agent"];
   return { deviceId, ipAddress, userAgent };
 };
 
 const deviceIdIsRequired = (req: Request, res: Response, next: NextFunction) => {
+  console.log(" deviceIdIsRequired starts");
   const { deviceId, ipAddress, userAgent } = getHeadersData(req);
   if (!deviceId) {
     return next(new UnauthorizeError(DEVICE_ID_REQUIRED_ERR));
@@ -55,15 +56,17 @@ const deviceIdIsRequired = (req: Request, res: Response, next: NextFunction) => 
   req.deviceId = deviceId;
   req.ipAddress = ipAddress;
   req.userAgent = userAgent;
+  console.log("Device Id deviceIdIsRequired is passes", deviceId);
   return next();
 };
 
 const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
+  console.log(" isHavingValidAst starts");
   const bearerToken = getBearerToken(req);
 
   try {
     const { payload } = verifyAccessToken(bearerToken);
-    const { ts, accountId, signature } = payload;
+    const { id, ts, accountId, signature } = payload;
 
     // Verify the signature of the payload
     const validSignature = signingService.verifyData(
@@ -86,6 +89,9 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
 
     const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
     req.accountAddress = accountAddress;
+    req.userId = +id;
+
+    console.log(" isHavingValidAst ends width", { accountAddress, userid: id });
 
     return next();
   } catch (err) {
