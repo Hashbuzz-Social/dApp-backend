@@ -185,10 +185,10 @@ class SessionManager {
         return res.unauthorized("No active session found. Please intitate authentication.");
       }
 
-      const { user_user, ...sessionData } = session;
+      const { user_user, device_id, } = session;
 
       const responseData = {
-        ...sessionData,
+        device_id: d_decrypt(device_id),
         ...user_user,
       }
 

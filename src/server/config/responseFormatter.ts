@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
+import JSONBigInt from "json-bigint";
 
 const { OK, CREATED, ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, INTERNAL_SERVER_ERROR } = StatusCodes;
 
@@ -22,7 +23,7 @@ const responseFormatter = (req: Request, res: Response, next: NextFunction) => {
     res.status(OK).json({
       status: "success",
       message,
-      data,
+      data: typeof data === 'object' ? JSONBigInt.parse(JSONBigInt.stringify(data)) : { data },
     });
   };
 
@@ -30,7 +31,7 @@ const responseFormatter = (req: Request, res: Response, next: NextFunction) => {
     res.status(CREATED).json({
       status: "success",
       message,
-      data,
+      data: typeof data === 'object' ? JSONBigInt.parse(JSONBigInt.stringify(data)) : { data },
     });
   };
 
@@ -38,7 +39,7 @@ const responseFormatter = (req: Request, res: Response, next: NextFunction) => {
     res.status(ACCEPTED).json({
       status: "success",
       message,
-      data,
+      data: typeof data === 'object' ? JSONBigInt.parse(JSONBigInt.stringify(data)) : { data },
     });
   };
 
