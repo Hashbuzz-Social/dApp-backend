@@ -188,23 +188,29 @@ app.use("/auth", authRouter);
  * Error handling middleware
  */
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  // Check if the error is an HTTP error
   if (isHttpError(err)) {
-    return res.status(err.status).send({ error: err });
+    console.error("HTTP Error:", err.message); // Logging error details
+    logger.err(err, true);
+    return res.status(err.status).send({ error: { message: err.message } });
   }
 
+  // Check if the error is a custom error
   if (err instanceof CustomError) {
+    console.error("Custom Error:", err.message); // Logging error details
+    logger.err(err, true);
     return res.status(err.HttpStatus).send({
-      error: { message: err.message, description: err.message },
+      //@ts-ignore
+      error: { message: err.message, description: err.description },
     });
   }
 
+  // Log internal server errors
   console.error("Internal Server Error:", err.message); // Logging error details
+  logger.err(err, true);
   res.status(500).send({
     error: { message: "Internal Server Error", description: err.message },
   });
-
-  logger.err(err, true);
-  next(err);
 });
 
 // Front-end content

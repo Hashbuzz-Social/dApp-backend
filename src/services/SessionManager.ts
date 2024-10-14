@@ -123,10 +123,10 @@ class SessionManager {
       const token = req.token;
       const device_id = req.deviceId;
       const { id, kid } = this.tokenResolver(token as string);
-      const session = await prisma.user_sessions.findFirst({ where: { id: Number(id), kid } });
+      const session = await prisma.user_sessions.findFirst({ where: { user_id: Number(id), kid, device_id } });
       if (!session || !token || !device_id) throw new ErrorWithCode("Unauthoriozed access requested", UNAUTHORIZED);
       await prisma.user_sessions.delete({ where: { id: session.id } });
-      res.status(OK).json({ message: "Logout Successfully" });
+      res.success(undefined, "Logout successfully");
     } catch (err) {
       next(err);
     }

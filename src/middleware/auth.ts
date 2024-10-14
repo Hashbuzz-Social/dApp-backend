@@ -35,7 +35,7 @@ const getBearerToken = (req: Request): string => {
 };
 
 const getHeadersData = (req: Request) => {
-  let deviceId = req.cookies.device_id ?? req.headers["x-device-id"] as string;
+  let deviceId = req.cookies.device_id ?? (req.headers["x-device-id"] as string);
 
   if (!deviceId) {
     throw new UnauthorizeError(ERROR_WHILE_FINDINF_DEVICE_ID);
@@ -48,23 +48,27 @@ const getHeadersData = (req: Request) => {
 };
 
 const deviceIdIsRequired = (req: Request, res: Response, next: NextFunction) => {
-  console.log(" deviceIdIsRequired starts");
-  const { deviceId, ipAddress, userAgent } = getHeadersData(req);
-  if (!deviceId) {
-    return next(new UnauthorizeError(DEVICE_ID_REQUIRED_ERR));
+  try {
+    console.log("deviceIdIsRequired starts");
+    const { deviceId, ipAddress, userAgent } = getHeadersData(req);
+    if (!deviceId) {
+      return next(new UnauthorizeError(DEVICE_ID_REQUIRED_ERR));
+    }
+    req.deviceId = deviceId;
+    req.ipAddress = ipAddress;
+    req.userAgent = userAgent;
+
+    return next();
+  } catch (err) {
+    return next(err);
   }
-  req.deviceId = deviceId;
-  req.ipAddress = ipAddress;
-  req.userAgent = userAgent;
-  console.log("Device Id deviceIdIsRequired is passes", deviceId);
-  return next();
 };
 
 const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
-  console.log(" isHavingValidAst starts");
-  const bearerToken = getBearerToken(req);
-
   try {
+
+    const bearerToken = getBearerToken(req);
+
     const { payload } = verifyAccessToken(bearerToken);
     const { id, ts, accountId, signature } = payload;
 
@@ -79,7 +83,6 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
       return next(new UnauthorizeError(SIGNATURE_NOT_VERIFIED_ERR));
     }
 
-
     if (!req.deviceId) {
       const { deviceId, userAgent, ipAddress } = getHeadersData(req);
       req.deviceId = deviceId;
@@ -90,8 +93,6 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
     const accountAddress = AccountId.fromString(accountId).toSolidityAddress();
     req.accountAddress = accountAddress;
     req.userId = +id;
-
-    console.log(" isHavingValidAst ends width", { accountAddress, userid: id });
 
     return next();
   } catch (err) {

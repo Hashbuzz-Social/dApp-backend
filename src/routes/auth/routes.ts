@@ -51,7 +51,7 @@ const router = Router();
  *       200:
  *         description: Successfully logged out
  */
-router.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
+router.post("/logout", auth.isHavingValidAst, userInfo.getCurrentUserInfo, handleLogout);
 
 /**
  * @swagger

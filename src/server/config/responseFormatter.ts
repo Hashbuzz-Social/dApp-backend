@@ -20,11 +20,14 @@ declare module "express-serve-static-core" {
 
 const responseFormatter = (req: Request, res: Response, next: NextFunction) => {
   res.success = (data: any, message: string = "Success") => {
-    res.status(OK).json({
+    const response: any = {
       status: "success",
       message,
-      data: typeof data === 'object' ? JSONBigInt.parse(JSONBigInt.stringify(data)) : { data },
-    });
+    };
+    if (data !== undefined || data !== null) {
+      response.data = typeof data === 'object' ? JSONBigInt.parse(JSONBigInt.stringify(data)) : { data };
+    }
+    res.status(OK).json(response);
   };
 
   res.created = (data: any, message: string = "Created Successfully.") => {
