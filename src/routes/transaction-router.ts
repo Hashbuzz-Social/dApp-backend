@@ -9,6 +9,7 @@ import {
 import { checkErrResponse, checkWalletFormat, validateEntityObject, validateTransactionIdString } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
+import userInfo from "@middleware/userInfo";
 
 const router = Router();
 
@@ -30,6 +31,7 @@ const router = Router();
 router.post(
   "/create-topup-transaction",
   body("entity").custom(validateEntityObject),
+  userInfo.getCurrentUserInfo,
   checkErrResponse,
   handleCrateToupReq
 );
