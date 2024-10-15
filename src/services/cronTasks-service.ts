@@ -7,6 +7,9 @@ import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import moment from "moment";
 import { scheduleJob } from "node-schedule";
+import RedisClient from "./redis-servie";
+
+const redisclinet = new RedisClient();
 
 /**
  * @description Manage Twitter card status by checking tweet stats and updating the campaign status accordingly.
@@ -166,14 +169,37 @@ const checkPreviousCampaignCloseTime = async () => {
   }));
 };
 
-const checkForExpriredSessionsAndDelete = async () => {
-  await prisma.user_sessions.deleteMany({
-    where: {
-      expires_at: {
-        lt: new Date().toISOString(),
+const checkForExpiredSessionsAndDelete = async () => {
+  try {
+    // Step 1: Fetch expired sessions from the database
+    const expiredSessions = await prisma.user_sessions.findMany({
+      where: {
+        expires_at: {
+          lt: new Date().toISOString(),
+        }
+      }
+    });
+
+    // Step 2: Delete expired sessions from Redis
+    if (redisclinet) {
+      for (const session of expiredSessions) {
+        const sessionKey = `session::${session.user_id}::${session.device_id}`;
+        const result = await redisclinet.delete(sessionKey);
+        console.log(`Number of keys removed for ${sessionKey}: ${result}`);
       }
     }
-  });
+
+    // Step 3: Delete expired sessions from the database
+    await prisma.user_sessions.deleteMany({
+      where: {
+        id: {
+          in: expiredSessions.map(session => session.id),
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error while deleting expired sessions:", error);
+  }
 };
 
 export default {
@@ -183,5 +209,5 @@ export default {
   autoCampaignClose,
   checkCampaignCloseTime,
   checkPreviousCampaignCloseTime,
-  checkForExpriredSessionsAndDelete,
+  checkForExpiredSessionsAndDelete,
 } as const;
