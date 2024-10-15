@@ -60,6 +60,7 @@ class SessionManager {
 
       return res.created(resposeData, "Signature authenticated successfully");
     } catch (err) {
+
       next(err);
     }
   }
@@ -98,6 +99,7 @@ class SessionManager {
         hedera_wallet_id: accountId,
         available_budget: 0,
         is_active: false,
+        role: globalThis.adminAddress.includes(accAddress) ? "SUPER_ADMIN" : "GUEST_USER",
       },
     });
   }
@@ -111,6 +113,7 @@ class SessionManager {
 
   async checkAndUpdateSession(userId: bigint, deviceId: string, deviceType: string, ipAddress: string | null, userAgent: string | null, kid: string, expiry: Date) {
     const existingSession = await this.findSession(userId, deviceId);
+    console.log("existingSession", existingSession);
     if (existingSession) {
       await this.updateSession(existingSession.id, kid, expiry);
     } else {
@@ -126,6 +129,7 @@ class SessionManager {
       const session = await prisma.user_sessions.findFirst({ where: { user_id: Number(id), kid, device_id } });
       if (!session || !token || !device_id) throw new ErrorWithCode("Unauthoriozed access requested", UNAUTHORIZED);
       await prisma.user_sessions.delete({ where: { id: session.id } });
+      this.redisclinet.delete(`session::${id}::${device_id}`);
       res.success(undefined, "Logout successfully");
     } catch (err) {
       next(err);
@@ -202,6 +206,7 @@ class SessionManager {
     const sessionKey = `session::${userId}::${deviceId}`;
     if (this.redisclinet.client) {
       const session = await this.redisclinet.read(sessionKey);
+      console.log("session", session);
       if (session) {
         return JSON.parse(session);
       } else {
@@ -222,7 +227,7 @@ class SessionManager {
           }
         });
         if (session) {
-          await this.redisclinet.create(sessionKey, BJSON.stringify(session));
+          await this.redisclinet.create(sessionKey, BJSON.stringify(session), 60 * 60);
         }
         return session;
       }

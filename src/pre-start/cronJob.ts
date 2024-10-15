@@ -53,7 +53,7 @@ export const taskEveryMidnight = cron.schedule(
   "0 0 * * *",
   () => {
     crontabService.checkForRepliesAndUpdateEngagementsData();
-    cronTasksService.checkForExpiredSessionsAndDelete();
+    // cronTasksService.checkForExpiredSessionsAndDelete();
   },
   scheduleOptions
 );
