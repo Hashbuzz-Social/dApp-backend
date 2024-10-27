@@ -10,7 +10,7 @@ import prisma from "@shared/prisma";
 import { Contract, ContractInterface, ethers } from "ethers";
 import hederaService from "./hedera-service";
 
-class HederaContract<T extends ContractInterface> {
+class HederaContract {
     private contract_id: string | undefined;
     private contract: Contract | undefined;
 
@@ -103,7 +103,7 @@ class HederaContract<T extends ContractInterface> {
     }
 
     // Method to decode return data using ethers.js
-    private decodeReturnData<K extends keyof T>(methodName: K, result: ContractFunctionResult) {
+    private decodeReturnData(methodName: string, result: ContractFunctionResult) {
         if (!this.contract) {
             throw new Error("Contract not found");
         }
