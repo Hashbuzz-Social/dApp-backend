@@ -19,7 +19,7 @@ class NetworkHelpers {
 
     // Method to handle responses
     private handleResponse(response: AxiosResponse) {
-        return response.data;
+        return response;
     }
 
     // Method to handle errors

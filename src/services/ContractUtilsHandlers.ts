@@ -1,4 +1,4 @@
-import { ContractFunctionParameters } from "@hashgraph/sdk";
+import { AccountId, ContractFunctionParameters } from "@hashgraph/sdk";
 import { ethers } from "ethers";
 import { Utils } from "../../contractsV201";
 import HederaContract from "./Contract";
@@ -16,7 +16,7 @@ class UtilsHandler {
     async isTokenWhitelisted(tokenType: 1 | 2, tokenAddress: string): Promise<boolean> {
         const params = new ContractFunctionParameters()
             .addUint32(tokenType)
-            .addAddress(tokenAddress);
+            .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress());
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("isTokenWhitelisted", params);
         if (!dataDecoded) {
@@ -28,7 +28,7 @@ class UtilsHandler {
     // Method to associate a token
     async associateToken(tokenAddress: string, tokenType: 1 | 2, isWhitelisted: boolean): Promise<void> {
         const params = new ContractFunctionParameters()
-            .addAddress(tokenAddress)
+            .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress())
             .addUint32(tokenType)
             .addBool(isWhitelisted);
 
@@ -48,7 +48,7 @@ class UtilsHandler {
 
     // Method to add a campaigner
     async addCampaigner(newCampaigner: string): Promise<void> {
-        const params = new ContractFunctionParameters().addAddress(newCampaigner);
+        const params = new ContractFunctionParameters().addAddress(AccountId.fromString(newCampaigner).toSolidityAddress());
 
         await this.hederaContract.callContractWithStateChange("addCampaigner", params);
     }
@@ -56,8 +56,8 @@ class UtilsHandler {
     // Method to get fungible token balance
     async getFungibleTokenBalance(campaigner: string, tokenId: string): Promise<number> {
         const params = new ContractFunctionParameters()
-            .addAddress(campaigner)
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addUint32(1); // 1 for FUNGIBLE
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleTokenBalance", params);
@@ -70,8 +70,8 @@ class UtilsHandler {
     // Method to get NFT token balance
     async getNFTTokenBalance(campaigner: string, tokenId: string): Promise<number> {
         const params = new ContractFunctionParameters()
-            .addAddress(campaigner)
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addUint32(2); // 2 for NFT
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getNFTTokenBalance", params);

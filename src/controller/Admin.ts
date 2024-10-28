@@ -100,13 +100,13 @@ export const handleTokenInfoReq = async (req: Request, res: Response, next: Next
 export const handleWhiteListToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tokenId = req.body.token_id as string;
-    const tokenInfo = req.body.tokendata;
+
     const tokenType = req.body.token_type as string;
     const userId = req.currentUser?.id;
     const tokenSymbol = req.body.token_symbol as string;
     const decimals = req.body.decimals as number;
 
-    if (!tokenId || !tokenInfo || !tokenType || !userId || !tokenSymbol || decimals === undefined) {
+    if (!tokenId || !tokenType || !userId || !tokenSymbol || decimals === undefined) {
       return res.status(BAD_REQUEST).json({ message: "Missing required fields" });
     }
 
@@ -128,7 +128,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     const newToken = await prisma.whiteListedTokens.upsert({
       where: { token_id: tokenId },
       create: {
-        name: tokenInfo.name,
+        name: tokenData.name,
         token_id: tokenId,
         tokendata: tokenData,
         token_type: tokenType,
@@ -139,7 +139,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
       },
       update: {
         token_id: tokenId,
-        tokendata: tokenInfo,
+        tokendata: tokenData,
       },
     });
 
