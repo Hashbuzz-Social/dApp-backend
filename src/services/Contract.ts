@@ -1,4 +1,5 @@
 import {
+    AccountId,
     ContractCallQuery,
     ContractCreateFlow,
     ContractExecuteTransaction,
@@ -7,22 +8,25 @@ import {
     ContractId
 } from "@hashgraph/sdk";
 import prisma from "@shared/prisma";
-import { Contract, ContractInterface, ethers } from "ethers";
+import { Interface, ethers } from "ethers";
 import hederaService from "./hedera-service";
 
 class HederaContract {
     private contract_id: string | undefined;
-    private contract: Contract | undefined;
+    private abi: Interface;
 
-    constructor(abi: ethers.Interface | ethers.InterfaceAbi) {
-        this.initializeContract(abi);
+    constructor(abi: ethers.InterfaceAbi) {
+        this.abi = new Interface(abi);
+        this.initializeContract(this.abi);
+
     }
 
     private async initializeContract(abi: ethers.Interface | ethers.InterfaceAbi) {
         const contract = await this.provideActiveContract();
-        if (contract) {
+        if (contract && contract.contract_id) {
             this.contract_id = contract.contract_id;
-            this.contract = new ethers.Contract(this.contract_id, abi);
+        } else {
+            console.error("Failed to initialize contract: Invalid contract ID");
         }
     }
 
@@ -74,7 +78,11 @@ class HederaContract {
 
         const dataDecoded = this.decodeReturnData(fnName, response);
         const eventLogs = this.captureEventLogs(response);
-        return { resultAsBytes, dataDecoded, eventLogs };
+        const data = { resultAsBytes, dataDecoded, eventLogs };
+
+        console.log(` - The Contract query result for **${fnName}** :: =>`, data);
+
+        return data;
     }
 
     async callContractWithStateChange(functionName: string, args: ContractFunctionParameters) {
@@ -96,21 +104,24 @@ class HederaContract {
             const resultAsBytes = result.asBytes();
             const dataDecoded = this.decodeReturnData(functionName, result);
             const eventLogs = this.captureEventLogs(result);
-            return { status: receipt.status, resultAsBytes, dataDecoded, eventLogs };
+            const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs }
+            console.log(` - The Contract transaction status and data for ** ${functionName}** :: =>`, data);
+            return data;
         }
-
+        console.log(` - The Contract transaction  receipt and status for **${functionName}** :: =>`, { receipt, status: receipt.status });
         return { status: receipt.status };
     }
 
     // Method to decode return data using ethers.js
+    // Method to decode return data using ethers.js ABI
     private decodeReturnData(methodName: string, result: ContractFunctionResult) {
-        if (!this.contract) {
-            throw new Error("Contract not found");
-        }
-        const method = this.contract.interface.getFunction(methodName as string);
+        const method = this.abi.getFunction(methodName);
         const data = result.asBytes();
-        //@ts-ignore
-        return this.contract.interface.decodeFunctionResult(method, data);
+        if (!method) {
+            console.error("Method not found in ABI");
+            return null;
+        }
+        return this.abi.decodeFunctionResult(method, data);
     }
 
     // Method to capture event logs using ethers.js

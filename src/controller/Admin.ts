@@ -1,19 +1,23 @@
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
 import { associateTokentoContract } from "@services/contract-service";
+import { utilsHandlerService } from "@services/ContractUtilsHandlers";
+
 import { default as htsService, default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
+import { networkHelpers } from "@shared/NetworkHelpers";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
+import { TokenData } from "src/@types/networkResponses";
 
-const { OK, BAD_REQUEST , NOT_FOUND } = statuses;
+const { OK, BAD_REQUEST, NOT_FOUND } = statuses;
 
 export const handleGetAllCard = async (req: Request, res: Response) => {
   const status = req.query.status as any as CampaignStatus;
@@ -94,48 +98,56 @@ export const handleTokenInfoReq = async (req: Request, res: Response, next: Next
 };
 
 export const handleWhiteListToken = async (req: Request, res: Response, next: NextFunction) => {
-  const tokenId = req.body.token_id as string;
-  const tokenInfo = req.body.tokendata;
-  const token_type = req.body.token_type as string;
-  const userId = req.currentUser?.id;
-  const token_symbol = req.body.token_symbol as string;
-  const decimals = req.body.decimals as number;
+  try {
+    const tokenId = req.body.token_id as string;
+    const tokenInfo = req.body.tokendata;
+    const tokenType = req.body.token_type as string;
+    const userId = req.currentUser?.id;
+    const tokenSymbol = req.body.token_symbol as string;
+    const decimals = req.body.decimals as number;
 
-  const contractDetails = await provideActiveContract();
-  const tokenData = await htsService.getTokenDetails(tokenId);
-  if (userId && contractDetails?.contract_id && tokenId) {
-    const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
-    if (token) {
-      return res.status(BAD_REQUEST).json({ message: "Token already associated" });
-    } else {
-      await associateTokentoContract(tokenId);
-      // await associateTokenToContract(tokenId);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const newToken = await prisma.whiteListedTokens.upsert({
-        where: { token_id: tokenId },
-        create: {
-          name: tokenInfo.name,
-          token_id: tokenId,
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          //@ts-ignore
-          tokendata: tokenData,
-          token_type,
-          added_by: userId,
-          token_symbol,
-          decimals,
-          contract_id: contractDetails.contract_id.toString(),
-        },
-        update: {
-          token_id: tokenId,
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          //@ts-ignore
-          tokendata: tokenInfo,
-        },
-      });
-      return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(newToken)) });
+    if (!tokenId || !tokenInfo || !tokenType || !userId || !tokenSymbol || decimals === undefined) {
+      return res.status(BAD_REQUEST).json({ message: "Missing required fields" });
     }
+
+    const contractDetails = await provideActiveContract();
+    const tokenData = await networkHelpers.getTokenDetails<TokenData>(tokenId);
+
+    if (!contractDetails?.contract_id || !tokenData || tokenData.type !== "FUNGIBLE_COMMON") {
+      return res.status(BAD_REQUEST).json({ message: "Invalid contract details or token data" });
+    }
+
+    const existingToken = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
+
+    if (existingToken) {
+      return res.status(BAD_REQUEST).json({ message: "Token already associated" });
+    }
+
+    await utilsHandlerService.associateToken(tokenId, 1, true);
+
+    const newToken = await prisma.whiteListedTokens.upsert({
+      where: { token_id: tokenId },
+      create: {
+        name: tokenInfo.name,
+        token_id: tokenId,
+        tokendata: tokenData,
+        token_type: tokenType,
+        added_by: userId,
+        token_symbol: tokenSymbol,
+        decimals,
+        contract_id: contractDetails.contract_id.toString(),
+      },
+      update: {
+        token_id: tokenId,
+        tokendata: tokenInfo,
+      },
+    });
+
+    return res.status(OK).json({ message: "Token added successfully", data: JSONBigInt.parse(JSONBigInt.stringify(newToken)) });
+  } catch (error) {
+    console.error("Error in handleWhiteListToken:", error);
+    return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
   }
-  return res.status(BAD_REQUEST).json({ message: "Something went wrong." });
 };
 
 export const handleGetAllWLToken = async (req: Request, res: Response, next: NextFunction) => {
@@ -191,16 +203,16 @@ export const handleAllowAsCampaigner = async (req: Request, res: Response, next:
   }
 };
 
-export const handleGetAllCampaigns = async (req:Request , res:Response , next:NextFunction) => {
-  try{
+export const handleGetAllCampaigns = async (req: Request, res: Response, next: NextFunction) => {
+  try {
     res.status(OK).json({})
   }
-  catch(err){
+  catch (err) {
     next(err)
   }
 }
 
-export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:NextFunction) => {
+export const handleDeleteBizHanlde = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.body.userId as any as number;
 
@@ -215,21 +227,21 @@ export const handleDeleteBizHanlde =  async (req:Request , res:Response , next:N
 
     // Update specific fields to null
     const updatedUser = await prisma.user_user.update({
-      where: { id:  Number(userId) },
+      where: { id: Number(userId) },
       data: {
-        business_twitter_handle: null, 
+        business_twitter_handle: null,
         business_twitter_access_token: null,
-        business_twitter_access_token_secret:null
+        business_twitter_access_token_secret: null
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }
 }
 
-export const handleDeletePerosnalHanlde =  async (req:Request , res:Response , next:NextFunction) => {
+export const handleDeletePerosnalHanlde = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.body.userId as any as number;
 
@@ -243,18 +255,18 @@ export const handleDeletePerosnalHanlde =  async (req:Request , res:Response , n
     }
 
     // Update specific fields to null
-   const updatedUser =  await prisma.user_user.update({
-      where: { id:  Number(userId) },
+    const updatedUser = await prisma.user_user.update({
+      where: { id: Number(userId) },
       data: {
-        personal_twitter_handle: null, 
+        personal_twitter_handle: null,
         personal_twitter_id: null,
-        profile_image_url:"",
-        twitter_access_token:null,
-        twitter_access_token_secret:null
+        profile_image_url: "",
+        twitter_access_token: null,
+        twitter_access_token_secret: null
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully' , data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }

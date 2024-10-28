@@ -19,6 +19,9 @@ class UtilsHandler {
             .addAddress(tokenAddress);
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("isTokenWhitelisted", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
         return dataDecoded[0];
     }
 
@@ -37,7 +40,10 @@ class UtilsHandler {
         const params = new ContractFunctionParameters().addUint32(tokenType);
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getAllWhitelistedTokens", params);
-        return dataDecoded;
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
+        return dataDecoded as string[];
     }
 
     // Method to add a campaigner
@@ -55,6 +61,9 @@ class UtilsHandler {
             .addUint32(1); // 1 for FUNGIBLE
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleTokenBalance", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
         return dataDecoded[0];
     }
 
@@ -66,6 +75,9 @@ class UtilsHandler {
             .addUint32(2); // 2 for NFT
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getNFTTokenBalance", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
         return dataDecoded[0];
     }
 
@@ -74,8 +86,13 @@ class UtilsHandler {
         const params = new ContractFunctionParameters().addString(campaignAddress);
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getCampaignBalance", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
         return dataDecoded[0];
     }
 }
 
+
+export const utilsHandlerService = new UtilsHandler();
 export default UtilsHandler;
