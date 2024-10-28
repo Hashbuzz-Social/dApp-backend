@@ -77,3 +77,44 @@ export interface AccountDetails {
     transactions: any[];
     links: Links;
 }
+
+
+export interface TokenTransfer {
+    token_id: string;
+    account: string;
+    amount: number;
+    is_approval: boolean;
+}
+
+export interface Transfer {
+    account: string;
+    amount: number;
+    is_approval: boolean;
+}
+
+export interface Transaction {
+    bytes: null;
+    charged_tx_fee: number;
+    consensus_timestamp: string;
+    entity_id: null;
+    max_fee: string;
+    memo_base64: string;
+    name: string;
+    nft_transfers: any[]; // Adjust type if needed
+    node: string;
+    nonce: number;
+    parent_consensus_timestamp: null;
+    result: string;
+    scheduled: boolean;
+    staking_reward_transfers: any[]; // Adjust type if needed
+    token_transfers: TokenTransfer[];
+    transaction_hash: string;
+    transaction_id: string;
+    transfers: Transfer[];
+    valid_duration_seconds: string;
+    valid_start_timestamp: string;
+}
+
+export interface TransactionResponse {
+    transactions: Transaction[];
+}

@@ -5,6 +5,7 @@ import campaignRouter from "./campaign-router";
 import integrationRouter from "./integrations";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
+import userInfo from "@middleware/userInfo";
 
 
 // Export the base-router
@@ -108,7 +109,7 @@ baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/transaction", authMiddleware.isHavingValidAst, transactionRouter);
+baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurrentUserInfo, transactionRouter);
 
 /**
  * @swagger

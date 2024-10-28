@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
-import { nodeURI } from './helper';
+import { convertTrxString, nodeURI } from './helper';
 
 class NetworkHelpers {
     private axiosInstance: AxiosInstance;
@@ -55,6 +55,18 @@ class NetworkHelpers {
 
         try {
             const response = await this.axiosInstance.get<T>(`/api/v1/accounts/${accountId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching token details:', error);
+            throw error;
+        }
+    }
+
+    async getTransactionDetails<T>(transactionId: string): Promise<T> {
+        if (!transactionId) throw new Error('Token ID not defined!');
+        //${nodeURI}/api/v1/transactions/${convertTrxString(transactionId)}?nonce=0
+        try {
+            const response = await this.axiosInstance.get<T>(`/api/v1/transactions/${convertTrxString(transactionId)}?nonce=0`);
             return response.data;
         } catch (error) {
             console.error('Error fetching token details:', error);

@@ -85,7 +85,7 @@ class HederaContract {
         return data;
     }
 
-    async callContractWithStateChange(functionName: string, args: ContractFunctionParameters) {
+    async callContractWithStateChange(functionName: string, args: ContractFunctionParameters, memo = "Hashbuzz contract trnsaction") {
         if (!this.contract_id) {
             throw new Error("Contract ID not found");
         }
@@ -93,7 +93,8 @@ class HederaContract {
         const transaction = new ContractExecuteTransaction()
             .setContractId(this.contract_id)
             .setGas(100000) // Set appropriate gas limit for state change
-            .setFunction(functionName, args);
+            .setFunction(functionName, args)
+            .setTransactionMemo(memo);
 
         const response = await transaction.execute(hederaService.hederaClient);
         const receipt = await response.getReceipt(hederaService.hederaClient);
@@ -104,7 +105,7 @@ class HederaContract {
             const resultAsBytes = result.asBytes();
             const dataDecoded = this.decodeReturnData(functionName, result);
             const eventLogs = this.captureEventLogs(result);
-            const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs }
+            const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs, transactionId: record.transactionId.toString() };
             console.log(` - The Contract transaction status and data for ** ${functionName}** :: =>`, data);
             return data;
         }

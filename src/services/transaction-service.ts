@@ -1,48 +1,36 @@
-/* eslint-disable max-len */
-import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, Hbar, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
-// import { default as hbarservice, default as hederaService } from "@services/hedera-service";
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
 import { Decimal } from "@prisma/client/runtime/library";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { encodeFunctionCall, provideActiveContract, queryBalance, queryFungibleBalanceOfCampaigner } from "@services/smartcontract-service";
-import { convertTrxString, nodeURI, sensitizeUserData, waitFor } from "@shared/helper";
+import { sensitizeUserData, waitFor } from "@shared/helper";
+import { networkHelpers } from "@shared/NetworkHelpers";
 import prisma from "@shared/prisma";
 import BigNumber from "bignumber.js";
-import JSONBigInt from "json-bigint";
-import { } from "lodash";
-import { CreateTranSactionEntity, TransactionResponse } from "src/@types/custom";
-import { getCampaignDetailsById } from "./campaign-service";
-import userService from "./user-service";
-import axios from "axios";
 import logger from "jet-logger";
+import JSONBigInt from "json-bigint";
+import { CreateTranSactionEntity } from "src/@types/custom";
+import { TransactionResponse } from "src/@types/networkResponses";
+import { getCampaignDetailsById } from "./campaign-service";
+import { contractTransactionHandler } from "./ContractTransactionHandler";
+import userService from "./user-service";
 
-const { hederaClient, operatorKey, network, operatorId } = hederaService;
+const { hederaClient, operatorKey, operatorId } = hederaService;
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    const address = AccountId.fromString(payerId);
+    // const address = AccountId.fromString(payerId);
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8);
-    const gas = new Hbar(1.75).toTinybars().toNumber();
 
-    // console.log(payerId, "Update balance")
-    const backupContract = contractDetails?.contract_id;
-    const contractAddress = ContractId.fromString(backupContract.toString());
-    // console.log(contractDetails?.contract_id, payerId)
-    const tokenTransfer = new ContractExecuteTransaction().setContractId(contractAddress).setGas(2000000).setFunction("updateBalance", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addUint256(amount).addBool(deposit)).setTransactionMemo(`Top up from the account ${payerId}`);
-
-    const submitTransfer = await tokenTransfer.execute(hederaClient);
-    const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
-    const tokenStatus = tokenTransferRx.status;
-    console.log(" - The updated transaction status " + tokenStatus);
+    const userUpdatedBalance = await contractTransactionHandler.updateBalance(payerId, amount, deposit);
+    console.info("User updated balance", userUpdatedBalance);
 
     return {
-      transactionId: submitTransfer.transactionId,
-      recipt: tokenTransferRx,
+      userUpdatedBalance
     };
-    // return signingService.signAndMakeBytes(contractExBalTx, payerId);
   } else {
     throw new Error("Contract id not found");
   }
@@ -125,7 +113,7 @@ export const allocateBalanceToCampaign = async (
   amounts: number,
   campaignerAccount: string,
   campaignAddress: string
-): Promise<{ contract_id: string; transactionId: string; receipt: any  , status:string}> => {
+): Promise<{ contract_id: string; transactionId: string; receipt: any, status: string }> => {
   logger.info("=========== AllocateBalanceToCampaign ===============");
   logger.info(`Start for campaign: ${JSONBigInt.stringify({ campaignId, campaignAddress })}`);
 
@@ -358,7 +346,7 @@ export const reimbursementFungible = async (accountId: string, amounts: number, 
     const account = AccountId.fromString(accountId);
 
     const contractAddress = ContractId.fromString(backupContract.toString());
-   
+
     const transferToken = new ContractExecuteTransaction()
       .setContractId(contractAddress)
       .setGas(2000000)
@@ -374,7 +362,7 @@ export const reimbursementFungible = async (accountId: string, amounts: number, 
     const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
     const tokenStatus = transferTokenRx.status;
     console.log(" - The transfer back transaction status " + tokenStatus);
-    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId , false);
+    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId, false);
 
     const balanceRecord = await userService.updateTokenBalanceForUser({
       amount: amounts * 10 ** Number(decimals),
@@ -399,7 +387,6 @@ type ValidationResult = ValidatedResult | UnvalidatedResult;
 
 export const validateTransactionFormNetwork = async (transactionId: string, transferFrom: string, retryCount = 2): Promise<ValidationResult> => {
   try {
-    const TRANSACTION_URI = `${nodeURI}/api/v1/transactions/${convertTrxString(transactionId)}?nonce=0`;
     // Active contract
     const contractDetails = await provideActiveContract();
     const contract_address = contractDetails?.contract_id;
@@ -407,11 +394,8 @@ export const validateTransactionFormNetwork = async (transactionId: string, tran
     // Collector account
     const collectorAccount = process.env.HEDERA_ACCOUNT_ID;
 
-    // Network transaction request
-    // const acRequest = await fetch(TRANSACTION_URI);
-    const request = await axios.get(TRANSACTION_URI);
-
-    const data: TransactionResponse = request.data;
+    // Fetch transaction details from the network
+    const data = await networkHelpers.getTransactionDetails<TransactionResponse>(transactionId);
     const transaction = data.transactions[0];
 
     // Check if the transaction is successful and necessary details are available

@@ -5,7 +5,7 @@ import HederaContract from "./Contract";
 
 const utilsAbi = Utils.abi as ethers.InterfaceAbi;
 
-class UtilsHandler {
+class ContractUtils {
     private hederaContract: HederaContract;
 
     constructor() {
@@ -48,10 +48,10 @@ class UtilsHandler {
     }
 
     // Method to add a campaigner
-    async addCampaigner(newCampaigner: string): Promise<void> {
+    async addCampaigner(newCampaigner: string): Promise<Status> {
         const params = new ContractFunctionParameters().addAddress(AccountId.fromString(newCampaigner).toSolidityAddress());
-
-        await this.hederaContract.callContractWithStateChange("addCampaigner", params);
+        const response = await this.hederaContract.callContractWithStateChange("addCampaigner", params);
+        return response.status;
     }
 
     // Method to get fungible token balance
@@ -95,5 +95,5 @@ class UtilsHandler {
 }
 
 
-export const utilsHandlerService = new UtilsHandler();
-export default UtilsHandler;
+export const utilsHandlerService = new ContractUtils();
+export default ContractUtils;

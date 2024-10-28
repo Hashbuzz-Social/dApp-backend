@@ -6,6 +6,7 @@ import {
   handleReimbursement,
   handleTopUp,
 } from "@controller/Transactions";
+import userInfo from "@middleware/userInfo";
 import { checkErrResponse, checkWalletFormat, validateEntityObject, validateTransactionIdString } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";

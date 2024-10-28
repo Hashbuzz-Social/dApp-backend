@@ -1,3 +1,4 @@
+import { user_user } from "@prisma/client";
 import prisma from "@shared/prisma";
 
 export const getAllUser = async (params: { limit: number; offset: number }) => {
@@ -49,8 +50,8 @@ const getUserByPersonalTwitterHandle = async (personal_twitter_handle: string) =
   });
 };
 
-const getAstForUserByAccountAddress = async (userId: number|bigint , deviceId:string) => {
-  return await prisma.user_sessions.findFirst({ where: { user_id:userId , device_id:deviceId } });
+const getAstForUserByAccountAddress = async (userId: number | bigint, deviceId: string) => {
+  return await prisma.user_sessions.findFirst({ where: { user_id: userId, device_id: deviceId } });
 };
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
@@ -169,6 +170,15 @@ const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_
   });
 };
 
+const updateUserById = async (id: number | bigint, data: Partial<Omit<user_user, "id">>) => {
+  return await prisma.user_user.update({
+    where: {
+      id,
+    },
+    data,
+  });
+};
+
 export default {
   getAll: getAllUser,
   updateWalletId,
@@ -181,4 +191,5 @@ export default {
   getUserByPersonalTwitterHandle,
   updateTokenBalanceForUser,
   getAstForUserByAccountAddress,
+  updateUserById
 } as const;
