@@ -190,12 +190,11 @@ class SessionManager {
 
       const { user_user, device_id, } = session;
 
-      const responseData = {
+      return res.status(OK).json({
+        status: "active",
         device_id: d_decrypt(device_id),
-        ...user_user,
-      }
-
-      return res.success(responseData, "Session found successfully");
+        wallet_id: user_user.hedera_wallet_id,
+      });
     } catch (err) {
       next(err);
     }

@@ -40,7 +40,7 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.get
  * @validator checkErrResponse
  * @handler handleRefreshToken
  */
-authRouter.post("/refresh-token",auth.isHavingValidAst, body("refreshToken").isString(),  checkErrResponse, handleRefreshToken);
+authRouter.post("/refresh-token", auth.isHavingValidAst, body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
 
 /**
  * Handle Twitter return URL.
@@ -80,5 +80,5 @@ authRouter.post(
 //dAppAccessRoutes
 authRouter.get("/ping", auth.isHavingValidAst, handleAuthPing);
 authRouter.get("/challenge", handleCreateChallenge);
-authRouter.post("/generate", auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
+authRouter.post("/generate", auth.deviceIdIsRequired, auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
 export default authRouter;
