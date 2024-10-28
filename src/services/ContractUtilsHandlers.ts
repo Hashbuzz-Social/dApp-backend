@@ -44,7 +44,7 @@ class UtilsHandler {
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded as string[];
+        return dataDecoded[0] as string[];
     }
 
     // Method to add a campaigner

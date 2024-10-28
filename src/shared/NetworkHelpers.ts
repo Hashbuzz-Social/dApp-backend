@@ -49,6 +49,20 @@ class NetworkHelpers {
             throw error;
         }
     }
+
+    async getAccountDetails<T>(accountId: string): Promise<T> {
+        if (!accountId) throw new Error('Token ID not defined!');
+
+        try {
+            const response = await this.axiosInstance.get<T>(`/api/v1/accounts/${accountId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching token details:', error);
+            throw error;
+        }
+    }
+
+
 }
 
 
