@@ -9,5 +9,5 @@ xxxx.txt
 tokens.txt
 Dockerfile
 .vscode
-.keys
+.keys/**
 .trailsetters
