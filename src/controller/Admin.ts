@@ -120,7 +120,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     const existingToken = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
 
     if (existingToken) {
-      return res.status(BAD_REQUEST).json({ message: "Token already associated" });
+      return res.status(BAD_REQUEST).json({ message: "Token already associated." });
     }
 
     // Lodge in the contract.

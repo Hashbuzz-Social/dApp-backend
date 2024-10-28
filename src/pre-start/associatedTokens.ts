@@ -5,9 +5,6 @@ import { utilsHandlerService } from "@services/ContractUtilsHandlers";
 import { networkHelpers } from "@shared/NetworkHelpers";
 import { AccountDetails, TokenBalance } from "src/@types/networkResponses";
 
-
-
-
 const checkAvailableTokens = async (accountId: string) => {
   try {
     if (!accountId) throw new Error("Account id not defined!");
