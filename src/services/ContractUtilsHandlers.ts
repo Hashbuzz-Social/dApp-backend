@@ -1,4 +1,4 @@
-import { AccountId, ContractFunctionParameters } from "@hashgraph/sdk";
+import { AccountId, ContractFunctionParameters, Status } from "@hashgraph/sdk";
 import { ethers } from "ethers";
 import { Utils } from "../../contractsV201";
 import HederaContract from "./Contract";
@@ -26,13 +26,14 @@ class UtilsHandler {
     }
 
     // Method to associate a token
-    async associateToken(tokenAddress: string, tokenType: 1 | 2, isWhitelisted: boolean): Promise<void> {
+    async associateToken(tokenAddress: string, tokenType: 1 | 2, isWhitelisted: boolean): Promise<Status> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress())
             .addUint32(tokenType)
             .addBool(isWhitelisted);
 
-        await this.hederaContract.callContractWithStateChange("associateToken", params);
+        const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params);
+        return contractCallResponse.status
     }
 
     // Method to get all whitelisted tokens

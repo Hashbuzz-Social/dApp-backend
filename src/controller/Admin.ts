@@ -1,9 +1,9 @@
+import { Status } from "@hashgraph/sdk";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
-import { associateTokentoContract } from "@services/contract-service";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
-
-import { default as htsService, default as htsServices } from "@services/hts-services";
+import { hederaSDKCallHandler } from "@services/HederaSDKCalls";
+import { default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
 import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
@@ -123,7 +123,19 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
       return res.status(BAD_REQUEST).json({ message: "Token already associated" });
     }
 
-    await utilsHandlerService.associateToken(tokenId, 1, true);
+    // Lodge in the contract.
+    const response = await utilsHandlerService.associateToken(tokenId, 1, true);
+
+    if (response._code !== Status.Success._code) {
+      return res.status(BAD_REQUEST).json({ message: "Token association SM update failed" });
+    }
+
+    // SDK call to associate token with account
+    const associateTokenResponse = await hederaSDKCallHandler.associateToken(contractDetails.contract_id, tokenId);
+
+    if (associateTokenResponse !== Status.Success) {
+      return res.status(BAD_REQUEST).json({ message: "Token association failed" });
+    }
 
     const newToken = await prisma.whiteListedTokens.upsert({
       where: { token_id: tokenId },
