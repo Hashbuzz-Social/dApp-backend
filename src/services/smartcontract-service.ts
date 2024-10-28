@@ -1,8 +1,7 @@
 import { AccountId, ContractCallQuery, ContractCreateFlow, ContractCreateTransaction, ContractExecuteTransaction, ContractFunctionParameters, ContractId, FileAppendTransaction, FileCreateTransaction, FileId, Hbar, Status } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
-import { buildCampaignAddress } from "@shared/helper";
 import prisma from "@shared/prisma";
-import { contractAbi, contractByteCode, logicalContractByteCode, proxyContractByteCode } from "@smartContract";
+import { contractAbi } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 import { getCampaignDetailsById } from "./campaign-service";
@@ -155,10 +154,12 @@ export const deployContractNew = async () => {
     },
   });
 
+  console.log("Available Contracts::", availableContracts);
+
   if (availableContracts.length === 0 && hashbuzz) {
-    const { contract_id, contractAddress, logicalContract_id } = await prisma.smartcontracts.create({
+    const contractData = await prisma.smartcontracts.create({
       data: {
-        contractAddress: hashbuzz,
+        contractAddress: AccountId.fromString(hashbuzz).toSolidityAddress(),
         contract_id: `${hashbuzz}`,
         logicalContract_id: `${hashbuzz}`,
         lcFileID: hashbuzz ?? "",
@@ -167,6 +168,8 @@ export const deployContractNew = async () => {
         created_at: new Date().toISOString(),
       },
     });
+
+    console.log("Contract verifed Successfully here is data::", contractData);
   }
 };
 
@@ -202,11 +205,11 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
       .setFunction("addCampaigner", contractParams)
       .setTransactionMemo(
         "Hashbuzz-transaction" +
-          JSON.stringify({
-            transactionFor: "addCampaigner",
-            user_id: user_id?.toString(),
-            wallet_id: accountId.toString(),
-          })
+        JSON.stringify({
+          transactionFor: "addCampaigner",
+          user_id: user_id?.toString(),
+          wallet_id: accountId.toString(),
+        })
       );
 
     const contractExSubmit = await contractExTx.execute(hederaClient);
@@ -282,7 +285,7 @@ export const queryFungibleBalanceOfCampaigner = async (address: string, fungible
     const getBalance = new ContractCallQuery()
       .setContractId(contractAddress)
       .setGas(500000) // Adjust gas limit as needed
-      .setFunction(functionName, 
+      .setFunction(functionName,
         new ContractFunctionParameters()
           .addAddress(address)
           .addAddress(tokenId.toSolidityAddress()))

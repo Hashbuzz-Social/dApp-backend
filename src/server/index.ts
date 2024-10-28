@@ -17,7 +17,8 @@ import apiRouter from "@routes/index";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
-import swaggerDefinition from "./condfig/swaggerDefinition";
+import swaggerDefinition from "./config/swaggerDefinition";
+import responseFormatter from "./config/responseFormatter";
 
 // Constants
 const app = express();
@@ -35,6 +36,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(responseFormatter);
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));

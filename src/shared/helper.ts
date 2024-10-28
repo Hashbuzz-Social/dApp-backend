@@ -70,7 +70,7 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
   }
 };
 
-export const fetchAccountIfoKey = async (accountId: string) => {
+export const fetchAccountInfoKey = async (accountId: string) => {
   const url = `${nodeURI}/api/v1/accounts/${accountId}`;
   const response = await fetch(url);
   const data = await response.json();
