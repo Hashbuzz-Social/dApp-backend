@@ -89,6 +89,17 @@ class SessionManager {
     return { deviceType, ipAddress, userAgent };
   }
 
+  definerRoles(accAddress: string) {
+    if (globalThis.adminAddress.includes(accAddress)) {
+      return "SUPER_ADMIN";
+    } else if (globalThis.TrailsetterAccounts.includes(accAddress)) {
+      // loigic to verify the  NFT holding position and then go for the role
+      return "TRAILSETTER";
+    } else {
+      return "GUEST_USER";
+    }
+  }
+
   async upsertUserData(accAddress: string, accountId: string) {
     return await prisma.user_user.upsert({
       where: { accountAddress: accAddress },
