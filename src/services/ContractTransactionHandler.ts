@@ -50,9 +50,6 @@ class ContractTransactions {
             .addBool(deposit);
 
         const result = await this.hederaContract.callContractWithStateChange("updateBalance", params, createTransactionMemo("updateBalance", memo));
-
-        console.log("Result: **updateBalance**", result);
-
         if ('dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }
@@ -60,13 +57,16 @@ class ContractTransactions {
     }
 
     // Method to add fungible amount
-    async addFungibleAmount(campaigner: string, tokenId: string, tokenAmount: number, memo?: string): Promise<number> {
+    async addFungibleAmount(campaigner: string, tokenId: string, tokenAmount: number, memo?: string): Promise<number | bigint> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addInt64(tokenAmount);
 
         const result = await this.hederaContract.callContractWithStateChange("addFungibleAmount", params, createTransactionMemo("addFungibleAmount", memo));
+
+        console.log("addFungibleAmount result", result);
+
         if ('dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }

@@ -125,10 +125,10 @@ const handleValidatedTransaction = async (
 
   if (entity.entityType === "fungible" && validate.token_id && tokenDetails) {
     const decimal = Number(tokenDetails.decimals);
-    await updateFungibleAmountToContract(accountId, validate.amount, validate.token_id);
+    const amount = await updateFungibleAmountToContract(accountId, validate.amount, validate.token_id);
     await userService.updateTokenBalanceForUser({
-      amount: validate.amount,
-      operation: "increment",
+      amount: Number(amount),
+      operation: "update",
       token_id: tokenDetails.id,
       decimal,
       user_id: userId,

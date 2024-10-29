@@ -132,13 +132,13 @@ const getUserByTwitterId = async (personal_twitter_id: string) => {
   });
 };
 
-const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_id, user_id, decimal }: { cntrct_bal?: number; amount: number; operation: "increment" | "decrement"; token_id: number | bigint; user_id: number | bigint; decimal: number }) => {
+const updateTokenBalanceForUser = async ({ amount, operation, token_id, user_id, decimal }: { amount: number; operation: "increment" | "decrement" | "update"; token_id: number | bigint; user_id: number | bigint; decimal: number }) => {
 
   const balRecord = await prisma.user_balances.findFirst({
     where: { user_id, token_id },
   });
 
-  if (!balRecord && operation === "increment")
+  if (!balRecord && ["decrement", "update"].includes(operation)) {
     return await prisma.user_balances.create({
       data: {
         user_id,
@@ -147,11 +147,13 @@ const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_
         token_id,
       },
     });
-
-  if (operation == "decrement" && balRecord && cntrct_bal && balRecord.entity_balance && balRecord?.entity_balance - amount === cntrct_bal) {
+  }
+  if (["increment", "decrement"].includes(operation) && balRecord && balRecord.entity_balance) {
     return await prisma.user_balances.update({
       data: {
-        entity_balance: cntrct_bal,
+        entity_balance: {
+          [operation]: amount,
+        },
       },
       where: {
         id: balRecord.id,
@@ -159,13 +161,11 @@ const updateTokenBalanceForUser = async ({ cntrct_bal, amount, operation, token_
     });
   }
   return await prisma.user_balances.update({
-    data: {
-      entity_balance: {
-        [operation]: amount,
-      },
-    },
     where: {
       id: balRecord?.id,
+    },
+    data: {
+      entity_balance: amount,
     },
   });
 };

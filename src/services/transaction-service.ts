@@ -40,29 +40,9 @@ export const updateFungibleAmountToContract = async (payerId: string, amount: nu
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    const address = AccountId.fromString(payerId);
     amount = Math.floor(amount);
-
-    // console.log(payerId, "Update balance")
-    const backupContract = contractDetails?.contract_id;
-    const contractAddress = ContractId.fromString(backupContract.toString());
-    // console.log(contractDetails?.contract_id, payerId)
-    const tokenTransfer = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction("addFungibleAmount", new ContractFunctionParameters().addAddress(address.toSolidityAddress()).addAddress(AccountId.fromString(token_id).toSolidityAddress()).addInt64(new BigNumber(amount)))
-      .setTransactionMemo(`Token Top up from the account ${payerId}`);
-
-    const submitTransfer = await tokenTransfer.execute(hederaClient);
-    const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
-    const tokenStatus = tokenTransferRx.status;
-    console.log(" - The updated transaction status " + tokenStatus);
-
-    return {
-      transactionId: submitTransfer.transactionId,
-      recipt: tokenTransferRx,
-    };
-    // return signingService.signAndMakeBytes(contractExBalTx, payerId);
+    const balanceRecord = await contractTransactionHandler.addFungibleAmount(payerId, token_id, amount);
+    return balanceRecord;
   } else {
     throw new Error("Contract id not found");
   }
@@ -370,7 +350,6 @@ export const reimbursementFungible = async (accountId: string, amounts: number, 
       token_id: idToken,
       decimal: Number(decimals),
       user_id: id,
-      cntrct_bal: +(balance ?? "0"),
     });
     return balanceRecord;
   }
