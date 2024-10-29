@@ -138,7 +138,7 @@ const updateTokenBalanceForUser = async ({ amount, operation, token_id, user_id,
     where: { user_id, token_id },
   });
 
-  if (!balRecord && ["decrement", "update"].includes(operation)) {
+  if (!balRecord && ["increment", "update"].includes(operation)) {
     return await prisma.user_balances.create({
       data: {
         user_id,

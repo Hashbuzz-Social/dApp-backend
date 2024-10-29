@@ -2,17 +2,17 @@ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Cont
 import { Decimal } from "@prisma/client/runtime/library";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { encodeFunctionCall, provideActiveContract, queryBalance, queryFungibleBalanceOfCampaigner } from "@services/smartcontract-service";
+import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
 import { sensitizeUserData, waitFor } from "@shared/helper";
 import { networkHelpers } from "@shared/NetworkHelpers";
 import prisma from "@shared/prisma";
-import BigNumber from "bignumber.js";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { TransactionResponse } from "src/@types/networkResponses";
 import { getCampaignDetailsById } from "./campaign-service";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
+import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
 
 const { hederaClient, operatorKey, operatorId } = hederaService;
@@ -295,40 +295,40 @@ export const reimbursementAmount = async (params: { userId: number | bigint, amo
   }
 };
 
-export const reimbursementFungible = async (accountId: string, amounts: number, tokenId: string, decimals: Decimal, id: bigint, idToken: bigint) => {
+export const reimbursementFungible = async (params: { accountId: string, amounts: number, tokenId: string, decimals: Decimal, id: bigint, idToken: bigint, currentBalance: number }) => {
+  const { accountId, amounts, tokenId, decimals, id, idToken, currentBalance } = params;
+
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
-    const backupContract = contractDetails?.contract_id;
+    const amount = Number(amounts * 10 ** Number(decimals))
 
-    const token = AccountId.fromString(tokenId);
-    const account = AccountId.fromString(accountId);
+    const updatedTokenBalance = await contractTransactionHandler.reimburseBalanceForFungible(
+      tokenId,
+      accountId,
+      amount,
+      1
+    );
+    // Total reimbursement
+    const totalReimbersement = currentBalance - Number(updatedTokenBalance);
 
-    const contractAddress = ContractId.fromString(backupContract.toString());
+    // Transfer token using sdk;
+    const paymentTransaction = hederaSDKCallHandler.transferTokenUsingSDK({
+      fromAccountId: contractDetails.contract_id,
+      toAccountId: accountId,
+      tokenId,
+      amount: (totalReimbersement),
+      memo: "Reimbursement payment from hashbuzz",
+    })
 
-    const transferToken = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "reimburseBalanceForFungible",
-        new ContractFunctionParameters()
-          .addAddress(token.toSolidityAddress())
-          .addAddress(account.toSolidityAddress())
-          .addInt64(new BigNumber(amounts * 10 ** Number(decimals)))
-      );
-
-    const transferTokenTx = await transferToken.execute(hederaClient);
-    const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
-    const tokenStatus = transferTokenRx.status;
-    console.log(" - The transfer back transaction status " + tokenStatus);
-    const balance = await queryFungibleBalanceOfCampaigner(accountId, tokenId, false);
 
     const balanceRecord = await userService.updateTokenBalanceForUser({
-      amount: amounts * 10 ** Number(decimals),
-      operation: "decrement",
+      amount: Number(updatedTokenBalance),
+      operation: "update",
       token_id: idToken,
       decimal: Number(decimals),
       user_id: id,
     });
+
     return balanceRecord;
   }
 };

@@ -9,8 +9,15 @@ import {
     TokenType,
     TokenSupplyType,
     TokenInfo,
+    TransferTransaction,
+    TokenId,
 } from "@hashgraph/sdk";
 import hederaService from "./hedera-service";
+
+const trasctionMemos = {
+    "transferHbarUsingSDK": "ħbuzz_TSDK",
+    "transferTokenUsingSDK": "ħbuzz_TSDK_Token",
+}
 
 class HederaSDKCalls {
     private client: Client;
@@ -69,6 +76,67 @@ class HederaSDKCalls {
         const tokenInfo = await tokenInfoQuery.execute(this.client);
         return tokenInfo;
     }
+
+    // Transafer Hbar using Hedera SDK
+    async transferHbarUsingSDK(params: {
+        fromAccountId: string,
+        toAccountId: string,
+        amount: number,
+        memo?: string
+    }) {
+        const { fromAccountId, toAccountId, amount, memo } = params;
+
+        // Create a transaction
+        const transferTx = new TransferTransaction()
+            .addHbarTransfer(AccountId.fromString(fromAccountId), -amount)
+            .addHbarTransfer(AccountId.fromString(toAccountId), amount)
+            .setTransactionMemo(trasctionMemos.transferHbarUsingSDK + (memo ?? ""))
+            .freezeWith(this.client);
+
+        // Sign and execute the transaction
+        const transferSign = await transferTx.sign(this.operatorKey);
+        const transferSubmit = await transferSign.execute(this.client);
+
+        // Recipt of the trnasaction
+        const transferRx = await transferSubmit.getReceipt(this.client);
+
+        return transferRx;
+    };
+
+    async transferTokenUsingSDK(params: {
+        fromAccountId: string,
+        toAccountId: string,
+        tokenId: string,
+        amount: number,
+        memo?: string
+    }) {
+        const { amount, memo } = params;
+        const tokenId = TokenId.fromString(params.tokenId);
+        const fromAccountId = AccountId.fromString(params.fromAccountId);
+        const toAccountId = AccountId.fromString(params.toAccountId);
+
+        const transaction = new TransferTransaction()
+            .addTokenTransfer(tokenId, fromAccountId, -amount)
+            .addTokenTransfer(tokenId, toAccountId, amount)
+            .setTransactionMemo(trasctionMemos.transferTokenUsingSDK + (memo ?? ""))
+            .freezeWith(this.client);
+
+        //Sign with the sender account private key
+        const signTx = await transaction.sign(this.operatorKey);
+
+        //Sign with the client operator private key and submit to a Hedera network
+        const txResponse = await signTx.execute(this.client);
+
+        //Request the receipt of the transaction
+        const receipt = await txResponse.getReceipt(this.client);
+
+        //Obtain the transaction consensus status
+        const transactionStatus = receipt.status;
+
+        console.log("The transaction consensus status " + transactionStatus.toString());
+        return { status: transactionStatus, receipt, tokenId: params.tokenId }
+    }
+
 }
 
 

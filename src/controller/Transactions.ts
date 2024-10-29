@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { Status } from "@hashgraph/sdk";
 import { getCampaignDetailsById } from "@services/campaign-service";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
@@ -13,7 +12,7 @@ import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statusCodes from "http-status-codes";
 import { CreateTranSactionEntity } from "src/@types/custom";
-// import { topUpHandler } from "@controller/transaction.controller";
+import JSONBigInt from "json-bigint"
 
 const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } = statusCodes;
 
@@ -139,16 +138,11 @@ const handleValidatedTransaction = async (
  * @description Add campaign to smart contract handler.
  **/
 export const handleAddCampaigner = async (req: Request, res: Response, next: NextFunction) => {
-  // try {
-  //   (async () => {
   const walletId: string = req.body.walletId;
 
   const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
   return res.status(CREATED).json(addWalletAddressToCampaign);
-  //   })();
-  // } catch (err) {
-  //   next(err);
-  // }
+
 };
 
 //===============================
@@ -159,14 +153,9 @@ export const handleAddCampaigner = async (req: Request, res: Response, next: Nex
  */
 
 export const handleGetActiveContract = async (req: Request, res: Response, next: NextFunction) => {
-  // try {
-  //   (async () => {
   const activeContract = await provideActiveContract();
   return res.status(OK).json(activeContract);
-  //   })();
-  // } catch (err) {
-  //   next(err);
-  // }
+
 };
 
 /****
@@ -174,8 +163,7 @@ export const handleGetActiveContract = async (req: Request, res: Response, next:
  */
 
 export const handleCrateToupReq = async (req: Request, res: Response, next: NextFunction) => {
-  // try {
-  //   (async () => {
+
   const entity: CreateTranSactionEntity = req.body.entity;
   const connectedAccountId = req.currentUser?.hedera_wallet_id;
 
@@ -186,8 +174,7 @@ export const handleCrateToupReq = async (req: Request, res: Response, next: Next
 };
 
 export const handleCampaignFundAllocation = async (req: Request, res: Response, next: NextFunction) => {
-  // try {
-  //   (async () => {
+
   const campaignId: number = req.body.campaignId;
 
   //! get campaignById
@@ -205,11 +192,7 @@ export const handleCampaignFundAllocation = async (req: Request, res: Response, 
     return res.status(CREATED).json({ transactionId, receipt });
   }
 
-  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" });
-  //   })();
-  // } catch (err) {
-  //   next(err);
-  // }
+  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" })
 };
 
 export const handleReimbursement = async (req: Request, res: Response, next: NextFunction) => {
@@ -257,13 +240,19 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
           message: "Insufficient available amount in user's account.",
         });
       }
-      const reimbursementTransaction = await reimbursementFungible(req.currentUser.hedera_wallet_id, amount, tokenId, tokenDetails?.decimals, req.currentUser?.id, tokenDetails.id);
-      return res.status(OK).json({ message: "Reimbursement Successfully" });
+
+      //req.currentUser.hedera_wallet_id, amount, tokenId, tokenDetails?.decimals, req.currentUser?.id, tokenDetails.id
+      const reimbursementTransaction = await reimbursementFungible({
+        accountId: req.currentUser.hedera_wallet_id,
+        amounts: amount,
+        tokenId,
+        decimals: tokenDetails.decimals,
+        id: req.currentUser.id,
+        idToken: tokenDetails.id,
+        currentBalance: balRecord.entity_balance
+      });
+      return res.status(OK).json({ message: "Reimbursement Successfully", data: JSONBigInt.parse(JSONBigInt.stringify(reimbursementTransaction)) });
     }
   }
-  //   })();
-  // } catch (err) {
-  //   next(err);
-  // }
 };
 
