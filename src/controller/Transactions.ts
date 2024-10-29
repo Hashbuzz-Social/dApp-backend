@@ -119,8 +119,8 @@ const handleValidatedTransaction = async (
   tokenDetails: any
 ) => {
   if (entity.entityType === "HBAR") {
-    await updateBalanceToContract(address, amounts);
-    await userService.topUp(userId, validate.amount, "increment");
+    const balanceRecord = await updateBalanceToContract(address, amounts);
+    await userService.topUp(userId, Number(balanceRecord.userUpdatedBalance), "update");
   }
 
   if (entity.entityType === "fungible" && validate.token_id && tokenDetails) {

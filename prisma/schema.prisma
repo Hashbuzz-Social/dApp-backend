@@ -209,7 +209,7 @@ model whiteListedTokens {
 
 model transactions {
   id               BigInt          @id @default(autoincrement())
-  transaction_id   String          @db.VarChar
+  transaction_id   String          @unique @db.VarChar
   transaction_type transactionType
   network          network
   amount           Float

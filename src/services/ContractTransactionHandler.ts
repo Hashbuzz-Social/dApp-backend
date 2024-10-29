@@ -43,13 +43,16 @@ class ContractTransactions {
     }
 
     // Method to update balance (top-up or reimbursement)
-    async updateBalance(campaigner: string, amount: number, deposit: boolean, memo?: string): Promise<number> {
+    async updateBalance(campaigner: string, amount: number, deposit: boolean, memo?: string): Promise<number | bigint> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addUint256(amount)
             .addBool(deposit);
 
         const result = await this.hederaContract.callContractWithStateChange("updateBalance", params, createTransactionMemo("updateBalance", memo));
+
+        console.log("Result: **updateBalance**", result);
+
         if ('dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }

@@ -8,7 +8,7 @@ import {
     ContractId
 } from "@hashgraph/sdk";
 import prisma from "@shared/prisma";
-import { Interface, ethers } from "ethers";
+import { Interface, LogDescription, ethers } from "ethers";
 import hederaService from "./hedera-service";
 
 class HederaContract {
@@ -77,7 +77,7 @@ class HederaContract {
         const resultAsBytes = response.asBytes();
 
         const dataDecoded = this.decodeReturnData(fnName, response);
-        const eventLogs = this.captureEventLogs(response);
+        const eventLogs = this.captureEventLogs(fnName, response);
         const data = { resultAsBytes, dataDecoded, eventLogs };
 
         console.log(` - The Contract query result for **${fnName}** :: =>`, data);
@@ -104,7 +104,7 @@ class HederaContract {
         if (result) {
             const resultAsBytes = result.asBytes();
             const dataDecoded = this.decodeReturnData(functionName, result);
-            const eventLogs = this.captureEventLogs(result);
+            const eventLogs = this.captureEventLogs(functionName, result);
             const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs, transactionId: record.transactionId.toString() };
             console.log(` - The Contract transaction status and data for ** ${functionName}** :: =>`, data);
             return data;
@@ -125,18 +125,17 @@ class HederaContract {
         return this.abi.decodeFunctionResult(method, data);
     }
 
-    // Method to capture event logs using ethers.js
-    private captureEventLogs(result: ContractFunctionResult) {
-        const logs = result.logs.map(log => {
+    // Method to capture event logs using ethers.js ABI
+    private captureEventLogs(methodName: string, result: ContractFunctionResult): LogDescription[] {
+        const logs = result.logs.map((log: any) => {
             try {
-                //@ts-ignore
-                return this.contract.interface.parseLog(log);
+                return this.abi.parseLog(log);
             } catch (e) {
-                console.error("Failed to parse log:", e);
+                console.error(`Failed to parse event log for **${methodName}** :`, e);
                 return null;
             }
         });
-        return logs.filter(log => log !== null);
+        return logs.filter(log => log !== null) as LogDescription[];
     }
 }
 

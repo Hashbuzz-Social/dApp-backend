@@ -5,6 +5,11 @@ import HederaContract from "./Contract";
 
 const utilsAbi = Utils.abi as ethers.InterfaceAbi;
 
+const transactionMemo = {
+    "associateToken": "ħbuzz_UV201_1",
+    "addCampaigner": "ħbuzz_UV201_2",
+}
+
 class ContractUtils {
     private hederaContract: HederaContract;
 
@@ -32,7 +37,7 @@ class ContractUtils {
             .addUint32(tokenType)
             .addBool(isWhitelisted);
 
-        const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params);
+        const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params, transactionMemo.associateToken);
         return contractCallResponse.status
     }
 
@@ -50,7 +55,7 @@ class ContractUtils {
     // Method to add a campaigner
     async addCampaigner(newCampaigner: string): Promise<Status> {
         const params = new ContractFunctionParameters().addAddress(AccountId.fromString(newCampaigner).toSolidityAddress());
-        const response = await this.hederaContract.callContractWithStateChange("addCampaigner", params);
+        const response = await this.hederaContract.callContractWithStateChange("addCampaigner", params, transactionMemo.addCampaigner);
         return response.status;
     }
 
