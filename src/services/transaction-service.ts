@@ -271,47 +271,25 @@ export const closeCampaignSMTransaction = async (campingId: number | bigint, cam
   }
 };
 
-export const reimbursementAmount = async (userId: number | bigint, amounts: number, accountId: string) => {
+export const reimbursementAmount = async (params: { userId: number | bigint, amounts: number, accountId: string, currentBalance: number }) => {
+  const { userId, accountId, amounts, currentBalance } = params;
   console.group("Reimbursement::");
   console.log({ amounts, accountId });
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    const backupContract = contractDetails?.contract_id;
-
-    const address = AccountId.fromString(accountId);
-    const contractAddress = ContractId.fromString(backupContract.toString());
     const deposit = false;
+    const userUpdatedBalance = await contractTransactionHandler.updateBalance(accountId, Math.floor(amounts * 1e8), deposit);
+    console.info("User updated balance after reimbersement", userUpdatedBalance);
 
-    console.log("tinyAmount is Reimbursed from contract", amounts);
+    const totalReimbersement = currentBalance - Number(userUpdatedBalance);
 
-    // const functionCallAsUint8Array = encodeFunctionCall("updateBalance", [address, amounts, deposit]);
+    const userData = await userService.topUp(userId, Number(userUpdatedBalance), "update");
+    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, totalReimbersement, "Reimbursement payment from hashbuzz");
 
-    const tokenTransfer = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "updateBalance",
-        new ContractFunctionParameters()
-          .addAddress(address.toSolidityAddress())
-          .addUint256(Math.floor(amounts * 1e8))
-          .addBool(deposit)
-      )
-      .setTransactionMemo("Hashbuzz balance update call");
-
-    const submitTransfer = await tokenTransfer.execute(hederaClient);
-    const tokenTransferRx = await submitTransfer.getReceipt(hederaClient);
-    const tokenStatus = tokenTransferRx.status;
-    console.log(" - The updated transaction status is " + tokenStatus);
-
-    const balance = await queryBalance(accountId);
-    const userData = await userService.topUp(userId, parseInt(balance?.balances ?? "0"), "update");
-
-    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, Math.floor(amounts * 1e8), "Reimbursement payment from hashbuzz");
     console.groupEnd();
     return {
       paymentTransaction,
-      contractCallReceipt: tokenTransferRx,
       userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))),
     };
   }

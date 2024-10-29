@@ -231,7 +231,12 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
       });
     }
 
-    const reimbursementTransaction = await reimbursementAmount(req.currentUser?.id, amount, req.currentUser.hedera_wallet_id);
+    const reimbursementTransaction = await reimbursementAmount({
+      userId: req.currentUser.id,
+      amounts: amount,
+      accountId: req.currentUser.hedera_wallet_id,
+      currentBalance: req.currentUser.available_budget
+    });
     return res.status(OK).json({
       message: "Reimbursement Successfully",
       reimbursementTransaction,
