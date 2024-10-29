@@ -1,4 +1,4 @@
-import { campaign_twittercard, user_user , campaignstatus as CampaignStatus} from "@prisma/client";
+import { campaign_twittercard, user_user, campaignstatus as CampaignStatus } from "@prisma/client";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import tweetService from "@services/twitterCard-service";
@@ -28,7 +28,6 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
       const card = this.ensureCampaignCardLoaded();
       const cardOwner = this.ensureCardOwnerDataLoaded();
       const checkIsValidCampaign = await this.isCampaignValidForMakeRunning(CampaignStatus.CampaignRunning);
-      4;
 
       let transactionDetails: TransactionDetails;
 
