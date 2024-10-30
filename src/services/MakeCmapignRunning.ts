@@ -50,7 +50,13 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
       // Step 2: Perform smart contract transaction
       try {
-        transactionDetails = await this.performSmartContractTransaction(card);
+        const contractStateUpdateResult = await this.performSmartContractTransaction(card);
+        transactionDetails = {
+          contract_id: card.contract_id!,
+          transactionId: contractStateUpdateResult?.transactionId,
+          receipt: contractStateUpdateResult?.receipt,
+          status: contractStateUpdateResult?.status._code.toString(),
+        }
         await this.updateCampaignStatus(card.contract_id!, "contractTransaction", true);
         logger.info(`Smart contract transaction successful for card ID: ${card.id}`);
       } catch (error) {

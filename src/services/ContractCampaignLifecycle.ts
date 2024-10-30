@@ -30,18 +30,19 @@ class ContractCampaignLifecycle {
     }
 
     // Method to add a new campaign
-    async addCampaign(campaignAddress: string, campaigner: string, amount: number): Promise<void> {
+    async addCampaign(campaignAddress: string, campaigner: string, amount: number) {
         const params = new ContractFunctionParameters()
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addUint256(amount);
 
         const memo = createTransactionMemo("addCampaign");
-        await this.hederaContract.callContractWithStateChange("addCampaign", params, memo);
+        const response = await this.hederaContract.callContractWithStateChange("addCampaign", params, memo);
+        return response;
     }
 
     // Method to add a new fungible campaign
-    async addFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenAmount: number): Promise<void> {
+    async addFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenAmount: number) {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
@@ -50,6 +51,8 @@ class ContractCampaignLifecycle {
 
         const memo = createTransactionMemo("addFungibleCampaign");
         await this.hederaContract.callContractWithStateChange("addFungibleCampaign", params, memo);
+        const response = await this.hederaContract.callContractWithStateChange("addCampaign", params, memo);
+        return response;
     }
 
     // Method to add a new NFT campaign
@@ -65,23 +68,25 @@ class ContractCampaignLifecycle {
     }
 
     // Method to close a campaign with HBAR
-    async closeCampaign(campaignAddress: string, campaignExpiryTime: number): Promise<void> {
+    async closeCampaign(campaignAddress: string, campaignExpiryTime: number) {
         const params = new ContractFunctionParameters()
             .addString(campaignAddress)
             .addUint256(campaignExpiryTime);
 
         const memo = createTransactionMemo("closeCampaign");
-        await this.hederaContract.callContractWithStateChange("closeCampaign", params, memo);
+        const closeResponse = await this.hederaContract.callContractWithStateChange("closeCampaign", params, memo);
+        return closeResponse;
     }
 
     // Method to close a campaign with fungible tokens
-    async closeFungibleCampaign(campaignAddress: string, campaignExpiryTime: number): Promise<void> {
+    async closeFungibleCampaign(campaignAddress: string, campaignExpiryTime: number) {
         const params = new ContractFunctionParameters()
             .addString(campaignAddress)
             .addUint256(campaignExpiryTime);
 
         const memo = createTransactionMemo("closeFungibleCampaign");
-        await this.hederaContract.callContractWithStateChange("closeFungibleCampaign", params, memo);
+        const closeResponse = await this.hederaContract.callContractWithStateChange("closeFungibleCampaign", params, memo);
+        return closeResponse;
     }
 
     // Method to close a campaign with NFT tokens

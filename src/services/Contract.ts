@@ -8,8 +8,10 @@ import {
     ReceiptStatusError
 } from "@hashgraph/sdk";
 import prisma from "@shared/prisma";
-import { Interface, LogDescription, ethers } from "ethers";
+import { eventList } from "contractsV201";
+import { Interface, ethers } from "ethers";
 import hederaService from "./hedera-service";
+
 
 class HederaContract {
     private contract_id: string | undefined;
@@ -77,9 +79,12 @@ class HederaContract {
             const response = await query.execute(hederaService.hederaClient);
             const resultAsBytes = response.asBytes();
 
+            console.log("Contract_call_logs", response?.logs);
+
             const dataDecoded = this.decodeReturnData(fnName, response);
-            const eventLogs = this.captureEventLogs(fnName, response);
-            const data = { resultAsBytes, dataDecoded, eventLogs };
+            // const eventLogs = this.captureEventLogs(fnName, response);
+
+            const data = { resultAsBytes, dataDecoded };
 
             console.log(` - The Contract query result for **${fnName}** :: =>`, data);
 
@@ -112,16 +117,18 @@ class HederaContract {
             const record = await response.getRecord(hederaService.hederaClient);
             const result = record.contractFunctionResult;
 
+            console.log("Contract_call_logs", result?.logs);
+
             if (result) {
                 const resultAsBytes = result.asBytes();
                 const dataDecoded = this.decodeReturnData(functionName, result);
-                const eventLogs = this.captureEventLogs(functionName, result);
-                const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs, transactionId: record.transactionId.toString() };
+                // const eventLogs = this.captureEventLogs(functionName, result);
+                const data = { status: receipt.status, receipt, resultAsBytes, dataDecoded, transactionId: record.transactionId.toString() };
                 console.log(` - The Contract transaction status and data for **${functionName}** :: =>`, data);
                 return data;
             }
             console.log(` - The Contract transaction receipt and status for **${functionName}** :: =>`, { receipt, status: receipt.status });
-            return { status: receipt.status };
+            return { status: receipt.status, transactionId: record.transactionId.toString(), receipt };
         } catch (error) {
             if (error instanceof ReceiptStatusError) {
                 console.error("ReceiptStatusError:", error.message);
@@ -147,17 +154,40 @@ class HederaContract {
     }
 
     // Method to capture event logs using ethers.js ABI
-    private captureEventLogs(methodName: string, result: ContractFunctionResult): LogDescription[] {
-        const logs = result.logs.map((log: any) => {
-            try {
-                return this.abi.parseLog(log);
-            } catch (e) {
-                console.error(`Failed to parse event log for **${methodName}** :`, e);
-                return null;
-            }
-        });
-        return logs.filter(log => log !== null) as LogDescription[];
+    private captureEventLogs(methodName: string, result: ContractFunctionResult) {
+        const events = eventList[methodName];
+
+        if (events) {
+            const eventResult = result.logs.map((log) => {
+                let logStringHex = "0x".concat(Buffer.from(log.data).toString("hex"));
+
+                let logTopics: any = [];
+                log.topics.forEach((topic) => {
+                    logTopics.push("0x".concat(Buffer.from(topic).toString("hex")));
+                });
+
+                const event = this.decodeEvent(events[0], logStringHex, logTopics.slice(1));
+
+                return event;
+            });
+
+            console.log(` - The Contract event logs for **${methodName}** :: =>`, eventResult);
+
+            return eventResult;
+        }
+        return [];
     }
+
+    decodeEvent(eventName: string, log: string, topics: any[]) {
+        const event = this.abi.getEvent(eventName);
+        if (event) {
+            const decodedLog = this.abi.decodeEventLog(event, log, topics);
+            return decodedLog;
+        }
+        return []
+    }
+
+
 }
 
 export default HederaContract;

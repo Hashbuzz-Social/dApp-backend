@@ -10,7 +10,8 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { TransactionResponse } from "src/@types/networkResponses";
-import { getCampaignDetailsById } from "./campaign-service";
+import { claimDuration } from "./CloseCampaign";
+import { campaignLifecycleService } from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
 import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
@@ -93,36 +94,29 @@ export const allocateBalanceToCampaign = async (
   amounts: number,
   campaignerAccount: string,
   campaignAddress: string
-): Promise<{ contract_id: string; transactionId: string; receipt: any, status: string }> => {
+) => {
   logger.info("=========== AllocateBalanceToCampaign ===============");
   logger.info(`Start for campaign: ${JSONBigInt.stringify({ campaignId, campaignAddress })}`);
 
   try {
     const contractDetails = await provideActiveContract();
-
     if (!contractDetails || !contractDetails.contract_id) {
       throw new Error("Active contract ID not found");
     }
 
-    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-    const campaigner = AccountId.fromString(campaignerAccount);
-    logger.info(`Campaigner account: ${campaignerAccount}`);
-    logger.info(`Tiny amount to be added to contract: ${amounts}`);
+    const stateUppdateData = await campaignLifecycleService.addCampaign(campaignAddress, campaignerAccount, amounts)
 
-    const 
-   
-
-    // logger.info(`Finished with transaction ID :: ${exResult.transactionId.toString()}`);
-    // logger.info("============== Balance Allocation ends ===========");
-
+    if ('dataDecoded' in stateUppdateData && stateUppdateData.dataDecoded) {
+      const updatedBalance = stateUppdateData.dataDecoded[0];
+      logger.info(`Campaigner updated balance after campaign::${campaignAddress} created: ${Number(updatedBalance).toString()}`);
+    }
+    logger.info("============== Balance Allocation ends ===========");
     return {
       contract_id: campaignAddress,
-      transactionId: exResult.transactionId.toString(),
-      receipt,
-      status
+      ...stateUppdateData,
     };
   } catch (error: any) {
-    logger.err(`Error in allocateBalanceToCampaign:, ${error.message}, ${JSON.stringify({
+    logger.err(`Error in allocateBalanceToCampaign:, ${error.message}, ${JSONBigInt.stringify({
       campaignId,
       campaignerAccount,
       campaignAddress,
@@ -233,28 +227,16 @@ export const transferFungibleFromContractUsingSDK = async (intracterAccount: str
   }
 };
 
-export const closeCampaignSMTransaction = async (campingId: number | bigint, campaign: string) => {
-  const campaignDetails = await getCampaignDetailsById(campingId);
-  const { user_user, id, contract_id, name } = campaignDetails!;
+export const closeCampaignSMTransaction = async (campaign: string) => {
 
   const contractDetails = await provideActiveContract();
 
-  // if (contractDetails?.contract_id) {
-  console.log(campaignDetails, "---------");
-  if (contractDetails?.contract_id && user_user?.hedera_wallet_id && contract_id && name) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const campaigner = user_user?.hedera_wallet_id;
-    const campaignId = AccountId.fromString(campaigner);
+  if (contractDetails?.contract_id) {
+    const timeDuration = claimDuration * 60
 
-    const contractExBalTx = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(400000)
-      .setFunction("closeCampaign", new ContractFunctionParameters().addString(campaign).addUint256(600))
-      .setTransactionMemo("Hashbuzz close campaign operation for " + name);
+    const closeCampaignStateUpdate = await campaignLifecycleService.closeCampaign(campaign, timeDuration);
 
-    const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
-    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
-    return contractExecuteRx;
+    return closeCampaignStateUpdate;
   }
 };
 

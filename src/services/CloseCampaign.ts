@@ -1,18 +1,18 @@
-import { campaign_twittercard , campaignstatus as CampaignStatus } from "@prisma/client";
+import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { scheduleJob } from "node-schedule";
 import { perFormCampaignExpiryOperation } from "./campaign-service";
-import CampaignLifeCycleBase, { LYFCycleStages , CardOwner } from "./CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { LYFCycleStages, CardOwner } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";
 import hederaService from "./hedera-service";
 import { performAutoRewardingForEligibleUser } from "./reward-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import twitterCardService from "./twitterCard-service";
 
-const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
+export const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
 class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   protected date = new Date();
@@ -76,7 +76,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   private async makeSMTransactionForCloseHBARCampaign(card: campaign_twittercard) {
     if (card.id && card.contract_id) {
       logger.info("Sm transaction for close campaign operation HBAR::" + card.id);
-      await closeCampaignSMTransaction(card.id, card.contract_id);
+      await closeCampaignSMTransaction(card.contract_id);
     } else {
       throw new Error("Something went wrong with card data.");
     }
@@ -91,7 +91,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   private async makeSMTransactionForCloseFUNGIBLECampaign(card: campaign_twittercard) {
     if (card.owner_id && card.contract_id) {
       logger.info("Sm transaction for close campaign operation FUNGIBLE::" + card.id);
-      await closeFungibleAndNFTCampaign(card.fungible_token_id, card.owner_id.toString(), card.contract_id?.toString());
+      await closeFungibleAndNFTCampaign(card.contract_id?.toString());
     } else {
       throw new Error("Something went wrong with card data.");
     }
@@ -193,7 +193,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
         tweetText,
         parentTweetId: card.last_thread_tweet_id!,
       });
-      this.campaignCard = await this.updateCampaignCardToComplete(card.id, updateThread, CampaignStatus.RewardDistributionInProgress,campaignExpiryTimestamp);
+      this.campaignCard = await this.updateCampaignCardToComplete(card.id, updateThread, CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp);
       logger.info(`Successfully published reward announcement tweet thread for card ID: ${card.id}`);
       await this.updateCampaignStatus(card.contract_id!, "publishedTweetThread", true, LYFCycleStages.COMPLETED);
     } catch (err) {
