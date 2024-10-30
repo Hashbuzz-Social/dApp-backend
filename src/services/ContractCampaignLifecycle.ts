@@ -1,7 +1,7 @@
 import { ContractFunctionParameters, AccountId } from "@hashgraph/sdk";
 import { ethers } from "ethers";
-import HederaContract from "./Contract";// Adjust the import path as needed
-import { CampaignLifecycle } from "../../contractsV201"; // Adjust the import path as needed
+import HederaContract from "./Contract";
+import { CampaignLifecycle } from "../../contractsV201";
 
 const lifecycleAbi = CampaignLifecycle.abi as ethers.InterfaceAbi;
 
@@ -43,7 +43,7 @@ class ContractCampaignLifecycle {
     // Method to add a new fungible campaign
     async addFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenAmount: number): Promise<void> {
         const params = new ContractFunctionParameters()
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addInt64(tokenAmount);
@@ -55,7 +55,7 @@ class ContractCampaignLifecycle {
     // Method to add a new NFT campaign
     async addNFTCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenAmount: number): Promise<void> {
         const params = new ContractFunctionParameters()
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addInt64(tokenAmount);
@@ -110,7 +110,7 @@ class ContractCampaignLifecycle {
     // Method to reward intractors with fungible tokens
     async rewardIntractorsWithFungible(tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number, tokenType: number, receiversAddresses: string[], amounts: number[]): Promise<void> {
         const params = new ContractFunctionParameters()
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
             .addInt64(tokenTotalAmount)
@@ -125,7 +125,7 @@ class ContractCampaignLifecycle {
     // Method to expire a campaign with fungible tokens
     async expiryFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenType: number): Promise<void> {
         const params = new ContractFunctionParameters()
-            .addAddress(tokenId)
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addUint32(tokenType);
@@ -145,4 +145,5 @@ class ContractCampaignLifecycle {
     }
 }
 
+export const campaignLifecycleService = new ContractCampaignLifecycle();
 export default ContractCampaignLifecycle;
