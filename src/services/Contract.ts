@@ -1,11 +1,11 @@
 import {
-    AccountId,
     ContractCallQuery,
     ContractCreateFlow,
     ContractExecuteTransaction,
     ContractFunctionParameters,
     ContractFunctionResult,
-    ContractId
+    ContractId,
+    ReceiptStatusError
 } from "@hashgraph/sdk";
 import prisma from "@shared/prisma";
 import { Interface, LogDescription, ethers } from "ethers";
@@ -65,27 +65,37 @@ class HederaContract {
 
     // Contract Call Query Methods
     async callContractReadOnly(fnName: string, args: ContractFunctionParameters) {
-        if (!this.contract_id) {
-            throw new Error("Contract ID not found");
+        try {
+            if (!this.contract_id) {
+                throw new Error("Contract ID not found");
+            }
+            const query = new ContractCallQuery()
+                .setContractId(this.contract_id)
+                .setGas(30000) // Set an appropriate gas limit
+                .setFunction(fnName, args);
+
+            const response = await query.execute(hederaService.hederaClient);
+            const resultAsBytes = response.asBytes();
+
+            const dataDecoded = this.decodeReturnData(fnName, response);
+            const eventLogs = this.captureEventLogs(fnName, response);
+            const data = { resultAsBytes, dataDecoded, eventLogs };
+
+            console.log(` - The Contract query result for **${fnName}** :: =>`, data);
+
+            return data;
+        } catch (error) {
+            if (error instanceof ReceiptStatusError) {
+                console.error("ReceiptStatusError:", error.message);
+                // Handle the specific error
+            } else {
+                console.error("Unexpected error:", error.message);
+            }
+            throw error;
         }
-        const query = new ContractCallQuery()
-            .setContractId(this.contract_id)
-            .setGas(30000) // Set an appropriate gas limit
-            .setFunction(fnName, args);
-
-        const response = await query.execute(hederaService.hederaClient);
-        const resultAsBytes = response.asBytes();
-
-        const dataDecoded = this.decodeReturnData(fnName, response);
-        const eventLogs = this.captureEventLogs(fnName, response);
-        const data = { resultAsBytes, dataDecoded, eventLogs };
-
-        console.log(` - The Contract query result for **${fnName}** :: =>`, data);
-
-        return data;
     }
 
-    async callContractWithStateChange(functionName: string, args: ContractFunctionParameters, memo = "Hashbuzz contract trnsaction") {
+    async callContractWithStateChange(functionName: string, args: ContractFunctionParameters, memo = "Hashbuzz contract transaction") {
         if (!this.contract_id) {
             throw new Error("Contract ID not found");
         }
@@ -96,21 +106,32 @@ class HederaContract {
             .setFunction(functionName, args)
             .setTransactionMemo(memo);
 
-        const response = await transaction.execute(hederaService.hederaClient);
-        const receipt = await response.getReceipt(hederaService.hederaClient);
-        const record = await response.getRecord(hederaService.hederaClient);
-        const result = record.contractFunctionResult;
+        try {
+            const response = await transaction.execute(hederaService.hederaClient);
+            const receipt = await response.getReceipt(hederaService.hederaClient);
+            const record = await response.getRecord(hederaService.hederaClient);
+            const result = record.contractFunctionResult;
 
-        if (result) {
-            const resultAsBytes = result.asBytes();
-            const dataDecoded = this.decodeReturnData(functionName, result);
-            const eventLogs = this.captureEventLogs(functionName, result);
-            const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs, transactionId: record.transactionId.toString() };
-            console.log(` - The Contract transaction status and data for ** ${functionName}** :: =>`, data);
-            return data;
+            if (result) {
+                const resultAsBytes = result.asBytes();
+                const dataDecoded = this.decodeReturnData(functionName, result);
+                const eventLogs = this.captureEventLogs(functionName, result);
+                const data = { status: receipt.status, resultAsBytes, dataDecoded, eventLogs, transactionId: record.transactionId.toString() };
+                console.log(` - The Contract transaction status and data for **${functionName}** :: =>`, data);
+                return data;
+            }
+            console.log(` - The Contract transaction receipt and status for **${functionName}** :: =>`, { receipt, status: receipt.status });
+            return { status: receipt.status };
+        } catch (error) {
+            if (error instanceof ReceiptStatusError) {
+                console.error("ReceiptStatusError:", error.message);
+                // Handle the specific error
+            } else {
+                console.error("Unexpected error:", error.message);
+            }
+            throw error;
+
         }
-        console.log(` - The Contract transaction  receipt and status for **${functionName}** :: =>`, { receipt, status: receipt.status });
-        return { status: receipt.status };
     }
 
     // Method to decode return data using ethers.js

@@ -109,24 +109,11 @@ export const allocateBalanceToCampaign = async (
     logger.info(`Campaigner account: ${campaignerAccount}`);
     logger.info(`Tiny amount to be added to contract: ${amounts}`);
 
-    const contractExBalTx = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(10000000)
-      .setFunction(
-        "addCampaign",
-        new ContractFunctionParameters()
-          .addString(campaignAddress)
-          .addAddress(campaigner.toSolidityAddress())
-          .addUint256(amounts)
-      )
-      .setTransactionMemo(`Hashbuzz add balance to campaign account ${campaignAddress}`);
+    const 
+   
 
-    const exResult = await contractExBalTx.execute(hederaClient);
-    const receipt = await exResult.getReceipt(hederaClient);
-    const status = receipt.status.toString();
-
-    logger.info(`Finished with transaction ID :: ${exResult.transactionId.toString()}`);
-    logger.info("============== Balance Allocation ends ===========");
+    // logger.info(`Finished with transaction ID :: ${exResult.transactionId.toString()}`);
+    // logger.info("============== Balance Allocation ends ===========");
 
     return {
       contract_id: campaignAddress,
