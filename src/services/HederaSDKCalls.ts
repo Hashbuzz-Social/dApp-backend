@@ -13,6 +13,7 @@ import {
     TokenId,
 } from "@hashgraph/sdk";
 import hederaService from "./hedera-service";
+import { provideActiveContract } from "./smartcontract-service";
 
 const trasctionMemos = {
     "transferHbarUsingSDK": "ħbuzz_TSDK",
@@ -137,6 +138,42 @@ class HederaSDKCalls {
         return { status: transactionStatus, receipt, tokenId: params.tokenId }
     }
 
+    /**
+     *  Method to reward the intreactor
+     * @param intreactor  Hedera wallet address of the intractor example 0.0.12345
+     * @param amount Total amount in tinyHBAR to reward
+     * @param campaignAddress DB address of the campaign
+     */
+    async rewardIntractor(intreactor: string, amount: number, campaignAddress: string) {
+        const contractDetails = await provideActiveContract()
+        if (contractDetails?.contract_id)
+            return await this.transferHbarUsingSDK({
+                fromAccountId: contractDetails.contract_id,
+                toAccountId: intreactor,
+                amount,
+                memo: `ħbuzzReward_${intreactor}_${campaignAddress}`
+            });
+    }
+
+    /**
+     * 
+     * @param intreactor Hedera wallet address of the intractor example 0.0.12345
+     * @param amount total amount in tinyHBAR to reward
+     * @param campaignAddress DB address of the campaign
+     * @param tokenId Token address which is going to be rewarded example 0.0.12345
+     */
+    async rewardIntractorWithToken(intreactor: string, amount: number, campaignAddress: string, tokenId: string) {
+        const contractDetails = await provideActiveContract();
+        if (contractDetails?.contract_id) {
+            return await this.transferTokenUsingSDK({
+                fromAccountId: contractDetails.contract_id,
+                toAccountId: intreactor,
+                tokenId,
+                amount,
+                memo: `ħbuzzTokenReward_${intreactor}_${campaignAddress}`
+            });
+        }
+    }
 }
 
 

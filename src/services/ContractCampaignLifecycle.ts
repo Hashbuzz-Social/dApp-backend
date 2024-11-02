@@ -12,8 +12,8 @@ export const CampaignLifecycleCommandsMemo = {
     "closeCampaign": "ħbuzz_CLCV201_4",
     "closeFungibleCampaign": "ħbuzz_CLCV201_5",
     "closeNFTCampaign": "ħbuzz_CLCV201_6",
-    "rewardIntractors": "ħbuzz_CLCV201_7",
-    "rewardIntractorsWithFungible": "ħbuzz_CLCV201_8",
+    "adjustTotalReward": "ħbuzz_CLCV201_7",
+    "adjustTotalFungibleReward": "ħbuzz_CLCV201_8",
     "expiryFungibleCampaign": "ħbuzz_CLCV201_9",
     "expiryCampaign": "ħbuzz_CLCV201_10"
 };
@@ -100,35 +100,33 @@ class ContractCampaignLifecycle {
     }
 
     // Method to reward intractors with HBAR
-    async rewardIntractors(campaigner: string, campaignAddress: string, totalAmount: number, receiversAddresses: string[], amounts: number[]): Promise<void> {
+    async adjustTotalReward(campaigner: string, campaignAddress: string, totalAmount: number) {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
             .addUint256(totalAmount)
-            .addAddressArray(receiversAddresses.map(addr => AccountId.fromString(addr).toSolidityAddress()))
-            .addUint256Array(amounts);
 
-        const memo = createTransactionMemo("rewardIntractors");
-        await this.hederaContract.callContractWithStateChange("rewardIntractors", params, memo);
+        const memo = createTransactionMemo("adjustTotalReward");
+        const response = await this.hederaContract.callContractWithStateChange("adjustTotalReward", params, memo);
+        return response;
     }
 
     // Method to reward intractors with fungible tokens
-    async rewardIntractorsWithFungible(tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number, tokenType: number, receiversAddresses: string[], amounts: number[]): Promise<void> {
+    async adjustTotalFungibleReward(tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number, tokenType: number) {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
             .addInt64(tokenTotalAmount)
             .addUint32(tokenType)
-            .addAddressArray(receiversAddresses.map(addr => AccountId.fromString(addr).toSolidityAddress()))
-            .addUint256Array(amounts);
 
-        const memo = createTransactionMemo("rewardIntractorsWithFungible");
-        await this.hederaContract.callContractWithStateChange("rewardIntractorsWithFungible", params, memo);
+        const memo = createTransactionMemo("adjustTotalFungibleReward");
+        const response = await this.hederaContract.callContractWithStateChange("adjustTotalFungibleReward", params, memo);
+        return response;
     }
 
     // Method to expire a campaign with fungible tokens
-    async expiryFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenType: number): Promise<void> {
+    async expiryFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenType: number) {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
@@ -136,17 +134,20 @@ class ContractCampaignLifecycle {
             .addUint32(tokenType);
 
         const memo = createTransactionMemo("expiryFungibleCampaign");
-        await this.hederaContract.callContractWithStateChange("expiryFungibleCampaign", params, memo);
+        const expiryResponse = await this.hederaContract.callContractWithStateChange("expiryFungibleCampaign", params, memo);
+
+        return expiryResponse;
     }
 
     // Method to expire a campaign with HBAR
-    async expiryCampaign(campaignAddress: string, campaigner: string): Promise<void> {
+    async expiryCampaign(campaignAddress: string, campaigner: string) {
         const params = new ContractFunctionParameters()
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress());
 
         const memo = createTransactionMemo("expiryCampaign");
-        await this.hederaContract.callContractWithStateChange("expiryCampaign", params, memo);
+        const expiryResponse = await this.hederaContract.callContractWithStateChange("expiryCampaign", params, memo);
+        return expiryResponse;
     }
 }
 

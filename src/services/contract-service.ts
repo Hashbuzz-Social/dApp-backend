@@ -7,13 +7,14 @@ import {
   Hbar,
   TransferTransaction
 } from "@hashgraph/sdk";
-import { campaign_twittercard, user_user } from "@prisma/client";
+import { campaign_twittercard, network, user_user } from "@prisma/client";
 import hederaService from "@services/hedera-service";
 import BigNumber from "bignumber.js";
 import logger from "jet-logger";
 import { claimDuration } from "./CloseCampaign";
 import { campaignLifecycleService } from "./ContractCampaignLifecycle";
 import { provideActiveContract } from "./smartcontract-service";
+import { hederaSDKCallHandler } from "./HederaSDKCalls";
 const { hederaClient } = hederaService;
 
 export async function associateTokentoContract(tokenId: string) {
@@ -90,30 +91,12 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
 
   logger.info(`Fungible campaign expiry operation for card ::::  ${card.id}`);
 
-  if (contractDetails?.contract_id && card.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const addre1 = AccountId.fromString(cardOwner.hedera_wallet_id);
-    const tokenId = AccountId.fromString(card?.fungible_token_id as string);
+  if (contractDetails?.contract_id && card.contract_id && card?.fungible_token_id) {
+    const expiryCampaignStateUpdate = await campaignLifecycleService.expiryFungibleCampaign(card.fungible_token_id, cardOwner.hedera_wallet_id, card.contract_id, 1);
 
+    logger.info(`- Expiry campaign transaction status for card ${card.id} ::: ${expiryCampaignStateUpdate.status.toString()}`);
 
-    const closeCampaign = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(400000)
-      .setFunction(
-        "expiryFungibleCampaign",
-        new ContractFunctionParameters()
-          .addAddress(tokenId.toSolidityAddress())
-          .addString(card.contract_id)
-          .addAddress(addre1.toSolidityAddress())
-      );
-    const closeCampaignTx = await closeCampaign.execute(hederaClient);
-    const recipt = await closeCampaignTx.getReceipt(hederaClient);
-
-    const closeCampaignStaus = recipt.status;
-    const transactionId = recipt.scheduledTransactionId
-
-    logger.info(`- Expiry campaign transaction status for card ${card.id} ::: ${closeCampaignStaus}`);
-    return { staus: closeCampaignStaus, transactionId, recipt }
+    return expiryCampaignStateUpdate
   }
 }
 
@@ -127,82 +110,26 @@ export async function expiryCampaign(card: campaign_twittercard, cardOwner: user
   // check for  required coditions 
   if (contractDetails?.contract_id && cardOwner.hedera_wallet_id && card.contract_id) {
 
-    const addre1 = AccountId.fromString(cardOwner.hedera_wallet_id);
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
+    const campagnExpiryStatusUpdate = await campaignLifecycleService.expiryCampaign(card.contract_id, cardOwner.hedera_wallet_id);
+    logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${campagnExpiryStatusUpdate.status.toString()} `);
 
-    const closeCampaign = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(400000)
-      .setFunction(
-        "expiryCampaign",
-        new ContractFunctionParameters().addString(card.contract_id).addAddress(addre1.toSolidityAddress())
-      );
-
-    const trnsactionRespose = await closeCampaign.execute(hederaClient);
-    const transactionRecipt = await trnsactionRespose.getReceipt(hederaClient);
-
-    const transactionStatus = transactionRecipt.status;
-    const transactionId = transactionRecipt.scheduledTransactionId
-
-    logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${transactionStatus} `);
-
-    return { staus: transactionStatus, transactionId, recipt: transactionRecipt }
+    return campagnExpiryStatusUpdate;
   }
   else {
     throw new Error("User Or card details os incorrect")
   }
 }
 
-export async function distributeToken(tokenId: string, userId: string, amount: number, campaign: string) {
-
-  try {
-    const contractDetails = await provideActiveContract();
-    console.log("Inside distributed fungible token", tokenId, userId, amount);
-    if (contractDetails?.contract_id) {
-      const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-      const contract_id = AccountId.fromString(contractDetails?.contract_id)
-      const token_id = AccountId.fromString(tokenId)
-      const campaign_id = campaign;
-      const user1Account = AccountId.fromString(userId);
-
-      //Create the transfer transaction
-      const transaction = new TransferTransaction()
-        .addTokenTransfer(token_id, contract_id, -amount)
-        .addTokenTransfer(token_id, user1Account, amount);
-
-      //Sign with the client operator private key and submit to a Hedera network
-      const txResponse = await transaction.execute(hederaClient);
-
-      //Request the receipt of the transaction
-      const receipt = await txResponse.getReceipt(hederaClient);
-
-      //Obtain the transaction consensus status
-      const transactionStatus = receipt.status;
-
-      console.log("The transaction consensus status " + transactionStatus.toString());
-
-
-      const distribute = new ContractExecuteTransaction()
-        .setContractId(contractAddress)
-        .setGas(80000)
-        .setFunction(
-          "distributeFungible",
-          new ContractFunctionParameters()
-            .addAddress(token_id.toSolidityAddress())
-            .addAddress(user1Account.toSolidityAddress())
-            .addString(campaign_id)
-            .addInt64(new BigNumber(amount))
-        ).setTransactionMemo("Fungile reward distributed")
-
-      // const signdistribute = await distribute.freezeWith(client).sign(privateKey);
-      const submitTransfer = await distribute.execute(hederaClient);
-      const distributeRx = await submitTransfer.getReceipt(hederaClient);
-      const tokenStatus = distributeRx.status;
-      console.log(" - The transfer transaction status " + tokenStatus);
-      return Number(tokenStatus);
-    }
-  } catch (err) {
-    console.log(err, "Error")
-    // return err;
+export async function distributeTokenUsingSDK(params: { tokenId: string, userId: string, amount: number, campaign: string }) {
+  const { amount, userId, campaign, tokenId } = params;
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
+    const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(
+      userId,
+      amount,
+      campaign,
+      tokenId
+    )
+    return transactionRecipt;
   }
 }  

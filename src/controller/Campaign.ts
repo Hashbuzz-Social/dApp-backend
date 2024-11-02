@@ -357,7 +357,10 @@ export const rewardDetails = async (req: Request, res: Response) => {
 export const claimReward = async (req: Request, res: Response) => {
   const contractId = req.body.contract_id as string;
   const cardId = req.body.card_id as number;
-
-  const message = await claim(cardId, contractId, req.currentUser?.hedera_wallet_id);
-  return res.status(OK).json({ message });
+  if (req.currentUser?.hedera_wallet_id) {
+    const message = await claim(cardId, contractId, req.currentUser?.hedera_wallet_id);
+    return res.status(OK).json({ message });
+  } else {
+    return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
+  }
 };

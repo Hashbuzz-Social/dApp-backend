@@ -184,20 +184,21 @@ export const withdrawHbarFromContract = async (intracterAccount: string, amount:
   }
 };
 
-export const transferAmountFromContractUsingSDK = async (intracterAccount: string, amount: number, memo = "Reward payment from hashbuzz") => {
+export const transferAmountFromContractUsingSDK = async (params: {
+  /** Local DB address in string */
+  campaignAddress: string,
+  /** Total amount rewwarded to this user */
+  amount: number,
+  /** Wallet of intractor */
+  intractorWallet: string,
+}) => {
+  const { campaignAddress, amount, intractorWallet } = params;
   const contractDetails = await provideActiveContract();
-  amount = Math.round(amount) / 1e8;
+  const amountInHbar = Math.round(amount) / 1e8;
 
   if (contractDetails?.contract_id) {
-    const backupContract = contractDetails?.contract_id;
-    const backupContract1 = AccountId.fromString(backupContract);
-
-    const transferTx = new TransferTransaction().addHbarTransfer(backupContract1, -amount).addHbarTransfer(intracterAccount, amount).setTransactionMemo(memo).freezeWith(hederaClient);
-
-    const transferSign = await transferTx.sign(hederaService.operatorKey);
-    const transferSubmit = await transferSign.execute(hederaClient);
-    const transferRx = await transferSubmit.getReceipt(hederaClient);
-    return transferRx;
+    const recipt = await hederaSDKCallHandler.rewardIntractor(intractorWallet, amountInHbar, campaignAddress);
+    return recipt;
   }
 };
 
@@ -254,7 +255,13 @@ export const reimbursementAmount = async (params: { userId: number | bigint, amo
     const totalReimbersement = currentBalance - Number(userUpdatedBalance);
 
     const userData = await userService.topUp(userId, Number(userUpdatedBalance), "update");
-    const paymentTransaction = await transferAmountFromContractUsingSDK(accountId, totalReimbersement, "Reimbursement payment from hashbuzz");
+
+    const paymentTransaction = hederaSDKCallHandler.transferHbarUsingSDK({
+      fromAccountId: contractDetails.contract_id,
+      toAccountId: accountId,
+      amount: Math.round(totalReimbersement) / 1e8,
+      memo: "Reimbursement payment from hashbuzz",
+    })
 
     console.groupEnd();
     return {
