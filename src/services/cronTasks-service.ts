@@ -1,5 +1,5 @@
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
-import {campaignstatus as CampaignStatus} from "@prisma/client"
+import { campaignstatus as CampaignStatus } from "@prisma/client"
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
 import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
 import functions from "@shared/functions";
@@ -105,6 +105,9 @@ const autoCampaignClose = async () => {
 
   await Promise.all(runningTasks.map(async (task) => {
     if ((task.campaign_budget ?? 0) <= (task.amount_spent ?? 0)) {
+      await completeCampaignOperation(task);
+    }
+    if (task.campaign_close_time && new Date(task.campaign_close_time) < new Date()) {
       await completeCampaignOperation(task);
     }
   }));

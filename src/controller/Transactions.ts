@@ -80,7 +80,7 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
 };
 
 
-const createOrUpdateTransactionRecord = async (transactionId: string, response: string, amount: number, status: string) => {
+export const createOrUpdateTransactionRecord = async (transactionId: string, response: string, amount: number, status: string) => {
   const finddataByTransactionId = await prisma.transactions.findFirst({
     where: { transaction_id: transactionId },
   })

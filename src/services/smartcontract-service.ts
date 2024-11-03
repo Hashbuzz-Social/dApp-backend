@@ -5,6 +5,7 @@ import { contractAbi } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 import { getCampaignDetailsById } from "./campaign-service";
+import ContractUtils from "./ContractUtilsHandlers";
 
 const web3 = new Web3();
 // import JSONBigInt from "json-bigint";
@@ -262,13 +263,8 @@ export const queryBalance = async (address: string) => {
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const getBalance = new ContractCallQuery().setContractId(contractAddress).setGas(2000000).setFunction("getBalance", new ContractFunctionParameters().addAddress(address)).setQueryPayment(new Hbar(10));
-
-    const contractCallResult = await getBalance.execute(hederaClient);
-    const getBalanceRx = contractCallResult.getUint256();
-    console.log(" - The Balance of HBar token Campaigner " + getBalanceRx);
-    const balances = getBalanceRx.toString();
+    const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
+    const balances = await utilsHandlerService.getHbarBalance(address);
 
     return { balances };
   }
@@ -280,23 +276,9 @@ export const queryFungibleBalanceOfCampaigner = async (address: string, fungible
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-    const functionName = isNFT ? "getNFTBalance" : "getFungibleTokenBalance";
-    const getBalance = new ContractCallQuery()
-      .setContractId(contractAddress)
-      .setGas(500000) // Adjust gas limit as needed
-      .setFunction(functionName,
-        new ContractFunctionParameters()
-          .addAddress(address)
-          .addAddress(tokenId.toSolidityAddress()))
-      .setQueryPayment(new Hbar(10));
-
-    const contractCallResult = await getBalance.execute(hederaClient);
-    const getBalanceRx = contractCallResult.getUint256();
-    console.log(` - The Balance of ${isNFT ? 'NFT' : 'fungible token'} Campaigner: ` + getBalanceRx);
-    const balances = getBalanceRx.toString();
-
-    return balances;
+    const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
+    const balances = await utilsHandlerService.getFungibleTokenBalance(address, tokenId.toString());
+    return Number(balances);
   }
 };
 

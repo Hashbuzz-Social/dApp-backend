@@ -269,7 +269,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
         logger.info(`Smart contract transaction successful for fungible card ID: ${card.id}`);
 
         const transactionRecord = await this.createTransactionRecord({
-          transaction_data: JSON.parse(JSON.stringify(transactionDetails)),
+          transaction_data: JSONBigInt.parse(JSONBigInt.stringify(transactionDetails)),
           transaction_id: transactionDetails?.transactionId ?? "NA",
           status: transactionDetails?.status.toString() ?? "Not found",
           amount: Number(card.campaign_budget),

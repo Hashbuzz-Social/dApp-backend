@@ -24,10 +24,19 @@ export const taskEverySecond = cron.schedule(
   scheduleOptions
 );
 
+export const taskEvery2Minutes = cron.schedule(
+  "*/2 * * * *",
+  () => {
+    // Add functionality if needed
+    crontabService.checkForRepliesAndUpdateEngagementsData();
+  },
+  scheduleOptions
+)
+
 export const taskEvery5Minutes = cron.schedule(
   "*/5 * * * *",
   () => {
-    crontabService.checkForRepliesAndUpdateEngagementsData();
+    // crontabService.checkForRepliesAndUpdateEngagementsData();
   },
   scheduleOptions
 );

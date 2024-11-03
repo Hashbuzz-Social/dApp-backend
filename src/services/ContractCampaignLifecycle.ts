@@ -6,7 +6,7 @@ import { CampaignLifecycle } from "../../contractsV201";
 const lifecycleAbi = CampaignLifecycle.abi as ethers.InterfaceAbi;
 
 export const CampaignLifecycleCommandsMemo = {
-    "addCampaign": "ħbuzz_CLCV201_1",
+    "addCampaignOrTopUp": "ħbuzz_CLCV201_1",
     "addFungibleCampaign": "ħbuzz_CLCV201_2",
     "addNFTCampaign": "ħbuzz_CLCV201_3",
     "closeCampaign": "ħbuzz_CLCV201_4",
@@ -25,19 +25,23 @@ const createTransactionMemo = (functionName: keyof typeof CampaignLifecycleComma
 class ContractCampaignLifecycle {
     private hederaContract: HederaContract;
 
-    constructor() {
-        this.hederaContract = new HederaContract(lifecycleAbi);
+    constructor(contractId?: string) {
+        this.hederaContract = new HederaContract(lifecycleAbi, contractId);
     }
 
     // Method to add a new campaign
-    async addCampaign(campaignAddress: string, campaigner: string, amount: number) {
+    async addCampaignOrTopUp(campaignAddress: string, campaigner: string, amount: number) {
+        console.log("Addding campaign to the contract", { campaignAddress, campaigner, amount });
+        if (this.hederaContract.contract_id === undefined) {
+            throw new Error("Contract ID is undefined");
+        }
         const params = new ContractFunctionParameters()
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addUint256(amount);
 
-        const memo = createTransactionMemo("addCampaign");
-        const response = await this.hederaContract.callContractWithStateChange("addCampaign", params, memo);
+        const memo = createTransactionMemo("addCampaignOrTopUp");
+        const response = await this.hederaContract.callContractWithStateChange("addCampaignOrTopUp", params, memo);
         return response;
     }
 
@@ -50,8 +54,7 @@ class ContractCampaignLifecycle {
             .addInt64(tokenAmount);
 
         const memo = createTransactionMemo("addFungibleCampaign");
-        await this.hederaContract.callContractWithStateChange("addFungibleCampaign", params, memo);
-        const response = await this.hederaContract.callContractWithStateChange("addCampaign", params, memo);
+        const response = await this.hederaContract.callContractWithStateChange("addFungibleCampaign", params, memo);
         return response;
     }
 
@@ -100,7 +103,8 @@ class ContractCampaignLifecycle {
     }
 
     // Method to reward intractors with HBAR
-    async adjustTotalReward(campaigner: string, campaignAddress: string, totalAmount: number) {
+    async adjustTotalReward(props: { campaigner: string, campaignAddress: string, totalAmount: number }) {
+        const { campaigner, campaignAddress, totalAmount } = props;
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
@@ -112,13 +116,13 @@ class ContractCampaignLifecycle {
     }
 
     // Method to reward intractors with fungible tokens
-    async adjustTotalFungibleReward(tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number, tokenType: number) {
+    async adjustTotalFungibleReward(props: { tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number }) {
+        const { tokenId, campaigner, campaignAddress, tokenTotalAmount } = props;
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
-            .addInt64(tokenTotalAmount)
-            .addUint32(tokenType)
+            .addUint64(tokenTotalAmount)
 
         const memo = createTransactionMemo("adjustTotalFungibleReward");
         const response = await this.hederaContract.callContractWithStateChange("adjustTotalFungibleReward", params, memo);
@@ -126,7 +130,8 @@ class ContractCampaignLifecycle {
     }
 
     // Method to expire a campaign with fungible tokens
-    async expiryFungibleCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenType: number) {
+    async expiryFungibleCampaign(props: { tokenId: string, campaignAddress: string, campaigner: string, tokenType: number }) {
+        const { tokenId, campaignAddress, campaigner, tokenType } = props;
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)

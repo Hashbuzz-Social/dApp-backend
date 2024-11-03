@@ -10,8 +10,7 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { TransactionResponse } from "src/@types/networkResponses";
-import { claimDuration } from "./CloseCampaign";
-import { campaignLifecycleService } from "./ContractCampaignLifecycle";
+import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
 import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
@@ -103,8 +102,8 @@ export const allocateBalanceToCampaign = async (
     if (!contractDetails || !contractDetails.contract_id) {
       throw new Error("Active contract ID not found");
     }
-
-    const stateUppdateData = await campaignLifecycleService.addCampaign(campaignAddress, campaignerAccount, amounts)
+    const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
+    const stateUppdateData = await campaignLifecycleService.addCampaignOrTopUp(campaignAddress, campaignerAccount, amounts)
 
     if ('dataDecoded' in stateUppdateData && stateUppdateData.dataDecoded) {
       const updatedBalance = stateUppdateData.dataDecoded[0];
@@ -231,10 +230,12 @@ export const transferFungibleFromContractUsingSDK = async (intracterAccount: str
 export const closeCampaignSMTransaction = async (campaign: string) => {
 
   const contractDetails = await provideActiveContract();
+  const timeDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15) * 60;
+
+  console.log("Inside close campaign", { campaign, timeDuration });
 
   if (contractDetails?.contract_id) {
-    const timeDuration = claimDuration * 60
-
+    const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const closeCampaignStateUpdate = await campaignLifecycleService.closeCampaign(campaign, timeDuration);
 
     return closeCampaignStateUpdate;

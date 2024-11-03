@@ -14,16 +14,20 @@ import hederaService from "./hedera-service";
 
 
 class HederaContract {
-    private contract_id: string | undefined;
+    public contract_id: string | undefined;
     private abi: Interface;
 
-    constructor(abi: ethers.InterfaceAbi) {
+    constructor(abi: ethers.InterfaceAbi, contract_id?: string) {
         this.abi = new Interface(abi);
-        this.initializeContract(this.abi);
+        if (contract_id) {
+            this.contract_id = contract_id;
+        } else {
+            this.initializeContract();
+        }
 
     }
 
-    private async initializeContract(abi: ethers.Interface | ethers.InterfaceAbi) {
+    private async initializeContract() {
         const contract = await this.provideActiveContract();
         if (contract && contract.contract_id) {
             this.contract_id = contract.contract_id;
@@ -118,6 +122,7 @@ class HederaContract {
             const result = record.contractFunctionResult;
 
             console.log("Contract_call_logs", result?.logs);
+            console.log("Contract_call_result", result);
 
             if (result) {
                 const resultAsBytes = result.asBytes();

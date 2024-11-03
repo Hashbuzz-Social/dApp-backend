@@ -13,8 +13,8 @@ const transactionMemo = {
 class ContractUtils {
     private hederaContract: HederaContract;
 
-    constructor() {
-        this.hederaContract = new HederaContract(utilsAbi);
+    constructor(contractId?: string) {
+        this.hederaContract = new HederaContract(utilsAbi, contractId);
     }
 
     // Method to check if a token is whitelisted
@@ -81,6 +81,16 @@ class ContractUtils {
             .addUint32(2); // 2 for NFT
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getNFTTokenBalance", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
+        return dataDecoded[0];
+    }
+
+    async getHbarBalance(campaigner: string): Promise<number> {
+        const params = new ContractFunctionParameters().addAddress(AccountId.fromString(campaigner).toSolidityAddress());
+
+        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getHbarBalance", params);
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }

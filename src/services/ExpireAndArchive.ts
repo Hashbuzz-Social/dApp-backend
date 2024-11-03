@@ -1,6 +1,6 @@
 import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
 import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall } from "@services/contract-service";
-import { queryBalance as queryBalaceFromSM, queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
+import { queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { formattedDateTime } from "@shared/helper";
 import logger from "jet-logger";
@@ -54,28 +54,31 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
   private async handleHBARExpiry(card: campaign_twittercard, cardOwner: CardOwner) {
     try {
       logger.info(`Performing HBAR expiry for card ID: ${card.id}`);
-
+      let balances = 0;
       // Step 1: Smart Contract Transaction for HBAR expiry
       try {
-        await habrSMExpriryCampaignCall(card, cardOwner);
+        const expiryresponse = await habrSMExpriryCampaignCall(card, cardOwner);
+        if ('dataDecoded' in expiryresponse && expiryresponse.dataDecoded) {
+          balances = Number(expiryresponse.dataDecoded[0]);
+        }
         logger.info(`HBAR Smart Contract transaction successful for card ID: ${card.id}`);
       } catch (err) {
         throw new Error(`Failed to perform HBAR Smart Contract transaction: ${err.message}`);
       }
 
-      // Step 2: Query Balance from Smart Contract
-      let balances;
-      try {
-        balances = await queryBalaceFromSM(cardOwner.hedera_wallet_id);
-        logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id}`);
-      } catch (err) {
-        throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);
-      }
+      // // Step 2: Query Balance from Smart Contract
+      // let balances;
+      // try {
+      //   balances = await queryBalaceFromSM(cardOwner.hedera_wallet_id);
+      //   logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id}`);
+      // } catch (err) {
+      //   throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);
+      // }
 
       // Step 3: Update user balance
       try {
-        if (balances?.balances) {
-          await userService.topUp(cardOwner.id, parseInt(balances.balances), "update");
+        if (balances) {
+          await userService.topUp(cardOwner.id, balances, "update");
           logger.info(`Updated user balance for card owner ID: ${cardOwner.id}`);
         }
       } catch (err) {
@@ -128,12 +131,13 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
         await fungibleSMExpiryCall(card, cardOwner);
         logger.info(`FUNGIBLE Smart Contract transaction successful for card ID: ${card.id}`);
       } catch (err) {
+        console.log(err);
         throw new Error(`Failed to perform FUNGIBLE Smart Contract transaction: ${err.message}`);
       }
 
       // Step 2: Query Balance from Smart Contract
       try {
-        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id! , false));
+        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!, false));
         logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id} having balamce is:: ${camapigner_balances}`);
       } catch (err) {
         throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);

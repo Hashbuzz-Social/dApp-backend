@@ -53,7 +53,7 @@ export const handleGetUserBalances = (req: Request, res: Response, next: NextFun
   if (contractBal) {
     (async () => {
       const balances = await queryBalance(address);
-      if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, parseInt(balances.balances), "update");
+      if (req.currentUser?.id && balances?.balances) await userService.topUp(req.currentUser?.id, balances.balances, "update");
       logger.info(`Contract balance for the ${address} is::::- ${balances?.balances ?? 0}`);
       return res.status(OK).json(balances);
     })();
