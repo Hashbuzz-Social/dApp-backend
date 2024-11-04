@@ -103,10 +103,10 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @param {string} campaignExpiryTimestamp - The expiry timestamp of the campaign.
    * @param {string} contract_id - The ID of the contract.
    */
-  private scheduleJobForExpiry(cardId: number | bigint, campaignExpiryTimestamp: string, contract_id: string) {
+  private scheduleJobForExpiry(cardId: number | bigint, campaignExpiryTimestamp: string) {
     const expiryDate = new Date(campaignExpiryTimestamp);
     scheduleJob(expiryDate, () => {
-      perFormCampaignExpiryOperation(cardId, contract_id);
+      perFormCampaignExpiryOperation(cardId);
     });
     logger.info(`Reward expiry timestamp for campaign id::{${cardId}} scheduled at:: { ${expiryDate.toISOString()}}.`);
   }
@@ -200,7 +200,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
       throw new Error(`Failed to publish reward announcement tweet thread: ${err.message}`);
     }
 
-    this.scheduleJobForExpiry(card.id, campaignExpiryTimestamp, card.contract_id!);
+    this.scheduleJobForExpiry(card.id, campaignExpiryTimestamp);
     logger.info(`Scheduled job for expiry for card ID: ${card.id}`);
   }
 

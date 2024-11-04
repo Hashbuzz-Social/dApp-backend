@@ -11,6 +11,8 @@ import logger from "jet-logger";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import { provideActiveContract } from "./smartcontract-service";
+import JSONBigInt from "json-bigint";
+
 const { hederaClient } = hederaService;
 
 export async function associateTokentoContract(tokenId: string) {
@@ -93,12 +95,17 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
 
   if (contractDetails?.contract_id && card.contract_id && card?.fungible_token_id) {
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
-    const expiryCampaignStateUpdate = await campaignLifecycleService.expiryFungibleCampaign({
+
+    const props = {
       tokenId: card.fungible_token_id,
       campaignAddress: card.contract_id,
       campaigner: cardOwner.hedera_wallet_id,
       tokenType: 1
-    });
+    }
+
+    console.log("Inside expiry campaign", JSONBigInt.stringify(props));
+
+    const expiryCampaignStateUpdate = await campaignLifecycleService.expiryFungibleCampaign(props);
 
     logger.info(`- Expiry campaign transaction status for card ${card.id.toString()} ::: ${expiryCampaignStateUpdate.status.toString()}`);
 

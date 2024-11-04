@@ -63,7 +63,7 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 };
 
 
-export const perFormCampaignExpiryOperation = async (id: number | bigint, contract_id: string) => {
+export const perFormCampaignExpiryOperation = async (id: number | bigint) => {
   const expiryInstance = await CampaignExpiryOperation.create(id);
   await expiryInstance.performCampaignExpiryOperation();
 };
