@@ -51,7 +51,7 @@ class ContractCampaignLifecycle {
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addInt64(tokenAmount);
+            .addUint64(tokenAmount);
 
         const memo = createTransactionMemo("addFungibleCampaign");
         const response = await this.hederaContract.callContractWithStateChange("addFungibleCampaign", params, memo);
@@ -92,15 +92,7 @@ class ContractCampaignLifecycle {
         return closeResponse;
     }
 
-    // Method to close a campaign with NFT tokens
-    async closeNFTCampaign(campaignAddress: string, campaignExpiryTime: number): Promise<void> {
-        const params = new ContractFunctionParameters()
-            .addString(campaignAddress)
-            .addUint256(campaignExpiryTime);
 
-        const memo = createTransactionMemo("closeNFTCampaign");
-        await this.hederaContract.callContractWithStateChange("closeNFTCampaign", params, memo);
-    }
 
     // Method to reward intractors with HBAR
     async adjustTotalReward(props: { campaigner: string, campaignAddress: string, totalAmount: number }) {
@@ -130,13 +122,12 @@ class ContractCampaignLifecycle {
     }
 
     // Method to expire a campaign with fungible tokens
-    async expiryFungibleCampaign(props: { tokenId: string, campaignAddress: string, campaigner: string, tokenType: number }) {
-        const { tokenId, campaignAddress, campaigner, tokenType } = props;
+    async expiryFungibleCampaign(props: { tokenId: string, campaignAddress: string, campaigner: string }) {
+        const { tokenId, campaignAddress, campaigner } = props;
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addUint32(tokenType);
 
         const memo = createTransactionMemo("expiryFungibleCampaign");
         const expiryResponse = await this.hederaContract.callContractWithStateChange("expiryFungibleCampaign", params, memo);

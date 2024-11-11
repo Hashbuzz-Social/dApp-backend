@@ -18,9 +18,8 @@ class ContractUtils {
     }
 
     // Method to check if a token is whitelisted
-    async isTokenWhitelisted(tokenType: 1 | 2, tokenAddress: string): Promise<boolean> {
+    async isTokenWhitelisted(tokenAddress: string): Promise<boolean> {
         const params = new ContractFunctionParameters()
-            .addUint32(tokenType)
             .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress());
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("isTokenWhitelisted", params);
@@ -31,10 +30,9 @@ class ContractUtils {
     }
 
     // Method to associate a token
-    async associateToken(tokenAddress: string, tokenType: 1 | 2, isWhitelisted: boolean): Promise<Status> {
+    async associateToken(tokenAddress: string, isWhitelisted: boolean): Promise<Status> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress())
-            .addUint32(tokenType)
             .addBool(isWhitelisted);
 
         const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params, transactionMemo.associateToken);
@@ -42,8 +40,8 @@ class ContractUtils {
     }
 
     // Method to get all whitelisted tokens
-    async getAllWhitelistedTokens(tokenType: 1 | 2): Promise<string[]> {
-        const params = new ContractFunctionParameters().addUint32(tokenType);
+    async getAllWhitelistedTokens(): Promise<string[]> {
+        const params = new ContractFunctionParameters();
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getAllWhitelistedTokens", params);
         if (!dataDecoded) {
