@@ -288,8 +288,6 @@ export const claim = async (
       const totalRewardsTinyHbar = calculateTotalRewards(card, engagements);
       console.log(`Starting payment for user::${user?.personal_twitter_id} amount:: ${totalRewardsTinyHbar}`);
 
-      // Add fungible token reward
-      //tokenId: string, campaigner: string, campaignAddress: string, tokenTotalAmount: number, tokenType: number
       await campaignLifecycleService.adjustTotalFungibleReward({
         tokenId: campaignDetails.fungible_token_id,
         campaigner: user.hedera_wallet_id,

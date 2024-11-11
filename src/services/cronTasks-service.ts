@@ -96,7 +96,7 @@ const scheduleExpiryTasks = async () => {
 
   completedTasks.forEach(card => {
     const expiryDate = new Date(card.campaign_expiry!);
-    scheduleJob(expiryDate, () => perFormCampaignExpiryOperation(card.id, card.contract_id as string));
+    scheduleJob(expiryDate, () => perFormCampaignExpiryOperation(card.id));
   });
 };
 
@@ -164,7 +164,7 @@ const checkPreviousCampaignCloseTime = async () => {
     if (campaign.card_status === CampaignStatus.CampaignRunning) {
       await completeCampaignOperation(campaign);
     } else if (campaign.contract_id) {
-      await perFormCampaignExpiryOperation(campaign.id, campaign.contract_id);
+      await perFormCampaignExpiryOperation(campaign.id);
     }
   }));
 };

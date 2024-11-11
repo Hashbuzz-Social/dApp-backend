@@ -26,7 +26,7 @@ const checkAvailableTokens = async (accountId: string) => {
       console.log(`Additional token found in local DB ${additionalInLocal.length} and network associated ${additionalInNetwork.length}.`);
 
       // All fungible whitelisted tokens
-      const allContractAllowedTokens = await utilsHandlerService.getAllWhitelistedTokens(1); // Output will be EVM address
+      const allContractAllowedTokens = await utilsHandlerService.getAllWhitelistedTokens(); // Output will be EVM address
       console.log("All contract allowed tokens:", allContractAllowedTokens);
 
       const allContractAllowedTokenIds = allContractAllowedTokens.map(token =>
@@ -53,7 +53,7 @@ const checkAvailableTokens = async (accountId: string) => {
                 where: { id: localToken.id }
               });
             }
-            return utilsHandlerService.associateToken(token, 1, false);
+            return utilsHandlerService.associateToken(token, false);
           }));
           console.log("Tokens successfully disassociated.");
         } catch (error) {

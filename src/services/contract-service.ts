@@ -100,7 +100,6 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
       tokenId: card.fungible_token_id,
       campaignAddress: card.contract_id,
       campaigner: cardOwner.hedera_wallet_id,
-      tokenType: 1
     }
 
     console.log("Inside expiry campaign", JSONBigInt.stringify(props));

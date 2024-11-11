@@ -124,7 +124,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     }
 
     // Lodge in the contract.
-    const response = await utilsHandlerService.associateToken(tokenId, 1, true);
+    const response = await utilsHandlerService.associateToken(tokenId, true);
 
     if (response._code !== Status.Success._code) {
       return res.status(BAD_REQUEST).json({ message: "Token association SM update failed" });

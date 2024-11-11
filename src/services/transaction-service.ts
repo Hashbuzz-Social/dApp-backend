@@ -282,8 +282,7 @@ export const reimbursementFungible = async (params: { accountId: string, amounts
     const updatedTokenBalance = await contractTransactionHandler.reimburseBalanceForFungible(
       tokenId,
       accountId,
-      amount,
-      1
+      amount
     );
     // Total reimbursement
     const totalReimbersement = currentBalance - Number(updatedTokenBalance);
