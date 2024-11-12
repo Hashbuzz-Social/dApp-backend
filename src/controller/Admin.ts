@@ -1,7 +1,7 @@
 import { Status } from "@hashgraph/sdk";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
-import { utilsHandlerService } from "@services/ContractUtilsHandlers";
+import ContractUtils from "@services/ContractUtilsHandlers";
 import { hederaSDKCallHandler } from "@services/HederaSDKCalls";
 import { default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
@@ -122,7 +122,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     if (existingToken) {
       return res.status(BAD_REQUEST).json({ message: "Token already associated." });
     }
-
+    const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
     // Lodge in the contract.
     const response = await utilsHandlerService.associateToken(tokenId, true);
 

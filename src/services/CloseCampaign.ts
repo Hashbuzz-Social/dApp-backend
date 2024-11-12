@@ -119,7 +119,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @throws Will throw an error if any step in the process fails.
    */
   private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
-    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
+    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration + 1);
 
     try {
       await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "HBAR");
@@ -138,7 +138,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @throws Will throw an error if any step in the process fails.
    */
   private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
-    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration);
+    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration + 1);
 
     try {
       await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "FUNGIBLE");

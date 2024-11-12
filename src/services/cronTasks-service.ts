@@ -95,7 +95,7 @@ const scheduleExpiryTasks = async () => {
   });
 
   completedTasks.forEach(card => {
-    const expiryDate = new Date(card.campaign_expiry!);
+    const expiryDate = moment(card.campaign_expiry).add(1, 'minutes').toDate();
     scheduleJob(expiryDate, () => perFormCampaignExpiryOperation(card.id));
   });
 };
