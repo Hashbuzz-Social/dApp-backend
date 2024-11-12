@@ -27,7 +27,9 @@ export const handleCurrentUser = async (req: Request, res: Response, next: NextF
     const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
     const contractAddress = process.env.HASHBUZZ_CONTRACT_ADDRESS;
     const collecterAddress = process.env.HEDERA_ACCOUNT_ID;
-    if (currentUser) return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))), config: { contractAddress, collecterAddress } });
+    const campaignDuration = process.env.CAMPAIGN_DURATION;
+    const campaignRewardDuration = process.env.REWARD_CALIM_DURATION;
+    if (currentUser) return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))), config: { contractAddress, collecterAddress, campaignDuration, campaignRewardDuration } });
     else throw new ParamMissingError("No record for this id.");
   }
 };
