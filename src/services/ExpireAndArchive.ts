@@ -137,7 +137,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
 
       // Step 2: Query Balance from Smart Contract
       try {
-        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!, false));
+        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!));
         logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id} having balamce is:: ${camapigner_balances}`);
       } catch (err) {
         throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);

@@ -61,8 +61,7 @@ class ContractUtils {
     async getFungibleTokenBalance(campaigner: string, tokenId: string): Promise<number> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
-            .addUint32(1); // 1 for FUNGIBLE
+            .addAddress(AccountId.fromString(tokenId).toSolidityAddress());
 
         const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleTokenBalance", params);
         if (!dataDecoded) {

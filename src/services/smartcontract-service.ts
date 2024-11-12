@@ -270,14 +270,14 @@ export const queryBalance = async (address: string) => {
   }
 };
 
-export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string, isNFT: boolean) => {
-  address = AccountId.fromString(address).toSolidityAddress();
-  const tokenId = AccountId.fromString(fungible_tokenId);
+export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string) => {
+  // address = AccountId.fromString(address).toSolidityAddress();
+  // const tokenId = AccountId.fromString(fungible_tokenId);
 
   const contractDetails = await provideActiveContract();
   if (contractDetails?.contract_id) {
     const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
-    const balances = await utilsHandlerService.getFungibleTokenBalance(address, tokenId.toString());
+    const balances = await utilsHandlerService.getFungibleTokenBalance(address, fungible_tokenId);
     return Number(balances);
   }
 };
