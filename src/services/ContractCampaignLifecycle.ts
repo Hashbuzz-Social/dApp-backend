@@ -8,10 +8,8 @@ const lifecycleAbi = CampaignLifecycle.abi as ethers.InterfaceAbi;
 export const CampaignLifecycleCommandsMemo = {
     "addCampaignOrTopUp": "ħbuzz_CLCV201_1",
     "addFungibleCampaign": "ħbuzz_CLCV201_2",
-    "addNFTCampaign": "ħbuzz_CLCV201_3",
     "closeCampaign": "ħbuzz_CLCV201_4",
     "closeFungibleCampaign": "ħbuzz_CLCV201_5",
-    "closeNFTCampaign": "ħbuzz_CLCV201_6",
     "adjustTotalReward": "ħbuzz_CLCV201_7",
     "adjustTotalFungibleReward": "ħbuzz_CLCV201_8",
     "expiryFungibleCampaign": "ħbuzz_CLCV201_9",
@@ -58,18 +56,6 @@ class ContractCampaignLifecycle {
         return response;
     }
 
-    // Method to add a new NFT campaign
-    async addNFTCampaign(tokenId: string, campaignAddress: string, campaigner: string, tokenAmount: number): Promise<void> {
-        const params = new ContractFunctionParameters()
-            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
-            .addString(campaignAddress)
-            .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addInt64(tokenAmount);
-
-        const memo = createTransactionMemo("addNFTCampaign");
-        await this.hederaContract.callContractWithStateChange("addNFTCampaign", params, memo);
-    }
-
     // Method to close a campaign with HBAR
     async closeCampaign(campaignAddress: string, campaignExpiryTime: number) {
         const params = new ContractFunctionParameters()
@@ -91,8 +77,6 @@ class ContractCampaignLifecycle {
         const closeResponse = await this.hederaContract.callContractWithStateChange("closeFungibleCampaign", params, memo);
         return closeResponse;
     }
-
-
 
     // Method to reward intractors with HBAR
     async adjustTotalReward(props: { campaigner: string, campaignAddress: string, totalAmount: number }) {

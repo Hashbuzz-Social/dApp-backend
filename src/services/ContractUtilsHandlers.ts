@@ -36,7 +36,7 @@ class ContractUtils {
             .addBool(isWhitelisted);
 
         const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params, transactionMemo.associateToken);
-        return contractCallResponse.status
+        return contractCallResponse.status;
     }
 
     // Method to get all whitelisted tokens
@@ -70,20 +70,7 @@ class ContractUtils {
         return dataDecoded[0];
     }
 
-    // Method to get NFT token balance
-    async getNFTTokenBalance(campaigner: string, tokenId: string): Promise<number> {
-        const params = new ContractFunctionParameters()
-            .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
-            .addUint32(2); // 2 for NFT
-
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getNFTTokenBalance", params);
-        if (!dataDecoded) {
-            throw new Error("dataDecoded is null");
-        }
-        return dataDecoded[0];
-    }
-
+    // Method to get HBAR balance
     async getHbarBalance(campaigner: string): Promise<number> {
         const params = new ContractFunctionParameters().addAddress(AccountId.fromString(campaigner).toSolidityAddress());
 
@@ -105,7 +92,6 @@ class ContractUtils {
         return dataDecoded[0];
     }
 }
-
 
 export const utilsHandlerService = new ContractUtils();
 export default ContractUtils;

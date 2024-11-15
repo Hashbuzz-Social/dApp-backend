@@ -61,7 +61,7 @@ class ContractTransactions {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
-            .addUint64(tokenAmount);
+            .addUint256(tokenAmount); // Changed from addUint64 to addUint256
 
         const result = await this.hederaContract.callContractWithStateChange("addFungibleAmount", params, createTransactionMemo("addFungibleAmount", memo));
 
@@ -74,11 +74,11 @@ class ContractTransactions {
     }
 
     // Method to reimburse balance for fungible tokens
-    async reimburseBalanceForFungible(tokenId: string, campaigner: string, amount: number, memo?: string): Promise<number> {
+    async reimburseBalanceForFungible(tokenId: string, campaigner: string, amount: number, memo?: string): Promise<number | bigint> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addUint64(amount)
+            .addUint256(amount); // Changed from addUint64 to addUint256
 
         const result = await this.hederaContract.callContractWithStateChange("reimburseBalanceForFungible", params, createTransactionMemo("reimburseBalanceForFungible", memo));
         if ('dataDecoded' in result && result.dataDecoded) {
@@ -87,7 +87,6 @@ class ContractTransactions {
         throw new Error("Failed to decode data");
     }
 }
-
 
 export const contractTransactionHandler = new ContractTransactions();
 export default ContractTransactions;
