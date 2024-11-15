@@ -1,5 +1,5 @@
 {
-  "addCampaign": ["NewCampaignIsAdded"],
+  "addCampaignOrTopUp": ["NewCampaignIsAdded", "CampaignToppedUp"],
   "addFungibleCampaign": ["NewCampaignIsAdded"],
   "addNFTCampaign": ["NewCampaignIsAdded"],
   "closeCampaign": ["campaignClosed"],
