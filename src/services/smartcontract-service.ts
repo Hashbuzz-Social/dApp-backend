@@ -1,7 +1,6 @@
 import { AccountId, ContractCallQuery, ContractCreateFlow, ContractCreateTransaction, ContractExecuteTransaction, ContractFunctionParameters, ContractId, FileAppendTransaction, FileCreateTransaction, FileId, Hbar, Status } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import prisma from "@shared/prisma";
-import { contractAbi } from "@smartContract";
 import logger from "jet-logger";
 import Web3 from "web3";
 import { getCampaignDetailsById } from "./campaign-service";
@@ -225,33 +224,7 @@ export const addCampaigner = async (accountId: string, user_id?: bigint) => {
 };
 // export const addCampaigner;
 
-/**
- * Decodes the result of a contract's function execution
- * @param functionName the name of the function within the ABI
- * @param resultAsBytes a byte array containing the execution result
- */
-export function decodeFunctionResult(functionName: string, resultAsBytes: Uint8Array) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const functionAbi = contractAbi.find((func: { name: string }) => func.name === functionName);
-  const functionParameters = functionAbi.outputs;
-  const resultHex = "0x".concat(Buffer.from(resultAsBytes).toString("hex"));
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const result = web3.eth.abi.decodeParameters(functionParameters, resultHex);
-  return result;
-}
 
-/**
- * Encodes a function call so that the contract's function can be executed or called
- * @param functionName the name of the function to call
- * @param parameters the array of parameters to pass to the function
- */
-export function encodeFunctionCall(functionName: string, parameters: any[]) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const functionAbi = contractAbi.find((func: { name: string; type: string }) => func.name === functionName && func.type === "function");
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const encodedParametersHex = web3.eth.abi.encodeFunctionCall(functionAbi, parameters).slice(2);
-  return Buffer.from(encodedParametersHex, "hex");
-}
 
 /****
  * @description query balance from contract

@@ -3,7 +3,6 @@ dotenv.config();
 import "./pre-start"; // Must be the first import
 
 import crontabService from "@services/cronTasks-service";
-import { deployContractNew } from "@services/smartcontract-service";
 import { PrismaClient } from "@prisma/client";
 import server from "./server";
 import RedisClient from "@services/redis-servie";
@@ -65,7 +64,6 @@ process.on("SIGINT", gracefulShutdown);
 async function init() {
   await testPrismaConnection();
   await testRedisConnection();
-  await deployContractNew();
   await crontabService.checkPreviousCampaignCloseTime();
 
   const port = process.env.PORT || 3000;

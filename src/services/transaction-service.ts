@@ -2,7 +2,7 @@ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Cont
 import { Decimal } from "@prisma/client/runtime/library";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { encodeFunctionCall, provideActiveContract } from "@services/smartcontract-service";
+import { provideActiveContract } from "@services/smartcontract-service";
 import { sensitizeUserData, waitFor } from "@shared/helper";
 import { networkHelpers } from "@shared/NetworkHelpers";
 import prisma from "@shared/prisma";
@@ -153,35 +153,35 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
   }
 };
 
-export const withdrawHbarFromContract = async (intracterAccount: string, amount: number) => {
-  const contractDetails = await provideActiveContract();
-  amount = amount / Math.pow(10, 8);
+// export const withdrawHbarFromContract = async (intracterAccount: string, amount: number) => {
+//   const contractDetails = await provideActiveContract();
+//   amount = amount / Math.pow(10, 8);
 
-  console.log({
-    intracterAccount,
-    contract_id: contractDetails?.contract_id,
-    amount,
-    amounte8: amount * 1e8,
-  });
+//   console.log({
+//     intracterAccount,
+//     contract_id: contractDetails?.contract_id,
+//     amount,
+//     amounte8: amount * 1e8,
+//   });
 
-  if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-    const IntractorAddress = AccountId.fromString(intracterAccount).toSolidityAddress();
+//   if (contractDetails?.contract_id) {
+//     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
+//     const IntractorAddress = AccountId.fromString(intracterAccount).toSolidityAddress();
 
-    //   //!! BUILD Parameters
-    const functionCallAsUint8Array = encodeFunctionCall("callHbarToPayee", [IntractorAddress, Math.round(amount * 1e8)]);
+//     //   //!! BUILD Parameters
+//     const functionCallAsUint8Array = encodeFunctionCall("callHbarToPayee", [IntractorAddress, Math.round(amount * 1e8)]);
 
-    const contractExBalTx = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setFunctionParameters(functionCallAsUint8Array)
-      .setTransactionMemo("Hashbuzz rewarding to intractor with adderss" + intracterAccount)
-      .setGas(1000000);
+//     const contractExBalTx = new ContractExecuteTransaction()
+//       .setContractId(contractAddress)
+//       .setFunctionParameters(functionCallAsUint8Array)
+//       .setTransactionMemo("Hashbuzz rewarding to intractor with adderss" + intracterAccount)
+//       .setGas(1000000);
 
-    const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
-    const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
-    return contractExecuteRx;
-  }
-};
+//     const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
+//     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
+//     return contractExecuteRx;
+//   }
+// };
 
 export const transferAmountFromContractUsingSDK = async (params: {
   /** Local DB address in string */

@@ -1,9 +1,7 @@
- import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, PrivateKey, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
 import hederaService from "@services/hedera-service";
 import { nodeURI } from "@shared/helper";
 import prisma from "@shared/prisma";
-import { logicalContractAbi } from "@smartContract";
-import { BigNumber } from "bignumber.js";
 import Web3 from "web3";
 import { provideActiveContract } from "./smartcontract-service";
 
@@ -95,43 +93,6 @@ const associateTokenToContract = async (tokenId: string) => {
   }
 };
 
-const updateTokenTopupBalanceToContract = async (payerId: string, amount: number, token_id: string) => {
-  console.log("updateTokenTopupBalanceToContract::->", { payerId, amount, token_id });
-  const contractDetails = await provideActiveContract();
-
-  //if a active contract is available for interaction
-  if (contractDetails?.contract_id) {
-    console.log(contractDetails?.contract_id)
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const payerAddress = AccountId.fromString(payerId);
-    const tokenAddress = AccountId.fromString(token_id);
-    const topupAmount = new BigNumber(amount);
-
-    const key = PrivateKey.fromString("0c10a01a0d19ea6a48a9ecd20180762a161c7c43dc11772f92e27bfa07afa93f");
-    const transferToken = new ContractExecuteTransaction()
-    .setContractId(contractAddress)
-    .setGas(2000000)
-    .setFunction(
-      "transferTokenToContract",
-      new ContractFunctionParameters()
-        .addAddress(tokenAddress.toSolidityAddress())
-        .addAddress(payerAddress.toSolidityAddress())
-        .addInt64(topupAmount)
-    );
-  const transferTokenSign = await transferToken
-    .freezeWith(hederaClient)
-    .sign(key);
-
-  const transferTokenTx = await transferTokenSign.execute(hederaClient);
-  const transferTokenRx = await transferTokenTx.getReceipt(hederaClient);
-  const tokenStatus = transferTokenRx.status;
-  console.log(" - The transfer transaction status " + tokenStatus);
-
-  return tokenStatus
-
-  }
-};
-
 const getEntityDetailsByTokenId = async (token_id: string) => {
   const entityData = await prisma.whiteListedTokens.findUnique({ where: { token_id } });
   return entityData;
@@ -148,5 +109,5 @@ const getTokenDetails = async (tokenID: string): Promise<any> => {
   return data;
 };
 
-export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId, updateTokenTopupBalanceToContract , getTokenDetails };
+export default { getTokenInfo, associateTokenToContract, getEntityDetailsByTokenId, getTokenDetails };
 
