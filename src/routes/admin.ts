@@ -11,6 +11,8 @@ import {
   handleUpdateCard,
   handleUpdatePasswordReq,
   handleWhiteListToken,
+  handleGetTrailsettters,
+  updateTrailsettersData
 } from "@controller/Admin";
 import { handleGetAllUser } from "@controller/User";
 import userInfo from "@middleware/userInfo";
@@ -115,13 +117,16 @@ router.get("/active-contract", handleActiveContractInfoReq);
 
 router.get("/campaign-logs/:id", handleGetCmapingLogs);
 
-router.post("/user/all" , handleGetAllUser);
-router.patch("/user/allowCampaigner" , handleAllowAsCampaigner);
-router.get('campaigns/all',  )
+router.post("/user/all", handleGetAllUser);
+router.patch("/user/allowCampaigner", handleAllowAsCampaigner);
+router.get('campaigns/all',)
 
 
-router.patch('/biz-handle' , body("userId").isNumeric() , checkErrResponse ,  handleDeleteBizHanlde)
+router.patch('/biz-handle', body("userId").isNumeric(), checkErrResponse, handleDeleteBizHanlde)
 
-router.patch('/personal-handle' , body("userId").isNumeric() , checkErrResponse , handleDeletePerosnalHanlde)
+router.patch('/personal-handle', body("userId").isNumeric(), checkErrResponse, handleDeletePerosnalHanlde)
+
+router.get("/trailsetters", handleGetTrailsettters)
+router.put("/trailsetters", body("accounts").isArray(), checkErrResponse, updateTrailsettersData)
 
 export default router;
