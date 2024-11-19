@@ -22,7 +22,7 @@ import responseFormatter from "./config/responseFormatter";
 
 // Constants
 const app = express();
-const GITHUB_REPO = process.env.GITHUB_REPO || "owner/repo"; // Replace with your repo
+const GITHUB_REPO = process.env.REPO || "owner/repo"; // Replace with your repo
 
 // Enhanced CORS options to include credentials
 const corsOptions: cors.CorsOptions = {
@@ -95,8 +95,8 @@ app.use(swaggerSession); // Apply session middleware globally
 passport.use(
   new GitHubStrategy(
     {
-      clientID: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientID: process.env.REPO_CLIENT_ID!,
+      clientSecret: process.env.REPO_CLIENT_SECRET!,
       callbackURL: `${process.env.TWITTER_CALLBACK_HOST ?? "http://localhost:4000"}/auth/github/callback`,
     },
     async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
