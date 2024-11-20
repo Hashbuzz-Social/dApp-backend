@@ -28,6 +28,9 @@ jobs:
             sudo apt-get update
             cd hashbuzz-dev/dApp-backend
             git pull origin staging
-            npm install
-            npm run db:push
-            npm run build
+            # Check if npm is in PATH and print node and npm versions
+            echo "Node version: $(node -v)" 
+            echo "NPM version: $(npm -v)"
+            /usr/bin/npm install 
+            /usr/bin/npm run db:push 
+            /usr/bin/npm run build
