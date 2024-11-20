@@ -27,9 +27,7 @@ jobs:
           script: |
             sudo apt-get update
             cd hashbuzz-dev/dApp-backend
-            eval "$(ssh-agent -s)" echo "${{ secrets.SSH_PASSPHRASE }}" | ssh-add ~/.ssh/hello_hashbuzz
-            git pull hashbuzz:staging 
-            echo "${{ secrets.SSH_PASSPHRASE }}"
+            git pull origin staging
             npm install
             npm run db:push
             npm run build
