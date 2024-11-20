@@ -9,56 +9,19 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      HEDERA_PRIVATE_KEY: ${{ secrets.HEDERA_PRIVATE_KEY }}
-      TWITTER_APP_USER_TOKEN: ${{ secrets.TWITTER_APP_USER_TOKEN }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      HASHBUZZ_ACCESS_TOKEN: ${{ secrets.HASHBUZZ_ACCESS_TOKEN }}
-      HASHBUZZ_ACCESS_SECRET: ${{ secrets.HASHBUZZ_ACCESS_SECRET }}
-      OPEN_AI_KEY: ${{ secrets.OPEN_AI_KEY }}
-      J_ACCESS_TOKEN_SECRET: ${{ secrets.J_ACCESS_TOKEN_SECRET }}
-      J_REFRESH_TOKEN_SECRET: ${{ secrets.J_REFRESH_TOKEN_SECRET }}
-      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-      REPO_CLIENT_ID: ${{ secrets.REPO_CLIENT_ID }}
-      REPO_CLIENT_SECRET: ${{ secrets.REPO_CLIENT_SECRET }}
-      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-      NODE_ENV: ${{ vars.NODE_ENV }}
-      HEDERA_NETWORK: ${{ vars.HEDERA_NETWORK }}
-      HEDERA_PUBLIC_KEY: ${{ vars.HEDERA_PUBLIC_KEY }}
-      HEDERA_ACCOUNT_ID: ${{ vars.HEDERA_ACCOUNT_ID }}
-      REWARD_CALIM_DURATION: ${{ vars.REWARD_CALIM_DURATION }}
-      CAMPAIGN_DURATION: ${{ vars.CAMPAIGN_DURATION }}
-      TWITTER_CALLBACK_HOST: ${{ vars.TWITTER_CALLBACK_HOST }}
-      SELF_BRAND_HANDLE: ${{ vars.SELF_BRAND_HANDLE }}
-      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
-      HASHBUZZ_CONTRACT_ADDRESS: ${{ vars.HASHBUZZ_CONTRACT_ADDRESS }}
-      ADMIN_ADDRESS: ${{ vars.ADMIN_ADDRESS }}
-      GITHUB_REPO: ${{ vars.GITHUB_REPO }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "18"
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Access to digital ocean
         uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.DIGITALOCEAN_HOST }}
           username: ${{ secrets.DIGITALOCEAN_USERNAME }}
-          password: ${{ secrets.DIGITALOCEAN_PASSWORD }}
+          key: ${{ secrets.DIGITALOCEAN_SSH_KEY }}
           script: |
             cd hashbuzz-dev/dApp-backend
-            eval "$(ssh-agent -s)"                           # Start SSH agent
-            ssh-add ~/.ssh/hello_hashbuzz                    # Add the private SSH key to the agent
-            git pull hashbuzz:staging                        # Pull using the alias defined in SSH config
+            git pull origin staging
             npm install
             npm run db:push
             npm run build
