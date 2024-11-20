@@ -21,8 +21,9 @@ jobs:
           password: ${{ secrets.DIGITALOCEAN_PASSWORD }}
           script: |
             cd hashbuzz-dev/dApp-backend
-            git pull origin staging
+            eval "$(ssh-agent -s)"
+            ssh-add ~/.ssh/hello_hashbuzz 
+            git pull hashbuzz:staging 
             npm install
             npm run db:push
             npm run build
-            pm2 restart all
