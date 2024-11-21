@@ -25,12 +25,5 @@ jobs:
           username: ${{ secrets.DIGITALOCEAN_USERNAME }}
           password: ${{ secrets.DIGITALOCEAN_PASSWORD }}
           script: |
-            sudo apt-get update
-            cd hashbuzz-dev/dApp-backend
-            git pull origin staging
-            # Check if npm is in PATH and print node and npm versions
-            echo "Node version: $(node -v)" 
-            echo "NPM version: $(npm -v)"
-            /usr/bin/npm install 
-            /usr/bin/npm run db:push 
-            /usr/bin/npm run build
+            cd script
+            ./deploy.sh
