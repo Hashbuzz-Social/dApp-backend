@@ -1,7 +1,7 @@
 import { ContractFunctionParameters, AccountId } from "@hashgraph/sdk";
 import { ethers } from "ethers";
 import HederaContract from "./Contract";
-import { CampaignLifecycle } from "../../contractsV201";
+import { CampaignLifecycle } from "../contractsV201";
 
 const lifecycleAbi = CampaignLifecycle.abi as ethers.InterfaceAbi;
 

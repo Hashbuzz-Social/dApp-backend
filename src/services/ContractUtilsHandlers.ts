@@ -1,6 +1,6 @@
 import { AccountId, ContractFunctionParameters, Status } from "@hashgraph/sdk";
 import { ethers } from "ethers";
-import { Utils } from "../../contractsV201";
+import { Utils } from "../contractsV201";
 import HederaContract from "./Contract";
 
 const utilsAbi = Utils.abi as ethers.InterfaceAbi;

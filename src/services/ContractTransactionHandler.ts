@@ -1,5 +1,5 @@
 import HederaContract from "./Contract";
-import { Transactions } from "../../contractsV201";
+import { Transactions } from "../contractsV201";
 import { ethers } from "ethers";
 import { AccountId, ContractFunctionParameters } from "@hashgraph/sdk";
 

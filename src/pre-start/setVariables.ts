@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 
-const trailsetterAccoutsDataPath = path.join(__dirname, "../../.trailsetters/data.json");
+const trailsetterAccoutsDataPath = path.join(__dirname, "../.trailsetters/data.json");
 const trailsetterDaaDir = path.dirname(trailsetterAccoutsDataPath);
 
 if (!fs.existsSync(trailsetterDaaDir)) {

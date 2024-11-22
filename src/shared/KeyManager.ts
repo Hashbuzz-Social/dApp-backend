@@ -14,7 +14,7 @@ interface KeyPair {
 }
 
 // Path to Key Store
-const keyStorePath = path.join(__dirname, "../../.keys/keyStore.json");
+const keyStorePath = path.join(__dirname, "../.keys/keyStore.json");
 const keyStoreDir = path.dirname(keyStorePath);
 
 // Ensure the directory exists
@@ -27,7 +27,7 @@ let keyStore: KeyPair[] = [];
 
 if (fs.existsSync(keyStorePath)) {
     const data = fs.readFileSync(keyStorePath, "utf-8");
-    keyStore = JSON.parse(data);
+    keyStore = data.length > 0 ? JSON.parse(data) : [];
 } else {
     fs.writeFileSync(keyStorePath, JSON.stringify([]), "utf-8");
 }

@@ -8,7 +8,7 @@ import {
     ReceiptStatusError
 } from "@hashgraph/sdk";
 import prisma from "@shared/prisma";
-import { eventList } from "contractsV201";
+import { eventList } from "../contractsV201";
 import { Interface, ethers } from "ethers";
 import hederaService from "./hedera-service";
 
