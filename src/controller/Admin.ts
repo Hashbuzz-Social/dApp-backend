@@ -284,7 +284,7 @@ export const handleDeletePerosnalHanlde = async (req: Request, res: Response, ne
 export const handleGetTrailsettters = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Path to Key Store
-    const filePath = path.join(__dirname, "../../.trailsetters/data.json");
+    const filePath = path.join(__dirname, "../.trailsetters/data.json");
     const fileData = fs.readFileSync(filePath, 'utf8');
     const trailsettersData = fileData.length > 0 ? JSON.parse(fileData) : [];
     return res.status(OK).json(trailsettersData);
@@ -294,7 +294,7 @@ export const handleGetTrailsettters = async (req: Request, res: Response, next: 
 };
 
 export const updateTrailsettersData = async (req: Request, res: Response, next: NextFunction) => {
-  const filePath = path.join(__dirname, "../../.trailsetters/data.json");
+  const filePath = path.join(__dirname, "../.trailsetters/data.json");
   const fileData = fs.readFileSync(filePath, 'utf8');
 
   try {
