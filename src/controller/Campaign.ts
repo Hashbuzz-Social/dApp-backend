@@ -1,11 +1,9 @@
-/* eslint-disable max-len */
-import CampaignLifeCycleBase, { CampaignCommands, createCampaignParams } from "@services/CampaignLifeCycleBase";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
+import CampaignLifeCycleBase, { CampaignCommands, createCampaignParams } from "@services/CampaignLifeCycleBase";
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import { getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
-import { addFungibleAndNFTCampaign } from "@services/contract-service";
+import { addFungibleAndNFTCampaign, queryCampaignBalanceFromContract } from "@services/contract-service";
 import { claim, getRewardDetails } from "@services/reward-service";
-import { queryCampaignBalance } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
@@ -341,9 +339,12 @@ export const checkCampaignBalances = async (req: Request, res: Response, next: N
   const campaignId = req.query.campaignId as any as string;
   // console.log(typeof campaignId);
   const campaignDetails = await getCampaignDetailsById(parseInt(campaignId));
-  if (campaignDetails?.user_user?.hedera_wallet_id) {
-    const data = await queryCampaignBalance(campaignDetails.user_user.hedera_wallet_id, campaignDetails.id);
-    return res.status(OK).json(data);
+  if (campaignDetails?.contract_id) {
+    const balance = await queryCampaignBalanceFromContract(
+      campaignDetails.contract_id,
+      campaignDetails.fungible_token_id,
+    );
+    return res.status(OK).json({ balance });
   }
   return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
 };

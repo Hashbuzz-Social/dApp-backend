@@ -1,12 +1,10 @@
 import {
-  handleAddCampaigner,
   handleCampaignFundAllocation,
   handleCrateToupReq,
   handleGetActiveContract,
   handleReimbursement,
   handleTopUp,
 } from "@controller/Transactions";
-import userInfo from "@middleware/userInfo";
 import { checkErrResponse, checkWalletFormat, validateEntityObject, validateTransactionIdString } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body } from "express-validator";
@@ -59,7 +57,7 @@ router.post("/top-up", body("entity").custom(validateEntityObject), body("transa
  * @validator checkErrResponse
  * @handler handleAddCampaigner
  */
-router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, handleAddCampaigner);
+// router.post("/addCampaigner", body("walletId").custom(checkWalletFormat), checkErrResponse, handleAddCampaigner);
 
 /**
  * Get the active contract ID.

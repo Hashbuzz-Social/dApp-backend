@@ -15,10 +15,9 @@ import {
   getCampaignDetailsById,
   incrementClaimAmount,
 } from "./campaign-service";
-import { distributeTokenUsingSDK } from "./contract-service";
+import { distributeTokenUsingSDK, provideActiveContract } from "./contract-service";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { updatePaymentStatusToManyRecords } from "./engagement-servide";
-import { provideActiveContract } from "./smartcontract-service";
 import {
   transferAmountFromContractUsingSDK,
   updateCampaignBalance,

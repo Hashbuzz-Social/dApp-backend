@@ -1,9 +1,9 @@
 import { Status } from "@hashgraph/sdk";
 import { getCampaignDetailsById } from "@services/campaign-service";
+import { provideActiveContract } from "@services/contract-service";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
 import client from "@services/hedera-service";
 import htsServices from "@services/hts-services";
-import { addCampaigner, addUserToContractForHbar, provideActiveContract } from "@services/smartcontract-service";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, reimbursementFungible, updateBalanceToContract, updateFungibleAmountToContract, validateTransactionFormNetwork } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { ErrorWithCode } from "@shared/errors";
@@ -11,8 +11,8 @@ import { waitFor } from "@shared/helper";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statusCodes from "http-status-codes";
+import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
-import JSONBigInt from "json-bigint"
 
 const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } = statusCodes;
 
@@ -134,18 +134,7 @@ const handleValidatedTransaction = async (
     });
   }
 };
-/*****
- * @description Add campaign to smart contract handler.
- **/
-export const handleAddCampaigner = async (req: Request, res: Response, next: NextFunction) => {
-  const walletId: string = req.body.walletId;
 
-  const addWalletAddressToCampaign = await addCampaigner(walletId, req.currentUser?.id);
-  return res.status(CREATED).json(addWalletAddressToCampaign);
-
-};
-
-//===============================
 
 /****
  *

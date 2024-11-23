@@ -91,6 +91,16 @@ class ContractUtils {
         }
         return dataDecoded[0];
     }
+    // Method to get fungible token campaign balance
+    async getFungibleCampaignBalance(campaignAddress: string, tokenId: string): Promise<number> {
+        const params = new ContractFunctionParameters().addString(campaignAddress).addAddress(AccountId.fromString(tokenId).toSolidityAddress());
+
+        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleCampaignBalance", params);
+        if (!dataDecoded) {
+            throw new Error("dataDecoded is null");
+        }
+        return dataDecoded[0];
+    }
 }
 
 export const utilsHandlerService = new ContractUtils();

@@ -1,5 +1,4 @@
 import {
-  handleActiveContractInfoReq,
   handleAllowAsCampaigner,
   handleDeleteBizHanlde,
   handleDeletePerosnalHanlde,
@@ -24,6 +23,15 @@ import { IsStrongPasswordOptions } from "express-validator/src/options";
 const router = Router();
 
 const cardTypes = ["Pending", "Completed", "Running"];
+/**
+ * Configuration options for checking the strength of a password.
+ * 
+ * @property {number} minLength - Minimum length of the password.
+ * @property {number} minNumbers - Minimum number of numeric characters required.
+ * @property {number} minLowercase - Minimum number of lowercase alphabetic characters required.
+ * @property {number} minUppercase - Minimum number of uppercase alphabetic characters required.
+ * @property {number} minSymbols - Minimum number of special characters required.
+ */
 const passwordCheck: IsStrongPasswordOptions = {
   minLength: 8,
   minNumbers: 1,
@@ -113,7 +121,7 @@ router.get("/listed-tokens", handleGetAllWLToken);
  * @api GET /api/active-contract
  * @handler handleActiveContractInfoReq
  */
-router.get("/active-contract", handleActiveContractInfoReq);
+// router.get("/active-contract", handleActiveContractInfoReq);
 
 router.get("/campaign-logs/:id", handleGetCmapingLogs);
 

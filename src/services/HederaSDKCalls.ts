@@ -13,7 +13,7 @@ import {
     TokenId,
 } from "@hashgraph/sdk";
 import hederaService from "./hedera-service";
-import { provideActiveContract } from "./smartcontract-service";
+import { provideActiveContract } from "./contract-service";
 
 const trasctionMemos = {
     "transferHbarUsingSDK": "ħbuzz_TSDK",

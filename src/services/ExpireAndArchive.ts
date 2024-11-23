@@ -1,12 +1,11 @@
 import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
-import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall } from "@services/contract-service";
-import { queryFungibleBalanceOfCampaigner as queryFungibleBalaceFromSM } from "@services/smartcontract-service";
+import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall, queryFungibleBalanceOfCampaigner } from "@services/contract-service";
 import userService from "@services/user-service";
 import { formattedDateTime } from "@shared/helper";
+import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import CampaignLifeCycleBase, { CardOwner } from "./CampaignLifeCycleBase";
 import twitterCardService from "./twitterCard-service";
-import prisma from "@shared/prisma";
 
 /**
  * Class representing the campaign expiry operations.
@@ -137,7 +136,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
 
       // Step 2: Query Balance from Smart Contract
       try {
-        camapigner_balances = Number(await queryFungibleBalaceFromSM(cardOwner.hedera_wallet_id, card.fungible_token_id!));
+        camapigner_balances = Number(await queryFungibleBalanceOfCampaigner(cardOwner.hedera_wallet_id, card.fungible_token_id!));
         logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id} having balamce is:: ${camapigner_balances}`);
       } catch (err) {
         throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);

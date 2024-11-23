@@ -5,7 +5,6 @@ import ContractUtils from "@services/ContractUtilsHandlers";
 import { hederaSDKCallHandler } from "@services/HederaSDKCalls";
 import { default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
-import { getSMInfo, provideActiveContract } from "@services/smartcontract-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
@@ -18,6 +17,7 @@ import { isEmpty } from "lodash";
 import { TokenData } from "src/@types/networkResponses";
 import fs from 'fs';
 import path from 'path';
+import { provideActiveContract } from "@services/contract-service";
 
 const { OK, BAD_REQUEST, NOT_FOUND } = statuses;
 
@@ -179,12 +179,6 @@ export const handleGetAllWLToken = async (req: Request, res: Response, next: Nex
       data: JSONBigInt.parse(JSONBigInt.stringify(allTokens)),
     });
   }
-};
-
-export const handleActiveContractInfoReq = async (_: Request, res: Response, next: NextFunction) => {
-  const info = await getSMInfo();
-  if (info) return res.status(OK).json(info);
-  return res.status(BAD_REQUEST).json({ error: true });
 };
 
 export const handleGetCmapingLogs = async (req: Request, res: Response, next: NextFunction) => {

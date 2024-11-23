@@ -3,12 +3,11 @@ import { NextFunction, Request, Response } from "express";
 import StatusCodes from "http-status-codes";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
-
-import { queryBalance, queryFungibleBalanceOfCampaigner } from "@services/smartcontract-service";
 import userService from "@services/user-service";
 import { ParamMissingError } from "@shared/errors";
 import prisma from "@shared/prisma";
 import { validationResult } from "express-validator";
+import { queryBalance, queryFungibleBalanceOfCampaigner } from "@services/contract-service";
 
 const { OK, BAD_REQUEST } = StatusCodes;
 /**

@@ -1,11 +1,11 @@
-import { campaign_twittercard, user_user , campaignstatus as CampaignStatus } from "@prisma/client";
+import { campaign_twittercard, user_user, campaignstatus as CampaignStatus } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
-import { provideActiveContract } from "./smartcontract-service";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
 import moment from "moment"
+import { provideActiveContract } from "./contract-service";
 
 //types
 
@@ -115,7 +115,7 @@ interface PublishTweetParams {
 
 const publishTweetORThread = async (params: PublishTweetParams) => {
   const { cardOwner, tweetText, isThread, parentTweetId } = params;
-  if(tweetText.length > Number(process.env.ALLOWED_POST_CHAR ?? 280 )){
+  if (tweetText.length > Number(process.env.ALLOWED_POST_CHAR ?? 280)) {
     throw new Error("Long tweet text. Max allowed is 280 char long.")
   }
   if (cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret) {

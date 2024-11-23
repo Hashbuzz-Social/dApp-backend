@@ -2,7 +2,6 @@ import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Cont
 import { Decimal } from "@prisma/client/runtime/library";
 import hederaService from "@services/hedera-service";
 import signingService from "@services/signing-service";
-import { provideActiveContract } from "@services/smartcontract-service";
 import { sensitizeUserData, waitFor } from "@shared/helper";
 import { networkHelpers } from "@shared/NetworkHelpers";
 import prisma from "@shared/prisma";
@@ -14,6 +13,7 @@ import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
 import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
+import { provideActiveContract } from "./contract-service";
 
 const { hederaClient, operatorKey, operatorId } = hederaService;
 

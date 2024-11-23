@@ -3,7 +3,7 @@ import hederaService from "@services/hedera-service";
 import { nodeURI } from "@shared/helper";
 import prisma from "@shared/prisma";
 import Web3 from "web3";
-import { provideActiveContract } from "./smartcontract-service";
+import { provideActiveContract } from "./contract-service";
 
 const web3 = new Web3();
 

@@ -1,43 +1,51 @@
 import {
-  ContractCallQuery,
-  ContractExecuteTransaction,
-  ContractFunctionParameters,
-  ContractId,
-  Hbar
+  AccountId
 } from "@hashgraph/sdk";
 import { campaign_twittercard, user_user } from "@prisma/client";
 import hederaService from "@services/hedera-service";
+import prisma from "@shared/prisma";
 import logger from "jet-logger";
-import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
-import { hederaSDKCallHandler } from "./HederaSDKCalls";
-import { provideActiveContract } from "./smartcontract-service";
 import JSONBigInt from "json-bigint";
+import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
+import ContractUtils from "./ContractUtilsHandlers";
+import { hederaSDKCallHandler } from "./HederaSDKCalls";
 
-const { hederaClient } = hederaService;
 
-export async function associateTokentoContract(tokenId: string) {
-  const contractDetails = await provideActiveContract();
+// Function to provide the active contract details
+export const provideActiveContract = async () => {
+  const availableContracts = await prisma.smartcontracts.findMany({
+    where: {
+      is_active: true,
+      network: hederaService.network,
+    },
+  });
 
-  if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-    const token = ContractId.fromString(tokenId.toString())
-    const associateToken = new ContractExecuteTransaction()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "contractAssociate",
-        new ContractFunctionParameters().addAddress(token.toSolidityAddress())
-      );
-
-    const contractCallResult = await associateToken.execute(hederaClient);
-    const associateTokenRx = await contractCallResult.getReceipt(hederaClient);
-    const associateTokenStatus = associateTokenRx.status;
-    console.log(
-      " - The Contract associate transaction status:" + associateTokenStatus
-    );
+  if (availableContracts.length > 0) {
+    const { contract_id, contractAddress, logicalContract_id } = availableContracts[0];
+    return { contract_id, contractAddress, logicalContract_id };
+  } else {
+    console.info("No active contract found in records, Getting from env");
+    const contract_id_new = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+    if (contract_id_new) {
+      const contractData = await prisma.smartcontracts.create({
+        data: {
+          contractAddress: AccountId.fromString(contract_id_new).toSolidityAddress(),
+          contract_id: `${contract_id_new}`,
+          logicalContract_id: `${contract_id_new}`,
+          lcFileID: contract_id_new ?? "",
+          network: hederaService.network,
+          fileId: contract_id_new ?? "",
+          created_at: new Date().toISOString(),
+        },
+      });
+      return { contract_id: contractData.contract_id, contractAddress: contractData.contractAddress, logicalContract_id: contractData.logicalContract_id };
+    }
   }
+  return null;
 }
 
+
+// Function to add a fungible and NFT campaign
 export async function addFungibleAndNFTCampaign(tokenId: string, amount: number, user_id: string, campaign: string) {
   const contractDetails = await provideActiveContract();
 
@@ -45,14 +53,12 @@ export async function addFungibleAndNFTCampaign(tokenId: string, amount: number,
     console.log(tokenId, amount, user_id, "Inside fungible campaign");
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const addCampaignFungibleStateUpdate = await campaignLifecycleService.addFungibleCampaign(tokenId, campaign, user_id, amount);
-    console.log(
-      " - Add campaign transaction contractId: " +
-      (addCampaignFungibleStateUpdate).status.toString()
-    );
-    return addCampaignFungibleStateUpdate
+    console.log(" - Add campaign transaction contractId: " + addCampaignFungibleStateUpdate.status.toString());
+    return addCampaignFungibleStateUpdate;
   }
 }
 
+// Function to close a fungible and NFT campaign
 export async function closeFungibleAndNFTCampaign(campaign: string) {
   const contractDetails = await provideActiveContract();
   const expiryDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15) * 60;
@@ -61,33 +67,12 @@ export async function closeFungibleAndNFTCampaign(campaign: string) {
 
   if (contractDetails?.contract_id) {
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
-    const closeCampaignStateUpdate = campaignLifecycleService.closeFungibleCampaign(campaign, expiryDuration)
-    return closeCampaignStateUpdate
-  }
-}
-export async function getHbarCampaignBalance(campaignId: any) {
-  const contractDetails = await provideActiveContract();
-  if (contractDetails?.contract_id) {
-    const contractAddress = ContractId.fromString(contractDetails?.contract_id.toString());
-
-    const getBalance = new ContractCallQuery()
-      .setContractId(contractAddress)
-      .setGas(2000000)
-      .setFunction(
-        "getCampaignBalance",
-        new ContractFunctionParameters().addAddress(
-          campaignId.toSolidityAddress()
-        )
-      )
-      .setQueryPayment(new Hbar(10));
-
-    const contractCallResult = await getBalance.execute(hederaClient);
-    const getBalanceRx = contractCallResult.getUint256();
-    console.log(" - The Campaign Balance " + getBalanceRx);
-    return getBalanceRx;
+    const closeCampaignStateUpdate = campaignLifecycleService.closeFungibleCampaign(campaign, expiryDuration);
+    return closeCampaignStateUpdate;
   }
 }
 
+// Function to expire a fungible campaign
 export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwner: user_user) {
   const contractDetails = await provideActiveContract();
 
@@ -108,46 +93,85 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
 
     logger.info(`- Expiry campaign transaction status for card ${card.id.toString()} ::: ${expiryCampaignStateUpdate.status.toString()}`);
 
-    return expiryCampaignStateUpdate
+    return expiryCampaignStateUpdate;
   }
 }
 
+// Function to expire a campaign
 export async function expiryCampaign(card: campaign_twittercard, cardOwner: user_user) {
-
   logger.info(`SM transaction for update expiry status of card ::  ${card.id}`);
 
-  // get Active contract for transaction.
+  // Get active contract for transaction
   const contractDetails = await provideActiveContract();
 
-  // check for  required coditions 
+  // Check for required conditions
   if (contractDetails?.contract_id && cardOwner.hedera_wallet_id && card.contract_id) {
-
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const campagnExpiryStatusUpdate = await campaignLifecycleService.expiryCampaign(card.contract_id, cardOwner.hedera_wallet_id);
     logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${campagnExpiryStatusUpdate.status.toString()} `);
 
     return campagnExpiryStatusUpdate;
-  }
-  else {
-    throw new Error("User Or card details os incorrect")
+  } else {
+    throw new Error("User or card details are incorrect");
   }
 }
 
+// Function to distribute tokens using SDK
 export async function distributeTokenUsingSDK(params: { tokenId: string, userId: string, amount: number, campaign: string }) {
   try {
     const { amount, userId, campaign, tokenId } = params;
     const contractDetails = await provideActiveContract();
     if (contractDetails?.contract_id) {
-      const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(
-        userId,
-        amount,
-        campaign,
-        tokenId
-      )
+      const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(userId, amount, campaign, tokenId);
       return transactionRecipt;
     }
   } catch (error) {
-    logger.err(`Error in distributeTokenUsingSDK :: ${error}`)
-    throw new Error(error.message ?? "Error in distributeTokenUsingSDK")
+    logger.err(`Error in distributeTokenUsingSDK :: ${error}`);
+    throw new Error(error.message ?? "Error in distributeTokenUsingSDK");
   }
-}  
+}
+
+
+export const getSMInfo = async () => {
+  const activeContract = await provideActiveContract();
+  return activeContract;
+};
+
+export const queryCampaignBalanceFromContract = async (
+  campaignAddress: string,
+  tokenId: string | null = null,
+) => {
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
+    const contractUtils = new ContractUtils(contractDetails.contract_id);
+    if (tokenId) {
+      const balance = await contractUtils.getFungibleCampaignBalance(campaignAddress, tokenId);
+      return balance;
+    } else {
+      const balance = await contractUtils.getCampaignBalance(campaignAddress);
+      return balance;
+    }
+  }
+};
+
+export const queryFungibleBalanceOfCampaigner = async (address: string, fungible_tokenId: string) => {
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
+    const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
+    const balances = await utilsHandlerService.getFungibleTokenBalance(address, fungible_tokenId);
+    return Number(balances);
+  }
+};
+
+export const queryBalance = async (address: string) => {
+  // Execute the contract to check changes in state variable
+  address = AccountId.fromString(address).toSolidityAddress();
+
+  const contractDetails = await provideActiveContract();
+  if (contractDetails?.contract_id) {
+    const utilsHandlerService = new ContractUtils(contractDetails.contract_id);
+    const balances = await utilsHandlerService.getHbarBalance(address);
+
+    return { balances };
+  }
+};
