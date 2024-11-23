@@ -19,4 +19,10 @@ jobs:
         SSH_PASSWORD: ${{ secrets.DIGITALOCEAN_PASSWORD }}
         SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
       run: |
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" "ls -al /root/hashbuzz-dev/dApp-backend"
+        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << EOF
+          echo "Running 'ls -al' command..."
+          ls -al
+          echo "Running 'node --version' command..."
+          node --version
+        EOF
+
