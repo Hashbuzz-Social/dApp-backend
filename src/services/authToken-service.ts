@@ -62,28 +62,30 @@ export const genrateRefreshTokenEx = (params: CreateAstTokenParams) => {
  * @param payload [CreateAstTokenParams]
  * @returns token [JWT Token]
  */
-export const createAstToken = (payload: CreateAstTokenParams) => {
-  const currentKey = getCurrentKeyPair();
+export const createAstToken = async (payload: CreateAstTokenParams) => {
+  const currentKey = await getCurrentKeyPair();
 
-  const token = jwt.sign(
-    {
-      ...payload,
-      jti: uuidv4(), // Unique identifier for the token
-    },
-    currentKey.privateKey,
-    {
-      algorithm: "RS256",
-      expiresIn: "24h",
-      issuer: "hashbuzz.social",
-      audience: "hashbuzz-frontend",
-      header: {
-        kid: currentKey.kid, // Key Identifier
-        alg: "RS256", // Algorithm
+  if (currentKey) {
+    const token = jwt.sign(
+      {
+        ...payload,
+        jti: uuidv4(), // Unique identifier for the token
       },
-    }
-  );
+      currentKey.privateKey,
+      {
+        algorithm: "RS256",
+        expiresIn: "24h",
+        issuer: "hashbuzz.social",
+        audience: "hashbuzz-frontend",
+        header: {
+          kid: currentKey.kid, // Key Identifier
+          alg: "RS256", // Algorithm
+        },
+      }
+    );
 
-  return { token, kid: currentKey.kid };
+    return { token, kid: currentKey.kid };
+  }
 };
 
 /**
@@ -91,26 +93,28 @@ export const createAstToken = (payload: CreateAstTokenParams) => {
  * @param payload [CreateAstTokenParams]
  * @returns token [JWT Token]
  */
-export const genrateRefreshToken = (payload: CreateAstTokenParams): string => {
-  const currentKey = getCurrentKeyPair();
+export const genrateRefreshToken = async (payload: CreateAstTokenParams) => {
+  const currentKey = await getCurrentKeyPair();
 
-  const refreshToken = jwt.sign(
-    {
-      ...payload,
-      jti: uuidv4(),
-    },
-    currentKey.privateKey,
-    {
-      algorithm: "RS256",
-      expiresIn: "7d",
-      issuer: "hashbuzz.social",
-      audience: "hashbuzz-frontend",
-      header: {
-        kid: currentKey.kid,
-        alg: "RS256", // Algorithm
+  if (currentKey) {
+    const refreshToken = jwt.sign(
+      {
+        ...payload,
+        jti: uuidv4(),
       },
-    }
-  );
+      currentKey.privateKey,
+      {
+        algorithm: "RS256",
+        expiresIn: "7d",
+        issuer: "hashbuzz.social",
+        audience: "hashbuzz-frontend",
+        header: {
+          kid: currentKey.kid,
+          alg: "RS256", // Algorithm
+        },
+      }
+    );
 
-  return refreshToken;
+    return refreshToken;
+  }
 };

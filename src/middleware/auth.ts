@@ -66,7 +66,7 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
   try {
     const bearerToken = getBearerToken(req);
 
-    const { payload } = verifyAccessToken(bearerToken);
+    const { payload } = await verifyAccessToken(bearerToken);
     const { id, ts, accountId, signature } = payload;
 
     // Verify the signature of the payload

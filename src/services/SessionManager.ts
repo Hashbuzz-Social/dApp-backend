@@ -52,9 +52,9 @@ class SessionManager {
       const accAddress = AccountId.fromString(accountId).toSolidityAddress();
 
       const user = await this.upsertUserData(accAddress, accountId);
-      const { token, refreshToken, expiry, kid } = this.generateTokens(accountId, user.id.toString());
+      const { token, refreshToken, expiry, kid } = await this.generateTokens(accountId, user.id.toString()) || {};
 
-      await this.checkAndUpdateSession(user.id, deviceId, deviceType, ipAddress, userAgent, kid, expiry);
+      await this.checkAndUpdateSession(user.id, deviceId, deviceType, ipAddress, userAgent, kid!, expiry);
 
       // return res.created(resposeData, "Signature authenticated successfully");
       return res.status(OK).json({ message: "Login Successfully", auth: true, ast: token, refreshToken, deviceId: d_decrypt(deviceId) });
@@ -114,8 +114,8 @@ class SessionManager {
     });
   }
 
-  generateTokens(accountId: string, userId: string) {
-    const { token, kid } = this.createToken(accountId, userId);
+  async generateTokens(accountId: string, userId: string) {
+    const { token, kid } = await this.createToken(accountId, userId) || {};
     const refreshToken = this.createRefreshToken(accountId, userId);
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     return { token, refreshToken, expiry, kid };
@@ -171,10 +171,10 @@ class SessionManager {
         return res.status(UNAUTHORIZED).json({ message: "Invalid refresh token" });
       }
 
-      const { token: newToken, kid: newkid } = this.createToken(session.user_user.hedera_wallet_id, session.user_id.toString());
+      const { token: newToken, kid: newkid } = await this.createToken(session.user_user.hedera_wallet_id, session.user_id.toString()) || {};
       const newExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      await this.updateSession(session.id, newkid, newExpiry);
+      await this.updateSession(session.id, newkid!, newExpiry);
 
       return res.status(OK).json({ message: "Token refreshed successfully", ast: newToken });
     } catch (err) {
@@ -290,16 +290,16 @@ class SessionManager {
     return signingService.verifyData(payload, publicKey, base64ToUint8Array(signature));
   }
 
-  private createToken(accountId: string, id: string): { token: string; kid: string } {
+  private async createToken(accountId: string, id: string): Promise<{ token: string; kid: string } | undefined> {
     const ts = Date.now();
     const { signature } = signingService.signData({ ts, accountId });
-    return createAstToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
+    return await createAstToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
   }
 
-  private createRefreshToken(accountId: string, id: string): string {
+  private async createRefreshToken(accountId: string, id: string): Promise<string | undefined> {
     const ts = Date.now();
     const { signature } = signingService.signData({ ts, accountId });
-    return genrateRefreshToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
+    return await genrateRefreshToken({ id, ts, accountId, signature: Buffer.from(signature).toString("base64") });
   }
 }
 

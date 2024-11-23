@@ -1,9 +1,8 @@
 // src/keyManager.ts
-import fs from "fs";
-import path from "path";
 import { generateKeyPairSync } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import cron from "node-cron";
+import RedisClient from "@services/redis-servie";
 
 // Interface for Key Pair
 interface KeyPair {
@@ -13,32 +12,23 @@ interface KeyPair {
     createdAt: number; // Timestamp
 }
 
-// Path to Key Store
-const keyStorePath = path.join(__dirname, "../.keys/keyStore.json");
-const keyStoreDir = path.dirname(keyStorePath);
+// Initialize Redis client
+const redisClient = new RedisClient();
+redisClient.checkConnection().catch(console.error);
 
-// Ensure the directory exists
-if (!fs.existsSync(keyStoreDir)) {
-    fs.mkdirSync(keyStoreDir, { recursive: true });
-}
+// Function to save key store array to Redis
+const saveKeyStoreToRedis = async (keyStore: KeyPair[]) => {
+    await redisClient.create("authKeyStore", JSON.stringify(keyStore));
+};
 
-// Load existing keys or initialize empty array
-let keyStore: KeyPair[] = [];
-
-if (fs.existsSync(keyStorePath)) {
-    const data = fs.readFileSync(keyStorePath, "utf-8");
-    keyStore = data.length > 0 ? JSON.parse(data) : [];
-} else {
-    fs.writeFileSync(keyStorePath, JSON.stringify([]), "utf-8");
-}
-
-// Function to save key store
-const saveKeyStore = () => {
-    fs.writeFileSync(keyStorePath, JSON.stringify(keyStore, null, 2), "utf-8");
+// Function to load key store array from Redis
+const loadKeyStoreFromRedis = async (): Promise<KeyPair[]> => {
+    const keyStoreData = await redisClient.read("authKeyStore");
+    return keyStoreData ? JSON.parse(keyStoreData) : [];
 };
 
 // Function to generate a new RSA key pair
-const generateKeyPair = (): KeyPair => {
+const generateKeyPair = async (): Promise<KeyPair> => {
     const { publicKey, privateKey } = generateKeyPairSync("rsa", {
         modulusLength: 2048, // Key size in bits
         publicKeyEncoding: {
@@ -59,47 +49,54 @@ const generateKeyPair = (): KeyPair => {
         createdAt: Date.now(),
     };
 
+    const keyStore = await loadKeyStoreFromRedis();
     keyStore.push(keyPair);
-    saveKeyStore();
+    await saveKeyStoreToRedis(keyStore);
+
     console.log(`New key pair generated with kid: ${kid}`);
     return keyPair;
 };
 
-// Initialize by generating a key pair if none exist
-if (keyStore.length === 0) {
-    generateKeyPair();
-}
-
 // Function to get the current key pair (latest)
-export const getCurrentKeyPair = (): KeyPair => {
+export const getCurrentKeyPair = async (): Promise<KeyPair | null> => {
+    const keyStore = await loadKeyStoreFromRedis();
     const currentKey = keyStore[keyStore.length - 1];
     if (!currentKey) {
         console.warn("No key pair found! Rotating keys...");
-        rotateKeys();
-        return getCurrentKeyPair();
-    } else {
-        return currentKey;
+        await rotateKeys();
+        return await getCurrentKeyPair();
     }
+    return currentKey;
 };
 
 // Function to get public key by kid
-export const getPublicKey = (kid: string): string | undefined => {
+export const getPublicKey = async (kid: string): Promise<string | undefined> => {
+    const keyStore = await loadKeyStoreFromRedis();
     const key = keyStore.find((k) => k.kid === kid);
     return key?.publicKey;
 };
 
 // Function to rotate keys every 24 hours
-const rotateKeys = () => {
+const rotateKeys = async () => {
     console.log("Rotating keys...");
-    generateKeyPair();
+    await generateKeyPair();
     // Optionally remove old keys that are expired
     // Assuming JWT tokens are valid for 24 hours, keep keys for 48 hours
     const now = Date.now();
-    keyStore = keyStore.filter((key) => now - key.createdAt < 48 * 60 * 60 * 1000); // 48 hours
-    saveKeyStore();
+    const keyStore = await loadKeyStoreFromRedis();
+    const updatedKeyStore = keyStore.filter((key) => now - key.createdAt < 48 * 60 * 60 * 1000); // 48 hours
+    await saveKeyStoreToRedis(updatedKeyStore);
 };
 
 // Schedule key rotation every day at midnight
-cron.schedule("0 0 * * *", () => {
-    rotateKeys();
+cron.schedule("0 0 * * *", async () => {
+    await rotateKeys();
 });
+
+// Initialize by generating a key pair if none exist
+(async () => {
+    const keyStore = await loadKeyStoreFromRedis();
+    if (keyStore.length === 0) {
+        await generateKeyPair();
+    }
+})();

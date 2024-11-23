@@ -3,7 +3,7 @@ import { getPublicKey } from "@shared/KeyManager";
 import { CreateAstTokenParams } from "@services/authToken-service";
 
 // Function to verify Access Token
-export const verifyAccessToken = (token: string) => {
+export const verifyAccessToken = async (token: string) => {
     // Decode token header to get kid
     const decodedHeader = jwt.decode(token, { complete: true });
     if (!decodedHeader || typeof decodedHeader === "string") {
@@ -15,7 +15,7 @@ export const verifyAccessToken = (token: string) => {
         throw new Error("Access token is not valid or suspended");
     }
 
-    const publicKey = getPublicKey(kid);
+    const publicKey = await getPublicKey(kid);
     if (!publicKey) {
         throw new Error(`Keys is not found for: ${kid}`);
     }
@@ -31,7 +31,7 @@ export const verifyAccessToken = (token: string) => {
 };
 
 // Function to verify Refresh Token (similar to Access Token)
-export const verifyRefreshToken = (token: string): JwtPayload | string => {
+export const verifyRefreshToken = async (token: string): Promise<JwtPayload | string> => {
     // Decode token header to get kid
     const decodedHeader = jwt.decode(token, { complete: true });
     if (!decodedHeader || typeof decodedHeader === "string") {
@@ -43,7 +43,7 @@ export const verifyRefreshToken = (token: string): JwtPayload | string => {
         throw new Error("No kid found in token");
     }
 
-    const publicKey = getPublicKey(kid);
+    const publicKey = await getPublicKey(kid);
     if (!publicKey) {
         throw new Error(`Public key not found for kid: ${kid}`);
     }
