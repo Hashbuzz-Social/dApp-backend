@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Server Info</title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Hashbuzz API Server Info</h1>
+    </header>
+    <section class="info">
+      <h2>Version Information</h2>
+      <ul>
+        <li>Hashbuzz API version: <span id="api-version"><%= version %></span></li>
+      </ul>
+    </section>
+    <section class="details">
+      <h2>Additional Information</h2>
+      <p>For more details, visit our <a href="<%= appUri %>/api-docs">documentation</a>.</p>
+    </section>
+    <footer>
+      <p>&copy; 2024 API Server, All rights reserved.</p>
+    </footer>
+  </body>
+</html>
