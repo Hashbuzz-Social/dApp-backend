@@ -14,10 +14,7 @@ dotenv.config();
         const logFileName = `build_${version}_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
         const logFilePath = path.join(distPath, logFileName);
 
-        let existingKeys = [];
-
         await setupLogging();
-        existingKeys = await handleKeys();
 
         // Remove current build
         await logAndExecute("Removing current build", remove, distPath);
@@ -28,16 +25,6 @@ dotenv.config();
 
         // Copy back-end files
         await logAndExecute("Compiling TypeScript files", exec, "tsc --build tsconfig.prod.json", "./");
-
-        // Write existing keys if available
-        if (existingKeys.length > 0) {
-            const distKeytFolder = path.join("./dist", ".keys");
-            const distKeyStoreFile = path.join("./dist", ".keys", "keyStore.json");
-            // create file and folder and then write
-            await logAndExecute("Creating .keys folder in dist", createFolder, distKeytFolder);
-            await logAndExecute("Creating keyStore.json file in dist/.keys", createFile, distKeyStoreFile);
-            await logAndExecute("Writing existing keys", writeExistingKeys, path.join(distPath, ".keys", "keyStore.json"), JSON.stringify(existingKeys, null, 2));
-        }
 
         // Log the build
         await logBuild(logFilePath);
@@ -56,29 +43,6 @@ async function setupLogging() {
     await logAndExecute("Creating jet-logger.log file", createFile, jetLoggerFile);
 }
 
-async function handleKeys() {
-    const keysFolder = path.join("./", ".keys");
-    const keysFile = path.join(keysFolder, "keyStore.json");
-    const distKeyStoreFile = path.join("./dist/.keys", "keyStore.json");
-
-    await logAndExecute("Creating .keys folder", createFolder, keysFolder);
-    await logAndExecute("Creating keyStore.json file", createFile, keysFile);
-
-    if (await fs.pathExists(distKeyStoreFile)) {
-        const data = fs.readFileSync(distKeyStoreFile, "utf-8");
-        if (data) {
-            try {
-                console.log("Existing keys found:", data);
-                return JSON.parse(data);
-            } catch (err) {
-                console.error("Error parsing JSON data:", err);
-            }
-        } else {
-            console.log("No existing keys found");
-        }
-    }
-    return [];
-}
 
 function createFolder(folderPath: string): Promise<void> {
     if (fs.pathExistsSync(folderPath)) {
@@ -120,12 +84,6 @@ async function logBuild(logFilePath: string): Promise<void> {
     const logContent = `Build completed at ${new Date().toISOString()}`;
     await fs.outputFile(logFilePath, logContent);
     console.info(`Build log created at ${logFilePath}`);
-}
-
-async function writeExistingKeys(filePath: string, data: string): Promise<void> {
-    console.log("Writing existing keys to file");
-    // await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
-    fs.writeFileSync(filePath, data, "utf-8");
 }
 
 async function logAndExecute(description: string, fn: Function, ...args: any[]) {
