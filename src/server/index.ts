@@ -1,24 +1,25 @@
+import authRouter from "@routes/auth-router";
+import apiRouter from "@routes/index";
+import axios from "axios";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import helmet from "helmet";
-import { isHttpError } from "http-errors";
-import morgan from "morgan";
-import path from "path";
+import crypto from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import "express-async-errors";
-import swaggerJsdoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
+import rateLimit from "express-rate-limit";
+import session from "express-session";
+import fs from 'fs';
+import helmet from "helmet";
+import { isHttpError } from "http-errors";
+import logger from "jet-logger";
+import morgan from "morgan";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
-import axios from "axios";
-import authRouter from "@routes/auth-router";
-import logger from "jet-logger";
-import apiRouter from "@routes/index";
-import session from "express-session";
-import rateLimit from "express-rate-limit";
-import crypto from "crypto";
-import swaggerDefinition from "./config/swaggerDefinition";
+import path from "path";
+import swaggerJsdoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
 import responseFormatter from "./config/responseFormatter";
+import swaggerDefinition from "./config/swaggerDefinition";
 
 // Constants
 const app = express();
@@ -208,13 +209,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Front-end content
 const viewsDir = path.join(__dirname, "../views");
+app.set('view engine', 'ejs');
 app.set("views", viewsDir);
 
 const staticDir = path.join(__dirname, "../public");
 app.use(express.static(staticDir));
 
+// Read package.json
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf-8'));
+
 app.get("*", (_: Request, res: Response) => {
-  res.sendFile("index.html", { root: viewsDir });
+  res.render("index", { root: viewsDir, version: packageJson.version, appUri: process.env.FRONTEND_URL });
 });
 
 export default app;

@@ -11,3 +11,5 @@ Dockerfile
 .vscode
 /src/.keys
 /src/.trailsetters
+package-lock.json
+
