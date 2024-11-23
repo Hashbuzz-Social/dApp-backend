@@ -19,14 +19,5 @@ jobs:
         SSH_PASSWORD: ${{ secrets.DIGITALOCEAN_PASSWORD }}
         SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
       run: |
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << EOF
-          echo "Running 'ls -al /root/hashbuzz-dev/dApp-backend' command..."
-          ls -al /root/hashbuzz-dev/dApp-backend
-          echo "Exporting PATH for Node.js..."
-          export PATH=$PATH:/usr/local/bin
-          echo "Running 'npm --version' command..."
-          npm --version
-          echo "Running 'node --version' command..."
-          node --version
-        EOF
+        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" "/root/hashbuzz-dev/dApp-backend/scripts/deploy.sh"
 
