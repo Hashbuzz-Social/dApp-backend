@@ -21,8 +21,8 @@ jobs:
       run: |
         sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << EOF
           echo "Running 'ls -al' command..."
-          ls -al
+          ls -al hashbuzz-dev/dApp-backend
           echo "Running 'node --version' command..."
-          node --version
+          npm --version
         EOF
 
