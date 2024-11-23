@@ -15,8 +15,6 @@ const DEVICE_ID_REQUIRED_ERR = "Device Id is required";
 const ACCESS_DENIED_ERR = "Don't have necessary access for this route";
 const INVALID_SIGNATURE_TOKEN_ERR = "Invalid signature token";
 const SIGNING_MESSAGE_EXPIRED_ERR = "Signing message is expired";
-const ERROR_CHECKING_AUTH_TOKEN_ERR = "Error while checking auth token";
-const ERROR_VALIDATING_PAYLOAD_TOKEN_ERR = "Error while validating payload token";
 const ERROR_WHILE_FINDINF_DEVICE_ID = "Device id not found in request headers";
 
 const accessSecret = process.env.J_ACCESS_TOKEN_SECRET ?? "";
@@ -60,13 +58,12 @@ const deviceIdIsRequired = (req: Request, res: Response, next: NextFunction) => 
 
     return next();
   } catch (err) {
-    return next(err);
+    return next(new UnauthorizeError(AUTH_TOKEN_INVALID_ERR));
   }
 };
 
 const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
   try {
-
     const bearerToken = getBearerToken(req);
 
     const { payload } = verifyAccessToken(bearerToken);
@@ -97,7 +94,7 @@ const isHavingValidAst = async (req: Request, res: Response, next: NextFunction)
     return next();
   } catch (err) {
     console.error(err);
-    return next(new UnauthorizeError(ERROR_CHECKING_AUTH_TOKEN_ERR));
+    return next(new UnauthorizeError(AUTH_TOKEN_INVALID_ERR));
   }
 };
 
@@ -110,7 +107,7 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
       throw new UnauthorizeError(ACCESS_DENIED_ERR);
     }
   } catch (err) {
-    return next(err);
+    return next(new UnauthorizeError(AUTH_TOKEN_INVALID_ERR));
   }
 };
 
@@ -131,7 +128,7 @@ const havingValidPayloadToken = (req: Request, res: Response, next: NextFunction
       }
     });
   } catch (err) {
-    return next(new UnauthorizeError(ERROR_VALIDATING_PAYLOAD_TOKEN_ERR));
+    return next(new UnauthorizeError(AUTH_TOKEN_INVALID_ERR));
   }
 };
 
