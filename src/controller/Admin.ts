@@ -286,7 +286,7 @@ export const handleGetTrailsettters = async (req: Request, res: Response, next: 
     // Path to Key Store
     const filePath = path.join(__dirname, "../../.trailsetters/data.json");
     const fileData = fs.readFileSync(filePath, 'utf8');
-    const trailsettersData = JSON.parse(fileData);
+    const trailsettersData = fileData.length > 0 ? JSON.parse(fileData) : [];
     return res.status(OK).json(trailsettersData);
   } catch (err) {
     next(err);
@@ -298,7 +298,7 @@ export const updateTrailsettersData = async (req: Request, res: Response, next: 
   const fileData = fs.readFileSync(filePath, 'utf8');
 
   try {
-    const trailsettersData = JSON.parse(fileData);
+    const trailsettersData = fileData.length > 0 ? JSON.parse(fileData) : [];
     const updatedData = [...trailsettersData, ...req.body.accounts];
     fs.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf8');
     return res.status(OK).json({ message: 'Trailsetters data updated successfully', data: updatedData });
