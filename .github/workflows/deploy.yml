@@ -20,9 +20,13 @@ jobs:
         SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
       run: |
         sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << EOF
-          echo "Running 'ls -al' command..."
-          ls -al hashbuzz-dev/dApp-backend
-          echo "Running 'node --version' command..."
+          echo "Running 'ls -al /root/hashbuzz-dev/dApp-backend' command..."
+          ls -al /root/hashbuzz-dev/dApp-backend
+          echo "Exporting PATH for Node.js..."
+          export PATH=$PATH:/usr/local/bin
+          echo "Running 'npm --version' command..."
           npm --version
+          echo "Running 'node --version' command..."
+          node --version
         EOF
 
