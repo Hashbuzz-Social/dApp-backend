@@ -1,35 +1,51 @@
-# Use the official Node.js 18 Alpine image as the base image
-FROM node:18-alpine as build
+# Build Stage
+FROM node:18-alpine AS build
 
-# Set the working directory inside the container
+# Specify where our app will live in the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install dependencies
+# Copy the node App to the container
+COPY . /app/
+
 RUN npm install
 
-# Copy the rest of the application code to the working directory
-COPY . .
 
 # Set environment variables
-ENV NODE_ENV="docker"
-ENV JET_LOGGER_MODE="FILE"
-ENV JET_LOGGER_FILEPATH="jet-logger.log"
-ENV JET_LOGGER_TIMESTAMP="TRUE"
-ENV JET_LOGGER_FORMAT="LINE"
-ENV PORT=4000
-ENV HEDERA_NETWORK="mainnet"
-ENV REWARD_CALIM_HOUR=48
-ENV TWITTER_CALLBACK_HOST="http://apiV-v1.hashbuzz.social"
-ENV TWITTER_ADMIN_USERNAMES="Ashh20x omprakashMahua"
-ENV SELF_BRAND_HANDLE="hbuzzs"
-ENV FRONTEND_URL="http://hashbuzz.social/dashboard"
-ENV HASHBUZZ_CONTRACT_ADDRESS="0.0.4323686"
+ENV JET_LOGGER_MODE=FILE \
+    JET_LOGGER_FILEPATH=logs/jet-logger.log \
+    JET_LOGGER_FILEPATH_DATETIME=FALSE \
+    JET_LOGGER_TIMESTAMP=TRUE \
+    JET_LOGGER_FORMAT=LINE \
+    PORT=4000 \
+    REWARD_CALIM_DURATION=5 \
+    CAMPAIGN_DURATION=8\
+    DATABASE_URL=postgresql://postgres:root@localhost:5432/staging_29102024_6?schema=public\
+    HEDERA_NETWORK=testnet\
+    HEDERA_PRIVATE_KEY=3030020100300706052b8104000a04220420b79c1da8af9b540961b398378ff052d21ba0e308c8160279850a31af4b06da0e\
+    HEDERA_PUBLIC_KEY=302d300706052b8104000a03220003af517983470114467f1f4134ae5d7e5a533965aafe3806489d19f44c81d38fa9\
+    HEDERA_ACCOUNT_ID=0.0.2661086\
+    TWITTER_APP_USER_TOKEN=AAAAAAAAAAAAAAAAAAAAAHRwqwEAAAAAsvzfMEHslZh5KH9uhILB7kRZ%2BO8%3DPPvH6JdjEg76pKLpyGwhq16q4xRG6iCvm1SagNitlv6duEWHKL\
+    TWITTER_API_KEY=uXAlKIXuRcS40hQzn4856Gzy6\
+    TWITTER_API_SECRET=ZTKMwLFKMjNCNMgGUdHRn36yA7U9pjo4L6Z2t8RZ3DwgtKrYA9\
+    HASHBUZZ_ACCESS_TOKEN=1483587498156642312-H5Wxj3Lvf6VppsCqE844Mgapje67u8\
+    HASHBUZZ_ACCESS_SECRET=dFsxJJXPUSdqIhp6763k6ZjDxkxGLmxwksqyXY0nqIptf\
+    TWITTER_CALLBACK_HOST=http://localhost:4000\
+    OPEN_AI_KEY=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\
+    J_ACCESS_TOKEN_SECRET=fb8dcbfcce50f2ffb2d873ed44cdb3a9c9013f6a6d780dfd3eae703ad115e222\
+    J_REFRESH_TOKEN_SECRET=86e7a828c1a879d6d938211a1ed1e18fada5f2bc776fab0314e5e4a7de7462d8\
+    ENCRYPTION_KEY=b72c6781417f3c4ad902b92f5a159b21057fd333c858e8f45984001cb8900ef8\
+    FRONTEND_URL=http://localhost:3000\
+    HASHBUZZ_CONTRACT_ADDRESS=0.0.5134548\
+    ADMIN_ADDRESS=0.0.2952630,0.0.4814144,0.0.4850188\
+    REPO_CLIENT_ID=Ov23lik5gISSkbOAYSSN\
+    REPO_CLIENT_SECRET=008fb55e24f5cee5160dd29e8bd3c7f789051456\
+    REPO=hashbuzz/dApp-backend\
+    SESSION_SECRET=45ce9cdb539e147757a98b044627b21f8319647dbee7d0a310bcecfafae38bc4
 
-# Expose the port the app runs on
+RUN npm run build
+
+# Expose port and start application
 EXPOSE 4000
-
-# Command to run the application
-CMD ["node", "env-config.js"]
+CMD ["npm", "start"]

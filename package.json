@@ -24,8 +24,7 @@
     "db:pull": "npx prisma db pull && npx prisma generate",
     "db:push": "npx prisma db push && npx prisma generate",
     "env-config": "node env.config.js",
-    "format": "prettier --write .",
-    "prepare": "husky install"
+    "format": "prettier --write ."
   },
   "nodemonConfig": {
     "watch": [
@@ -177,7 +176,6 @@
     "eslint": "^8.9.0",
     "find": "^0.3.0",
     "fs-extra": "^10.1.0",
-    "husky": "^8.0.0",
     "jsonwebtoken": "^8.5.1",
     "lint-staged": "^13.0.0",
     "nodemon": "^2.0.19",

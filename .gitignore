@@ -12,4 +12,5 @@ Dockerfile
 /src/.keys
 /src/.trailsetters
 package-lock.json
+.github/** 
 

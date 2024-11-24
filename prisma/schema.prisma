@@ -228,6 +228,12 @@ model HcsTopics {
   createdAt     DateTime     @default(now()) @db.Timestamptz(6)
 }
 
+model trailsetters {
+   id            BigInt       @id @default(autoincrement())
+   walletId      String       @unique
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+}
+
 enum TopicPurpose {
   AUTH_CHALLENGE
   TRANSACTION

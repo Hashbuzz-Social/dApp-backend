@@ -284,24 +284,21 @@ export const handleDeletePerosnalHanlde = async (req: Request, res: Response, ne
 export const handleGetTrailsettters = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Path to Key Store
-    const filePath = path.join(__dirname, "../.trailsetters/data.json");
-    const fileData = fs.readFileSync(filePath, 'utf8');
-    const trailsettersData = fileData.length > 0 ? JSON.parse(fileData) : [];
-    return res.status(OK).json(trailsettersData);
+    const trailsettersData = await prisma.trailsetters.findMany()
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)));
   } catch (err) {
     next(err);
   }
 };
 
 export const updateTrailsettersData = async (req: Request, res: Response, next: NextFunction) => {
-  const filePath = path.join(__dirname, "../.trailsetters/data.json");
-  const fileData = fs.readFileSync(filePath, 'utf8');
 
   try {
-    const trailsettersData = fileData.length > 0 ? JSON.parse(fileData) : [];
-    const updatedData = [...trailsettersData, ...req.body.accounts];
-    fs.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf8');
-    return res.status(OK).json({ message: 'Trailsetters data updated successfully', data: updatedData });
+    await prisma.trailsetters.create({
+      data: { walletId: req.body.accounts[0] }
+    })
+    const trailsettersData = await prisma.trailsetters.findMany()
+    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)));
   } catch (err) {
     next(err);
   }
