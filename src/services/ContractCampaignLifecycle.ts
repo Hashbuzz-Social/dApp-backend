@@ -49,7 +49,7 @@ class ContractCampaignLifecycle {
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addString(campaignAddress)
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
-            .addUint64(tokenAmount);
+            .addUint256(tokenAmount);
 
         const memo = createTransactionMemo("addFungibleCampaign");
         const response = await this.hederaContract.callContractWithStateChange("addFungibleCampaign", params, memo);
@@ -98,7 +98,7 @@ class ContractCampaignLifecycle {
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addString(campaignAddress)
-            .addUint64(tokenTotalAmount)
+            .addUint256(tokenTotalAmount)
 
         const memo = createTransactionMemo("adjustTotalFungibleReward");
         const response = await this.hederaContract.callContractWithStateChange("adjustTotalFungibleReward", params, memo);
