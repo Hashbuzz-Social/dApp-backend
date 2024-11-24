@@ -10,14 +10,16 @@ cd hashbuzz-dev/dApp-backend
 git pull origin staging
 
 # Check if npm is in PATH and print node and npm versions
-echo "Node version: $(node -v)"
-echo "NPM version: $(npm -v)"
+echo "Node version: $(/root/.nvm/versions/node/v18.18.2/bin/node -v)"
+echo "NPM version: $(/root/.nvm/versions/node/v18.18.2/bin/npm -v)"
 
 # Install npm dependencies
-npm install
+/root/.nvm/versions/node/v18.18.2/bin/npm install
 
 # Push database changes
-npm run db:push
+/root/.nvm/versions/node/v18.18.2/bin/npm run db:push
 
 # Build the project
-npm run build
+/root/.nvm/versions/node/v18.18.2/bin/npm run build
+
+/root/.nvm/versions/node/v18.18.2/bin/pm2 rstart testnet_dev_backend
