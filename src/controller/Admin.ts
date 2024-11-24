@@ -298,7 +298,7 @@ export const updateTrailsettersData = async (req: Request, res: Response, next: 
       data: { walletId: req.body.accounts[0] }
     })
     const trailsettersData = await prisma.trailsetters.findMany()
-    return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)));
+    return res.created(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)), "Trailsetters added successfuly");
   } catch (err) {
     next(err);
   }
