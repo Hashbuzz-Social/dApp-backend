@@ -135,7 +135,7 @@ class SessionManager {
     try {
       const token = req.token;
       const device_id = req.deviceId;
-      const { id, kid } = this.tokenResolver(token as string);
+      const { id, kid } = await this.tokenResolver(token as string);
       const session = await prisma.user_sessions.findFirst({ where: { user_id: Number(id), kid, device_id } });
       if (!session || !token || !device_id) throw new ErrorWithCode("Unauthoriozed access requested", UNAUTHORIZED);
       await prisma.user_sessions.delete({ where: { id: session.id } });
@@ -146,8 +146,8 @@ class SessionManager {
     }
   }
 
-  tokenResolver(token: string) {
-    const verifiedData = verifyRefreshToken(token);
+  async tokenResolver(token: string) {
+    const verifiedData = await verifyRefreshToken(token);
     //@ts-ignore
     const id = verifiedData.payload.id as string;
     //@ts-ignore
@@ -161,7 +161,7 @@ class SessionManager {
       const { refreshToken } = req.body;
       const deviceId = req.deviceId;
 
-      const { id, kid } = this.tokenResolver(refreshToken);
+      const { id, kid } = await this.tokenResolver(refreshToken);
 
       if (!id && !kid) throw new ErrorWithCode("Invalid refresh token", UNAUTHORIZED);
 
