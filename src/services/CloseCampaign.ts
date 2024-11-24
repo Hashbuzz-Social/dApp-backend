@@ -184,7 +184,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
     // Step 3: Publish reward announcement tweet thread
     try {
-      const tweetText = this.getRewardAnnouncementTweetText(type, campaignExpiryTimestamp, card);
+      const tweetText = this.getRewardAnnouncementTweetText(type, card);
       logger.info(`Tweet text for ${type} tweet string count:: ${tweetText.length} And Content:::=> ${tweetText}`);
 
       const updateThread = await twitterCardService.publishTweetORThread({
@@ -211,11 +211,12 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @param {campaign_twittercard} card - The campaign card.
    * @returns {string} The generated tweet text.
    */
-  private getRewardAnnouncementTweetText(type: string, campaignExpiryTimestamp: string, card: campaign_twittercard): string {
+  private getRewardAnnouncementTweetText(type: string, card: campaign_twittercard): string {
+    const dateNow = new Date().toISOString();
     if (type === "HBAR") {
-      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, then link your Personal X account to receive your rewards.`;
+      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, then link your Personal X account to receive your rewards.`;
     } else {
-      return `Promo ended on ${formattedDateTime(campaignExpiryTimestamp)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
+      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
     }
   }
 
