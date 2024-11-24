@@ -10,14 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install SSH Client
-      run: sudo apt-get update && sudo apt-get install -y sshpass
+      - name: Install SSH Client
+        run: sudo apt-get update && sudo apt-get install -y sshpass
 
-    - name: Connect to DigitalOcean Droplet via SSH
-      env:
-        SSH_USERNAME: ${{ secrets.DIGITALOCEAN_USERNAME }}
-        SSH_PASSWORD: ${{ secrets.DIGITALOCEAN_PASSWORD }}
-        SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
-      run: |
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" "/root/.nvm/versions/node/v18.18.2/bin/node --version"
-
+      - name: Connect to DigitalOcean Droplet via SSH
+        env:
+          SSH_USERNAME: ${{ secrets.DIGITALOCEAN_USERNAME }}
+          SSH_PASSWORD: ${{ secrets.DIGITALOCEAN_PASSWORD }}
+          SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" "/root/.nvm/versions/node/v18.18.2/bin/node --version" "bash hashbuzz-dev/dApp-backend/scripts/deploy.sh"
