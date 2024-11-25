@@ -26,6 +26,7 @@ ENV JET_LOGGER_MODE=FILE \
     HEDERA_NETWORK=testnet\
     REPO=hashbuzz/dApp-backend
 
+RUN npx prisma generate
 RUN npm run build
 
 # Expose port and start application

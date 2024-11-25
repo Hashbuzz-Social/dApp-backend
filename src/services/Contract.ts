@@ -1,4 +1,5 @@
 import {
+    AccountId,
     ContractCallQuery,
     ContractCreateFlow,
     ContractExecuteTransaction,
@@ -62,12 +63,32 @@ class HederaContract {
                 network: hederaService.network,
             },
         });
+
         if (availableContracts.length > 0) {
             const { contract_id, contractAddress, logicalContract_id } = availableContracts[0];
             return { contract_id, contractAddress, logicalContract_id };
+        } else {
+            console.info("No active contract found in records, Getting from env");
+            const contract_id_new = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+            if (contract_id_new) {
+                const contractData = await prisma.smartcontracts.create({
+                    data: {
+                        contractAddress: AccountId.fromString(contract_id_new).toSolidityAddress(),
+                        contract_id: `${contract_id_new}`,
+                        logicalContract_id: `${contract_id_new}`,
+                        lcFileID: contract_id_new ?? "",
+                        network: hederaService.network,
+                        is_active: true,
+                        fileId: contract_id_new ?? "",
+                        created_at: new Date().toISOString(),
+                    },
+                });
+                return { contract_id: contractData.contract_id, contractAddress: contractData.contractAddress, logicalContract_id: contractData.logicalContract_id };
+            }
         }
         return null;
     }
+
 
     // Contract Call Query Methods
     async callContractReadOnly(fnName: string, args: ContractFunctionParameters) {

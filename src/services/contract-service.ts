@@ -32,6 +32,7 @@ export const provideActiveContract = async () => {
           contractAddress: AccountId.fromString(contract_id_new).toSolidityAddress(),
           contract_id: `${contract_id_new}`,
           logicalContract_id: `${contract_id_new}`,
+          is_active: true,
           lcFileID: contract_id_new ?? "",
           network: hederaService.network,
           fileId: contract_id_new ?? "",
