@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import server from "./server";
 import RedisClient from "@services/redis-servie";
 import logger from "jet-logger";
+import { getConfig } from "./appConfig";
 
 const prisma = new PrismaClient();
 const redisClient = new RedisClient();
@@ -66,7 +67,9 @@ async function init() {
   await testRedisConnection();
   await crontabService.checkPreviousCampaignCloseTime();
 
-  const port = process.env.PORT || 3000;
+  const config = await getConfig();
+
+  const port = config.app.port || 4000;
   server.listen(port, () => {
     const msg = `Server is running on http://localhost:${port}`;
     logger.info(msg);

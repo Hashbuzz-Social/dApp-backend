@@ -13,4 +13,4 @@ Dockerfile
 /src/.trailsetters
 package-lock.json
 .github/** 
-
+docker-compose.yml
