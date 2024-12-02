@@ -1,12 +1,15 @@
-import prisma from "@shared/prisma";
-import logger from "jet-logger";
 import { AccountId } from "@hashgraph/sdk";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
 import { networkHelpers } from "@shared/NetworkHelpers";
+import createPrismaClient from "@shared/prisma";
+import logger from "jet-logger";
 import { AccountDetails, TokenBalance } from "src/@types/networkResponses";
+import { getConfig } from "src/appConfig";
 
-const checkAvailableTokens = async (accountId: string) => {
+const checkAvailableTokens = async () => {
+  const prisma = await createPrismaClient();
   try {
+    const accountId = (await getConfig()).network.contractAddress;
     if (!accountId) throw new Error("Account id not defined!");
 
     const data = await networkHelpers.getAccountDetails<AccountDetails>(accountId);

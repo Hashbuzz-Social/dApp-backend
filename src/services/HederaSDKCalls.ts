@@ -1,18 +1,17 @@
 import {
-    Client,
-    TokenAssociateTransaction,
-    TokenCreateTransaction,
-    TokenInfoQuery,
     AccountId,
+    Client,
     PrivateKey,
     Status,
-    TokenType,
-    TokenSupplyType,
-    TokenInfo,
-    TransferTransaction,
+    TokenAssociateTransaction,
+    TokenCreateTransaction,
     TokenId,
+    TokenInfo,
+    TokenInfoQuery,
+    TokenSupplyType,
+    TokenType,
+    TransferTransaction,
 } from "@hashgraph/sdk";
-import hederaService from "./hedera-service";
 import { provideActiveContract } from "./contract-service";
 
 const trasctionMemos = {
@@ -25,14 +24,17 @@ class HederaSDKCalls {
     private operatorId: AccountId;
     private operatorKey: PrivateKey;
 
-    constructor() {
-        this.operatorId = hederaService.operatorId;
-        this.operatorKey = hederaService.operatorKey;
-        this.client = hederaService.hederaClient;
+    constructor(client: Client, operatorId: AccountId, operatorKey: PrivateKey) {
+        this.operatorId = operatorId;
+        this.operatorKey = operatorKey;
+        this.client = client;
     }
 
     // Method to associate a token with an account
     async associateToken(accountId: string, tokenId: string): Promise<Status> {
+        if (!this.client || !this.operatorId || !this.operatorKey) {
+            throw new Error("Hedera clinet is not intialized")
+        }
         const associateTransaction = new TokenAssociateTransaction()
             .setAccountId(AccountId.fromString(accountId))
             .setTokenIds([tokenId])
@@ -177,5 +179,5 @@ class HederaSDKCalls {
 }
 
 
-export const hederaSDKCallHandler = new HederaSDKCalls();
+// export const hederaSDKCallHandler = new HederaSDKCalls();
 export default HederaSDKCalls;

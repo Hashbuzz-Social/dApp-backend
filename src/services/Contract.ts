@@ -8,10 +8,11 @@ import {
     ContractId,
     ReceiptStatusError
 } from "@hashgraph/sdk";
-import prisma from "@shared/prisma";
 import { eventList } from "../contractsV201";
 import { Interface, ethers } from "ethers";
-import hederaService from "./hedera-service";
+import intiHederaService from "./hedera-service";
+import createPrismaClient from "@shared/prisma";
+import { getConfig } from "src/appConfig";
 
 
 class HederaContract {
@@ -39,6 +40,7 @@ class HederaContract {
 
     // Deploy method for deploying contracts with bytecode and constructor args
     async deploy(bytecode: string): Promise<ContractId | null> {
+        const hederaService = await intiHederaService();
         const createContract = new ContractCreateFlow()
             .setGas(5000000)
             .setBytecode(bytecode)
@@ -57,10 +59,13 @@ class HederaContract {
     }
 
     private async provideActiveContract() {
+        const appConfig = await getConfig();
+        const prisma = await createPrismaClient();
         const availableContracts = await prisma.smartcontracts.findMany({
             where: {
                 is_active: true,
-                network: hederaService.network,
+                //@ts-ignore
+                network: appConfig.network.network,
             },
         });
 
@@ -69,7 +74,7 @@ class HederaContract {
             return { contract_id, contractAddress, logicalContract_id };
         } else {
             console.info("No active contract found in records, Getting from env");
-            const contract_id_new = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+            const contract_id_new = appConfig.network.contractAddress;
             if (contract_id_new) {
                 const contractData = await prisma.smartcontracts.create({
                     data: {
@@ -77,7 +82,8 @@ class HederaContract {
                         contract_id: `${contract_id_new}`,
                         logicalContract_id: `${contract_id_new}`,
                         lcFileID: contract_id_new ?? "",
-                        network: hederaService.network,
+                        //@ts-ignore
+                        network: appConfig.network.network,
                         is_active: true,
                         fileId: contract_id_new ?? "",
                         created_at: new Date().toISOString(),
@@ -96,6 +102,8 @@ class HederaContract {
             if (!this.contract_id) {
                 throw new Error("Contract ID not found");
             }
+
+            const hederaService = await intiHederaService();
             const query = new ContractCallQuery()
                 .setContractId(this.contract_id)
                 .setGas(30000) // Set an appropriate gas limit
@@ -129,7 +137,7 @@ class HederaContract {
         if (!this.contract_id) {
             throw new Error("Contract ID not found");
         }
-
+        const hederaService = await intiHederaService();
         const transaction = new ContractExecuteTransaction()
             .setContractId(this.contract_id)
             .setGas(100000) // Set appropriate gas limit for state change

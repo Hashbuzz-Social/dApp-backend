@@ -1,12 +1,13 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
-import { convertTrxString, nodeURI } from './helper';
+import { convertTrxString } from './helper';
+import { getConfig } from 'src/appConfig';
 
 class NetworkHelpers {
     private axiosInstance: AxiosInstance;
 
-    constructor(baseURL: string) {
+    constructor() {
+        // Initialize axiosInstance with a default configuration
         this.axiosInstance = axios.create({
-            baseURL,
             timeout: 10000, // Set a timeout for requests
         });
 
@@ -15,6 +16,12 @@ class NetworkHelpers {
             this.handleResponse,
             this.handleError
         );
+    }
+
+    // Method to initialize axiosInstance with the actual configuration
+    async init() {
+        const configs = await getConfig();
+        this.axiosInstance.defaults.baseURL = configs.app.mirrorNodeURL;
     }
 
     // Method to handle responses
@@ -73,10 +80,7 @@ class NetworkHelpers {
             throw error;
         }
     }
-
-
 }
 
-
-export const networkHelpers = new NetworkHelpers(nodeURI);
+export const networkHelpers = new NetworkHelpers();
 export default NetworkHelpers;

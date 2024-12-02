@@ -1,6 +1,5 @@
 import { user_user } from "@prisma/client";
 import jwt from "jsonwebtoken";
-const accessSecret = process.env.J_ACCESS_TOKEN_SECRET;
 import { v4 as uuidv4 } from "uuid";
 import { getCurrentKeyPair } from "@shared/KeyManager";
 
@@ -30,12 +29,12 @@ export interface CreateAstTokenParams {
   id: string;
 }
 
-export const generateAdminToken = (user: user_user) => {
+export const generateAdminToken = (user: user_user, accessSecret: string) => {
   const { id, role, hedera_wallet_id } = user;
-  return jwt.sign({ id: id.toString(), hedera_wallet_id, role }, accessSecret!, { expiresIn: "24h" });
+  return jwt.sign({ id: id.toString(), hedera_wallet_id, role }, accessSecret, { expiresIn: "24h" });
 };
 
-export const generateSigningToken = () => {
+export const generateSigningToken = (accessSecret: string) => {
   const currentTimeStamp = new Date().getTime();
   return jwt.sign({ ts: currentTimeStamp }, accessSecret!, {
     algorithm: "HS512", // or RS256 for asymmetrical keys
@@ -49,11 +48,11 @@ export const generateSigningToken = () => {
  * @returns string
  */
 
-export const createAstTokenEx = (params: CreateAstTokenParams) => {
+export const createAstTokenEx = (params: CreateAstTokenParams, accessSecret: string) => {
   return jwt.sign(params, accessSecret!, { expiresIn: "24h" });
 };
 
-export const genrateRefreshTokenEx = (params: CreateAstTokenParams) => {
+export const genrateRefreshTokenEx = (params: CreateAstTokenParams, accessSecret: string) => {
   return jwt.sign(params, accessSecret!, { expiresIn: "7d" });
 };
 

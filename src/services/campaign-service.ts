@@ -1,10 +1,11 @@
 import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
-import prisma from "@shared/prisma";
+import { default as createPrismaClient, default as prisma } from "@shared/prisma";
 import logger from "jet-logger";
 import CloseCmapignLyfCycle from "./CloseCampaign";
 import CampaignExpiryOperation from "./ExpireAndArchive";
 
 export const getCampaignDetailsById = async (campaignId: number | bigint) => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.findUnique({
     where: {
       id: campaignId,
@@ -25,6 +26,7 @@ export const getCampaignDetailsById = async (campaignId: number | bigint) => {
 };
 
 export const getRunningCardsOfUserId = async (userId: number | bigint) => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.findFirst({
     where: {
       owner_id: userId,
@@ -34,6 +36,7 @@ export const getRunningCardsOfUserId = async (userId: number | bigint) => {
 };
 
 export const incrementClaimAmount = async (cardId: number | bigint, amount: number) => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.update({
     where: { id: cardId },
     data: {
@@ -45,6 +48,7 @@ export const incrementClaimAmount = async (cardId: number | bigint, amount: numb
 };
 
 export const updateCampaignStatus = async (campaignId: number | bigint, status: CampaignStatus) => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.update({
     where: {
       id: campaignId,

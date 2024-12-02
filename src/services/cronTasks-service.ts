@@ -1,17 +1,15 @@
+import { campaignstatus as CampaignStatus, campaign_tweetstats as CampaignTweetStats, campaign_twittercard as CampaignTwitterCard } from "@prisma/client";
 import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@services/campaign-service";
-import { campaignstatus as CampaignStatus } from "@prisma/client"
-import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-servide";
-import twitterCardService, { TwitterStats } from "@services/twitterCard-service";
+import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-service";
+import twitterCardService from "@services/twitterCard-service";
 import functions from "@shared/functions";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import moment from "moment";
 import { scheduleJob } from "node-schedule";
 
-/**
- * @description Manage Twitter card status by checking tweet stats and updating the campaign status accordingly.
- */
-const manageTwitterCardStatus = async () => {
+
+const manageTwitterCardStatus = async (): Promise<void> => {
   const allActiveCards = await twitterCardService.allActiveTwitterCard();
   const activeCardIds = allActiveCards.map(card => card.tweet_id).filter(Boolean);
 
@@ -22,7 +20,8 @@ const manageTwitterCardStatus = async () => {
 
   await Promise.all(allActiveCards.map(async (card) => {
     const { comment_reward, retweet_reward, like_reward, quote_reward, id, name, campaign_budget } = card;
-    const publicMetrics = await prisma.campaign_tweetstats.findUnique({ where: { twitter_card_id: id } });
+    const prisma = await createPrismaClient();
+    const publicMetrics: CampaignTweetStats | null = await prisma.campaign_tweetstats.findUnique({ where: { twitter_card_id: id } });
 
     if (!publicMetrics || !(retweet_reward && like_reward && quote_reward && comment_reward)) {
       logger.warn(`Rewards basis for campaign card with id ${id} and name ${name ?? ""} is not defined or public metrics not found.`);
@@ -61,10 +60,7 @@ const manageTwitterCardStatus = async () => {
   }));
 };
 
-/**
- * @description Check for replies on Twitter and update the engagement DB module.
- */
-const checkForRepliesAndUpdateEngagementsData = async () => {
+const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
   try {
     const thresholdSeconds = 60;
     const allActiveCards = await twitterCardService.allActiveTwitterCard();
@@ -84,8 +80,9 @@ const checkForRepliesAndUpdateEngagementsData = async () => {
   }
 };
 
-const scheduleExpiryTasks = async () => {
-  const completedTasks = await prisma.campaign_twittercard.findMany({
+const scheduleExpiryTasks = async (): Promise<void> => {
+  const prisma = await createPrismaClient();
+  const completedTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: CampaignStatus.RewardDistributionInProgress,
       campaign_expiry: {
@@ -100,8 +97,9 @@ const scheduleExpiryTasks = async () => {
   });
 };
 
-const autoCampaignClose = async () => {
-  const runningTasks = await prisma.campaign_twittercard.findMany({ where: { card_status: CampaignStatus.CampaignRunning } });
+const autoCampaignClose = async (): Promise<void> => {
+  const prisma = await createPrismaClient();
+  const runningTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({ where: { card_status: CampaignStatus.CampaignRunning } });
 
   await Promise.all(runningTasks.map(async (task) => {
     if ((task.campaign_budget ?? 0) <= (task.amount_spent ?? 0)) {
@@ -113,15 +111,17 @@ const autoCampaignClose = async () => {
   }));
 };
 
-const updateQueueStatus = async (id: bigint) => {
+const updateQueueStatus = async (id: bigint): Promise<CampaignTwitterCard> => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.update({
     where: { id },
     data: { is_added_to_queue: true },
   });
 };
 
-const checkCampaignCloseTime = async () => {
-  const tasks = await prisma.campaign_twittercard.findMany({
+const checkCampaignCloseTime = async (): Promise<void> => {
+  const prisma = await createPrismaClient();
+  const tasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: CampaignStatus.CampaignRunning,
       is_added_to_queue: false,
@@ -136,11 +136,12 @@ const checkCampaignCloseTime = async () => {
   }));
 };
 
-const checkPreviousCampaignCloseTime = async () => {
+const checkPreviousCampaignCloseTime = async (): Promise<boolean> => {
+  const prisma = await createPrismaClient();
   logger.info("Checking backlog campaigns");
   const now = new Date();
 
-  const campaigns = await prisma.campaign_twittercard.findMany({
+  const campaigns: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
       OR: [
         { card_status: CampaignStatus.CampaignRunning, campaign_close_time: { lt: now } },
@@ -167,6 +168,8 @@ const checkPreviousCampaignCloseTime = async () => {
       await perFormCampaignExpiryOperation(campaign.id);
     }
   }));
+
+  return true;
 };
 
 export default {

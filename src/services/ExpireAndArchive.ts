@@ -6,6 +6,7 @@ import prisma from "@shared/prisma";
 import logger from "jet-logger";
 import CampaignLifeCycleBase, { CardOwner } from "./CampaignLifeCycleBase";
 import twitterCardService from "./twitterCard-service";
+import createPrismaClient from "@shared/prisma";
 
 /**
  * Class representing the campaign expiry operations.
@@ -120,6 +121,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
    * @param {CardOwner} cardOwner - The card owner data.
    */
   private async handleFungibleExpiry(card: campaign_twittercard, cardOwner: CardOwner) {
+    const prisma = await createPrismaClient();
     let camapigner_balances = 0;
 
     try {

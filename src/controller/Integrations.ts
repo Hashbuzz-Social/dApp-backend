@@ -1,27 +1,28 @@
 import { authLogin, twitterAuthUrl } from "@services/auth-service";
 import { encrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
+import { getConfig } from "src/appConfig";
 
 const { OK, INTERNAL_SERVER_ERROR, TEMPORARY_REDIRECT } = HttpStatusCodes;
-
-const callbackUrlTwitter = process.env.TWITTER_CALLBACK_HOST;
 
 export const handlePersonalTwitterHandle = async (req: Request, res: Response, next: NextFunction) => {
   const user_id = req.currentUser?.id;
   if (user_id) {
-    const url = await twitterAuthUrl({ callbackUrl: `${callbackUrlTwitter!}/auth/twitter-return/`, user_id });
+    const config = await getConfig();
+    const url = await twitterAuthUrl({ callbackUrl: `${config.app.xCallBackHost}/auth/twitter-return/`, user_id });
     return res.status(OK).json({ url });
   }
 };
 
-export const handleBizTwitterHandle = (req: Request, res: Response, next: NextFunction) => {
+export const handleBizTwitterHandle = async (req: Request, res: Response, next: NextFunction) => {
   const user_id = req.currentUser?.id;
+  const config = await getConfig();
   if (user_id) {
     twitterAuthUrl({
-      callbackUrl: `${callbackUrlTwitter!}/auth/business-twitter-return/`,
+      callbackUrl: `${config.app.xCallBackHost}/auth/business-twitter-return/`,
       isBrand: true,
       user_id,
     })
@@ -35,6 +36,8 @@ export const handleBizTwitterHandle = (req: Request, res: Response, next: NextFu
 };
 
 export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
+  const config = await getConfig()
+  const appURl = config.app.appURL;
   try {
     // Extract tokens from query string
     const oauth_token = req.query.oauth_token as any as string;
@@ -46,13 +49,16 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
     const { client: loggedClient, accessToken, accessSecret } = loginResult;
     const meUser = await loggedClient.v2.me();
     const { username, id, name, profile_image_url } = meUser.data;
+    const prisma = await createPrismaClient();
+
+
     const user = await prisma.user_user.update({
       where: { id: user_id },
       data: {
         personal_twitter_handle: username,
         personal_twitter_id: id,
-        twitter_access_token: encrypt(accessToken),
-        twitter_access_token_secret: encrypt(accessSecret),
+        twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
+        twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
         profile_image_url: profile_image_url ?? "",
         name,
       },
@@ -60,8 +66,10 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
 
     // const getAstForUserById = await userService.getAstForUserByAccountAddress(user.id , req.deviceId!);
 
+
+
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?user_id=${user.id}&username=${username}`,
+      Location: `${appURl}?user_id=${user.id}&username=${username}`,
     });
     res.end();
   } catch (error) {
@@ -69,13 +77,15 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
     console.log(error);
     const message: string = error.message as string;
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?authStatus=fail&message=${message}`,
+      Location: `${appURl}?authStatus=fail&message=${message}`,
     });
     res.end();
   }
 };
 
 export const handleTwitterBizRegister = async (req: Request, res: Response) => {
+  const config = await getConfig()
+  const appURl = config.app.appURL;
   try {
     // Extract tokens from query string
     const oauth_token = req.query.oauth_token as any as string;
@@ -87,26 +97,27 @@ export const handleTwitterBizRegister = async (req: Request, res: Response) => {
     const { client: loggedClient, accessToken, accessSecret } = loginResult;
     const meUser = await loggedClient.v2.me();
     const { username } = meUser.data;
+    const prisma = await createPrismaClient();
     await prisma.user_user.update({
       where: {
         id: user_id,
       },
       data: {
         business_twitter_handle: username,
-        business_twitter_access_token: encrypt(accessToken),
-        business_twitter_access_token_secret: encrypt(accessSecret),
+        business_twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
+        business_twitter_access_token_secret: encrypt(accessSecret, config.encryptions.sessionSecreat),
         is_active: true,
       },
     });
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?brandConnection=success&handle=${username}`,
+      Location: `${appURl}?brandConnection=success&handle=${username}`,
     });
     res.end();
   } catch (error) {
     // logger.err(error.message);
     const message: string = error.message as string;
     res.writeHead(TEMPORARY_REDIRECT, {
-      Location: `${process.env.FRONTEND_URL!}?brandConnection=fail&message=${message}`,
+      Location: `${appURl}?brandConnection=fail&message=${message}`,
     });
     res.end();
   }

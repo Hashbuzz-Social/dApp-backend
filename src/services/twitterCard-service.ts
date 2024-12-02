@@ -1,15 +1,12 @@
-import { campaign_twittercard, user_user, campaignstatus as CampaignStatus } from "@prisma/client";
+import { campaign_twittercard, campaignstatus as CampaignStatus, user_user } from "@prisma/client";
 import { decrypt } from "@shared/encryption";
 import { addMinutesToTime, convertTinyHbarToHbar, formattedDateTime } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
+import moment from "moment";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
-import moment from "moment"
 import { provideActiveContract } from "./contract-service";
-
-//types
-
-const campaignDurationInMin = Number(process.env.CAMPAIGN_DURATION);
+import { getConfig } from "src/appConfig";
 
 export interface TwitterStats {
   like_count?: number;
@@ -27,6 +24,7 @@ export interface RewardCatalog {
 
 export const allActiveTwitterCard = async () => {
   // console.info("allActiveTwitterCard::start");
+  const prisma = await createPrismaClient();
   const allActiveCards = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: CampaignStatus.CampaignRunning
@@ -37,6 +35,7 @@ export const allActiveTwitterCard = async () => {
 
 const twitterCardStats = async (cardId: bigint) => {
   // console.info("twitterCardStatus::Start");
+  const prisma = await createPrismaClient();
   const cardStatus = await prisma.campaign_tweetstats.findUnique({
     where: {
       twitter_card_id: cardId,
@@ -51,7 +50,7 @@ const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | numbe
   const { like_count, quote_count, reply_count, retweet_count } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-
+  const prisma = await createPrismaClient();
   const update = await prisma.campaign_tweetstats.upsert({
     where: { twitter_card_id: cardId },
     update: {
@@ -81,6 +80,7 @@ const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
   if (body.quote_count) data["quote_count"] = body.quote_count;
   if (body.retweet_count) data["retweet_count"] = body.retweet_count;
 
+  const prisma = await createPrismaClient();
   const addNewStats = prisma.campaign_tweetstats.create({
     data: {
       ...data,
@@ -93,6 +93,8 @@ const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
 };
 
 const updateTotalSpentAmount = async (id: number | bigint, amount_spent: number) => {
+
+  const prisma = await createPrismaClient();
   const updateTotalSpentBudget = await prisma.campaign_twittercard.update({
     where: { id },
     data: {
@@ -115,13 +117,14 @@ interface PublishTweetParams {
 
 const publishTweetORThread = async (params: PublishTweetParams) => {
   const { cardOwner, tweetText, isThread, parentTweetId } = params;
-  if (tweetText.length > Number(process.env.ALLOWED_POST_CHAR ?? 280)) {
+  const config = await getConfig();
+  if (tweetText.length > 280) {
     throw new Error("Long tweet text. Max allowed is 280 char long.")
   }
   if (cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret) {
-    const userTwitter = twitterAPI.tweeterApiForUser({
-      accessToken: decrypt(cardOwner.business_twitter_access_token),
-      accessSecret: decrypt(cardOwner?.business_twitter_access_token_secret),
+    const userTwitter = await twitterAPI.tweeterApiForUser({
+      accessToken: decrypt(cardOwner.business_twitter_access_token, config.encryptions.encryptionKey),
+      accessSecret: decrypt(cardOwner?.business_twitter_access_token_secret, config.encryptions.encryptionKey),
     });
 
     let card: TweetV2PostTweetResult;
@@ -177,6 +180,8 @@ const publishSecondThread = async (
   } = card;
 
   const formattedDate = formattedDateTime(moment().toISOString());
+  const configs = await getConfig();
+  const campaignDurationInMin = configs.app.defaultCampaignDuratuon;
 
   if (!tweet_text) throw new Error("Tweet text is missing.");
   if (!like_reward || !quote_reward || !retweet_reward || !comment_reward) {
@@ -190,6 +195,7 @@ const publishSecondThread = async (
   if (cardType === "HBAR") {
     tweetText = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(like_reward).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(2)}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(2)}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.`;
   } else {
+    const prisma = await createPrismaClient();
     const token = await prisma.whiteListedTokens.findUnique({ where: { token_id: String(fungible_token_id) } });
     if (!token) throw new Error("Token not found.");
 
@@ -220,6 +226,10 @@ const publishSecondThread = async (
  */
 
 const publishTwitter = async (cardId: number | bigint) => {
+  const prisma = await createPrismaClient();
+  const configs = await getConfig();
+  const campaignDurationInMin = configs.app.defaultCampaignDuratuon;
+
   const [contractDetails, cardDetails] = await Promise.all([
     await provideActiveContract(),
     await prisma.campaign_twittercard.findUnique({
@@ -275,9 +285,9 @@ const publishTwitter = async (cardId: number | bigint) => {
         2
       )}, reply ${(comment_reward / (10 ** Number(decimals))).toFixed(2)}.`
 
-    const userTwitter = twitterAPI.tweeterApiForUser({
-      accessToken: decrypt(user_user?.business_twitter_access_token),
-      accessSecret: decrypt(user_user?.business_twitter_access_token_secret),
+    const userTwitter = await twitterAPI.tweeterApiForUser({
+      accessToken: decrypt(user_user?.business_twitter_access_token, configs.encryptions.encryptionKey),
+      accessSecret: decrypt(user_user?.business_twitter_access_token_secret, configs.encryptions.encryptionKey),
     });
 
     // console.log({ threat1, threat2Hbar });
@@ -332,6 +342,7 @@ const publishTwitter = async (cardId: number | bigint) => {
 };
 
 const getAllTwitterCardByStatus = async (status: CampaignStatus) => {
+  const prisma = await createPrismaClient();
   const data = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: status,
@@ -355,6 +366,7 @@ const getAllTwitterCardByStatus = async (status: CampaignStatus) => {
 };
 
 const getAllTwitterCardPendingCards = async () => {
+  const prisma = await createPrismaClient();
   const data = await prisma.campaign_twittercard.findMany({
     where: {
       approve: false,
@@ -367,6 +379,7 @@ const getAllTwitterCardPendingCards = async () => {
 
 
 const updateStatus = async (id: number, status: boolean) => {
+  const prisma = await createPrismaClient();
   const data = await prisma.campaign_twittercard.findUnique({
     where: {
       id,

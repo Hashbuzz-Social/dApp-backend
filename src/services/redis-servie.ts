@@ -21,8 +21,8 @@ interface TaskStatus {
 class RedisClient {
     public client: RedisClientType;
 
-    constructor() {
-        const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+    constructor(serverURl?: string) {
+        const redisUrl = serverURl ?? "redis://localhost:6379";
 
         this.client = createClient({ url: redisUrl });
         this.client.on("error", (err) => {

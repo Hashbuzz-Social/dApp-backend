@@ -17,12 +17,13 @@ import {
 } from "./campaign-service";
 import { distributeTokenUsingSDK, provideActiveContract } from "./contract-service";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
-import { updatePaymentStatusToManyRecords } from "./engagement-servide";
+import { updatePaymentStatusToManyRecords } from "./engagement-service";
 import {
   transferAmountFromContractUsingSDK,
   updateCampaignBalance,
 } from "./transaction-service";
 import userService from "./user-service";
+import createPrismaClient from "@shared/prisma";
 
 const calculateTotalRewards = (
   card: campaign_twittercard,
@@ -67,6 +68,8 @@ export const totalPendingReward = async (
     "Reward calculation and transfer for user::",
     intractor_hedera_wallet_id
   );
+
+  const prisma = await createPrismaClient();
   //TODO:  Query all activeEngagements of this users from DB.
   const allUnpaidEngagementsForAnUser =
     await prisma.campaign_tweetengagements.findMany({
@@ -126,6 +129,7 @@ export const totalPendingReward = async (
 };
 
 export const getRewardDetails = async (data: any) => {
+  const prisma = await createPrismaClient();
   const user = await prisma.user_user.findUnique({
     where: {
       hedera_wallet_id: data,
@@ -203,6 +207,7 @@ export const claim = async (
   contract_id: string,
   intractorWalletId: string
 ) => {
+  const prisma = await createPrismaClient();
   const user = await prisma.user_user.findUnique({
     where: {
       hedera_wallet_id: intractorWalletId,
@@ -346,6 +351,7 @@ const _calculateTotalRewardForAnUser = async (
   engagedUserID: string,
   cardID: bigint | number
 ): Promise<{ total: number; ids: bigint[] }> => {
+  const prisma = await createPrismaClient();
   const { like_reward, retweet_reward, quote_reward, comment_reward } = rewards;
   let total = 0;
   const ids: bigint[] = [];
@@ -371,8 +377,9 @@ const _calculateTotalRewardForAnUser = async (
   return { total, ids };
 };
 
-const _updateEngagementsToPaid = async (ids: bigint[]) =>
-  await prisma.campaign_tweetengagements.updateMany({
+const _updateEngagementsToPaid = async (ids: bigint[]) => {
+  const prisma = await createPrismaClient();
+  return await prisma.campaign_tweetengagements.updateMany({
     data: {
       payment_status: "PAID",
     },
@@ -382,6 +389,7 @@ const _updateEngagementsToPaid = async (ids: bigint[]) =>
       },
     },
   });
+}
 
 
 /**
@@ -391,7 +399,7 @@ const _updateEngagementsToPaid = async (ids: bigint[]) =>
 export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
   logger.info("Executing Auto reward process::");
   console.log("Executing Auto reward process::");
-
+  const prisma = await createPrismaClient();
   try {
     const engagementsByUser = await prisma.campaign_tweetengagements.groupBy({
       by: ["user_id"],
@@ -468,6 +476,7 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
 
 
 const getCardDetails = async (cardId: bigint) => {
+  const prisma = await createPrismaClient();
   return await prisma.campaign_twittercard.findUnique({
     where: { id: cardId },
     include: {

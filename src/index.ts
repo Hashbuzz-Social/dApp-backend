@@ -1,28 +1,27 @@
 import dotenv from "dotenv";
 dotenv.config();
-import "./pre-start"; // Must be the first import
 
-import crontabService from "@services/cronTasks-service";
-import { PrismaClient } from "@prisma/client";
-import server from "./server";
+import preStartJobs from "./pre-start";
 import RedisClient from "@services/redis-servie";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import { getConfig } from "./appConfig";
+import server from "./server";
 
-const prisma = new PrismaClient();
-const redisClient = new RedisClient();
+let redisClient: RedisClient;
 
 /**
  * Test Prisma connection
  */
 async function testPrismaConnection() {
   try {
+    const prisma = await createPrismaClient();
     await prisma.$connect();
     const msg = "Connected to the database successfully.";
     logger.info(msg);
-    console.info(msg);
   } catch (error) {
-    console.error("Failed to connect to the database", error);
+    const errMsg = "Failed to connect to the database";
+    logger.err(errMsg, error);
     process.exit(1);
   }
 }
@@ -30,14 +29,14 @@ async function testPrismaConnection() {
 /**
  * Test Redis connection
  */
-async function testRedisConnection() {
+async function testRedisConnection(client: RedisClient) {
   try {
-    await redisClient.checkConnection();
+    await client.checkConnection();
     const msg = "Connected to Redis successfully.";
     logger.info(msg);
-    console.info(msg);
   } catch (error) {
-    console.error("Failed to connect to Redis", error);
+    const errMsg = "Failed to connect to Redis";
+    logger.err(errMsg, error);
     process.exit(1);
   }
 }
@@ -45,15 +44,16 @@ async function testRedisConnection() {
 /**
  * Gracefully shuts down the server
  */
-function gracefulShutdown() {
+async function gracefulShutdown() {
   logger.info("Shutting down gracefully...");
-  prisma.$disconnect().finally(() => {
+  if (redisClient) {
+    const prisma = await createPrismaClient();
+    await prisma.$disconnect();
     logger.info("Prisma disconnected.");
-    redisClient.client.quit().finally(() => {
-      logger.info("Redis disconnected.");
-      process.exit(0);
-    });
-  });
+    await redisClient.client.quit();
+    logger.info("Redis disconnected.");
+  }
+  process.exit(0);
 }
 
 process.on("SIGTERM", gracefulShutdown);
@@ -63,23 +63,28 @@ process.on("SIGINT", gracefulShutdown);
  * Initialize the server
  */
 async function init() {
-  await testPrismaConnection();
-  await testRedisConnection();
-  await crontabService.checkPreviousCampaignCloseTime();
+  try {
+    const config = await getConfig();
+    redisClient = new RedisClient(config.db.redisServerURI);
 
-  const config = await getConfig();
+    await preStartJobs();
+    await testPrismaConnection();
+    await testRedisConnection(redisClient);
 
-  const port = config.app.port || 4000;
-  server.listen(port, () => {
-    const msg = `Server is running on http://localhost:${port}`;
-    logger.info(msg);
-    console.info(msg);
-  });
+    const port = config.app.port || 4000;
+    server.listen(port, () => {
+      const msg = `Server is running on http://localhost:${port}`;
+      logger.info(msg);
+    });
+  } catch (error) {
+    const errMsg = "Failed to initialize the server";
+    logger.err(errMsg, error);
+    process.exit(1);
+  }
 }
 
 init().catch((error) => {
-  const msg = "Failed to initialize the server";
-  logger.err(msg);
-  console.error(msg, error);
+  const errMsg = "Failed to initialize the server";
+  logger.err(errMsg, error);
   process.exit(1);
 });

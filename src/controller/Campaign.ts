@@ -9,6 +9,7 @@ import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
 import { ErrorWithCode } from "@shared/errors";
 import { convertToTinyHbar, rmKeyFrmData, sensitizeUserData } from "@shared/helper";
+import createPrismaClient from "@shared/prisma";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
@@ -39,6 +40,7 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
   let requested_card_status: string = req.body.card_status;
   requested_card_status = requested_card_status.toLowerCase();
 
+  const prisma = await createPrismaClient();
   const campaign_data = await getCampaignDetailsById(campaignId);
   // console.log(campaign_data, "campaign");
 
@@ -225,6 +227,7 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
 };
 
 export const handleCampaignGet = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   const allCampaigns = await prisma.campaign_twittercard.findMany({
     where: {
       owner_id: req.currentUser?.id,
@@ -252,9 +255,10 @@ export const handleAddNewCampaignNew = async (req: Request, res: Response, next:
   }
 };
 
-export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunction) => {
+export const handleAddNewCampaign = async (req: Request, res: Response, next: NextFunction) => {
   const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, follow_reward, campaign_budget, media, type } = req.body;
   const { fungible_token_id } = req.body;
+  const prisma = await createPrismaClient();
   if (isEmpty(name) || isEmpty(tweet_text) || isEmpty(comment_reward) || isEmpty(retweet_reward) || isEmpty(like_reward) || isEmpty(quote_reward) || isEmpty(campaign_budget) || isEmpty(req.currentUser?.id)) {
     return res.status(BAD_REQUEST).json({ error: true, message: "Data fields should not be empty." });
   }
@@ -329,6 +333,7 @@ export const handleAddNewCampaign = (req: Request, res: Response, next: NextFunc
 
 export const handleCampaignStats = async (req: Request, res: Response, next: NextFunction) => {
   const card_id = req.body.card_id;
+  const prisma = await createPrismaClient();
   const stats = await prisma.campaign_tweetstats.findUnique({
     where: { twitter_card_id: parseInt(card_id as string) },
   });

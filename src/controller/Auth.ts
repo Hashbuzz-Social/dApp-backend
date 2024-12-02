@@ -4,10 +4,11 @@ import SessionManager from "@services/SessionManager";
 import signingService from "@services/signing-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
+import { getConfig } from "src/appConfig";
 
 const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
 
@@ -15,14 +16,15 @@ const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
  * @description Update last login status for exiting user.
  * If no record in DB for this user then create a DB record for this user;
  */
-export const handleAuthPing = async (req: Request, res: Response , next: NextFunction) => {
-  return SessionManager.checkSessionForPing(req,res,next);
+export const handleAuthPing = async (req: Request, res: Response, next: NextFunction) => {
+  return SessionManager.checkSessionForPing(req, res, next);
 };
 
-export const handleCreateChallenge = (req: Request, res: Response, next: NextFunction) => {
+export const handleCreateChallenge = async (req: Request, res: Response, next: NextFunction) => {
   const params = req.query;
-  const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken() } };
-  const { signature, serverSigningAccount } = signingService.signData(payload);
+  const config = await getConfig();
+  const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken(config.encryptions.encryptionKey) } };
+  const { signature, serverSigningAccount } = await signingService.signData(payload);
   return res.status(OK).json({ payload, server: { signature: Buffer.from(signature).toString("base64"), account: serverSigningAccount } });
 };
 
@@ -40,6 +42,8 @@ export const handleRefreshToken = (req: Request, res: Response, next: NextFuncti
 
 export const handleAdminLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const prisma = await createPrismaClient();
+    const config = await getConfig();
     const { password }: { password: string } = req.body;
 
     const user = await prisma.user_user.findUnique({
@@ -54,7 +58,7 @@ export const handleAdminLogin = async (req: Request, res: Response, next: NextFu
         return res.status(OK).json({
           message: "Logged in successfully.",
           user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user))),
-          adminToken: generateAdminToken(user),
+          adminToken: generateAdminToken(user, config.encryptions.encryptionKey),
         });
       } else next(new ErrorWithCode("Invalid Password", BAD_REQUEST));
     } else next(new ErrorWithCode("User not found as admin.", BAD_REQUEST));

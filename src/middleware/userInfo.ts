@@ -1,5 +1,5 @@
-import prisma from "@shared/prisma";
-import { Request, Response, NextFunction } from "express";
+import createPrismaClient from "@shared/prisma";
+import { NextFunction, Request, Response } from "express";
 import logger from "jet-logger";
 
 const getCurrentUserInfo = async (req: Request, res: Response, next: NextFunction) => {
@@ -7,6 +7,7 @@ const getCurrentUserInfo = async (req: Request, res: Response, next: NextFunctio
     const accountAddress = req.accountAddress;
 
     if (accountAddress) {
+      const prisma = await createPrismaClient();
       const currentUser = await prisma.user_user.findUnique({
         where: { accountAddress },
         include: {

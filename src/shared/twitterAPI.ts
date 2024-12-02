@@ -1,7 +1,8 @@
-import TwitterApi, { TweetV2, UserV2, TwitterApiV2Settings } from "twitter-api-v2";
 import logger from 'jet-logger';
+import { getConfig } from 'src/appConfig';
+import TwitterApi, { TweetV2, TwitterApiV2Settings, UserV2 } from "twitter-api-v2";
 import { decrypt } from "./encryption";
-import prisma from "./prisma";
+import createPrismaClient from "./prisma";
 
 TwitterApiV2Settings.debug = true;
 
@@ -31,12 +32,14 @@ interface PublicMetricsObject {
 const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user: any) => {
   const users: UserV2[] = [];
 
-  const token = decrypt(user_user.business_twitter_access_token as string);
-  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+  const configs = await getConfig();
+
+  const token = decrypt(user_user.business_twitter_access_token as string, configs.encryptions.encryptionKey);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string, configs.encryptions.encryptionKey);
 
   const twitterClient = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!,
-    appSecret: process.env.TWITTER_API_SECRET!,
+    appKey: configs.xApp.xAPIKey,
+    appSecret: configs.xApp.xAPISecreate,
     accessToken: token,
     accessSecret: secret,
   });
@@ -60,13 +63,14 @@ const getAllUsersWhoLikedOnTweetId = async (tweetId: string, user_user: any) => 
  */
 const getAllRetweetOfTweetId = async (tweetId: string, user_user: any) => {
   const users: UserV2[] = [];
+  const configs = await getConfig();
 
-  const token = decrypt(user_user.business_twitter_access_token as string);
-  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+  const token = decrypt(user_user.business_twitter_access_token as string, configs.encryptions.encryptionKey);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string, configs.encryptions.encryptionKey);
 
   const twitterClient = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!,
-    appSecret: process.env.TWITTER_API_SECRET!,
+    appKey: configs.xApp.xAPIKey,
+    appSecret: configs.xApp.xAPISecreate,
     accessToken: token,
     accessSecret: secret,
   });
@@ -89,14 +93,17 @@ const getAllRetweetOfTweetId = async (tweetId: string, user_user: any) => {
  *
  */
 const getAllUsersWhoQuotedOnTweetId = async (tweetId: string, user_user: any) => {
-  const data: TweetV2[] = [];
+  const appConfig = await getConfig();
 
-  const token = decrypt(user_user.business_twitter_access_token as string);
-  const secret = decrypt(user_user.business_twitter_access_token_secret as string);
+  const data: TweetV2[] = [];
+  const configs = await getConfig();
+
+  const token = decrypt(user_user.business_twitter_access_token as string, configs.encryptions.encryptionKey);
+  const secret = decrypt(user_user.business_twitter_access_token_secret as string, configs.encryptions.encryptionKey);
 
   const twitterClient = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!,
-    appSecret: process.env.TWITTER_API_SECRET!,
+    appKey: appConfig.xApp.xAPIKey,
+    appSecret: appConfig.xApp.xAPISecreate,
     accessToken: token,
     accessSecret: secret,
   });
@@ -133,6 +140,8 @@ const getEngagementOnCard = async (tweetId: string, user_user: any) => {
  */
 
 const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
+  const appConfig = await getConfig();
+  const prisma = await createPrismaClient();
   const cardDetails = await prisma.campaign_twittercard.findUnique({
     where: {
       id: Number(cardId),
@@ -144,12 +153,12 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
 
   console.log(cardDetails, "Details in side matrics");
   if (cardDetails?.user_user) {
-    const token = decrypt(cardDetails.user_user.business_twitter_access_token as string);
-    const secret = decrypt(cardDetails.user_user.business_twitter_access_token_secret as string);
+    const token = decrypt(cardDetails.user_user.business_twitter_access_token as string, appConfig.encryptions.encryptionKey);
+    const secret = decrypt(cardDetails.user_user.business_twitter_access_token_secret as string, appConfig.encryptions.encryptionKey);
 
     const tweeterApi = new TwitterApi({
-      appKey: process.env.TWITTER_API_KEY!,
-      appSecret: process.env.TWITTER_API_SECRET!,
+      appKey: appConfig.xApp.xAPIKey,
+      appSecret: appConfig.xApp.xAPISecreate,
       accessToken: token,
       accessSecret: secret,
     });
@@ -181,11 +190,12 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
  */
 
 const getAllReplies = async (tweetID: string, token: string, secret: string) => {
-  const tToken = decrypt(token);
-  const tTokenSecret = decrypt(secret);
+  const config = await getConfig();
+  const tToken = decrypt(token, config.encryptions.encryptionKey);
+  const tTokenSecret = decrypt(secret, config.encryptions.encryptionKey);
 
   const client = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!, appSecret: process.env.TWITTER_API_SECRET!, accessToken: tToken, accessSecret: tTokenSecret
+    appKey: config.xApp.xAPIKey, appSecret: config.xApp.xAPISecreate, accessToken: tToken, accessSecret: tTokenSecret
   });
   const roClient = client.readOnly;
 
@@ -210,10 +220,11 @@ const getAllReplies = async (tweetID: string, token: string, secret: string) => 
  *@description Send Message to tht twitter.
  */
 
-const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
+const tweeterApiForUser = async ({ accessToken, accessSecret }: { accessToken: string; accessSecret: string }) => {
+  const configs = await getConfig();
   const tweeterApi = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!,
-    appSecret: process.env.TWITTER_API_SECRET!,
+    appKey: configs.xApp.xAPIKey,
+    appSecret: configs.xApp.xAPISecreate,
     accessToken,
     accessSecret,
   });
@@ -222,16 +233,20 @@ const tweeterApiForUser = ({ accessToken, accessSecret }: { accessToken: string;
 };
 
 //!! Hashbuzz account twitter client
-const HashbuzzTwitterClient = tweeterApiForUser({
-  accessToken: process.env.HASHBUZZ_ACCESS_TOKEN!,
-  accessSecret: process.env.HASHBUZZ_ACCESS_SECRET!,
-});
+const HashbuzzTwitterClient = async () => {
+  const configs = await getConfig();
+  return tweeterApiForUser({
+    accessToken: configs.xApp.xHashbuzzAccAccessToken,
+    accessSecret: configs.xApp.xHashbuzzAccSecreateToken
+  });
+}
 
 /****
  *@description Send DM from Hashbuzz to twitter user.
  */
 const sendDMFromHashBuzz = async (recipient_id: string, text: string) => {
-  return await HashbuzzTwitterClient.v1.sendDm({
+  const hbuuzzClient = await HashbuzzTwitterClient();
+  return await hbuuzzClient.v1.sendDm({
     recipient_id,
     text,
   });

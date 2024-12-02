@@ -1,10 +1,9 @@
 import { AccountId } from "@hashgraph/sdk";
 import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
-import hederaService from "@services/hedera-service";
+import initHederaService from "@services/hedera-service";
 import moment from "moment-timezone";
 import { Token } from "src/@types/custom";
-
-export const nodeURI = process.env.MIRROR_NODE_LINK ?? "https://testnet.mirrornode.hedera.com";
+import { getConfig } from "src/appConfig";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -12,7 +11,8 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
   return d;
 };
 
-export const sensitizeUserData = (userData: Partial<user_user>) => {
+export const sensitizeUserData = async (userData: Partial<user_user>) => {
+  const hederaService = await initHederaService();
   const accountMatch = hederaService.operatorId.toString() === userData.hedera_wallet_id;
   const adminActive = Boolean(accountMatch && userData.salt && userData.hash);
   return {
@@ -71,7 +71,8 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
 };
 
 export const fetchAccountInfoKey = async (accountId: string) => {
-  const url = `${nodeURI}/api/v1/accounts/${accountId}`;
+  const config = await getConfig();
+  const url = `${config.app.mirrorNodeURL}/api/v1/accounts/${accountId}`;
   const response = await fetch(url);
   const data = await response.json();
   const key: string = data.key.key as string;
@@ -104,7 +105,8 @@ export const addMinutesToTime = (dateISo: string, minutesToAdd: number) => {
 };
 
 export const checkTokenAssociation = async (tokenId: string, accountId: string): Promise<boolean> => {
-  const ACCOUNT_INFO_URI = `${nodeURI}/api/v1/accounts/${accountId}`;
+  const config = await getConfig();
+  const ACCOUNT_INFO_URI = `${config.app.mirrorNodeURL}/api/v1/accounts/${accountId}`;
   const acRequest = await fetch(ACCOUNT_INFO_URI);
   const data = await acRequest.json();
   const balances = data.balance;
@@ -128,14 +130,3 @@ export const waitFor = (ms?: number): Promise<void> => {
     }, ms ?? 3000); // 5000 milliseconds = 5 seconds
   });
 };
-// const filterTwitterEngagementsData = () => arr.filter(element => {
-//   const isDuplicate = uniqueIds.includes(element.id);
-
-//   if (!isDuplicate) {
-//     uniqueIds.push(element.id);
-
-//     return true;
-//   }
-
-//   return false;
-// });

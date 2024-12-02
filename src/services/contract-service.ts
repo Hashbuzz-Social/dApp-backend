@@ -2,17 +2,22 @@ import {
   AccountId
 } from "@hashgraph/sdk";
 import { campaign_twittercard, user_user } from "@prisma/client";
-import hederaService from "@services/hedera-service";
-import prisma from "@shared/prisma";
+import initHederaService from "@services/hedera-service";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import ContractUtils from "./ContractUtilsHandlers";
-import { hederaSDKCallHandler } from "./HederaSDKCalls";
+// import { hederaSDKCallHandler } from "./HederaSDKCalls";
+import { getConfig } from "src/appConfig";
+import HederaSDKCalls from "./HederaSDKCalls";
 
 
 // Function to provide the active contract details
 export const provideActiveContract = async () => {
+  const prisma = await createPrismaClient();
+  const appConfig = await getConfig();
+  const hederaService = await initHederaService();
   const availableContracts = await prisma.smartcontracts.findMany({
     where: {
       is_active: true,
@@ -25,7 +30,7 @@ export const provideActiveContract = async () => {
     return { contract_id, contractAddress, logicalContract_id };
   } else {
     console.info("No active contract found in records, Getting from env");
-    const contract_id_new = process.env.HASHBUZZ_CONTRACT_ADDRESS;
+    const contract_id_new = appConfig.network.contractAddress;
     if (contract_id_new) {
       const contractData = await prisma.smartcontracts.create({
         data: {
@@ -62,7 +67,8 @@ export async function addFungibleAndNFTCampaign(tokenId: string, amount: number,
 // Function to close a fungible and NFT campaign
 export async function closeFungibleAndNFTCampaign(campaign: string) {
   const contractDetails = await provideActiveContract();
-  const expiryDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15) * 60;
+  const appConfig = await getConfig();
+  const expiryDuration = Number(appConfig.app.defaultCampaignDuratuon ?? 15) * 60;
 
   console.log("Inside close campaign", { campaign, expiryDuration });
 
@@ -123,6 +129,8 @@ export async function distributeTokenUsingSDK(params: { tokenId: string, userId:
     const { amount, userId, campaign, tokenId } = params;
     const contractDetails = await provideActiveContract();
     if (contractDetails?.contract_id) {
+      const { operatorId, operatorKey, hederaClient } = await initHederaService();
+      const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
       const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(userId, amount, campaign, tokenId);
       return transactionRecipt;
     }

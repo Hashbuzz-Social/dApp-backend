@@ -1,16 +1,15 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
-import hederaService from "@services/hedera-service";
-import { nodeURI } from "@shared/helper";
-import prisma from "@shared/prisma";
+import initHederaService from "@services/hedera-service";
+import createPrismaClient from "@shared/prisma";
+import { getConfig } from "src/appConfig";
 import Web3 from "web3";
 import { provideActiveContract } from "./contract-service";
 
 const web3 = new Web3();
 
-const { hederaClient, operatorKey } = hederaService;
-
 const getTokenInfo = async (tokenId: string) => {
   const query = new TokenInfoQuery().setTokenId(tokenId);
+  const { hederaClient } = await initHederaService();
 
   //Sign with the client operator private key, submit the query to the network and get the token supply
   const info = await query.execute(hederaClient);
@@ -66,6 +65,7 @@ const logEventsRecords = (record: TransactionRecord) => {
 const associateTokenToContract = async (tokenId: string) => {
   // Retrieve the ID of the active contract.
   const contractDetails = await provideActiveContract();
+  const { hederaClient } = await initHederaService();
 
   // Convert the token ID to a Solidity address.
   const tokenAddress = AccountId.fromString(tokenId).toSolidityAddress();
@@ -94,13 +94,15 @@ const associateTokenToContract = async (tokenId: string) => {
 };
 
 const getEntityDetailsByTokenId = async (token_id: string) => {
+  const prisma = await createPrismaClient();
   const entityData = await prisma.whiteListedTokens.findUnique({ where: { token_id } });
   return entityData;
 };
 
 
 const getTokenDetails = async (tokenID: string): Promise<any> => {
-  const TOKEN_INFO_URI = `${nodeURI}/api/v1/tokens/${tokenID}`;
+  const config = await getConfig();
+  const TOKEN_INFO_URI = `${config.app.mirrorNodeURL}/api/v1/tokens/${tokenID}`;
   if (!tokenID) throw new Error("Account id not defined !");
 
   const req = await fetch(TOKEN_INFO_URI);

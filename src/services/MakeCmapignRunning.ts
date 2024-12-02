@@ -8,6 +8,7 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import CampaignLifeCycleBase from "./CampaignLifeCycleBase";
 import userService from "./user-service";
+import createPrismaClient from "@shared/prisma";
 
 interface TransactionDetails {
   contract_id: string;
@@ -226,6 +227,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
   }
 
   private async getUserBalanceOfTokenOfCampaigner(tokenId: string) {
+    const prisma = await createPrismaClient();
     this.tokenData = await prisma.whiteListedTokens.findUnique({
       where: { token_id: tokenId },
     });

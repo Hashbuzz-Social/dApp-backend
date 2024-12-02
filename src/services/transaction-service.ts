@@ -1,21 +1,23 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, ContractId, TokenInfo, TransferTransaction } from "@hashgraph/sdk";
 import { Decimal } from "@prisma/client/runtime/library";
-import hederaService from "@services/hedera-service";
+import initHederaservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { sensitizeUserData, waitFor } from "@shared/helper";
 import { networkHelpers } from "@shared/NetworkHelpers";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { TransactionResponse } from "src/@types/networkResponses";
+import { getConfig } from "src/appConfig";
+import { provideActiveContract } from "./contract-service";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
-import { hederaSDKCallHandler } from "./HederaSDKCalls";
+// import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
-import { provideActiveContract } from "./contract-service";
+import HederaSDKCalls from "./HederaSDKCalls";
 
-const { hederaClient, operatorKey, operatorId } = hederaService;
+// const { hederaClient, operatorKey, operatorId } = hederaService;
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
   const contractDetails = await provideActiveContract();
@@ -52,6 +54,9 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
   // console.log("Creating Transaction Hash with:", { payerId, amounts });
   const { value, fee, total } = entity.amount;
   const contractDetails = await provideActiveContract();
+  const prisma = await createPrismaClient();
+  const hederaService = await initHederaservice()
+  const { operatorId } = hederaService;
   if (contractDetails?.contract_id) {
     const transferTx = new TransferTransaction().setTransactionMemo("Hashbuzz balance topup");
     if (entity.entityType === "HBAR") transferTx.addHbarTransfer(connectedAccountId, -total).addHbarTransfer(contractDetails.contract_id?.toString(), value).setTransactionMemo("Hashbuzz escrow payment").addHbarTransfer(operatorId, fee);
@@ -130,6 +135,9 @@ export const allocateBalanceToCampaign = async (
 export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amount }: { campaignerAccount: string; campaignId: string; amount: number }) => {
   const contractDetails = await provideActiveContract();
 
+  const hederaService = await initHederaservice()
+  const { hederaClient } = hederaService;
+
   if (contractDetails?.contract_id) {
     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
     // const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
@@ -153,35 +161,7 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
   }
 };
 
-// export const withdrawHbarFromContract = async (intracterAccount: string, amount: number) => {
-//   const contractDetails = await provideActiveContract();
-//   amount = amount / Math.pow(10, 8);
 
-//   console.log({
-//     intracterAccount,
-//     contract_id: contractDetails?.contract_id,
-//     amount,
-//     amounte8: amount * 1e8,
-//   });
-
-//   if (contractDetails?.contract_id) {
-//     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-//     const IntractorAddress = AccountId.fromString(intracterAccount).toSolidityAddress();
-
-//     //   //!! BUILD Parameters
-//     const functionCallAsUint8Array = encodeFunctionCall("callHbarToPayee", [IntractorAddress, Math.round(amount * 1e8)]);
-
-//     const contractExBalTx = new ContractExecuteTransaction()
-//       .setContractId(contractAddress)
-//       .setFunctionParameters(functionCallAsUint8Array)
-//       .setTransactionMemo("Hashbuzz rewarding to intractor with adderss" + intracterAccount)
-//       .setGas(1000000);
-
-//     const contractExecuteSubmit = await contractExBalTx.execute(hederaClient);
-//     const contractExecuteRx = await contractExecuteSubmit.getReceipt(hederaClient);
-//     return contractExecuteRx;
-//   }
-// };
 
 export const transferAmountFromContractUsingSDK = async (params: {
   /** Local DB address in string */
@@ -196,6 +176,8 @@ export const transferAmountFromContractUsingSDK = async (params: {
   const amountInHbar = Math.round(amount) / 1e8;
 
   if (contractDetails?.contract_id) {
+    const { operatorId, operatorKey, hederaClient } = await initHederaservice();
+    const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
     const recipt = await hederaSDKCallHandler.rewardIntractor(intractorWallet, amountInHbar, campaignAddress);
     return recipt;
   }
@@ -203,6 +185,8 @@ export const transferAmountFromContractUsingSDK = async (params: {
 
 export const transferFungibleFromContractUsingSDK = async (intracterAccount: string, amount: number, memo = "Reward fungible payment from hashbuzz", tokenId: string) => {
   const contractDetails = await provideActiveContract();
+  const hederaService = await initHederaservice()
+  const { hederaClient, operatorKey } = hederaService;
 
   if (contractDetails?.contract_id) {
     const backupContract = contractDetails?.contract_id;
@@ -230,7 +214,8 @@ export const transferFungibleFromContractUsingSDK = async (intracterAccount: str
 export const closeCampaignSMTransaction = async (campaign: string) => {
 
   const contractDetails = await provideActiveContract();
-  const timeDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15) * 60;
+  const congis = await getConfig();
+  const timeDuration = Number(congis.app.defaultCampaignDuratuon) * 60;
 
   console.log("Inside close campaign", { campaign, timeDuration });
 
@@ -256,7 +241,8 @@ export const reimbursementAmount = async (params: { userId: number | bigint, amo
     const totalReimbersement = currentBalance - Number(userUpdatedBalance);
 
     const userData = await userService.topUp(userId, Number(userUpdatedBalance), "update");
-
+    const { operatorId, operatorKey, hederaClient } = await initHederaservice();
+    const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
     const paymentTransaction = hederaSDKCallHandler.transferHbarUsingSDK({
       fromAccountId: contractDetails.contract_id,
       toAccountId: accountId,
@@ -288,6 +274,8 @@ export const reimbursementFungible = async (params: { accountId: string, amounts
     const totalReimbersement = currentBalance - Number(updatedTokenBalance);
 
     // Transfer token using sdk;
+    const { operatorId, operatorKey, hederaClient } = await initHederaservice();
+    const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
     const paymentTransaction = hederaSDKCallHandler.transferTokenUsingSDK({
       fromAccountId: contractDetails.contract_id,
       toAccountId: accountId,
@@ -322,10 +310,11 @@ export const validateTransactionFormNetwork = async (transactionId: string, tran
   try {
     // Active contract
     const contractDetails = await provideActiveContract();
+    const congis = await getConfig();
     const contract_address = contractDetails?.contract_id;
 
     // Collector account
-    const collectorAccount = process.env.HEDERA_ACCOUNT_ID;
+    const collectorAccount = congis.network.accountID;
 
     // Fetch transaction details from the network
     const data = await networkHelpers.getTransactionDetails<TransactionResponse>(transactionId);

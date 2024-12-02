@@ -1,14 +1,15 @@
-/* eslint-disable max-len */
 import { payment_status } from "@prisma/client";
 import prisma from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
 import { getCampaignDetailsById } from "./campaign-service";
 import logger from "jet-logger";
+import createPrismaClient from "@shared/prisma";
 
 export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
 
 const getExistingRecordsIdsIfAny = async (id: bigint, engagement_type: engagements) => {
+  const prisma = await createPrismaClient();
   try {
     const existingRecordsIfAny = await prisma.campaign_tweetengagements.findMany({
       where: {
@@ -27,6 +28,7 @@ const getExistingRecordsIdsIfAny = async (id: bigint, engagement_type: engagemen
 };
 
 export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
+  const prisma = await createPrismaClient();
   try {
     const data = await getCampaignDetailsById(id);
     if (!data?.user_user?.business_twitter_access_token || !data?.user_user?.business_twitter_access_token_secret) {
@@ -101,6 +103,7 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
 
 export const updateAllEngagementsForCard = async (card: number | bigint) => {
   try {
+    const prisma = await createPrismaClient();
     const data = await getCampaignDetailsById(card);
     if (data?.id && data?.tweet_id && data?.user_user) {
       const details = data.tweet_id.toString();
@@ -221,6 +224,7 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
 };
 
 export const updatePaymentStatusToManyRecords = async (ids: number[] | bigint[], payment_status: payment_status) => {
+  const prisma = await createPrismaClient();
   try {
     return await prisma.campaign_tweetengagements.updateMany({
       where: {

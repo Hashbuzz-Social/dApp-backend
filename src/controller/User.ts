@@ -8,6 +8,8 @@ import { ParamMissingError } from "@shared/errors";
 import prisma from "@shared/prisma";
 import { validationResult } from "express-validator";
 import { queryBalance, queryFungibleBalanceOfCampaigner } from "@services/contract-service";
+import createPrismaClient from "@shared/prisma";
+import { getConfig } from "src/appConfig";
 
 const { OK, BAD_REQUEST } = StatusCodes;
 /**
@@ -23,11 +25,13 @@ export const handleGetAllUser = async (req: Request, res: Response, next: NextFu
 
 export const handleCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
   if (req?.accountAddress) {
+    const config = await getConfig();
+
     const currentUser = await userService.getUserByAccountAddress(req.accountAddress);
-    const contractAddress = process.env.HASHBUZZ_CONTRACT_ADDRESS;
-    const collecterAddress = process.env.HEDERA_ACCOUNT_ID;
-    const campaignDuration = process.env.CAMPAIGN_DURATION;
-    const campaignRewardDuration = process.env.REWARD_CALIM_DURATION;
+    const contractAddress = config.network.contractAddress;
+    const collecterAddress = config.network.accountID;
+    const campaignDuration = config.app.defaultCampaignDuratuon;
+    const campaignRewardDuration = config.app.defaultRewardClaimDuration;
     if (currentUser) return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))), config: { contractAddress, collecterAddress, campaignDuration, campaignRewardDuration } });
     else throw new ParamMissingError("No record for this id.");
   }
@@ -35,6 +39,7 @@ export const handleCurrentUser = async (req: Request, res: Response, next: NextF
 
 export const handleUpdateConcent = async (req: Request, res: Response, next: NextFunction) => {
   const { consent } = req.body;
+  const prisma = await createPrismaClient();
   const updatedUser = await prisma.user_user.update({
     where: { accountAddress: req.accountAddress },
     data: { consent: consent },
@@ -64,6 +69,7 @@ export const handleGetUserBalances = (req: Request, res: Response, next: NextFun
 };
 
 export const handleTokenBalReq = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   const tokenList = await prisma.whiteListedTokens.findMany();
   const userBalancesForTokens = await prisma.user_balances.findMany({
     where: {
@@ -80,6 +86,7 @@ export const handleTokenBalReq = async (req: Request, res: Response, next: NextF
 
 export const twitterCardStatsData = async (req: Request, res: Response) => {
   const id = req.query.id;
+  const prisma = await createPrismaClient();
   const cardStatus = await prisma.campaign_tweetstats.findUnique({
     where: {
       twitter_card_id: Number(id),
@@ -114,6 +121,7 @@ export const handleTokenContractBal = async (req: Request, res: Response, next: 
 };
 
 export const syncBal = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   try {
     const tokenId = req.params.tokenId as string;
 

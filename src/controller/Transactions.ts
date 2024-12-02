@@ -2,12 +2,13 @@ import { Status } from "@hashgraph/sdk";
 import { getCampaignDetailsById } from "@services/campaign-service";
 import { provideActiveContract } from "@services/contract-service";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
-import client from "@services/hedera-service";
+import initHederaService from "@services/hedera-service";
 import htsServices from "@services/hts-services";
 import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, reimbursementFungible, updateBalanceToContract, updateFungibleAmountToContract, validateTransactionFormNetwork } from "@services/transaction-service";
 import userService from "@services/user-service";
 import { ErrorWithCode } from "@shared/errors";
 import { waitFor } from "@shared/helper";
+import createPrismaClient from "@shared/prisma";
 import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statusCodes from "http-status-codes";
@@ -81,6 +82,8 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
 
 
 export const createOrUpdateTransactionRecord = async (transactionId: string, response: string, amount: number, status: string) => {
+  const prisma = await createPrismaClient();
+  const { network } = await initHederaService();
   const finddataByTransactionId = await prisma.transactions.findFirst({
     where: { transaction_id: transactionId },
   })
@@ -100,7 +103,7 @@ export const createOrUpdateTransactionRecord = async (transactionId: string, res
         transaction_data: response,
         transaction_id: transactionId,
         transaction_type: "topup",
-        network: client.network,
+        network: network,
         amount,
         status,
       },
@@ -190,7 +193,7 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
   const amount: number = req.body.amount;
   const type: string = req.body.type;
   const tokenId: string = req.body.token_id;
-
+  const prisma = await createPrismaClient();
   if (!req.currentUser?.id || !req.currentUser?.hedera_wallet_id) {
     return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
   }

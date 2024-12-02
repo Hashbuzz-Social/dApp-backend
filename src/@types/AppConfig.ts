@@ -13,7 +13,13 @@ export interface AppConfig {
         /** App frontend URL */
         appURL: string,
         /** App backend callback URL */
-        xCallBackHost: string
+        xCallBackHost: string;
+
+        /** App config */
+
+        whitelistedDomains: string
+
+        mirrorNodeURL: string
     }
 
     encryptions: {
@@ -65,5 +71,7 @@ export interface AppConfig {
         publicKey: string,
         /** Contract address on the network */
         contractAddress: string,
+        /** Account id */
+        accountID: string;
     }
 }

@@ -1,23 +1,22 @@
 import { Status } from "@hashgraph/sdk";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import CampaignLifeCycleBase from "@services/CampaignLifeCycleBase";
+import { provideActiveContract } from "@services/contract-service";
 import ContractUtils from "@services/ContractUtilsHandlers";
-import { hederaSDKCallHandler } from "@services/HederaSDKCalls";
+import initHederaService from "@services/hedera-service";
+import HederaSDKCalls from "@services/HederaSDKCalls";
 import { default as htsServices } from "@services/hts-services";
 import passwordService from "@services/password-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
 import { networkHelpers } from "@shared/NetworkHelpers";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import { TokenData } from "src/@types/networkResponses";
-import fs from 'fs';
-import path from 'path';
-import { provideActiveContract } from "@services/contract-service";
 
 const { OK, BAD_REQUEST, NOT_FOUND } = statuses;
 
@@ -47,7 +46,7 @@ export const handleUpdateCard = async (req: Request, res: Response) => {
 
 export const handleUpdatePasswordReq = async (req: Request, res: Response, next: NextFunction) => {
   const { password, oldPassword }: { password: string; oldPassword?: string } = req.body;
-
+  const prisma = await createPrismaClient();
   if (req.currentUser?.salt && req.currentUser.hash && isEmpty(oldPassword)) {
     next(new ErrorWithCode("without old password password reset is not allowed", BAD_REQUEST));
   }
@@ -100,6 +99,7 @@ export const handleTokenInfoReq = async (req: Request, res: Response, next: Next
 };
 
 export const handleWhiteListToken = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   try {
     const tokenId = req.body.token_id as string;
 
@@ -133,6 +133,8 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     }
 
     // SDK call to associate token with account
+    const { hederaClient, operatorKey, operatorId } = await initHederaService();
+    const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
     const associateTokenResponse = await hederaSDKCallHandler.associateToken(contractDetails.contract_id, tokenId);
 
     if (associateTokenResponse !== Status.Success) {
@@ -165,6 +167,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
 };
 
 export const handleGetAllWLToken = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   const tokenId = req.query.tokenId as any as string;
   if (tokenId) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -197,6 +200,7 @@ export const handleGetCmapingLogs = async (req: Request, res: Response, next: Ne
 };
 
 export const handleAllowAsCampaigner = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   try {
     const id = req.body.id as any as number;
     if (!id) return res.status(BAD_REQUEST).json({ message: "User id not found." });
@@ -221,6 +225,7 @@ export const handleGetAllCampaigns = async (req: Request, res: Response, next: N
 }
 
 export const handleDeleteBizHanlde = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   try {
     const userId = req.body.userId as any as number;
 
@@ -250,6 +255,7 @@ export const handleDeleteBizHanlde = async (req: Request, res: Response, next: N
 }
 
 export const handleDeletePerosnalHanlde = async (req: Request, res: Response, next: NextFunction) => {
+  const prisma = await createPrismaClient();
   try {
     const userId = req.body.userId as any as number;
 
@@ -284,6 +290,7 @@ export const handleDeletePerosnalHanlde = async (req: Request, res: Response, ne
 export const handleGetTrailsettters = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Path to Key Store
+    const prisma = await createPrismaClient();
     const trailsettersData = await prisma.trailsetters.findMany()
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)));
   } catch (err) {
@@ -294,6 +301,7 @@ export const handleGetTrailsettters = async (req: Request, res: Response, next: 
 export const updateTrailsettersData = async (req: Request, res: Response, next: NextFunction) => {
 
   try {
+    const prisma = await createPrismaClient();
     await prisma.trailsetters.create({
       data: { walletId: req.body.accounts[0] }
     })

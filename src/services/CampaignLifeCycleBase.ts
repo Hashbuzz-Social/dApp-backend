@@ -1,11 +1,12 @@
-import { CampaignLog, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens, campaignstatus as CampaignStatus } from "@prisma/client";
-import hederaService from "@services/hedera-service";
+import { CampaignLog, campaignstatus as CampaignStatus, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens } from "@prisma/client";
+import initHederaService from "@services/hedera-service";
 import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { isEmpty, isNil } from "lodash";
 import moment from "moment";
+import { getConfig } from "src/appConfig";
 import RedisClient, { CampaignCardData } from "./redis-servie";
 
 export enum LYFCycleStages {
@@ -55,7 +56,6 @@ class CampaignLifeCycleBase {
 
   constructor() {
     this.redisClient = new RedisClient();
-    this.campaignDurationInMin = Number(process.env.CAMPAIGN_DURATION);
   }
 
   static async create<T extends CampaignLifeCycleBase>(this: new () => T, id: number | bigint): Promise<T> {
@@ -73,6 +73,11 @@ class CampaignLifeCycleBase {
   }
 
   private async loadRequiredData(id: number | bigint): Promise<void> {
+    const prisma = await createPrismaClient();
+    const appConfig = await getConfig();
+
+    this.campaignDurationInMin = appConfig.app.defaultCampaignDuratuon;
+
     try {
       // Query for the card
       const card = await prisma.campaign_twittercard.findUnique({
@@ -143,6 +148,7 @@ class CampaignLifeCycleBase {
 
   protected async updateDBForRunningStatus(card: campaign_twittercard): Promise<campaign_twittercard> {
     const currentTime = moment();
+    const prisma = await createPrismaClient();
     return await prisma.campaign_twittercard.update({
       where: { id: card.id },
       data: {
@@ -161,6 +167,8 @@ class CampaignLifeCycleBase {
             Error::${error}`
     );
 
+    const prisma = await createPrismaClient();
+
     await prisma.campaignLog.create({
       data: {
         campaign_id: campaignId,
@@ -172,6 +180,7 @@ class CampaignLifeCycleBase {
   }
 
   protected async logCampaignData(params: NonNullable<Omit<CampaignLog, "id" | "timestamp">>) {
+    const prisma = await createPrismaClient();
     const { campaign_id, status, data, message } = params;
     await prisma.campaignLog.create({
       data: {
@@ -185,6 +194,8 @@ class CampaignLifeCycleBase {
 
   protected async createTransactionRecord(params: TransactionRecord) {
     const { amount, transaction_type, transaction_id, transaction_data, status } = params;
+    const prisma = await createPrismaClient();
+    const hederaService = await initHederaService()
     return await prisma.transactions.create({
       data: {
         network: hederaService.network,
@@ -203,6 +214,7 @@ class CampaignLifeCycleBase {
   }
 
   protected async getRewardsValues(reward: string, type: CampaignTypes, tokenId?: string) {
+    const prisma = await createPrismaClient();
     if (type === "HBAR" && !tokenId) {
       return convertToTinyHbar(reward);
     } else {
@@ -218,7 +230,7 @@ class CampaignLifeCycleBase {
 
   public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
     const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
-
+    const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
       .filter(([, value]) => isEmpty(value))
       .map(([key]) => key);
@@ -284,6 +296,8 @@ class CampaignLifeCycleBase {
     const card = this.ensureCampaignCardLoaded();
     let redisLog: CampaignCardData | null = null;
     let campaignLogData: CampaignLog[] | null = null;
+
+    const prisma = await createPrismaClient();
     if (card.contract_id) {
       redisLog = await this.redisClient.readCampaignCardStatus(card.contract_id!);
       campaignLogData = await prisma.campaignLog.findMany({ where: { campaign_id: card.id } });
@@ -311,6 +325,7 @@ class CampaignLifeCycleBase {
    * @returns {Promise<campaign_twittercard>} The updated campaign card.
    */
   protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status: CampaignStatus = CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp?: string) {
+    const prisma = await createPrismaClient();
     return await prisma.campaign_twittercard.update({
       where: { id },
       data: {

@@ -1,8 +1,10 @@
 import { AccountId, PrivateKey, PublicKey, Transaction, TransactionId } from "@hashgraph/sdk";
 
-import hederaService from "./hedera-service";
+import initHederaService from "./hedera-service";
 
-const signAndMakeBytes = (trans: Transaction, signingAcctId: string) => {
+const signAndMakeBytes = async (trans: Transaction, signingAcctId: string) => {
+  const hederaService = await initHederaService();
+
   const privKey = PrivateKey.fromString(hederaService.operatorPrivateKey);
   const pubKey = privKey.publicKey;
 
@@ -39,7 +41,8 @@ const makeBytes = (trans: Transaction, signingAcctId: string) => {
   return transBytes;
 };
 
-const signData = (data: object): { signature: Uint8Array; serverSigningAccount: string } => {
+const signData = async (data: object): Promise<{ signature: Uint8Array; serverSigningAccount: string }> => {
+  const hederaService = await initHederaService();
   const privKey = PrivateKey.fromString(hederaService.operatorPrivateKey);
   // const pubKey = privKey.publicKey;
 

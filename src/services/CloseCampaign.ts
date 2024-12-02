@@ -1,20 +1,20 @@
 import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
 import { addMinutesToTime, formattedDateTime } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { scheduleJob } from "node-schedule";
+import { getConfig } from "src/appConfig";
 import { perFormCampaignExpiryOperation } from "./campaign-service";
-import CampaignLifeCycleBase, { LYFCycleStages, CardOwner } from "./CampaignLifeCycleBase";
+import CampaignLifeCycleBase, { CardOwner, LYFCycleStages } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";
-import hederaService from "./hedera-service";
 import { performAutoRewardingForEligibleUser } from "./reward-service";
 import { closeCampaignSMTransaction } from "./transaction-service";
 import twitterCardService from "./twitterCard-service";
 
-export const claimDuration = Number(process.env.REWARD_CALIM_DURATION ?? 15);
 
 class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
+  claimDuration = 15;
   protected date = new Date();
 
   /**
@@ -61,6 +61,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @returns {Promise<void>} A promise that resolves when the update is complete.
    */
   private async updateTweetEngagements(id: number | bigint, campaignExpiryTimestamp: string) {
+    const prisma = await createPrismaClient();
     await prisma.campaign_tweetengagements.updateMany({
       where: { tweet_id: id },
       data: { exprired_at: campaignExpiryTimestamp },
@@ -119,7 +120,8 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @throws Will throw an error if any step in the process fails.
    */
   private async handleHBARCmapignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
-    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration + 0.3);
+    const appConfig = await getConfig();
+    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), appConfig.app.defaultRewardClaimDuration + 0.3);
 
     try {
       await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "HBAR");
@@ -138,7 +140,9 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @throws Will throw an error if any step in the process fails.
    */
   private async handleFungibleCampaignClosing(card: campaign_twittercard, cardOwner: CardOwner) {
-    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), claimDuration + 0.3);
+    const appConfig = await getConfig();
+    this.claimDuration = appConfig.app.defaultRewardClaimDuration;
+    const campaignExpiryTimestamp = addMinutesToTime(this.date.toISOString(), appConfig.app.defaultRewardClaimDuration + 0.3);
 
     try {
       await this.executeCampaignClosingSteps(card, campaignExpiryTimestamp, cardOwner, "FUNGIBLE");
@@ -184,7 +188,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
 
     // Step 3: Publish reward announcement tweet thread
     try {
-      const tweetText = this.getRewardAnnouncementTweetText(type, card);
+      const tweetText = await this.getRewardAnnouncementTweetText(type, card);
       logger.info(`Tweet text for ${type} tweet string count:: ${tweetText.length} And Content:::=> ${tweetText}`);
 
       const updateThread = await twitterCardService.publishTweetORThread({
@@ -211,12 +215,13 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    * @param {campaign_twittercard} card - The campaign card.
    * @returns {string} The generated tweet text.
    */
-  private getRewardAnnouncementTweetText(type: string, card: campaign_twittercard): string {
+  private async getRewardAnnouncementTweetText(type: string, card: campaign_twittercard): Promise<string> {
     const dateNow = new Date().toISOString();
+    const config = await getConfig();
     if (type === "HBAR") {
-      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, then link your Personal X account to receive your rewards.`;
+      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${this.claimDuration} minutes. New users: log into ${config.app.appURL}, then link your Personal X account to receive your rewards.`;
     } else {
-      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${claimDuration} minutes. New users: log into ${hederaService.network === "testnet" ? "https://testnet.hashbuzz.social" : "https://hashbuzz.social"}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
+      return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${this.claimDuration} minutes. New users: log into ${config.app.appURL}, link Personal X account and associate token with ID ${card.fungible_token_id ?? ""} to your wallet.`;
     }
   }
 
