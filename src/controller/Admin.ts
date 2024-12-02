@@ -10,13 +10,14 @@ import passwordService from "@services/password-service";
 import twitterCardService from "@services/twitterCard-service";
 import { ErrorWithCode } from "@shared/errors";
 import { sensitizeUserData } from "@shared/helper";
-import { networkHelpers } from "@shared/NetworkHelpers";
+import NetworkHelpers from "@shared/NetworkHelpers";
 import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import { TokenData } from "src/@types/networkResponses";
+import { getConfig } from "src/appConfig";
 
 const { OK, BAD_REQUEST, NOT_FOUND } = statuses;
 
@@ -85,7 +86,10 @@ export const handleUpdatePasswordReq = async (req: Request, res: Response, next:
         hash,
       },
     });
-    return res.status(OK).json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+
+    const szUser = await sensitizeUserData(updatedUser)
+
+    return res.status(OK).json({ message: "Password created successfully.", user: JSONBigInt.parse(JSONBigInt.stringify(szUser)) });
   }
 
   res.status(BAD_REQUEST).json({ message: "Handler function not found" });
@@ -100,6 +104,7 @@ export const handleTokenInfoReq = async (req: Request, res: Response, next: Next
 
 export const handleWhiteListToken = async (req: Request, res: Response, next: NextFunction) => {
   const prisma = await createPrismaClient();
+  const config = await getConfig();
   try {
     const tokenId = req.body.token_id as string;
 
@@ -113,6 +118,7 @@ export const handleWhiteListToken = async (req: Request, res: Response, next: Ne
     }
 
     const contractDetails = await provideActiveContract();
+    const networkHelpers = new NetworkHelpers(config.app.mirrorNodeURL);
     const tokenData = await networkHelpers.getTokenDetails<TokenData>(tokenId);
 
     if (!contractDetails?.contract_id || !tokenData || tokenData.type !== "FUNGIBLE_COMMON") {
@@ -208,8 +214,8 @@ export const handleAllowAsCampaigner = async (req: Request, res: Response, next:
       data: { role: "USER" },
       where: { id },
     });
-
-    return res.status(OK).json({ success: true, user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+    const szUser = await sensitizeUserData(updatedUser)
+    return res.status(OK).json({ success: true, user: JSONBigInt.parse(JSONBigInt.stringify(szUser)) });
   } catch (err) {
     next(err);
   }
@@ -248,7 +254,7 @@ export const handleDeleteBizHanlde = async (req: Request, res: Response, next: N
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }
@@ -280,7 +286,7 @@ export const handleDeletePerosnalHanlde = async (req: Request, res: Response, ne
       },
     });
 
-    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))) });
+    return res.status(200).json({ message: 'User buiesness handle removed successfully', data: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(updatedUser))) });
   } catch (err) {
     next(err); // Pass error to the error handling middleware
   }

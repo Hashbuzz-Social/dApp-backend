@@ -28,9 +28,10 @@ const initializeApp = async () => {
   const config = await getConfig();
   const GITHUB_REPO = config.repo.repo;
 
+  console.log("Allowed origins", config.app.whitelistedDomains.split(','));
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
-    origin: config.app.whitelistedDomains || "*",
+    origin: config.app.whitelistedDomains.split(',') || "*",
     methods: "GET, OPTIONS, POST, PUT, PATCH",
     credentials: true, // Allow credentials (cookies) to be sent
   };

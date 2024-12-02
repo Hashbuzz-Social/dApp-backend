@@ -7,29 +7,31 @@ import { TwitterApi } from "twitter-api-v2";
 
 
 export const twitterAuthUrl = async ({ callbackUrl, isBrand, user_id }: { callbackUrl: string; isBrand?: boolean; user_id: bigint | number }) => {
-  // By default, oauth/authenticate are used for auth links, you can change with linkMode
-  // property in second parameter to 'authorize' to use oauth/authorize
-  // console.log(callbackUrl);
-  const prisma = await createPrismaClient();
-  const config = await getConfig();
-  let authLink;
-  const client = new TwitterApi({ appKey: config.xApp.xAPIKey, appSecret: config.xApp.xAPISecreate });
+  try {
+    const prisma = await createPrismaClient();
+    const config = await getConfig();
+    let authLink;
+    const client = new TwitterApi({ appKey: config.xApp.xAPIKey, appSecret: config.xApp.xAPISecreate });
 
-  if (isBrand) authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
-  else authLink = await client.generateAuthLink(callbackUrl);
-  const { url, oauth_callback_confirmed, oauth_token, oauth_token_secret } = authLink;
+    if (isBrand) authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
+    else authLink = await client.generateAuthLink(callbackUrl);
+    const { url, oauth_callback_confirmed, oauth_token, oauth_token_secret } = authLink;
 
-  await prisma.user_twitterlogintemp.create({
-    data: {
-      oauth_callback_confirmed: oauth_callback_confirmed === "true" ? true : false,
-      oauth_token: oauth_token,
-      oauth_token_secret: encrypt(oauth_token_secret, config.encryptions.encryptionKey),
-      created_at: moment().toISOString(),
-      user_id,
-    },
-  });
+    await prisma.user_twitterlogintemp.create({
+      data: {
+        oauth_callback_confirmed: oauth_callback_confirmed === "true" ? true : false,
+        oauth_token: oauth_token,
+        oauth_token_secret: encrypt(oauth_token_secret, config.encryptions.encryptionKey),
+        created_at: moment().toISOString(),
+        user_id,
+      },
+    });
 
-  return url;
+    return url;
+  }
+  catch (err) {
+    console.log(err);
+  }
 };
 
 export const authLogin = async ({ oauth_token, oauth_verifier }: { oauth_verifier: string; oauth_token: string }) => {

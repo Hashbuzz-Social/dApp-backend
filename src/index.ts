@@ -1,14 +1,27 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import preStartJobs from "./pre-start";
 import RedisClient from "@services/redis-servie";
 import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import { getConfig } from "./appConfig";
+import preStartJobs from "./pre-start";
 import server from "./server";
 
 let redisClient: RedisClient;
+
+/**
+ * Log messages to both console and logger
+ */
+function logInfo(message: string) {
+  console.log(message);
+  logger.info(message);
+}
+
+function logError(message: string, error?: any) {
+  console.error(message, error);
+  logger.err(message, error);
+}
 
 /**
  * Test Prisma connection
@@ -18,10 +31,10 @@ async function testPrismaConnection() {
     const prisma = await createPrismaClient();
     await prisma.$connect();
     const msg = "Connected to the database successfully.";
-    logger.info(msg);
+    logInfo(msg);
   } catch (error) {
     const errMsg = "Failed to connect to the database";
-    logger.err(errMsg, error);
+    logError(errMsg, error);
     process.exit(1);
   }
 }
@@ -33,10 +46,10 @@ async function testRedisConnection(client: RedisClient) {
   try {
     await client.checkConnection();
     const msg = "Connected to Redis successfully.";
-    logger.info(msg);
+    logInfo(msg);
   } catch (error) {
     const errMsg = "Failed to connect to Redis";
-    logger.err(errMsg, error);
+    logError(errMsg, error);
     process.exit(1);
   }
 }
@@ -45,13 +58,13 @@ async function testRedisConnection(client: RedisClient) {
  * Gracefully shuts down the server
  */
 async function gracefulShutdown() {
-  logger.info("Shutting down gracefully...");
+  logInfo("Shutting down gracefully...");
   if (redisClient) {
     const prisma = await createPrismaClient();
     await prisma.$disconnect();
-    logger.info("Prisma disconnected.");
+    logInfo("Prisma disconnected.");
     await redisClient.client.quit();
-    logger.info("Redis disconnected.");
+    logInfo("Redis disconnected.");
   }
   process.exit(0);
 }
@@ -74,17 +87,17 @@ async function init() {
     const port = config.app.port || 4000;
     server.listen(port, () => {
       const msg = `Server is running on http://localhost:${port}`;
-      logger.info(msg);
+      logInfo(msg);
     });
   } catch (error) {
     const errMsg = "Failed to initialize the server";
-    logger.err(errMsg, error);
+    logError(errMsg, error);
     process.exit(1);
   }
 }
 
 init().catch((error) => {
   const errMsg = "Failed to initialize the server";
-  logger.err(errMsg, error);
+  logError(errMsg, error);
   process.exit(1);
 });

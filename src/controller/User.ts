@@ -16,11 +16,14 @@ const { OK, BAD_REQUEST } = StatusCodes;
  * @description Get all user list by pagination.
  */
 export const handleGetAllUser = async (req: Request, res: Response, next: NextFunction) => {
-  const body = req.body;
-  const offset = body.offset ?? 0;
-  const limit = body.limit ?? 10;
-  const { users, count } = await userService.getAll({ limit, offset });
-  return res.status(OK).json({ users: users.map((u) => JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(u)))), count });
+  try {
+    const { offset = 0, limit = 10 } = req.body;
+    const { users, count } = await userService.getAll({ limit, offset });
+    const userData = await Promise.all(users.map(async (u) => JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(u)))));
+    return res.status(OK).json({ users: userData, count });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const handleCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
@@ -32,7 +35,10 @@ export const handleCurrentUser = async (req: Request, res: Response, next: NextF
     const collecterAddress = config.network.accountID;
     const campaignDuration = config.app.defaultCampaignDuratuon;
     const campaignRewardDuration = config.app.defaultRewardClaimDuration;
-    if (currentUser) return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(currentUser))), config: { contractAddress, collecterAddress, campaignDuration, campaignRewardDuration } });
+    if (currentUser) {
+      const senetizedUser = await sensitizeUserData(currentUser)
+      return res.status(OK).json({ ...JSONBigInt.parse(JSONBigInt.stringify(senetizedUser)), config: { contractAddress, collecterAddress, campaignDuration, campaignRewardDuration } });
+    }
     else throw new ParamMissingError("No record for this id.");
   }
 };
@@ -44,7 +50,7 @@ export const handleUpdateConcent = async (req: Request, res: Response, next: Nex
     where: { accountAddress: req.accountAddress },
     data: { consent: consent },
   });
-  return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(updatedUser))));
+  return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(updatedUser))));
 };
 
 export const handleGetUserBalances = (req: Request, res: Response, next: NextFunction) => {

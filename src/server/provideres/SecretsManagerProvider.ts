@@ -18,7 +18,7 @@ export class SecretsManagerProvider {
             return this.value || '';
         }
         try {
-            const secret = await this.secretsManagerClient.getSecretValue({ SecretId: "X_Tokens" });
+            const secret = await this.secretsManagerClient.getSecretValue({ SecretId: "Prod_Variables" });
             const secretData = JSON.parse(secret.SecretString || '{}');
             this.value = secretData[this.secretKey] || '';
             this.log?.info(`Fetched secret key "${this.secretKey}" successfully.`);

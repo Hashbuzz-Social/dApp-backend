@@ -5,10 +5,11 @@ import { getConfig } from 'src/appConfig';
 class NetworkHelpers {
     private axiosInstance: AxiosInstance;
 
-    constructor() {
+    constructor(nodeURL: string) {
         // Initialize axiosInstance with a default configuration
         this.axiosInstance = axios.create({
             timeout: 10000, // Set a timeout for requests
+            baseURL: nodeURL,
         });
 
         // Add a response interceptor
@@ -16,12 +17,6 @@ class NetworkHelpers {
             this.handleResponse,
             this.handleError
         );
-    }
-
-    // Method to initialize axiosInstance with the actual configuration
-    async init() {
-        const configs = await getConfig();
-        this.axiosInstance.defaults.baseURL = configs.app.mirrorNodeURL;
     }
 
     // Method to handle responses
@@ -82,5 +77,5 @@ class NetworkHelpers {
     }
 }
 
-export const networkHelpers = new NetworkHelpers();
+// export const networkHelpers = new NetworkHelpers();
 export default NetworkHelpers;

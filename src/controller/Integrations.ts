@@ -10,16 +10,24 @@ const { OK, INTERNAL_SERVER_ERROR, TEMPORARY_REDIRECT } = HttpStatusCodes;
 
 export const handlePersonalTwitterHandle = async (req: Request, res: Response, next: NextFunction) => {
   const user_id = req.currentUser?.id;
-  if (user_id) {
-    const config = await getConfig();
-    const url = await twitterAuthUrl({ callbackUrl: `${config.app.xCallBackHost}/auth/twitter-return/`, user_id });
-    return res.status(OK).json({ url });
+  try {
+    if (user_id) {
+      const config = await getConfig();
+      console.log("user_id", config.app.xCallBackHost);
+      const url = await twitterAuthUrl({ callbackUrl: `${config.app.xCallBackHost}/auth/twitter-return/`, user_id });
+      return res.status(OK).json({ url });
+    }
+  } catch (err) {
+    console.log(err);
+    next(new ErrorWithCode("Error while create twittwe auth link", INTERNAL_SERVER_ERROR));
   }
 };
 
 export const handleBizTwitterHandle = async (req: Request, res: Response, next: NextFunction) => {
   const user_id = req.currentUser?.id;
   const config = await getConfig();
+
+  console.log("user_id", config.app.xCallBackHost);
   if (user_id) {
     twitterAuthUrl({
       callbackUrl: `${config.app.xCallBackHost}/auth/business-twitter-return/`,
@@ -29,7 +37,8 @@ export const handleBizTwitterHandle = async (req: Request, res: Response, next: 
       .then((url) => {
         return res.status(OK).json({ url });
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log(err);
         next(new ErrorWithCode("Error while create twittwe auth link", INTERNAL_SERVER_ERROR));
       });
   }

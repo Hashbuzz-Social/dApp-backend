@@ -10,7 +10,6 @@ import userService from "@services/user-service";
 import { ErrorWithCode } from "@shared/errors";
 import { convertToTinyHbar, rmKeyFrmData, sensitizeUserData } from "@shared/helper";
 import createPrismaClient from "@shared/prisma";
-import prisma from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
@@ -59,11 +58,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
         });
       }
 
-      //!! if requested state is Running or rejected then current status of card must be pending.
-      // if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
-      //   return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
-      // }
-
       /**** ============= Update card to Running Status operation=================== */
       if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
         //? Check is there any running card for current card owner. We are allowing only one card running at a single moments.
@@ -92,12 +86,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
         if (tweetId) {
           const [SM_transaction, dbUserBalance] = await Promise.all([await allocateBalanceToCampaign(campaign_data.id, amounts, campaignerAccount, campaign_data?.contract_id), await userService.topUp(campaignerId, amounts, "decrement")]);
 
-          // const date = new Date();
-          // const newDate = date.setHours(date.getHours() + 24);
-          // scheduleJob(newDate, async function () {
-          //   const { user_user, ...restCard } = campaign_data!;
-          // const completeCampaign = await completeCampaignOperation(restCard);
-          //   });
           const updated_campaign_data = await getCampaignDetailsById(campaignId);
           // console.log(updated_campaign_data, "campaign");
           const { user_user, ...restCard } = updated_campaign_data!;
@@ -105,25 +93,11 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
           return res.status(OK).json({
             message: "Campaign status updated",
             transaction: SM_transaction,
-            user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))),
+            user: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(dbUserBalance))),
           });
         }
-        // }
-
-        // if (["rejected", "deleted"].includes(requested_card_status)) {
-        //   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //   const campaignUpdates = await updateCampaignStatus(campaignId, requested_card_status === "rejected" ? "Rejected" : "Deleted");
-        //   return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(campaignUpdates)));
-        // }
-
-        // next(new ErrorWithCode("Insufficient parameters", BAD_REQUEST));
       }
-      // ---- For manual close campaign ------
-      // if (requested_card_status === "completed") {
-      //   const { user_user, ...restCard } = campaign_data!;
-      //   const completeCampaign = await completeCampaignOperation(restCard);
-      //   return res.status(OK).json(completeCampaign);
-      // }
+
     }
 
     if (campaign_data && campaign_data?.type === "FUNGIBLE" && campaign_data.user_user && campaign_data?.fungible_token_id) {
@@ -153,10 +127,7 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
         });
       }
 
-      //!! if requested state is Running or rejected then current status of card must be pending.
-      // if (current_status_of_card === "pending" && !["running", "rejected"].includes(requested_card_status)) {
-      //   return res.status(CONFLICT).json({ error: true, message: "Requested status updated will only be provided on pending card." });
-      // }
+
       /**** ============= Update card to Running Status operation=================== */
       if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
         //? Check is there any running card for current card owner. We are allowing only one card running at a single moments.
@@ -196,30 +167,17 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
             }),
           ]);
 
-          // const date = new Date();
-          // const newDate = date.setHours(date.getHours() + 24);
-          // // const newDate = date.setMinutes(date.getMinutes() + 15);
-          // scheduleJob(newDate, async function () {
-          //   const { user_user, ...restCard } = campaign_data!;
-          //   const completeCampaign = await completeCampaignOperation(restCard);
-          //   // return res.status(OK).json(completeCampaign);
-          //   });
+
 
           return res.status(OK).json({
             message: "Campaign status updated",
             transaction: SM_transaction,
-            user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(dbUserBalance))),
+            user: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(dbUserBalance))),
           });
         }
       }
 
-      // ---- For manual close campaign ------
 
-      // if (requested_card_status === "completed") {
-      //   const { user_user, ...restCard } = campaign_data!;
-      //   const completeCampaign = await completeCampaignOperation(restCard);
-      //   return res.status(OK).json(completeCampaign);
-      // }
     }
   } else {
     res.json({ message: "Campaign is not approved" });

@@ -1,24 +1,30 @@
 import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
 import logger from "jet-logger";
 import { getConfig } from "src/appConfig";
+import { network } from "@prisma/client"
 
-async function initializeHederaClient() {
+interface HederaClientConfig {
+  hederaClient: Client;
+  network: network;
+  operatorAccount: string;
+  operatorPrivateKey: string;
+  operatorId: AccountId;
+  operatorKey: PrivateKey;
+  operatorPublicKey: string;
+  getAccountBalances: (accountId: string) => Promise<any>;
+}
+
+async function initializeHederaClient(): Promise<HederaClientConfig> {
   const appConfig = await getConfig();
+  const { network, privateKey, publicKey, accountID } = appConfig.network;
 
-  const network = appConfig.network.network;
-  const operatorPrivateKey = appConfig.network.privateKey;
-  const operatorPublicKey = appConfig.network.publicKey;
-  const operatorAccount = appConfig.network.accountID;
-
-  //build key
-  const operatorId = AccountId.fromString(operatorAccount);
-  const operatorKey = PrivateKey.fromString(operatorPrivateKey);
-
-  // ===================================Set Hedera Client Details======================================
-
-  if (operatorPrivateKey == null || operatorAccount == null) {
+  if (!privateKey || !accountID) {
+    console.log({ privateKey, accountID });
     throw new Error("Environment variables HEDERA_PRIVATE_KEY and HEDERA_ACCOUNT_ID must be present");
   }
+
+  const operatorId = AccountId.fromString(accountID);
+  const operatorKey = PrivateKey.fromStringECDSA(privateKey);
 
   let client: Client;
   switch (network) {
@@ -27,7 +33,7 @@ async function initializeHederaClient() {
       client = Client.forMainnet();
       break;
     case "testnet":
-      console.log("Connecting to the Hedera Testnet");
+      logger.info("Connecting to the Hedera Testnet");
       client = Client.forTestnet();
       break;
     case "previewnet":
@@ -38,41 +44,33 @@ async function initializeHederaClient() {
       logger.err(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
       throw new Error(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
   }
-  client = client.setOperator(operatorId, operatorKey);
-
-  /* create new async function */
-  async function createNewTopic() {
-    //Create the transaction
-    const transaction = new TopicCreateTransaction();
-    //Sign with the client operator private key and submit the transaction to a Hedera network
-    const txResponse = await transaction.execute(client);
-    //Request the receipt of the transaction
-    const receipt = await txResponse.getReceipt(client);
-    //Get the topic ID
-    const newTopicId = receipt.topicId;
-    return newTopicId;
-  }
+  client.setOperator(operatorId, operatorKey);
 
   const getAccountBalances = async (accountId: string) => {
     const ac = AccountId.fromString(accountId);
-    //Create the account balance query
     const query = new AccountBalanceQuery().setAccountId(ac);
-
-    //Submit the query to a Hedera network
-    const accountBalance = await query.execute(client);
-    return accountBalance;
+    return await query.execute(client);
   };
 
   return {
     hederaClient: client,
     network,
-    operatorAccount,
-    operatorPrivateKey,
+    operatorAccount: accountID,
+    operatorPrivateKey: privateKey,
     operatorId,
     operatorKey,
-    operatorPublicKey,
+    operatorPublicKey: publicKey,
     getAccountBalances,
-  } as const;
+  };
 }
 
 export default initializeHederaClient;
+
+let cachedClient: HederaClientConfig | null = null;
+
+export async function getCachedHederaClient(): Promise<HederaClientConfig> {
+  if (!cachedClient) {
+    cachedClient = await initializeHederaClient();
+  }
+  return cachedClient;
+}

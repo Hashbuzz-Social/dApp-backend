@@ -23,7 +23,7 @@ export const handleAuthPing = async (req: Request, res: Response, next: NextFunc
 export const handleCreateChallenge = async (req: Request, res: Response, next: NextFunction) => {
   const params = req.query;
   const config = await getConfig();
-  const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken(config.encryptions.encryptionKey) } };
+  const payload = { url: params.url ?? "hashbuzz.social", data: { token: generateSigningToken(config.encryptions.jwtSecreatForAccessToken) } };
   const { signature, serverSigningAccount } = await signingService.signData(payload);
   return res.status(OK).json({ payload, server: { signature: Buffer.from(signature).toString("base64"), account: serverSigningAccount } });
 };
@@ -57,7 +57,7 @@ export const handleAdminLogin = async (req: Request, res: Response, next: NextFu
       if (validatePassword) {
         return res.status(OK).json({
           message: "Logged in successfully.",
-          user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(user))),
+          user: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(user))),
           adminToken: generateAdminToken(user, config.encryptions.encryptionKey),
         });
       } else next(new ErrorWithCode("Invalid Password", BAD_REQUEST));

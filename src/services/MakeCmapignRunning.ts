@@ -119,7 +119,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
       return {
         success: true,
         messages: "Campaign status is changed to running successfully.",
-        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(cardOwner))),
+        user: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(cardOwner))),
       };
     } catch (error) {
       await this.handleErrorWhileRunning(this.campaignCard?.id!, "makeCardRunning encountered an error", error);
@@ -323,7 +323,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
       return {
         success: true,
         messages: "Campaign status is changed to running successfully.",
-        user: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(cardOwner))),
+        user: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(cardOwner))),
       };
     } catch (error) {
       await this.handleErrorWhileRunning(this.campaignCard?.id!, "makeCardRunning encountered an fungible error", error);

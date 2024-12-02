@@ -26,12 +26,10 @@ const setVariables = async () => {
 
   try {
     const configs = await getConfig();
-    console.log("Configuration loaded successfully:", JSON.stringify(configs, null, 2));
 
     globalThis.adminAddress = String(configs.app.adminAddresses)
       .split(",")
       .map((add: string) => getAccountAddress(add));
-    console.log("Admin addresses set:", globalThis.adminAddress);
 
     process.env['DATABASE_URL'] = configs.db.dbServerURI;
     console.log("Database URL set:", process.env['DATABASE_URL']);
@@ -39,7 +37,6 @@ const setVariables = async () => {
     globalThis.db = {
       redis: configs.db.redisServerURI
     };
-    console.log("Redis URL set:", globalThis.db.redis);
 
     if (fs.existsSync(trailsetterAccountsDataPath)) {
       const data = fs.readFileSync(trailsetterAccountsDataPath, "utf-8");

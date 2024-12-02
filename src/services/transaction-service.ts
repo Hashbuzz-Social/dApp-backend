@@ -3,7 +3,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import initHederaservice from "@services/hedera-service";
 import signingService from "@services/signing-service";
 import { sensitizeUserData, waitFor } from "@shared/helper";
-import { networkHelpers } from "@shared/NetworkHelpers";
+import NetworkHelpers from "@shared/NetworkHelpers";
 import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
@@ -13,17 +13,14 @@ import { getConfig } from "src/appConfig";
 import { provideActiveContract } from "./contract-service";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";
-// import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import userService from "./user-service";
 import HederaSDKCalls from "./HederaSDKCalls";
 
-// const { hederaClient, operatorKey, operatorId } = hederaService;
 
 export const updateBalanceToContract = async (payerId: string, amounts: { value: number; fee: number; total: number }) => {
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    // const address = AccountId.fromString(payerId);
     const deposit = true;
     const amount = Math.floor(amounts.value * 1e8);
 
@@ -253,7 +250,7 @@ export const reimbursementAmount = async (params: { userId: number | bigint, amo
     console.groupEnd();
     return {
       paymentTransaction,
-      userData: JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(userData))),
+      userData: JSONBigInt.parse(JSONBigInt.stringify(await sensitizeUserData(userData))),
     };
   }
 };
@@ -310,13 +307,14 @@ export const validateTransactionFormNetwork = async (transactionId: string, tran
   try {
     // Active contract
     const contractDetails = await provideActiveContract();
-    const congis = await getConfig();
+    const configs = await getConfig();
     const contract_address = contractDetails?.contract_id;
 
     // Collector account
-    const collectorAccount = congis.network.accountID;
+    const collectorAccount = configs.network.accountID;
 
     // Fetch transaction details from the network
+    const networkHelpers = new NetworkHelpers(configs.app.mirrorNodeURL);
     const data = await networkHelpers.getTransactionDetails<TransactionResponse>(transactionId);
     const transaction = data.transactions[0];
 
