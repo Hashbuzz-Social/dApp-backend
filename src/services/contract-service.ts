@@ -56,10 +56,8 @@ export async function addFungibleAndNFTCampaign(tokenId: string, amount: number,
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
-    console.log(tokenId, amount, user_id, "Inside fungible campaign");
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const addCampaignFungibleStateUpdate = await campaignLifecycleService.addFungibleCampaign(tokenId, campaign, user_id, amount);
-    console.log(" - Add campaign transaction contractId: " + addCampaignFungibleStateUpdate.status.toString());
     return addCampaignFungibleStateUpdate;
   }
 }
@@ -69,8 +67,6 @@ export async function closeFungibleAndNFTCampaign(campaign: string) {
   const contractDetails = await provideActiveContract();
   const appConfig = await getConfig();
   const expiryDuration = Number(appConfig.app.defaultCampaignDuratuon ?? 15) * 60;
-
-  console.log("Inside close campaign", { campaign, expiryDuration });
 
   if (contractDetails?.contract_id) {
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
@@ -93,8 +89,6 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
       campaignAddress: card.contract_id,
       campaigner: cardOwner.hedera_wallet_id,
     }
-
-    console.log("Inside expiry campaign", JSONBigInt.stringify(props));
 
     const expiryCampaignStateUpdate = await campaignLifecycleService.expiryFungibleCampaign(props);
 
@@ -124,14 +118,14 @@ export async function expiryCampaign(card: campaign_twittercard, cardOwner: user
 }
 
 // Function to distribute tokens using SDK
-export async function distributeTokenUsingSDK(params: { tokenId: string, userId: string, amount: number, campaign: string }) {
+export async function distributeTokenUsingSDK(params: { tokenId: string, userId: string, amount: number, xHandle: string }) {
   try {
-    const { amount, userId, campaign, tokenId } = params;
+    const { amount, userId, tokenId, xHandle } = params;
     const contractDetails = await provideActiveContract();
     if (contractDetails?.contract_id) {
       const { operatorId, operatorKey, hederaClient } = await initHederaService();
       const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
-      const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(userId, amount, campaign, tokenId);
+      const transactionRecipt = await hederaSDKCallHandler.rewardIntractorWithToken(userId, amount, tokenId, xHandle);
       return transactionRecipt;
     }
   } catch (error) {

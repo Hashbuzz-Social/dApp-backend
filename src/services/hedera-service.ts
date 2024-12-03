@@ -19,7 +19,6 @@ async function initializeHederaClient(): Promise<HederaClientConfig> {
   const { network, privateKey, publicKey, accountID } = appConfig.network;
 
   if (!privateKey || !accountID) {
-    console.log({ privateKey, accountID });
     throw new Error("Environment variables HEDERA_PRIVATE_KEY and HEDERA_ACCOUNT_ID must be present");
   }
 
@@ -29,19 +28,15 @@ async function initializeHederaClient(): Promise<HederaClientConfig> {
   let client: Client;
   switch (network) {
     case "mainnet":
-      logger.info("Connecting to the Hedera Mainnet");
       client = Client.forMainnet();
       break;
     case "testnet":
-      logger.info("Connecting to the Hedera Testnet");
       client = Client.forTestnet();
       break;
     case "previewnet":
-      logger.info("Connecting to the Hedera Previewnet");
       client = Client.forPreviewnet();
       break;
     default:
-      logger.err(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
       throw new Error(`Invalid HEDERA_NETWORK: ${network ?? ""}`);
   }
   client.setOperator(operatorId, operatorKey);
@@ -64,11 +59,11 @@ async function initializeHederaClient(): Promise<HederaClientConfig> {
   };
 }
 
-export default initializeHederaClient;
+
 
 let cachedClient: HederaClientConfig | null = null;
 
-export async function getCachedHederaClient(): Promise<HederaClientConfig> {
+export default async function getCachedHederaClient(): Promise<HederaClientConfig> {
   if (!cachedClient) {
     cachedClient = await initializeHederaClient();
   }

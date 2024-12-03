@@ -87,13 +87,6 @@ class TweetTracker {
         if (tweet.data && tweet.data.text.includes('#hashbuzz')) {
           // Check if the tweet ID is one of the ones you're interested in
           if (this.tweetIdsToTrack.has(tweet.data.id)) {
-            console.log('Matching Tweet ID:', tweet.data.id);
-            console.log('Tweet Text:', tweet.data.text);
-            console.log('Retweets:', tweet.data.public_metrics.retweet_count);
-            console.log('Likes:', tweet.data.public_metrics.like_count);
-            console.log('Replies:', tweet.data.public_metrics.reply_count);
-            console.log('Quotes:', tweet.data.public_metrics.quote_count);
-
             // Fetch engaged user IDs for this tweet
             this.getEngagedUserIds(tweet.data.id);
           }
@@ -120,9 +113,9 @@ class TweetTracker {
       const now = Date.now();
       for (const [tweetId, timestamp] of this.tweetIdsToTrack.entries()) {
         if (now - timestamp > expirationDuration) {
+
           // Fetch and store engaged user IDs for the expired tweet
           await this.getEngagedUserIds(tweetId);
-          console.log(`Engagements for Tweet ID ${tweetId}:`, Array.from(this.engagedUserIds[tweetId] || []));
 
           // Remove the tweet ID from tracking
           this.tweetIdsToTrack.delete(tweetId);

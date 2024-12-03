@@ -16,13 +16,13 @@ const configFactory = new ConfigurationFactory<AppConfig>({
         app: {
             port: provider.envAsNumber('PORT', 4000),
             adminAddresses: provider.env('ADMIN_ADDRESS'),
-            openAIKey: provider.secret('OPEN_AI_KEY'),
-            defaultRewardClaimDuration: provider.envAsNumber('DEFAULT_REWARD_CLAIM_DURATION', 15),
-            defaultCampaignDuratuon: provider.envAsNumber('DEFAULT_CAMPAIGN_DURATION', 15),
-            appURL: provider.env('FRONTEND_URL', 'https://hashbuzz.social'),
-            xCallBackHost: provider.env('TWITTER_CALLBACK_HOST', 'https://api.hashbuzz.social'),
-            whitelistedDomains: provider.env("WHITELISTED_DOMAINS", "https://hashbuzz.social , http://localhost:3000"),
-            mirrorNodeURL: provider.env('MIRROR_NODE_LINK', "https://testnet.mirrornode.hedera.com")
+            openAIKey: provider.env('OPEN_AI_KEY'),
+            defaultRewardClaimDuration: provider.envAsNumber('DEFAULT_REWARD_CLAIM_DURATION', 7),
+            defaultCampaignDuratuon: provider.envAsNumber('DEFAULT_CAMPAIGN_DURATION', 7),
+            appURL: provider.fixed('https://j5nl2f3m-3000.inc1.devtunnels.ms'),
+            xCallBackHost: provider.env('TWITTER_CALLBACK_HOST', 'https://j5nl2f3m-4000.inc1.devtunnels.ms'),
+            whitelistedDomains: provider.env("WHITELISTED_DOMAINS", "https://hashbuzz.social,http://localhost:3000,https://j5nl2f3m-3000.inc1.devtunnels.ms"),
+            mirrorNodeURL: provider.fixed("https://testnet.mirrornode.hedera.com")
         },
         encryptions: {
             jwtSecreatForAccessToken: provider.secret('J_ACCESS_TOKEN_SECRET'),
@@ -40,8 +40,8 @@ const configFactory = new ConfigurationFactory<AppConfig>({
             redisServerURI: provider.env('REDIS_URL'),
         },
         xApp: {
-            xAPIKey: provider.secret('TWITTER_API_KEY'),
-            xAPISecreate: provider.secret('TWITTER_API_SECRET'),
+            xAPIKey: provider.env('TWITTER_API_KEY'),
+            xAPISecreate: provider.env('TWITTER_API_SECRET'),
             xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'),
             xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
             xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
@@ -49,9 +49,9 @@ const configFactory = new ConfigurationFactory<AppConfig>({
         network: {
             network: provider.env('NETWORK', 'testnet'),
             privateKey: provider.secret('HEDERA_PRIVATE_KEY'),
-            publicKey: provider.secret('HEDERA_PUBLIC_KEY'),
+            publicKey: provider.env('HEDERA_PUBLIC_KEY'),
             contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
-            accountID: provider.secret("HEDERA_ACCOUNT_ID")
+            accountID: provider.env("HEDERA_ACCOUNT_ID")
         },
     }),
 });

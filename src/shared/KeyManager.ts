@@ -52,8 +52,6 @@ const generateKeyPair = async (): Promise<KeyPair> => {
     const keyStore = await loadKeyStoreFromRedis();
     keyStore.push(keyPair);
     await saveKeyStoreToRedis(keyStore);
-
-    console.log(`New key pair generated with kid: ${kid}`);
     return keyPair;
 };
 
@@ -80,8 +78,6 @@ export const getPublicKey = async (kid: string): Promise<string | undefined> => 
 const rotateKeys = async () => {
     console.log("Rotating keys...");
     await generateKeyPair();
-    // Optionally remove old keys that are expired
-    // Assuming JWT tokens are valid for 24 hours, keep keys for 48 hours
     const now = Date.now();
     const keyStore = await loadKeyStoreFromRedis();
     const updatedKeyStore = keyStore.filter((key) => now - key.createdAt < 48 * 60 * 60 * 1000); // 48 hours

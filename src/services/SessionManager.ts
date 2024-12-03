@@ -94,10 +94,15 @@ class SessionManager {
     return { deviceType, ipAddress, userAgent };
   }
 
-  definerRoles(accAddress: string) {
+  async definerRoles(accAddress: string) {
+    const prisma = await createPrismaClient();
+    const trailSettersAccounts = await prisma.trailsetters.findMany();
+
+    const isCurrentUserTrailsetter = trailSettersAccounts.some((trailsetter) => trailsetter.walletId === accAddress);
+
     if (globalThis.adminAddress.includes(accAddress)) {
       return "SUPER_ADMIN";
-    } else if (globalThis.TrailsetterAccounts.includes(accAddress)) {
+    } else if (isCurrentUserTrailsetter) {
       // loigic to verify the  NFT holding position and then go for the role
       return "TRAILSETTER";
     } else {
@@ -115,7 +120,7 @@ class SessionManager {
         hedera_wallet_id: accountId,
         available_budget: 0,
         is_active: false,
-        role: globalThis.adminAddress.includes(accAddress) ? "SUPER_ADMIN" : "GUEST_USER",
+        role: await this.definerRoles(accAddress),
       },
     });
   }
@@ -129,7 +134,6 @@ class SessionManager {
 
   async checkAndUpdateSession(userId: bigint, deviceId: string, deviceType: string, ipAddress: string | null, userAgent: string | null, kid: string, expiry: Date) {
     const existingSession = await this.findSession(userId, deviceId);
-    console.log("existingSession", existingSession);
     if (existingSession) {
       await this.updateSession(existingSession.id, kid, expiry);
     } else {
@@ -226,7 +230,6 @@ class SessionManager {
     const prisma = await createPrismaClient();
     if (this.redisclinet.client) {
       const session = await this.redisclinet.read(sessionKey);
-      console.log("session", session);
       if (session) {
         return JSON.parse(session);
       } else {

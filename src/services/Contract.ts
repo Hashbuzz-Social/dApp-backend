@@ -112,7 +112,6 @@ class HederaContract {
             const response = await query.execute(hederaService.hederaClient);
             const resultAsBytes = response.asBytes();
 
-            console.log("Contract_call_logs", response?.logs);
 
             const dataDecoded = this.decodeReturnData(fnName, response);
             // const eventLogs = this.captureEventLogs(fnName, response);
@@ -150,18 +149,14 @@ class HederaContract {
             const record = await response.getRecord(hederaService.hederaClient);
             const result = record.contractFunctionResult;
 
-            console.log("Contract_call_logs", result?.logs);
-            console.log("Contract_call_result", result);
 
             if (result) {
                 const resultAsBytes = result.asBytes();
                 const dataDecoded = this.decodeReturnData(functionName, result);
                 // const eventLogs = this.captureEventLogs(functionName, result);
                 const data = { status: receipt.status, receipt, resultAsBytes, dataDecoded, transactionId: record.transactionId.toString() };
-                console.log(` - The Contract transaction status and data for **${functionName}** :: =>`, data);
                 return data;
             }
-            console.log(` - The Contract transaction receipt and status for **${functionName}** :: =>`, { receipt, status: receipt.status });
             return { status: receipt.status, transactionId: record.transactionId.toString(), receipt };
         } catch (error) {
             if (error instanceof ReceiptStatusError) {

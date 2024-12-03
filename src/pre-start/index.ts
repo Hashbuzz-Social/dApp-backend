@@ -1,16 +1,17 @@
 import cronTasksService from "@services/cronTasks-service";
+import cron from "node-cron";
 import associatedTokens from "./associatedTokens";
-import { taskEvery5Minutes, taskEveryMidnight, taskEveryMinute, taskEvery2Minutes } from "./cronJob";
+import { cronJobs, scheduleOptions } from "./cronJob";
 import setVariables from "./setVariables";
 
 const preStartJobs = async () => {
   await setVariables();
   associatedTokens.checkAvailableTokens();
-  taskEveryMidnight.start();
-  taskEveryMinute.start();
-  taskEvery2Minutes.start();
-  taskEvery5Minutes.start();
+  // Schedule all cron jobs
   cronTasksService.scheduleExpiryTasks();
+  cronJobs.forEach(({ schedule, task }) => {
+    cron.schedule(schedule, task, scheduleOptions).start();
+  });
   console.log("Pre-start jobs done");
 };
 

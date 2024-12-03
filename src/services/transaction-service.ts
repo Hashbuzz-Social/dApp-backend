@@ -48,7 +48,6 @@ export const updateFungibleAmountToContract = async (payerId: string, amount: nu
 };
 
 export const createTopUpTransaction = async (entity: CreateTranSactionEntity, connectedAccountId: string) => {
-  // console.log("Creating Transaction Hash with:", { payerId, amounts });
   const { value, fee, total } = entity.amount;
   const contractDetails = await provideActiveContract();
   const prisma = await createPrismaClient();
@@ -73,7 +72,6 @@ export const createTopUpTransaction = async (entity: CreateTranSactionEntity, co
       }
     }
     const transactionId = transferTx.transactionId?.toString();
-    console.log(transactionId, "Transaction Id");
     //signing and returning
     return signingService.signAndMakeBytes(transferTx, connectedAccountId);
   } else {
@@ -137,15 +135,10 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
 
   if (contractDetails?.contract_id) {
     const contractAddress = ContractId.fromString(contractDetails.contract_id.toString());
-    // const campaignAddress = buildCampaignAddress(campaignerAccount, campaignId.toString());
     const user = AccountId.fromString(campaignerAccount);
     const campaign = AccountId.fromString(campaignerAccount);
 
-    console.log("Update SM balances For campaign", {
-      campaignAddress: campaign,
-      contract_id: contractDetails.contract_id,
-      amount,
-    });
+
     const distributeHbar = new ContractExecuteTransaction().setContractId(contractAddress).setGas(400000).setFunction("transferHbar", new ContractFunctionParameters().addAddress(user.toSolidityAddress()).addString(campaignId).addUint256(amount)).setTransactionMemo("Update campaign details");
 
     const distributeHbarTx = await distributeHbar.execute(hederaClient);
@@ -162,20 +155,20 @@ export const updateCampaignBalance = async ({ campaignerAccount, campaignId, amo
 
 export const transferAmountFromContractUsingSDK = async (params: {
   /** Local DB address in string */
-  campaignAddress: string,
+  xHandle: string,
   /** Total amount rewwarded to this user */
   amount: number,
   /** Wallet of intractor */
   intractorWallet: string,
 }) => {
-  const { campaignAddress, amount, intractorWallet } = params;
+  const { xHandle, amount, intractorWallet } = params;
   const contractDetails = await provideActiveContract();
   const amountInHbar = Math.round(amount) / 1e8;
 
   if (contractDetails?.contract_id) {
     const { operatorId, operatorKey, hederaClient } = await initHederaservice();
     const hederaSDKCallHandler = new HederaSDKCalls(hederaClient, operatorId, operatorKey)
-    const recipt = await hederaSDKCallHandler.rewardIntractor(intractorWallet, amountInHbar, campaignAddress);
+    const recipt = await hederaSDKCallHandler.rewardIntractor(intractorWallet, amountInHbar, xHandle);
     return recipt;
   }
 };
@@ -226,8 +219,7 @@ export const closeCampaignSMTransaction = async (campaign: string) => {
 
 export const reimbursementAmount = async (params: { userId: number | bigint, amounts: number, accountId: string, currentBalance: number }) => {
   const { userId, accountId, amounts, currentBalance } = params;
-  console.group("Reimbursement::");
-  console.log({ amounts, accountId });
+
   const contractDetails = await provideActiveContract();
 
   if (contractDetails?.contract_id) {
@@ -262,7 +254,7 @@ export const reimbursementFungible = async (params: { accountId: string, amounts
   if (contractDetails?.contract_id) {
     const amount = Number(amounts * 10 ** Number(decimals))
 
-    const updatedTokenBalance = await contractTransactionHandler.reimburseBalanceForFungible(
+    const updatedTokenBalance = await contractTransactionHandler.reimburseCampaigner(
       tokenId,
       accountId,
       amount

@@ -93,7 +93,7 @@ class HederaSDKCalls {
         const transferTx = new TransferTransaction()
             .addHbarTransfer(AccountId.fromString(fromAccountId), -amount)
             .addHbarTransfer(AccountId.fromString(toAccountId), amount)
-            .setTransactionMemo(trasctionMemos.transferHbarUsingSDK + (memo ?? ""))
+            .setTransactionMemo(memo ?? "")
             .freezeWith(this.client);
 
         // Sign and execute the transaction
@@ -121,7 +121,7 @@ class HederaSDKCalls {
         const transaction = new TransferTransaction()
             .addTokenTransfer(tokenId, fromAccountId, -amount)
             .addTokenTransfer(tokenId, toAccountId, amount)
-            .setTransactionMemo(trasctionMemos.transferTokenUsingSDK + (memo ?? ""))
+            .setTransactionMemo(memo ?? "")
             .freezeWith(this.client);
 
         //Sign with the sender account private key
@@ -146,14 +146,14 @@ class HederaSDKCalls {
      * @param amount Total amount in tinyHBAR to reward
      * @param campaignAddress DB address of the campaign
      */
-    async rewardIntractor(intreactor: string, amount: number, campaignAddress: string) {
+    async rewardIntractor(intreactor: string, amount: number, intractorHndle: string) {
         const contractDetails = await provideActiveContract()
         if (contractDetails?.contract_id)
             return await this.transferHbarUsingSDK({
                 fromAccountId: contractDetails.contract_id,
                 toAccountId: intreactor,
                 amount,
-                memo: `ħbuzzReward_${intreactor}_${campaignAddress}`
+                memo: `promo reward from @${intractorHndle}`
             });
     }
 
@@ -164,7 +164,7 @@ class HederaSDKCalls {
      * @param campaignAddress DB address of the campaign
      * @param tokenId Token address which is going to be rewarded example 0.0.12345
      */
-    async rewardIntractorWithToken(intreactor: string, amount: number, campaignAddress: string, tokenId: string) {
+    async rewardIntractorWithToken(intreactor: string, amount: number, tokenId: string, intractorHndle: string) {
         const contractDetails = await provideActiveContract();
         if (contractDetails?.contract_id) {
             return await this.transferTokenUsingSDK({
@@ -172,7 +172,7 @@ class HederaSDKCalls {
                 toAccountId: intreactor,
                 tokenId,
                 amount,
-                memo: `ħbuzzTokenReward_${intreactor}_${campaignAddress}`
+                memo: `promo reward from @${intractorHndle}`
             });
         }
     }

@@ -28,10 +28,8 @@ const initializeApp = async () => {
   const config = await getConfig();
   const GITHUB_REPO = config.repo.repo;
 
-  console.log("Allowed origins", config.app.whitelistedDomains.split(','));
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
-    // origin: config.app.whitelistedDomains.split(',') || "*",
     origin: "*",
     methods: "GET, OPTIONS, POST, PUT, PATCH",
     credentials: true, // Allow credentials (cookies) to be sent
@@ -102,15 +100,11 @@ const initializeApp = async () => {
       },
       async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any, info?: any) => void) => {
         try {
-          // console.log("GitHub profile:", profile);
-          // console.log("Access token:", accessToken);
-          // console.log("GITHUB_REPO:", GITHUB_REPO);
 
           // Verify token scopes
           const tokenInfo = await axios.get("https://api.github.com/user", {
             headers: { Authorization: `token ${accessToken}` },
           });
-          console.log("Token scopes:", tokenInfo.headers["x-oauth-scopes"]);
 
           // Construct the API URL
           const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/collaborators/${profile.username}`;

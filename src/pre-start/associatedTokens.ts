@@ -2,7 +2,6 @@ import { AccountId } from "@hashgraph/sdk";
 import { utilsHandlerService } from "@services/ContractUtilsHandlers";
 import NetworkHelpers from "@shared/NetworkHelpers";
 import createPrismaClient from "@shared/prisma";
-import { config } from "dotenv";
 import logger from "jet-logger";
 import { AccountDetails, TokenBalance } from "src/@types/networkResponses";
 import { getConfig } from "src/appConfig";
@@ -28,16 +27,13 @@ const checkAvailableTokens = async () => {
     );
 
     if (additionalInLocal.length > 0 || additionalInNetwork.length > 0) {
-      console.log(`Additional token found in local DB ${additionalInLocal.length} and network associated ${additionalInNetwork.length}.`);
 
       // All fungible whitelisted tokens
       const allContractAllowedTokens = await utilsHandlerService.getAllWhitelistedTokens(); // Output will be EVM address
-      console.log("All contract allowed tokens:", allContractAllowedTokens);
 
       const allContractAllowedTokenIds = allContractAllowedTokens.map(token =>
         AccountId.fromEvmAddress(0, 0, token).toString()
       );
-      console.log("All contract allowed token ids:", allContractAllowedTokenIds);
 
       const tokenExtraFromNetwork = allContractAllowedTokenIds.filter(t =>
         !networkTokens.find(nt => nt.token_id === t)
@@ -51,7 +47,6 @@ const checkAvailableTokens = async () => {
         try {
           // Remove it from contract allowed tokens
           await Promise.all(tokenExtraFromNetwork.map(async token => {
-            console.log(`Disassociating token ${token}`);
             const localToken = localTokens.find(t => t.token_id === token);
             if (localToken) {
               await prisma.whiteListedTokens.delete({
@@ -73,7 +68,6 @@ const checkAvailableTokens = async () => {
             where: {
               token_id: {
                 in: tokenExtraInLocal.map(t => {
-                  console.log(`Removing token ${t.token_id} from local DB. Add it from Admin panel if required.`);
                   return t.token_id;
                 })
               }

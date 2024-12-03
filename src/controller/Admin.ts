@@ -31,7 +31,6 @@ export const handleGetAllCard = async (req: Request, res: Response) => {
 
 export const handleGetAllCardPendingCards = async (req: Request, res: Response) => {
   const data = await twitterCardService.getAllTwitterCardPendingCards();
-  // console.log(data);
   if (data && data.length > 0) {
     return res.status(OK).json(JSONBigInt.parse(JSONBigInt.stringify(data)));
   } else res.status(OK).json([]);
@@ -307,10 +306,27 @@ export const handleGetTrailsettters = async (req: Request, res: Response, next: 
 export const updateTrailsettersData = async (req: Request, res: Response, next: NextFunction) => {
 
   try {
+    const waletId = req.body.accounts[0];
+
+    if (!waletId) {
+      return res.status(BAD_REQUEST).json({ message: 'Wallet id not found' });
+    }
     const prisma = await createPrismaClient();
+
+    // is this wallet is already onborades
+    const isAlreadyOnboarded = await prisma.user_user.findUnique({
+      where: { hedera_wallet_id: waletId }
+    });
+
     await prisma.trailsetters.create({
       data: { walletId: req.body.accounts[0] }
     })
+    if (isAlreadyOnboarded) {
+      await prisma.user_user.update({
+        where: { hedera_wallet_id: waletId },
+        data: { role: "TRAILSETTER" }
+      });
+    }
     const trailsettersData = await prisma.trailsetters.findMany()
     return res.created(JSONBigInt.parse(JSONBigInt.stringify(trailsettersData)), "Trailsetters added successfuly");
   } catch (err) {

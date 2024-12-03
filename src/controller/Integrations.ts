@@ -13,7 +13,6 @@ export const handlePersonalTwitterHandle = async (req: Request, res: Response, n
   try {
     if (user_id) {
       const config = await getConfig();
-      console.log("user_id", config.app.xCallBackHost);
       const url = await twitterAuthUrl({ callbackUrl: `${config.app.xCallBackHost}/auth/twitter-return/`, user_id });
       return res.status(OK).json({ url });
     }
@@ -27,7 +26,6 @@ export const handleBizTwitterHandle = async (req: Request, res: Response, next: 
   const user_id = req.currentUser?.id;
   const config = await getConfig();
 
-  console.log("user_id", config.app.xCallBackHost);
   if (user_id) {
     twitterAuthUrl({
       callbackUrl: `${config.app.xCallBackHost}/auth/business-twitter-return/`,
@@ -73,9 +71,6 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
       },
     });
 
-    // const getAstForUserById = await userService.getAstForUserByAccountAddress(user.id , req.deviceId!);
-
-
 
     res.writeHead(TEMPORARY_REDIRECT, {
       Location: `${appURl}?user_id=${user.id}&username=${username}`,
@@ -114,7 +109,7 @@ export const handleTwitterBizRegister = async (req: Request, res: Response) => {
       data: {
         business_twitter_handle: username,
         business_twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
-        business_twitter_access_token_secret: encrypt(accessSecret, config.encryptions.sessionSecreat),
+        business_twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
         is_active: true,
       },
     });

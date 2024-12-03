@@ -1,4 +1,4 @@
-import { checkCampaignBalances, claimReward, handleAddNewCampaignNew, handleCampaignGet, handleCampaignStats, makeCardRunning, rewardDetails } from "@controller/Campaign";
+import { checkCampaignBalances, handleAddNewCampaignNew, handleCampaignGet, handleCampaignStats, makeCardRunning, rewardDetails } from "@controller/Campaign";
 import { twitterCardStatsData } from "@controller/User";
 import { openAi } from "@controller/openAi";
 import userInfo from "@middleware/userInfo";
@@ -19,7 +19,6 @@ router.post("/add-new", userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
 router.post("/stats", body("card_id").isNumeric(), checkErrResponse, handleCampaignStats);
 router.get("/balance", validateQuery("campaignId").isNumeric(), checkErrResponse, checkCampaignBalances);
 router.get("/card-status", twitterCardStatsData);
-router.get("/reward-details", rewardDetails)
-router.put("/claim-reward", body("contract_id").isString(), body("card_id").isNumeric(), claimReward);
+router.get("/reward-details", rewardDetails);
 router.post("/chatgpt", validateQuery("message").isString(), openAi);
 export default router;

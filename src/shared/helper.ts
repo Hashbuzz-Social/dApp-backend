@@ -4,6 +4,7 @@ import initHederaService from "@services/hedera-service";
 import moment from "moment-timezone";
 import { Token } from "src/@types/custom";
 import { getConfig } from "src/appConfig";
+import logger from "jet-logger"
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -130,3 +131,17 @@ export const waitFor = (ms?: number): Promise<void> => {
     }, ms ?? 3000); // 5000 milliseconds = 5 seconds
   });
 };
+
+
+/**
+ * Log messages to both console and logger
+  */
+export const logInfo = (message: string) => {
+  console.log(message);
+  logger.info(message);
+}
+
+export const logError = (message: string, error?: any) => {
+  console.error(message, error);
+  logger.err(message, error);
+}

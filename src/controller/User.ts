@@ -114,10 +114,9 @@ export const twitterCardStatsData = async (req: Request, res: Response) => {
 export const handleTokenContractBal = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tokenId = req.params.tokenId as string;
-    console.log({ tokenId });
     if (req.currentUser?.hedera_wallet_id) {
       const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
-      console.log({ balance });
+      logger.info(`Toeken baalnce for the user ${req.currentUser.id} and for token ${tokenId}`);
       return res.status(OK).json({ balance });
     }
     throw new Error("No wallet for this user");

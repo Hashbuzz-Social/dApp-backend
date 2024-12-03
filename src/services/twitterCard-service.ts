@@ -45,11 +45,8 @@ const twitterCardStats = async (cardId: bigint) => {
 };
 
 const updateTwitterCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  console.log("updateTwitterCardStats::withData", JSON.stringify(body));
-  // {"like_count":3,"quote_count":0,"retweet_count":2,"reply_count":2};
   const { like_count, quote_count, reply_count, retweet_count } = body;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const prisma = await createPrismaClient();
   const update = await prisma.campaign_tweetstats.upsert({
     where: { twitter_card_id: cardId },
@@ -118,10 +115,13 @@ interface PublishTweetParams {
 const publishTweetORThread = async (params: PublishTweetParams) => {
   const { cardOwner, tweetText, isThread, parentTweetId } = params;
   const config = await getConfig();
+
   if (tweetText.length > 280) {
     throw new Error("Long tweet text. Max allowed is 280 char long.")
   }
+
   if (cardOwner.business_twitter_access_token && cardOwner.business_twitter_access_token_secret) {
+
     const userTwitter = await twitterAPI.tweeterApiForUser({
       accessToken: decrypt(cardOwner.business_twitter_access_token, config.encryptions.encryptionKey),
       accessSecret: decrypt(cardOwner?.business_twitter_access_token_secret, config.encryptions.encryptionKey),
@@ -290,16 +290,11 @@ const publishTwitter = async (cardId: number | bigint) => {
       accessSecret: decrypt(user_user?.business_twitter_access_token_secret, configs.encryptions.encryptionKey),
     });
 
-    // console.log({ threat1, threat2Hbar });
-    //Post tweets to the tweeter;
     try {
-      // const mediaId = dataResp.data.media_id_string;
-
       const rwClient = userTwitter.readWrite;
-      // console.log(rwClient)
-      // console.log(threat1)
+
       const card = await rwClient.v2.tweet(threat1);
-      // await rwClient.v2.reply(media, card.data.id);
+
 
       let reply;
       if (type === "HBAR") {
@@ -307,14 +302,6 @@ const publishTwitter = async (cardId: number | bigint) => {
       } else if (type === "FUNGIBLE") {
         reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
       }
-      //tweetId.
-
-      // const mediaData = await userTwitter.uploadMedia({
-      //   mediaUrl: media[0],
-      // });
-
-      // const mediaId = media.media_id_string;
-
       const tweetId = card.data.id;
       const lastThreadTweetId = reply?.data.id;
 
@@ -331,9 +318,7 @@ const publishTwitter = async (cardId: number | bigint) => {
       });
       return tweetId;
     } catch (err) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       console.log(err);
-      // console.log(err.message);
       throw Error("Something wrong with tweet text.");
     }
   } else {

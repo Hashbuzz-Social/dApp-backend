@@ -24,8 +24,6 @@ const signAndMakeBytes = async (trans: Transaction, signingAcctId: string) => {
 
   const outBytes = out.toBytes();
 
-  // console.log("Transaction bytes", outBytes);
-
   return outBytes;
 };
 

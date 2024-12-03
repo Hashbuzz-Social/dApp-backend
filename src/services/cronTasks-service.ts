@@ -3,6 +3,7 @@ import { completeCampaignOperation, perFormCampaignExpiryOperation } from "@serv
 import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engagement-service";
 import twitterCardService from "@services/twitterCard-service";
 import functions from "@shared/functions";
+import { logInfo } from "@shared/helper";
 import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import moment from "moment";
@@ -45,8 +46,6 @@ const manageTwitterCardStatus = async (): Promise<void> => {
       )
     );
 
-    console.log(`Total amount spent for the campaign card - ${id} is: ${totalSpent}`);
-
     await Promise.all([
       twitterCardService.updateTotalSpentAmount(id, totalSpent),
     ]);
@@ -81,6 +80,7 @@ const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
 };
 
 const scheduleExpiryTasks = async (): Promise<void> => {
+  logInfo("Scheduling expiry tasks");
   const prisma = await createPrismaClient();
   const completedTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
@@ -93,8 +93,11 @@ const scheduleExpiryTasks = async (): Promise<void> => {
 
   completedTasks.forEach(card => {
     const expiryDate = moment(card.campaign_expiry).add(1, 'minutes').toDate();
+    logInfo("Scheduling expiry task for card: " + card.id);
     scheduleJob(expiryDate, () => perFormCampaignExpiryOperation(card.id));
   });
+
+  logInfo("Expiry tasks scheduled");
 };
 
 const autoCampaignClose = async (): Promise<void> => {

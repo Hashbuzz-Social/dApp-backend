@@ -65,8 +65,6 @@ class ContractTransactions {
 
         const result = await this.hederaContract.callContractWithStateChange("addFungibleAmount", params, createTransactionMemo("addFungibleAmount", memo));
 
-        console.log("addFungibleAmount result", result);
-
         if ('dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }
@@ -74,13 +72,13 @@ class ContractTransactions {
     }
 
     // Method to reimburse balance for fungible tokens
-    async reimburseBalanceForFungible(tokenId: string, campaigner: string, amount: number, memo?: string): Promise<number | bigint> {
+    async reimburseCampaigner(tokenId: string, campaigner: string, amount: number, memo?: string): Promise<number | bigint> {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress())
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addUint256(amount); // Changed from addUint64 to addUint256
 
-        const result = await this.hederaContract.callContractWithStateChange("reimburseBalanceForFungible", params, createTransactionMemo("reimburseBalanceForFungible", memo));
+        const result = await this.hederaContract.callContractWithStateChange("reimburseCampaigner", params, createTransactionMemo("reimburseBalanceForFungible", memo));
         if ('dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }

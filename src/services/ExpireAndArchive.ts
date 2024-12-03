@@ -2,11 +2,11 @@ import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/
 import { expiryFungibleCampaign as fungibleSMExpiryCall, expiryCampaign as habrSMExpriryCampaignCall, queryFungibleBalanceOfCampaigner } from "@services/contract-service";
 import userService from "@services/user-service";
 import { formattedDateTime } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import CampaignLifeCycleBase, { CardOwner } from "./CampaignLifeCycleBase";
+import { performAutoRewardingForEligibleUser } from "./reward-service";
 import twitterCardService from "./twitterCard-service";
-import createPrismaClient from "@shared/prisma";
 
 /**
  * Class representing the campaign expiry operations.
@@ -25,6 +25,9 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
     const cardOwner = this.ensureCardOwnerDataLoaded();
 
     logger.info(`Campaign expiry operation started for id::: ${card.id} `);
+
+    logger.info("Reward again for last mile eligible user");
+    await performAutoRewardingForEligibleUser(card.id);
 
     if (this.hasValidAccessTokens(cardOwner)) {
       if (card.type === "HBAR") {
@@ -65,15 +68,6 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
       } catch (err) {
         throw new Error(`Failed to perform HBAR Smart Contract transaction: ${err.message}`);
       }
-
-      // // Step 2: Query Balance from Smart Contract
-      // let balances;
-      // try {
-      //   balances = await queryBalaceFromSM(cardOwner.hedera_wallet_id);
-      //   logger.info(`Queried balance from Smart Contract for card owner ID: ${cardOwner.id}`);
-      // } catch (err) {
-      //   throw new Error(`Failed to query balance from Smart Contract: ${err.message}`);
-      // }
 
       // Step 3: Update user balance
       try {

@@ -1,66 +1,57 @@
-import cron from "node-cron";
 import crontabService from "@services/cronTasks-service";
 
 // Common scheduling options
-const scheduleOptions = {
+export const scheduleOptions = {
   scheduled: false,
 };
 
-export const taskEveryMinute = cron.schedule(
-  "* * * * *",
-  () => {
-    crontabService.updateCardStatus();
-    crontabService.autoCampaignClose();
-    crontabService.checkCampaignCloseTime();
+// Configuration for cron jobs
+export const cronJobs = [
+  {
+    schedule: "* * * * *",// Every minute
+    task: () => {
+      crontabService.updateCardStatus();
+      crontabService.autoCampaignClose();
+      crontabService.checkCampaignCloseTime();
+      // crontabService.scheduleExpiryTasks();
+    },
   },
-  scheduleOptions
-);
+  {
+    schedule: "* * * * * *",// Every second
+    task: () => {
+      // Add functionality if needed
+    },
+  },
+  {
+    schedule: "*/2 * * * *", // Every 2 minutes
+    task: () => {
+      crontabService.checkForRepliesAndUpdateEngagementsData();
+    },
+  },
+  {
+    schedule: "*/5 * * * *", // Every 5 minutes
+    task: () => {
+      // crontabService.checkForRepliesAndUpdateEngagementsData();
+    },
+  },
+  {
+    schedule: "*/15 * * * *", // Every 15 minutes
+    task: () => {
+      // crontabService.checkForRepliesAndUpdateEngagementsData();
+    },
+  },
+  {
+    schedule: "*/40 * * * *", // Every 40 minutes
+    task: () => {
+    },
+  },
+  {
+    schedule: "0 0 * * *", // Every day at midnight
+    task: () => {
+      crontabService.checkForRepliesAndUpdateEngagementsData();
+    },
+  },
+];
 
-export const taskEverySecond = cron.schedule(
-  "* * * * * *",
-  () => {
-    // Add functionality if needed
-  },
-  scheduleOptions
-);
 
-export const taskEvery2Minutes = cron.schedule(
-  "*/2 * * * *",
-  () => {
-    // Add functionality if needed
-    crontabService.checkForRepliesAndUpdateEngagementsData();
-  },
-  scheduleOptions
-)
 
-export const taskEvery5Minutes = cron.schedule(
-  "*/5 * * * *",
-  () => {
-    // crontabService.checkForRepliesAndUpdateEngagementsData();
-  },
-  scheduleOptions
-);
-
-export const taskEvery15Minutes = cron.schedule(
-  "*/15 * * * *",
-  () => {
-    // crontabService.checkForRepliesAndUpdateEngagementsData();
-  },
-  scheduleOptions
-);
-
-export const taskEvery40Minutes = cron.schedule(
-  "*/40 * * * *",
-  () => {
-    crontabService.scheduleExpiryTasks();
-  },
-  scheduleOptions
-);
-
-export const taskEveryMidnight = cron.schedule(
-  "0 0 * * *",
-  () => {
-    crontabService.checkForRepliesAndUpdateEngagementsData();
-  },
-  scheduleOptions
-);

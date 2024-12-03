@@ -1,14 +1,13 @@
-import { campaign_twittercard, user_user, campaignstatus as CampaignStatus } from "@prisma/client";
+import { campaign_twittercard, campaignstatus as CampaignStatus, user_user } from "@prisma/client";
 import { addFungibleAndNFTCampaign } from "@services/contract-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import tweetService from "@services/twitterCard-service";
 import { sensitizeUserData } from "@shared/helper";
-import prisma from "@shared/prisma";
+import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import CampaignLifeCycleBase from "./CampaignLifeCycleBase";
 import userService from "./user-service";
-import createPrismaClient from "@shared/prisma";
 
 interface TransactionDetails {
   contract_id: string;

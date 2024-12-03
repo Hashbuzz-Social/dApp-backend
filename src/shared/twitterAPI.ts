@@ -151,7 +151,7 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
     },
   });
 
-  console.log(cardDetails, "Details in side matrics");
+
   if (cardDetails?.user_user) {
     const token = decrypt(cardDetails.user_user.business_twitter_access_token as string, appConfig.encryptions.encryptionKey);
     const secret = decrypt(cardDetails.user_user.business_twitter_access_token_secret as string, appConfig.encryptions.encryptionKey);
@@ -170,8 +170,6 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
       "tweet.fields": ["created_at", "public_metrics", "text"],
       expansions: ["author_id", "referenced_tweets.id"],
     });
-
-    console.log(result.includes?.users, result.data[0].public_metrics, result.data[0].entities, "result of card---------");
 
     if (result.data) {
       const publicMetrics: PublicMetricsObject = {};
@@ -205,7 +203,7 @@ const getAllReplies = async (tweetID: string, token: string, secret: string) => 
     "tweet.fields": ["created_at", "geo", "public_metrics", "text", "conversation_id", "in_reply_to_user_id"],
     max_results: 100,
   });
-  console.log(SearchResults, "searchResults");
+
 
   const tweets: any[] = [];
 

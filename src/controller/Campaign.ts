@@ -3,7 +3,7 @@ import CampaignLifeCycleBase, { CampaignCommands, createCampaignParams } from "@
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
 import { getCampaignDetailsById, getRunningCardsOfUserId } from "@services/campaign-service";
 import { addFungibleAndNFTCampaign, queryCampaignBalanceFromContract } from "@services/contract-service";
-import { claim, getRewardDetails } from "@services/reward-service";
+import { getRewardDetails } from "@services/reward-service";
 import { allocateBalanceToCampaign } from "@services/transaction-service";
 import twitterCardService from "@services/twitterCard-service";
 import userService from "@services/user-service";
@@ -41,7 +41,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
 
   const prisma = await createPrismaClient();
   const campaign_data = await getCampaignDetailsById(campaignId);
-  // console.log(campaign_data, "campaign");
 
   if (campaign_data?.approve === true && campaign_data?.contract_id) {
     const current_status_of_card = campaign_data?.card_status.toLocaleLowerCase();
@@ -73,21 +72,18 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
 
         //!  if any campaign_budget is grater than the card owner available_budget then status will remain same.
         if (campaign_data.campaign_budget && campaign_data.user_user?.available_budget && campaign_data.campaign_budget > campaign_data.user_user?.available_budget) {
-          // console.log("updated");
           return res.status(NO_CONTENT).json({ error: true, message: "Insufficient fund." });
         }
 
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-        // amounts = Math.round(amounts);
 
         const tweetId = await twitterCardService.publishTwitter(campaignId);
         if (tweetId) {
           const [SM_transaction, dbUserBalance] = await Promise.all([await allocateBalanceToCampaign(campaign_data.id, amounts, campaignerAccount, campaign_data?.contract_id), await userService.topUp(campaignerId, amounts, "decrement")]);
 
           const updated_campaign_data = await getCampaignDetailsById(campaignId);
-          // console.log(updated_campaign_data, "campaign");
           const { user_user, ...restCard } = updated_campaign_data!;
 
           return res.status(OK).json({
@@ -101,8 +97,7 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
     }
 
     if (campaign_data && campaign_data?.type === "FUNGIBLE" && campaign_data.user_user && campaign_data?.fungible_token_id) {
-      const tokenId = Number(campaign_data?.fungible_token_id);
-      // const takenIdString = tokenId.toString();
+
       const entityData = await prisma.whiteListedTokens.findUnique({
         where: { token_id: campaign_data?.fungible_token_id },
       });
@@ -126,8 +121,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
           message: "Card is currently in the same status.",
         });
       }
-
-
       /**** ============= Update card to Running Status operation=================== */
       if (requested_card_status === "running" && campaign_data?.owner_id && amounts && campaignerId && campaignerAccount) {
         //? Check is there any running card for current card owner. We are allowing only one card running at a single moments.
@@ -149,15 +142,11 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-        // amounts = amounts);
 
         const tweetId = await twitterCardService.publishTwitter(campaignId);
-        // console.log(tweetId);
         if (tweetId && entityData?.id) {
           const [SM_transaction, dbUserBalance] = await Promise.all([
             await addFungibleAndNFTCampaign(campaign_data?.fungible_token_id, amounts, campaign_data?.user_user?.hedera_wallet_id, campaign_data?.contract_id),
-            // { amount, operation: "increment", token_id: tokenDetails.id, decimal, user_id }
-            // eslint-disable-next-line max-len
             await userService.updateTokenBalanceForUser({
               amount: amounts,
               operation: "decrement",
@@ -167,8 +156,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
             }),
           ]);
 
-
-
           return res.status(OK).json({
             message: "Campaign status updated",
             transaction: SM_transaction,
@@ -176,8 +163,6 @@ export const statusUpdateHandler = async (req: Request, res: Response, next: Nex
           });
         }
       }
-
-
     }
   } else {
     res.json({ message: "Campaign is not approved" });
@@ -235,9 +220,9 @@ export const handleAddNewCampaign = async (req: Request, res: Response, next: Ne
         where: { token_id: fungible_token_id },
         select: { decimals: true },
       });
-      // console.log(token, "Token");
+
       if (type === "HBAR" && req.currentUser?.id) {
-        // console.log(result)
+
         const newCampaign = await prisma.campaign_twittercard.create({
           data: {
             name,
@@ -300,7 +285,6 @@ export const handleCampaignStats = async (req: Request, res: Response, next: Nex
 
 export const checkCampaignBalances = async (req: Request, res: Response, next: NextFunction) => {
   const campaignId = req.query.campaignId as any as string;
-  // console.log(typeof campaignId);
   const campaignDetails = await getCampaignDetailsById(parseInt(campaignId));
   if (campaignDetails?.contract_id) {
     const balance = await queryCampaignBalanceFromContract(
@@ -313,18 +297,7 @@ export const checkCampaignBalances = async (req: Request, res: Response, next: N
 };
 
 export const rewardDetails = async (req: Request, res: Response) => {
-  // console.log(req.currentUser?.hedera_wallet_id, "---")
-  const user = await getRewardDetails(req.currentUser?.hedera_wallet_id);
+  const user = await getRewardDetails(req.currentUser?.hedera_wallet_id!);
   return res.status(OK).json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
 };
 
-export const claimReward = async (req: Request, res: Response) => {
-  const contractId = req.body.contract_id as string;
-  const cardId = req.body.card_id as number;
-  if (req.currentUser?.hedera_wallet_id) {
-    const message = await claim(cardId, contractId, req.currentUser?.hedera_wallet_id);
-    return res.status(OK).json({ message });
-  } else {
-    return res.status(BAD_REQUEST).json({ error: true, message: "Wallet address not found" });
-  }
-};

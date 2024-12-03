@@ -63,7 +63,6 @@ const getAstForUserByAccountAddress = async (userId: number | bigint, deviceId: 
 };
 
 const topUp = async (id: number | bigint, amounts: number, operation: "increment" | "decrement" | "update") => {
-  // console.log("topUp start");
   const prisma = await createPrismaClient();
   if (operation === "increment")
     return await prisma.user_user.update({

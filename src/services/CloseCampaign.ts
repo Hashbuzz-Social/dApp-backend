@@ -218,6 +218,8 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   private async getRewardAnnouncementTweetText(type: string, card: campaign_twittercard): Promise<string> {
     const dateNow = new Date().toISOString();
     const config = await getConfig();
+    this.claimDuration = config.app.defaultRewardClaimDuration;
+
     if (type === "HBAR") {
       return `Promo ended on ${formattedDateTime(dateNow)}. Rewards allocation for the next ${this.claimDuration} minutes. New users: log into ${config.app.appURL}, then link your Personal X account to receive your rewards.`;
     } else {

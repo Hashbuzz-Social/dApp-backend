@@ -2,28 +2,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import RedisClient from "@services/redis-servie";
+import { logError, logInfo } from "@shared/helper";
 import createPrismaClient from "@shared/prisma";
-import logger from "jet-logger";
+import afterStartJobs from "./after-start";
 import { getConfig } from "./appConfig";
 import preStartJobs from "./pre-start";
-import afterStartJobs from "./after-start";
 import server from "./server";
 
 let redisClient: RedisClient;
-
-/**
- * Log messages to both console and logger
- */
-function logInfo(message: string) {
-  console.log(message);
-  logger.info(message);
-}
-
-function logError(message: string, error?: any) {
-  console.error(message, error);
-  logger.err(message, error);
-}
-
 /**
  * Test Prisma connection
  */
