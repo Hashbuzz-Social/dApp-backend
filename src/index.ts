@@ -6,6 +6,7 @@ import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import { getConfig } from "./appConfig";
 import preStartJobs from "./pre-start";
+import afterStartJobs from "./after-start";
 import server from "./server";
 
 let redisClient: RedisClient;
@@ -82,7 +83,8 @@ async function init() {
 
     await preStartJobs();
     await testPrismaConnection();
-    await testRedisConnection(redisClient);
+    await testRedisConnection(redisClient)
+    await afterStartJobs();
 
     const port = config.app.port || 4000;
     server.listen(port, () => {

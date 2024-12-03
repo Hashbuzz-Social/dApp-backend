@@ -31,7 +31,8 @@ const initializeApp = async () => {
   console.log("Allowed origins", config.app.whitelistedDomains.split(','));
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
-    origin: config.app.whitelistedDomains.split(',') || "*",
+    // origin: config.app.whitelistedDomains.split(',') || "*",
+    origin: "*",
     methods: "GET, OPTIONS, POST, PUT, PATCH",
     credentials: true, // Allow credentials (cookies) to be sent
   };

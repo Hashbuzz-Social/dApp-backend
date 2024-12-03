@@ -6,11 +6,11 @@ import setVariables from "./setVariables";
 const preStartJobs = async () => {
   await setVariables();
   associatedTokens.checkAvailableTokens();
-  // taskEveryMidnight.start();
-  // taskEveryMinute.start();
-  // taskEvery2Minutes.start();
-  // taskEvery5Minutes.start();
-  // cronTasksService.scheduleExpiryTasks();
+  taskEveryMidnight.start();
+  taskEveryMinute.start();
+  taskEvery2Minutes.start();
+  taskEvery5Minutes.start();
+  cronTasksService.scheduleExpiryTasks();
   console.log("Pre-start jobs done");
 };
 
