@@ -1,15 +1,26 @@
 # Build Stage
 FROM node:18-alpine AS build
 
-# Specify where our app will live in the container
+# Install required system dependencies for native builds
+RUN apk add --no-cache python3 make g++ 
+
+# Set working directory
 WORKDIR /app
 
+# Copy package.json and package-lock.json to install dependencies first
 COPY package*.json ./
 
-# Copy the node App to the container
-COPY . /app/
-
+# Install dependencies
 RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build the application
+RUN npm run build
 
 
 # Set environment variables
