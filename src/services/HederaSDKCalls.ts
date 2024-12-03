@@ -153,7 +153,7 @@ class HederaSDKCalls {
                 fromAccountId: contractDetails.contract_id,
                 toAccountId: intreactor,
                 amount,
-                memo: `promo reward from @${intractorHndle}`
+                memo: `Engagement Reward from @${intractorHndle} for your activity on X`
             });
     }
 
@@ -172,12 +172,10 @@ class HederaSDKCalls {
                 toAccountId: intreactor,
                 tokenId,
                 amount,
-                memo: `promo reward from @${intractorHndle}`
+                memo: `Engagement Reward from @${intractorHndle} for your activity on X`
             });
         }
     }
 }
 
-
-// export const hederaSDKCallHandler = new HederaSDKCalls();
 export default HederaSDKCalls;
