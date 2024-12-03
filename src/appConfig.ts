@@ -15,43 +15,43 @@ const configFactory = new ConfigurationFactory<AppConfig>({
     builder: (provider) => ({
         app: {
             port: provider.envAsNumber('PORT', 4000),
-            adminAddresses: provider.env('ADMIN_ADDRESS'),
-            openAIKey: provider.env('OPEN_AI_KEY'),
-            defaultRewardClaimDuration: provider.envAsNumber('DEFAULT_REWARD_CLAIM_DURATION', 7),
-            defaultCampaignDuratuon: provider.envAsNumber('DEFAULT_CAMPAIGN_DURATION', 7),
-            appURL: provider.fixed('https://j5nl2f3m-3000.inc1.devtunnels.ms'),
-            xCallBackHost: provider.env('TWITTER_CALLBACK_HOST', 'https://j5nl2f3m-4000.inc1.devtunnels.ms'),
-            whitelistedDomains: provider.env("WHITELISTED_DOMAINS", "https://hashbuzz.social,http://localhost:3000,https://j5nl2f3m-3000.inc1.devtunnels.ms"),
-            mirrorNodeURL: provider.fixed("https://testnet.mirrornode.hedera.com")
+            adminAddresses: provider.secret('ADMIN_ADDRESS'),
+            openAIKey: provider.secret('OPEN_AI_KEY'),
+            defaultRewardClaimDuration: provider.envAsNumber('REWARD_CALIM_DURATION', 7),
+            defaultCampaignDuratuon: provider.envAsNumber('CAMPAIGN_DURATION', 7),
+            appURL: provider.env('FRONTEND_URL'),
+            xCallBackHost: provider.env('TWITTER_CALLBACK_HOST'),
+            whitelistedDomains: provider.env("FRONTEND_URL"),
+            mirrorNodeURL: provider.env("MIRROR_NODE")
         },
         encryptions: {
             jwtSecreatForAccessToken: provider.secret('J_ACCESS_TOKEN_SECRET'),
             jwtSecreateForRefreshToken: provider.secret('J_REFRESH_TOKEN_SECRET'),
             encryptionKey: provider.secret('ENCRYPTION_KEY'),
-            sessionSecreat: provider.env('SESSION_SECRET'),
+            sessionSecreat: provider.secret('SESSION_SECRET'),
         },
         repo: {
-            repo: provider.env('REPO', 'hashbuzz/dApp-backend'),
-            repoClientID: provider.env('REPO_CLIENT_ID'),
-            repoClientSecret: provider.env('REPO_CLIENT_SECRET'),
+            repo: provider.env('REPO'),
+            repoClientID: provider.secret('REPO_CLIENT_ID'),
+            repoClientSecret: provider.secret('REPO_CLIENT_SECRET'),
         },
         db: {
-            dbServerURI: provider.env('DATABASE_URL'),
-            redisServerURI: provider.env('REDIS_URL'),
+            dbServerURI: provider.secret('DATABASE_URL'),
+            redisServerURI: provider.secret('REDIS_URL'),
         },
         xApp: {
-            xAPIKey: provider.env('TWITTER_API_KEY'),
-            xAPISecreate: provider.env('TWITTER_API_SECRET'),
+            xAPIKey: provider.secret('TWITTER_API_KEY'),
+            xAPISecreate: provider.secret('TWITTER_API_SECRET'),
             xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'),
             xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
             xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
         },
         network: {
-            network: provider.env('NETWORK', 'testnet'),
+            network: provider.env('HEDERA_NETWORK'),
             privateKey: provider.secret('HEDERA_PRIVATE_KEY'),
-            publicKey: provider.env('HEDERA_PUBLIC_KEY'),
+            publicKey: provider.secret('HEDERA_PUBLIC_KEY'),
             contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
-            accountID: provider.env("HEDERA_ACCOUNT_ID")
+            accountID: provider.secret("HEDERA_ACCOUNT_ID")
         },
     }),
 });
