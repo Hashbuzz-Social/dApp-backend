@@ -254,7 +254,7 @@ export const reimbursementFungible = async (params: { accountId: string, amounts
   if (contractDetails?.contract_id) {
     const amount = Number(amounts * 10 ** Number(decimals))
 
-    const updatedTokenBalance = await contractTransactionHandler.reimburseCampaigner(
+    const updatedTokenBalance = await contractTransactionHandler.reimburseBalanceForFungible(
       tokenId,
       accountId,
       amount
