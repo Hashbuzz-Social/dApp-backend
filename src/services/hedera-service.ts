@@ -1,6 +1,6 @@
 import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
 import logger from "jet-logger";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import { network } from "@prisma/client"
 
 interface HederaClientConfig {

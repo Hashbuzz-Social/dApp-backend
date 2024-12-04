@@ -3,7 +3,7 @@ import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
 import initHederaService from "@services/hedera-service";
 import moment from "moment-timezone";
 import { Token } from "src/@types/custom";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import logger from "jet-logger"
 
 // eslint-disable-next-line @typescript-eslint/ban-types

@@ -12,7 +12,7 @@ import { eventList } from "../contractsV201";
 import { Interface, ethers } from "ethers";
 import intiHederaService from "./hedera-service";
 import createPrismaClient from "@shared/prisma";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 
 class HederaContract {

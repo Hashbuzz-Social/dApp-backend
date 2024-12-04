@@ -2,7 +2,7 @@ import { decrypt, encrypt } from "@shared/encryption";
 import createPrismaClient from "@shared/prisma";
 import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import { TwitterApi } from "twitter-api-v2";
 
 

@@ -9,7 +9,7 @@ import JSONBigInt from "json-bigint";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import ContractUtils from "./ContractUtilsHandlers";
 // import { hederaSDKCallHandler } from "./HederaSDKCalls";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import HederaSDKCalls from "./HederaSDKCalls";
 
 

@@ -8,7 +8,7 @@ import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
 

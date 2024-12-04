@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { convertTrxString } from './helper';
-import { getConfig } from 'src/appConfig';
+import { getConfig } from '@appConfig';
 
 class NetworkHelpers {
     private axiosInstance: AxiosInstance;

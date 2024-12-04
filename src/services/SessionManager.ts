@@ -7,7 +7,7 @@ import { verifyRefreshToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import BJSON from "json-bigint";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import initHederaService from "./hedera-service";
 import RedisClient from "./redis-servie";

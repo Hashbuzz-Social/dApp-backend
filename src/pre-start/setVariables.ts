@@ -1,5 +1,5 @@
 import { AccountId } from "@hashgraph/sdk";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 
 declare global {

@@ -9,7 +9,7 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { CreateTranSactionEntity } from "src/@types/custom";
 import { TransactionResponse } from "src/@types/networkResponses";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import { provideActiveContract } from "./contract-service";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import { contractTransactionHandler } from "./ContractTransactionHandler";

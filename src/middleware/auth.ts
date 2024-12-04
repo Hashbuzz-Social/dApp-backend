@@ -7,7 +7,7 @@ import { base64ToUint8Array } from "@shared/helper";
 import { verifyAccessToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const AUTH_TOKEN_NOT_PRESENT_ERR = "Authentication token not found.";
 const AUTH_TOKEN_INVALID_ERR = "Authentication token is invalid.";

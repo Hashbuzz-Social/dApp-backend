@@ -9,7 +9,7 @@ import prisma from "@shared/prisma";
 import { validationResult } from "express-validator";
 import { queryBalance, queryFungibleBalanceOfCampaigner } from "@services/contract-service";
 import createPrismaClient from "@shared/prisma";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const { OK, BAD_REQUEST } = StatusCodes;
 /**

@@ -1,5 +1,5 @@
 import logger from 'jet-logger';
-import { getConfig } from 'src/appConfig';
+import { getConfig } from '@appConfig';
 import TwitterApi, { TweetV2, TwitterApiV2Settings, UserV2 } from "twitter-api-v2";
 import { decrypt } from "./encryption";
 import createPrismaClient from "./prisma";

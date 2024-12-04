@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
-import { getConfig } from 'src/appConfig';
+import { getConfig } from '@appConfig';
 
 const createPrismaClient = async () => {
     const configs = await getConfig();

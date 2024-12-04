@@ -1,7 +1,7 @@
 import { AccountId, ContractExecuteTransaction, ContractFunctionParameters, TokenInfoQuery, TransactionRecord } from "@hashgraph/sdk";
 import initHederaService from "@services/hedera-service";
 import createPrismaClient from "@shared/prisma";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import Web3 from "web3";
 import { provideActiveContract } from "./contract-service";
 

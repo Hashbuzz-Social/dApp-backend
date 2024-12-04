@@ -6,7 +6,7 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { isEmpty, isNil } from "lodash";
 import moment from "moment";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import RedisClient, { CampaignCardData } from "./redis-servie";
 
 export enum LYFCycleStages {

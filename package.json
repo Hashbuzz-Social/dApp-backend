@@ -40,6 +40,7 @@
     "@services": "dist/services",
     "@shared": "dist/shared",
     "@server": "dist/server",
+    "@appConfig": "dist/appConfig",
     "@routes": "dist/routes",
     "@middleware": "dist/middleware",
     "@validator": "dist/validator",

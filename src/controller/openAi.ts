@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from 'http-status-codes';
 import { isEmpty } from 'lodash';
-import { getConfig } from 'src/appConfig';
+import { getConfig } from '@appConfig';
 
 export const openAi = async (req: Request, res: Response, next: NextFunction) => {
   try {

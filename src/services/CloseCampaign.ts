@@ -4,7 +4,7 @@ import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import { scheduleJob } from "node-schedule";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import { perFormCampaignExpiryOperation } from "./campaign-service";
 import CampaignLifeCycleBase, { CardOwner, LYFCycleStages } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";

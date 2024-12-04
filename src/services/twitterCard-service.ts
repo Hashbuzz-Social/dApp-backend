@@ -6,7 +6,7 @@ import twitterAPI from "@shared/twitterAPI";
 import moment from "moment";
 import { TweetV2PostTweetResult } from "twitter-api-v2";
 import { provideActiveContract } from "./contract-service";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 export interface TwitterStats {
   like_count?: number;

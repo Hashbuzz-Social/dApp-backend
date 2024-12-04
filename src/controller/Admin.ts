@@ -17,7 +17,7 @@ import statuses from "http-status-codes";
 import JSONBigInt from "json-bigint";
 import { isEmpty } from "lodash";
 import { TokenData } from "src/@types/networkResponses";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const { OK, BAD_REQUEST, NOT_FOUND } = statuses;
 

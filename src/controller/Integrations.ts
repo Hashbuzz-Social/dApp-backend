@@ -4,7 +4,7 @@ import { ErrorWithCode } from "@shared/errors";
 import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const { OK, INTERNAL_SERVER_ERROR, TEMPORARY_REDIRECT } = HttpStatusCodes;
 

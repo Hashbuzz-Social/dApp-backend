@@ -15,7 +15,7 @@ import morgan from "morgan";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import path from "path";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import responseFormatter from "./config/responseFormatter";

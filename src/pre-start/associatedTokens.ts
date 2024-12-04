@@ -4,7 +4,7 @@ import NetworkHelpers from "@shared/NetworkHelpers";
 import createPrismaClient from "@shared/prisma";
 import logger from "jet-logger";
 import { AccountDetails, TokenBalance } from "src/@types/networkResponses";
-import { getConfig } from "src/appConfig";
+import { getConfig } from "@appConfig";
 
 const checkAvailableTokens = async () => {
   const prisma = await createPrismaClient();
