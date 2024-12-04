@@ -12,6 +12,7 @@ import { eventList } from "../contractsV201";
 import { Interface, ethers } from "ethers";
 import intiHederaService from "./hedera-service";
 import createPrismaClient from "@shared/prisma";
+import { network } from "@prisma/client";
 import { getConfig } from "@appConfig";
 
 
@@ -65,7 +66,7 @@ class HederaContract {
             where: {
                 is_active: true,
                 //@ts-ignore
-                network: appConfig.network.network,
+                network: appConfig.network.network ?? network.testnet,
             },
         });
 
