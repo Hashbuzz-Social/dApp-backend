@@ -1,3 +1,4 @@
+import { getConfig } from "@appConfig";
 import { generateAdminToken, generateSigningToken } from "@services/authToken-service";
 import passwordService from "@services/password-service";
 import SessionManager from "@services/SessionManager";
@@ -8,7 +9,6 @@ import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import JSONBigInt from "json-bigint";
-import { getConfig } from "@appConfig";
 
 const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
 
@@ -17,7 +17,8 @@ const { OK, BAD_REQUEST, INTERNAL_SERVER_ERROR } = HttpStatusCodes;
  * If no record in DB for this user then create a DB record for this user;
  */
 export const handleAuthPing = async (req: Request, res: Response, next: NextFunction) => {
-  return SessionManager.checkSessionForPing(req, res, next);
+  const sessionManager = await SessionManager.create()
+  return sessionManager.checkSessionForPing(req, res, next);
 };
 
 export const handleCreateChallenge = async (req: Request, res: Response, next: NextFunction) => {
@@ -29,15 +30,18 @@ export const handleCreateChallenge = async (req: Request, res: Response, next: N
 };
 
 export const handleGenerateAuthAst = async (req: Request, res: Response, next: NextFunction) => {
-  return SessionManager.handleGenerateAuthAst(req, res, next);
+  const sessionManager = await SessionManager.create()
+  return sessionManager.handleGenerateAuthAst(req, res, next);
 };
 
-export const handleLogout = (req: Request, res: Response, next: NextFunction) => {
-  return SessionManager.handleLogout(req, res, next);
+export const handleLogout = async (req: Request, res: Response, next: NextFunction) => {
+  const sessionManager = await SessionManager.create()
+  return sessionManager.handleLogout(req, res, next);
 };
 
-export const handleRefreshToken = (req: Request, res: Response, next: NextFunction) => {
-  return SessionManager.handleRefreshToken(req, res, next);
+export const handleRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  const sessionManager = await SessionManager.create()
+  return sessionManager.handleRefreshToken(req, res, next);
 };
 
 export const handleAdminLogin = async (req: Request, res: Response, next: NextFunction) => {

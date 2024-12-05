@@ -1,3 +1,4 @@
+import { getConfig } from "@appConfig";
 import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
 import { d_decrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
@@ -7,7 +8,6 @@ import { verifyRefreshToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import BJSON from "json-bigint";
-import { getConfig } from "@appConfig";
 import { createAstToken, genrateRefreshToken } from "./authToken-service";
 import initHederaService from "./hedera-service";
 import RedisClient from "./redis-servie";
@@ -19,8 +19,13 @@ class SessionManager {
   private redisclinet: RedisClient;
 
   /** Constructor Methods */
-  constructor() {
-    this.redisclinet = new RedisClient();
+  constructor(redisServerURI: string) {
+    this.redisclinet = new RedisClient(redisServerURI);
+  }
+
+  static async create(): Promise<SessionManager> {
+    const config = await getConfig();
+    return new SessionManager(config.db.redisServerURI);
   }
 
   /** Public Methods
@@ -319,4 +324,4 @@ class SessionManager {
   }
 }
 
-export default new SessionManager();
+export default SessionManager;

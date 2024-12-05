@@ -1,3 +1,4 @@
+import { getConfig } from "@appConfig";
 import { campaignstatus as CampaignStatus } from "@prisma/client";
 import CampaignLifeCycleBase, { CampaignCommands, createCampaignParams } from "@services/CampaignLifeCycleBase";
 import MakeCampaignRunning from "@services/MakeCmapignRunning";
@@ -186,7 +187,8 @@ export const handleAddNewCampaignNew = async (req: Request, res: Response, next:
   try {
     if (req.body && req.currentUser?.id) {
       const campaign_data = req.body as any as createCampaignParams;
-      const createCampaign = await new CampaignLifeCycleBase().createNewCampaign(campaign_data, req.currentUser?.id);
+      const config = await getConfig();
+      const createCampaign = await new CampaignLifeCycleBase(config.db.redisServerURI).createNewCampaign(campaign_data, req.currentUser?.id);
       if (createCampaign.error) {
         return res.status(BAD_REQUEST).json({ createCampaign });
       } else {

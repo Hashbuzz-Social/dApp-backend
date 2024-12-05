@@ -1,5 +1,6 @@
+import { getConfig } from "@appConfig";
 import { campaign_twittercard, campaignstatus as CampaignStatus } from "@prisma/client";
-import { default as createPrismaClient, default as prisma } from "@shared/prisma";
+import { default as createPrismaClient } from "@shared/prisma";
 import logger from "jet-logger";
 import CloseCmapignLyfCycle from "./CloseCampaign";
 import CampaignExpiryOperation from "./ExpireAndArchive";

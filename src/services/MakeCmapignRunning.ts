@@ -18,7 +18,6 @@ interface TransactionDetails {
 
 class MakeCampaignRunning extends CampaignLifeCycleBase {
   public async makeCardRunning() {
-    // this.redisClient = await new RedisClient().checkConnection();
     const card = this.ensureCampaignCardLoaded();
     return card.type === "HBAR" ? await this.makeCardTypeHBARRunning() : await this.makeFungibleCardRunning();
   }

@@ -54,12 +54,13 @@ class CampaignLifeCycleBase {
   protected runningCardCount = 0;
   protected tokenData: whiteListedTokens | null = null;
 
-  constructor() {
-    this.redisClient = new RedisClient();
+  constructor(redisServerUrl: string) {
+    this.redisClient = new RedisClient(redisServerUrl);
   }
 
-  static async create<T extends CampaignLifeCycleBase>(this: new () => T, id: number | bigint): Promise<T> {
-    const instance = new this();
+  static async create<T extends CampaignLifeCycleBase>(this: new (redisServerUrl: string) => T, id: number | bigint): Promise<T> {
+    const config = await getConfig();
+    const instance = new this(config.db.redisServerURI);
     await instance.loadRequiredData(id);
     return instance;
   }
