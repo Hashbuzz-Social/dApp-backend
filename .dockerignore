@@ -6,3 +6,4 @@ dist
 apidocs
 .vscode
 SmartContract-v1
+/src/appConfig-local.ts
