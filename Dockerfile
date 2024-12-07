@@ -34,9 +34,9 @@ ENV JET_LOGGER_MODE=FILE \
     CAMPAIGN_DURATION=60 \
     TWITTER_CALLBACK_HOST=https://api.hashbuzz.social \
     FRONTEND_URL=https://hashbuzz.social \
-    HEDERA_NETWORK=testnet \
+    HEDERA_NETWORK=mainnet \
     REPO=hashbuzz/dApp-backend \
-    MIRROR_NODE=https://testnet.mirrornode.hedera.com
+    MIRROR_NODE=https://mainnet-public.mirrornode.hedera.com
 
 RUN npx prisma generate
 RUN npm run build

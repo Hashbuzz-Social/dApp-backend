@@ -42,7 +42,7 @@ const configFactory = new ConfigurationFactory<AppConfig>({
         xApp: {
             xAPIKey: provider.secret('TWITTER_API_KEY'),
             xAPISecreate: provider.secret('TWITTER_API_SECRET'),
-            xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'),
+            xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
             xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
             xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
         },
