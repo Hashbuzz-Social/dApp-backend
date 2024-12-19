@@ -41,7 +41,7 @@ const initializeApp = async () => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
-  app.use(session({ secret: process.env['SECRET'], cookie: { maxAge: 60000 } }));
+  app.use(session({ secret: config.encryptions.sessionSecreat, cookie: { maxAge: 60000 } }));
   app.use(lusca.csrf());
   app.use(responseFormatter);
 
