@@ -146,7 +146,8 @@
     "twit": "^2.2.11",
     "twitter-api-v2": "^1.12.3",
     "web3": "^1.7.5",
-    "ws": "^7.5.10"
+    "ws": "^7.5.10",
+    "lusca": "^1.7.0"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^4.9.3",
