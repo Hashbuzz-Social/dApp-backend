@@ -72,6 +72,11 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
 };
 
 export const fetchAccountInfoKey = async (accountId: string) => {
+  // Validate accountId format
+  if (!/^0\.0\.\d+$/.test(accountId)) {
+    throw new Error("Invalid accountId format");
+  }
+
   const config = await getConfig();
   const url = `${config.app.mirrorNodeURL}/api/v1/accounts/${accountId}`;
   const response = await fetch(url);
