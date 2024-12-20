@@ -1,8 +1,9 @@
 import { getConfig } from "@appConfig";
-import { AccountId } from "@hashgraph/sdk"; // Adjust the path accordingly
+import { AccountId } from "@hashgraph/sdk"; 
 import { d_decrypt } from "@shared/encryption";
 import { ErrorWithCode } from "@shared/errors";
-import { base64ToUint8Array, fetchAccountInfoKey } from "@shared/helper";
+import { base64ToUint8Array } from "@shared/helper";
+import NetworkHelpers from "@shared/NetworkHelpers";
 import createPrismaClient from "@shared/prisma";
 import { verifyRefreshToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
@@ -72,8 +73,10 @@ class SessionManager {
     }
   }
 
-  private async fetchAndVerifyPublicKey(accountId: string) {
-    return await fetchAccountInfoKey(accountId);
+  private async fetchAndVerifyPublicKey(accountId: string): Promise<string> {
+    const config = await getConfig();
+    const netWorkService = new NetworkHelpers(config.app.mirrorNodeURL);
+    return await netWorkService.fetchAccountInfoKey(accountId);
   }
 
   private async validateSignatures(payload: object, clientPayload: object, server: string, value: string, clientAccountPublicKey: string) {
