@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
+import { AccountDetails } from 'src/@types/networkResponses';
 import { convertTrxString } from './helper';
-import { getConfig } from '@appConfig';
 
 class NetworkHelpers {
     private axiosInstance: AxiosInstance;
@@ -39,6 +39,12 @@ class NetworkHelpers {
         return Promise.reject(error);
     }
 
+    private  validateAccountId(accountId: string): void {
+        if (!/^0\.0\.\d+$/.test(accountId)) {
+            throw new Error('Invalid accountId format');
+        }
+    }
+
     // Method to get token details
     async getTokenDetails<T>(tokenID: string): Promise<T> {
         if (!tokenID) throw new Error('Token ID not defined!');
@@ -72,6 +78,21 @@ class NetworkHelpers {
             return response.data;
         } catch (error) {
             console.error('Error fetching token details:', error);
+            throw error;
+        }
+    }
+
+    async fetchAccountInfoKey(accountId: string): Promise<string> {
+        // Validate accountId format
+       this.validateAccountId(accountId);
+
+        try {
+            const response = await this.getAccountDetails<AccountDetails>(accountId);
+            const key = response.key.key as string;
+            return key;
+            
+        } catch (error) {
+            console.error('Error fetching account info key:', error);
             throw error;
         }
     }

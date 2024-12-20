@@ -71,20 +71,6 @@ export const formatTokenBalancesObject = (token: whiteListedTokens, balance_reco
   }
 };
 
-export const fetchAccountInfoKey = async (accountId: string) => {
-  // Validate accountId format
-  if (!/^0\.0\.\d+$/.test(accountId)) {
-    throw new Error("Invalid accountId format");
-  }
-
-  const config = await getConfig();
-  const url = `${config.app.mirrorNodeURL}/api/v1/accounts/${accountId}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  const key: string = data.key.key as string;
-  return key;
-};
-
 // Function to convert Base64 string to Uint8Array
 export const base64ToUint8Array = (base64String: string) => {
   const buffer = Buffer.from(base64String, "base64");
