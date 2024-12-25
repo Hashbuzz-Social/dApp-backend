@@ -7,7 +7,6 @@ import express, { NextFunction, Request, Response } from "express";
 import "express-async-errors";
 import rateLimit from "express-rate-limit";
 import session from "express-session";
-import lusca from "lusca";
 import fs from 'fs';
 import helmet from "helmet";
 import { isHttpError } from "http-errors";
@@ -42,7 +41,6 @@ const initializeApp = async () => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
   app.use(session({ secret: config.encryptions.sessionSecreat, cookie: { maxAge: 60000 } }));
-  app.use(lusca.csrf());
   app.use(responseFormatter);
 
   if (process.env.NODE_ENV === "development") {
