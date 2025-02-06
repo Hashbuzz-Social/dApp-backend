@@ -1,12 +1,24 @@
-import { handleAdminLogin, handleAuthPing, handleCreateChallenge, handleGenerateAuthAst, handleLogout, handleRefreshToken } from "@controller/Auth";
-import { handleTwitterBizRegister, handleTwitterReturnUrl } from "@controller/Integrations";
-import userInfo from "@middleware/userInfo";
-import auth from "@middleware/auth";
-import { checkErrResponse, validateGenerateAstPayload } from "@validator/userRoutes.validator";
-import { Router } from "express";
-import { body } from "express-validator";
-import { IsStrongPasswordOptions } from "express-validator/src/options";
-
+import {
+  handleAdminLogin,
+  handleAuthPing,
+  handleCreateChallenge,
+  handleGenerateAuthAst,
+  handleLogout,
+  handleRefreshToken,
+} from '@controller/Auth';
+import {
+  handleTwitterBizRegister,
+  handleTwitterReturnUrl,
+} from '@controller/Integrations';
+import userInfo from '@middleware/userInfo';
+import auth from '@middleware/auth';
+import {
+  checkErrResponse,
+  validateGenerateAstPayload,
+} from '@validator/userRoutes.validator';
+import { Router, Request, Response } from 'express';
+import { body } from 'express-validator';
+import { IsStrongPasswordOptions } from 'express-validator/src/options';
 
 const authRouter = Router();
 
@@ -29,7 +41,13 @@ const passwordCheck: IsStrongPasswordOptions = {
  * @validator checkErrResponse
  * @handler handleLogout
  */
-authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.getCurrentUserInfo, handleLogout);
+authRouter.post(
+  '/logout',
+  auth.isHavingValidAst,
+  checkErrResponse,
+  userInfo.getCurrentUserInfo,
+  handleLogout
+);
 
 /**
  * Refresh authentication token.
@@ -40,7 +58,13 @@ authRouter.post("/logout", auth.isHavingValidAst, checkErrResponse, userInfo.get
  * @validator checkErrResponse
  * @handler handleRefreshToken
  */
-authRouter.post("/refresh-token", auth.isHavingValidAst, body("refreshToken").isString(), checkErrResponse, handleRefreshToken);
+authRouter.post(
+  '/refresh-token',
+  auth.isHavingValidAst,
+  body('refreshToken').isString(),
+  checkErrResponse,
+  handleRefreshToken
+);
 
 /**
  * Handle Twitter return URL.
@@ -48,7 +72,7 @@ authRouter.post("/refresh-token", auth.isHavingValidAst, body("refreshToken").is
  * @api GET /api/auth/twitter-return
  * @handler handleTwitterReturnUrl
  */
-authRouter.get("/twitter-return", handleTwitterReturnUrl);
+authRouter.get('/twitter-return', handleTwitterReturnUrl);
 
 /**
  * Handle Twitter business registration return URL.
@@ -56,7 +80,7 @@ authRouter.get("/twitter-return", handleTwitterReturnUrl);
  * @api GET /api/auth/business-twitter-return
  * @handler handleTwitterBizRegister
  */
-authRouter.get("/business-twitter-return", handleTwitterBizRegister);
+authRouter.get('/business-twitter-return', handleTwitterBizRegister);
 
 /**
  * Handle admin login.
@@ -69,16 +93,33 @@ authRouter.get("/business-twitter-return", handleTwitterBizRegister);
  * @handler handleAdminLogin
  */
 authRouter.post(
-  "/admin-login",
+  '/admin-login',
   auth.isHavingValidAst,
   auth.isAdminRequesting,
   userInfo.getCurrentUserInfo,
-  body("password").isStrongPassword(passwordCheck),
+  body('password').isStrongPassword(passwordCheck),
   handleAdminLogin
 );
 
 //dAppAccessRoutes
-authRouter.get("/ping", auth.isHavingValidAst, handleAuthPing);
-authRouter.get("/challenge", handleCreateChallenge);
-authRouter.post("/generate", auth.deviceIdIsRequired, auth.havingValidPayloadToken, body().custom(validateGenerateAstPayload), checkErrResponse, handleGenerateAuthAst);
+authRouter.get('/ping', auth.isHavingValidAst, handleAuthPing);
+authRouter.get('/challenge', handleCreateChallenge);
+authRouter.post(
+  '/generate',
+  auth.deviceIdIsRequired,
+  auth.havingValidPayloadToken,
+  body().custom(validateGenerateAstPayload),
+  checkErrResponse,
+  handleGenerateAuthAst
+);
+
+authRouter.get('/csrf-token', (req:Request, res:Response) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : '';
+  res.cookie('XSRF-TOKEN', csrfToken, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+  });
+  res.json({ csrfToken: req.csrfToken ? req.csrfToken() : '' });
+});
+
 export default authRouter;

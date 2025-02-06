@@ -1,3 +1,4 @@
+
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import logger from 'jet-logger';
 import { AppConfig } from './@types/AppConfig';
@@ -15,8 +16,8 @@ const configFactory = new ConfigurationFactory<AppConfig>({
     builder: (provider) => ({
         app: {
             port: provider.envAsNumber('PORT', 4000),
-            adminAddresses: provider.secret('ADMIN_ADDRESS'),
-            openAIKey: provider.secret('OPEN_AI_KEY'),
+            adminAddresses: provider.env('ADMIN_ADDRESS'),
+            openAIKey: provider.env('OPEN_AI_KEY'),
             defaultRewardClaimDuration: provider.envAsNumber('REWARD_CALIM_DURATION', 7),
             defaultCampaignDuratuon: provider.envAsNumber('CAMPAIGN_DURATION', 7),
             appURL: provider.env('FRONTEND_URL'),
@@ -25,33 +26,33 @@ const configFactory = new ConfigurationFactory<AppConfig>({
             mirrorNodeURL: provider.env("MIRROR_NODE")
         },
         encryptions: {
-            jwtSecreatForAccessToken: provider.secret('J_ACCESS_TOKEN_SECRET'),
-            jwtSecreateForRefreshToken: provider.secret('J_REFRESH_TOKEN_SECRET'),
-            encryptionKey: provider.secret('ENCRYPTION_KEY'),
-            sessionSecreat: provider.secret('SESSION_SECRET'),
+            jwtSecreatForAccessToken: provider.env('J_ACCESS_TOKEN_SECRET'),
+            jwtSecreateForRefreshToken: provider.env('J_REFRESH_TOKEN_SECRET'),
+            encryptionKey: provider.env('ENCRYPTION_KEY'),
+            sessionSecreat: provider.env('SESSION_SECRET'),
         },
         repo: {
             repo: provider.env('REPO'),
-            repoClientID: provider.secret('REPO_CLIENT_ID'),
-            repoClientSecret: provider.secret('REPO_CLIENT_SECRET'),
+            repoClientID: provider.env('REPO_CLIENT_ID'),
+            repoClientSecret: provider.env('REPO_CLIENT_SECRET'),
         },
         db: {
-            dbServerURI: provider.secret('DATABASE_URL'),
-            redisServerURI: provider.secret('REDIS_URL'),
+            dbServerURI: provider.env('DATABASE_URL'),
+            redisServerURI: provider.env('REDIS_URL'),
         },
         xApp: {
-            xAPIKey: provider.secret('TWITTER_API_KEY'),
-            xAPISecreate: provider.secret('TWITTER_API_SECRET'),
-            xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
-            xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
-            xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
+            xAPIKey: provider.env('TWITTER_API_KEY'),
+            xAPISecreate: provider.env('TWITTER_API_SECRET'),
+            xUserToken: provider.env('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
+            xHashbuzzAccAccessToken: provider.env('HASHBUZZ_ACCESS_TOKEN'),
+            xHashbuzzAccSecreateToken: provider.env('HASHBUZZ_ACCESS_SECRET'),
         },
         network: {
             network: provider.env('HEDERA_NETWORK'),
-            privateKey: provider.secret('HEDERA_PRIVATE_KEY'),
-            publicKey: provider.secret('HEDERA_PUBLIC_KEY'),
-            contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
-            accountID: provider.secret("HEDERA_ACCOUNT_ID")
+            privateKey: provider.env('HEDERA_PRIVATE_KEY'),
+            publicKey: provider.env('HEDERA_PUBLIC_KEY'),
+            contractAddress: provider.env('HASHBUZZ_CONTRACT_ADDRESS'),
+            accountID: provider.env("HEDERA_ACCOUNT_ID")
         },
     }),
 });
