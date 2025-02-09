@@ -107,6 +107,7 @@
     "@prisma/client": "^6.0.0",
     "@types/lusca": "^1.7.5",
     "@types/pg": "^8.11.10",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.6.7",
     "bignumber.js": "^9.1.2",
     "command-line-args": "^5.2.1",

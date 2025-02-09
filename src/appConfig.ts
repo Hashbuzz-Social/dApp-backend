@@ -54,6 +54,12 @@ const configFactory = new ConfigurationFactory<AppConfig>({
             contractAddress: provider.env('HASHBUZZ_CONTRACT_ADDRESS'),
             accountID: provider.env("HEDERA_ACCOUNT_ID")
         },
+        aws:{
+            region: provider.env("AWS_REGION"),
+            accessKeyId: provider.env("AWS_ACCESS_KEY_ID"),
+            secretAccessKey: provider.env("AWS_SECRET_ACCESS_KEY"),
+            bucketName: provider.env("AWS_S3_BUCKET_NAME")
+        }
     }),
 });
 
