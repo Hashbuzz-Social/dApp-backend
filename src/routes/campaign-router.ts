@@ -15,6 +15,9 @@ import { CampaignCommands } from '@services/CampaignLifeCycleBase';
 import { checkErrResponse } from '@validator/userRoutes.validator';
 import { Router } from 'express';
 import { body, query as validateQuery } from 'express-validator';
+import  multer from 'multer'
+// const multer  = require('multer')
+const upload = multer()
 
 const router = Router();
 const mediaController = new MediaController();
@@ -34,7 +37,7 @@ router.post(
 router.get('/all', userInfo.getCurrentUserInfo, handleCampaignGet);
 
 // Route to add a new campaign
-router.post('/add-new', userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
+router.post('/add-new',  upload.array('media' , 4),  userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
 
 // Route to add media to a campaign
 router.post(

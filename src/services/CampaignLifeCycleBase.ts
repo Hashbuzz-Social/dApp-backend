@@ -8,6 +8,7 @@ import { isEmpty, isNil } from "lodash";
 import moment from "moment";
 import { getConfig } from "@appConfig";
 import RedisClient, { CampaignCardData } from "./redis-servie";
+import { MediaService } from "./media-service";
 
 export enum LYFCycleStages {
   CREATED = "status:created",
@@ -35,7 +36,7 @@ export interface createCampaignParams {
   quote_reward: string;
   follow_reward: string;
   campaign_budget: string;
-  media: Array<string>;
+  media: Express.Multer.File[];
   type: CampaignTypes;
   fungible_token_id?: string;
 }
@@ -231,6 +232,34 @@ class CampaignLifeCycleBase {
 
   public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
     const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
+
+    console.log('type of media',media , typeof media)
+
+    // return;
+
+    const mediaService = new MediaService();
+    await mediaService.initialize();
+
+    const mediaIds: string[] = [];
+
+    for (const mediaFile of media) {
+      console.log("mediaFile type" ,  typeof mediaFile);
+      const mediaBuffer = mediaFile.buffer;
+
+      const mediaBufferBase64 = mediaBuffer.toString('base64');
+
+      const mediaType = mediaFile.mimetype;
+
+      console.log({mediaBufferBase64, mediaType});
+
+      // const mediaId = await mediaService.uploadToTwitter(mediaFile, userId);
+      // mediaIds.push(mediaId);
+    }
+
+    // params.media = mediaIds;
+
+  return;
+
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
       .filter(([, value]) => isEmpty(value))
@@ -264,7 +293,7 @@ class CampaignLifeCycleBase {
         card_status: CampaignStatus.ApprovalPending,
         amount_spent: 0,
         amount_claimed: 0,
-        media,
+        media: mediaIds,
         approve: false,
         contract_id,
         type,

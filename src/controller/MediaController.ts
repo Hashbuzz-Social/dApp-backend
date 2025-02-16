@@ -19,7 +19,7 @@ export class MediaController {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      if (!req.currentUser) {
+      if (!req.currentUser?.id) {
         return res.status(400).json({ error: 'User not authenticated' });
       }
 
@@ -27,7 +27,7 @@ export class MediaController {
 
       const xUploadresult = await this.mediaService.uploadToTwitter(
         req.file,
-        req.currentUser
+        req.currentUser.id
       );
       const result = await this.mediaService.uploadToS3(req.file);
 

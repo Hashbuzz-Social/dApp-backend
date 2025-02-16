@@ -54,7 +54,7 @@ const initializeApp = async () => {
   );
   app.use(
     lusca({
-      csrf: { header: 'X-XSRF-TOKEN', secret: 'Qwerty' },
+      csrf: false,
       xframe: 'SAMEORIGIN',
       xssProtection: true,
       nosniff: true, // Prevent MIME type sniffing

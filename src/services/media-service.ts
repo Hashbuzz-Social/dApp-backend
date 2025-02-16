@@ -5,6 +5,7 @@ import AWS from 'aws-sdk';
 import { getConfig } from '@appConfig';
 import { TwitterApi } from 'twitter-api-v2';
 import twitterClient from '@shared/twitterAPI';
+import userService from './user-service';
 
 export class MediaService {
   private twitterClient: TwitterApi | null;
@@ -35,7 +36,7 @@ export class MediaService {
     const fileKey = `uploads/${uuidv4()}-${file.originalname}`;
 
     const params = {
-      Bucket:this.BucketName,
+      Bucket: this.BucketName,
       Key: fileKey,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -68,18 +69,26 @@ export class MediaService {
 
   public async uploadToTwitter(
     file: Express.Multer.File,
-    user: Partial<user_user>
+    userId: number | bigint
   ): Promise<string> {
-    try {
-      this.twitterClient = await twitterClient.createTwitterBizClient(user);
-      const mediaId = await this.twitterClient.v1.uploadMedia(file.buffer, {
-        mimeType: file.mimetype,
-      });
-      return mediaId;
-    } catch (error) {
-      console.error('Twitter Upload Error:', error);
-      throw new Error('Failed to upload media to Twitter');
-    }
+    console.log('Uploading to Twitter file' , file);
+    // console.log('Uploading to Twitter userId' , file.filename);
+
+    return '1234567890';
+    // try {
+    //   const user = await userService.getUserById(userId);
+    //   if (!user) {
+    //     throw new Error('User not found');
+    //   }
+    //   this.twitterClient = await twitterClient.createTwitterBizClient(user);
+    //   const mediaId = await this.twitterClient.v1.uploadMedia(file.buffer, {
+    //     mimeType: file.mimetype,
+    //   });
+    //   return mediaId;
+    // } catch (error) {
+    //   console.error('Twitter Upload Error:', error);
+    //   throw new Error('Failed to upload media to Twitter');
+    // }
   }
 
   public async saveMediaToDB(
