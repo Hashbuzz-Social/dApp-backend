@@ -235,30 +235,14 @@ class CampaignLifeCycleBase {
 
     console.log('type of media',media , typeof media)
 
-    // return;
-
     const mediaService = new MediaService();
     await mediaService.initialize();
 
     const mediaIds: string[] = [];
 
-    for (const mediaFile of media) {
-      console.log("mediaFile type" ,  typeof mediaFile);
-      const mediaBuffer = mediaFile.buffer;
-
-      const mediaBufferBase64 = mediaBuffer.toString('base64');
-
-      const mediaType = mediaFile.mimetype;
-
-      console.log({mediaBufferBase64, mediaType});
-
-      // const mediaId = await mediaService.uploadToTwitter(mediaFile, userId);
-      // mediaIds.push(mediaId);
-    }
-
-    // params.media = mediaIds;
-
-  return;
+    const mediaUploadPromises = media.map(mediaFile => mediaService.uploadToTwitter(mediaFile, userId));
+    const uploadedMediaIds = await Promise.all(mediaUploadPromises);
+    mediaIds.push(...uploadedMediaIds);
 
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
