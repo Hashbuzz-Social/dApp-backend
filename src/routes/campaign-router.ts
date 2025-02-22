@@ -7,26 +7,49 @@ import {
   rewardDetails,
 } from '@controller/Campaign';
 import { MediaController } from '@controller/MediaController';
-import { twitterCardStatsData } from '@controller/User';
 import { openAi } from '@controller/openAi';
+import { twitterCardStatsData } from '@controller/User';
 import { XTimelineController } from '@controller/XTimelineController';
 import userInfo from '@middleware/userInfo';
 import { CampaignCommands } from '@services/CampaignLifeCycleBase';
 import { checkErrResponse } from '@validator/userRoutes.validator';
 import { Router } from 'express';
 import { body, query as validateQuery } from 'express-validator';
+import { Request } from 'express';
+import fs from 'fs';
 import multer from 'multer';
+import path from 'path';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    const uploadsPath = path.join(__dirname, '..', '..', 'public', 'uploads');
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+    cb(null, uploadsPath);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
-  }
+  },
 });
 
-const upload = multer({ storage: storage });
+const fileFilter = (
+  req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+): void => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  fileFilter: fileFilter,
+});
 
 const router = Router();
 const mediaController = new MediaController();
@@ -46,7 +69,12 @@ router.post(
 router.get('/all', userInfo.getCurrentUserInfo, handleCampaignGet);
 
 // Route to add a new campaign
-router.post('/add-new',  upload.array('media' , 4),  userInfo.getCurrentUserInfo, handleAddNewCampaignNew);
+router.post(
+  '/add-new',
+  upload.array('media', 4),
+  userInfo.getCurrentUserInfo,
+  handleAddNewCampaignNew
+);
 
 // Route to add media to a campaign
 router.post(

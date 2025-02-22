@@ -13,6 +13,7 @@ import {
   addFungibleAndNFTCampaign,
   queryCampaignBalanceFromContract,
 } from '@services/contract-service';
+import { MediaService } from '@services/media-service';
 import { getRewardDetails } from '@services/reward-service';
 import { allocateBalanceToCampaign } from '@services/transaction-service';
 import twitterCardService from '@services/twitterCard-service';
@@ -25,6 +26,7 @@ import {
 } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
 import { NextFunction, Request, Response } from 'express';
+import fs from 'fs';
 import statuses from 'http-status-codes';
 import JSONBigInt from 'json-bigint';
 import { isEmpty } from 'lodash';
@@ -280,6 +282,19 @@ export const handleAddNewCampaignNew = async (
 ) => {
   try {
     if (req.body && req.currentUser?.id) {
+      const mediaService = new MediaService();
+      await mediaService.initialize();
+
+      const uploadedFiles = await Promise.all(
+        (Array.isArray(req.files) ? req.files : [])?.map(async (file) => {
+          const uploadFile = fs.readFileSync(file.path);
+          const result = await mediaService.uploadToS3(file, uploadFile);
+          fs.unlinkSync(file.path); // Delete local file after upload
+          return result;
+        })
+      );
+      req.body.media = uploadedFiles;
+
       const campaign_data = req.body as any as createCampaignParams;
       const config = await getConfig();
       const createCampaign = await new CampaignLifeCycleBase(

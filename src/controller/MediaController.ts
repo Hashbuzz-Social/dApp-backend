@@ -1,5 +1,6 @@
 import { MediaService } from '@services/media-service';
 import { NextFunction, Request, Response } from 'express';
+import fs from 'fs';
 import JSONBigInt from 'json-bigint';
 
 export class MediaController {
@@ -29,7 +30,10 @@ export class MediaController {
         req.file,
         req.currentUser.id
       );
-      const result = await this.mediaService.uploadToS3(req.file);
+      const result = await this.mediaService.uploadToS3(
+        req.file,
+        fs.readFileSync(req.file.path)
+      );
 
       const mediaData = {
         media_type: req.file.mimetype,

@@ -74,7 +74,7 @@ export interface AppConfig {
         /** Account id */
         accountID: string;
     },
-    aws:{
+    bucket:{
         /** AWS access key ID */
         accessKeyId: string,
         /** AWS secret access key */
@@ -83,5 +83,7 @@ export interface AppConfig {
         region: string
         /** AWS S3 bucket name */
         bucketName: string
+        /** AWS S3 bucket endpoint */
+        endpoint: string
     }
 }

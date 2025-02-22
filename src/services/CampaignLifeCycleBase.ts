@@ -36,7 +36,7 @@ export interface createCampaignParams {
   quote_reward: string;
   follow_reward: string;
   campaign_budget: string;
-  media: Express.Multer.File[];
+  media: string[];
   type: CampaignTypes;
   fungible_token_id?: string;
 }
@@ -233,16 +233,16 @@ class CampaignLifeCycleBase {
   public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
     const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
 
-    console.log('type of media',media , typeof media)
+    // console.log('type of media',media , typeof media)
 
-    const mediaService = new MediaService();
-    await mediaService.initialize();
+    // const mediaService = new MediaService();
+    // await mediaService.initialize();
 
-    const mediaIds: string[] = [];
+    // const mediaIds: string[] = [];
 
-    const mediaUploadPromises = media.map(mediaFile => mediaService.uploadToTwitter(mediaFile, userId));
-    const uploadedMediaIds = await Promise.all(mediaUploadPromises);
-    mediaIds.push(...uploadedMediaIds);
+    // const mediaUploadPromises = media.map(mediaFile => mediaService.uploadToTwitter(mediaFile, userId));
+    // const uploadedMediaIds = await Promise.all(mediaUploadPromises);
+    // mediaIds.push(...uploadedMediaIds);
 
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
@@ -277,7 +277,7 @@ class CampaignLifeCycleBase {
         card_status: CampaignStatus.ApprovalPending,
         amount_spent: 0,
         amount_claimed: 0,
-        media: mediaIds,
+        media,
         approve: false,
         contract_id,
         type,
