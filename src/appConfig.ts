@@ -1,3 +1,4 @@
+
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import logger from 'jet-logger';
 import { AppConfig } from './@types/AppConfig';
@@ -53,6 +54,13 @@ const configFactory = new ConfigurationFactory<AppConfig>({
             contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
             accountID: provider.secret("HEDERA_ACCOUNT_ID")
         },
+        bucket:{
+            accessKeyId: provider.secret("BUCKET_ACCESS_KEY_ID"),
+            secretAccessKey: provider.secret("BUCKET_SECRET_ACCESS_KEY"),
+            region: provider.env("BUCKET_REGION"),
+            bucketName: provider.env("BUCKET_NAME"),
+            endpoint: provider.env("BUCKET_ENDPOINT")
+        }
     }),
 });
 

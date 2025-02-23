@@ -73,5 +73,17 @@ export interface AppConfig {
         contractAddress: string,
         /** Account id */
         accountID: string;
+    },
+    bucket:{
+        /** AWS access key ID */
+        accessKeyId: string,
+        /** AWS secret access key */
+        secretAccessKey: string,
+        /** AWS region */
+        region: string
+        /** AWS S3 bucket name */
+        bucketName: string
+        /** AWS S3 bucket endpoint */
+        endpoint: string
     }
 }

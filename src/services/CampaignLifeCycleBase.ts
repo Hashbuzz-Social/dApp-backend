@@ -8,6 +8,7 @@ import { isEmpty, isNil } from "lodash";
 import moment from "moment";
 import { getConfig } from "@appConfig";
 import RedisClient, { CampaignCardData } from "./redis-servie";
+import { MediaService } from "./media-service";
 
 export enum LYFCycleStages {
   CREATED = "status:created",
@@ -35,7 +36,7 @@ export interface createCampaignParams {
   quote_reward: string;
   follow_reward: string;
   campaign_budget: string;
-  media: Array<string>;
+  media: string[];
   type: CampaignTypes;
   fungible_token_id?: string;
 }
@@ -231,6 +232,18 @@ class CampaignLifeCycleBase {
 
   public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
     const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
+
+    // console.log('type of media',media , typeof media)
+
+    // const mediaService = new MediaService();
+    // await mediaService.initialize();
+
+    // const mediaIds: string[] = [];
+
+    // const mediaUploadPromises = media.map(mediaFile => mediaService.uploadToTwitter(mediaFile, userId));
+    // const uploadedMediaIds = await Promise.all(mediaUploadPromises);
+    // mediaIds.push(...uploadedMediaIds);
+
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
       .filter(([, value]) => isEmpty(value))

@@ -3,6 +3,7 @@ import { user_user } from "@prisma/client";
 
 declare module "express" {
   export interface Request {
+    csrfToken?: () => string;
     currentUser?: Partial<user_user>;
     accountAddress?: string;
     deviceId?: string
