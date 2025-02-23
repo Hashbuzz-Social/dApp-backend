@@ -33,9 +33,9 @@ const initializeApp = async () => {
   const corsOptions: cors.CorsOptions = {
     origin: [
       ...config.app.whitelistedDomains.split(','),
-      'http://localhost:3000',
+      'http://localhost:3000','https://www.hashbuzz.social','www.hashbuzz.social'
     ],
-    methods: 'GET, POST, PUT, PATCH, DELETE',
+    methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     credentials: true, // Allow credentials (cookies) to be sent
   };
 
