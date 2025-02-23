@@ -1,6 +1,6 @@
 {
   "name": "dapp-backend",
-  "version": "0.201.19",
+  "version": "0.201.20",
   "description": "This service handles all backend-related jobs required for the dApp in the Hashbuzz project.",
   "main": "src/index.js",
   "repository": {
