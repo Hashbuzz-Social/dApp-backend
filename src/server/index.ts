@@ -31,10 +31,19 @@ const initializeApp = async () => {
 
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
-    origin: [
-      ...config.app.whitelistedDomains.split(','),
-      'http://localhost:3000','https://www.hashbuzz.social','www.hashbuzz.social'
-    ],
+    origin: (origin, callback) => {
+      const whitelist = [
+        ...config.app.whitelistedDomains.split(','),
+        'http://localhost:3000',
+        'https://www.hashbuzz.social',
+        'www.hashbuzz.social'
+      ];
+      if (!origin || whitelist.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     credentials: true, // Allow credentials (cookies) to be sent
   };
