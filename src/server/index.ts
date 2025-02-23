@@ -41,7 +41,7 @@ const initializeApp = async () => {
       if (!origin || whitelist.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error('API blocked by CORS policy'));
       }
     },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
