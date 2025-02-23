@@ -12,6 +12,7 @@ import twitterClient from '@shared/twitterAPI';
 import { TwitterApi } from 'twitter-api-v2';
 import { v4 as uuidv4 } from 'uuid';
 import userService from './user-service';
+import { Readable } from 'stream';
 
 export class MediaService {
   private twitterClient: TwitterApi | null;
@@ -108,6 +109,47 @@ export class MediaService {
       console.error('Twitter Upload Error:', error);
       throw new Error('Failed to upload media to Twitter');
     }
+  }
+
+  public async readFromS3(fileKey: string): Promise<Express.Multer.File> {
+    const params = {
+      Bucket: this.BucketName,
+      Key: fileKey,
+    };
+
+    try {
+      const data = await this.s3Client.send(new GetObjectCommand(params));
+      const buffer = await this.streamToBuffer(
+        data.Body as NodeJS.ReadableStream
+      );
+
+      const file: Express.Multer.File = {
+        fieldname: '',
+        originalname: data.Metadata?.['x-amz-meta-originalname'] || '',
+        encoding: '',
+        mimetype: data.Metadata?.['x-amz-meta-mimetype'] || '',
+        size: parseInt(data.Metadata?.['x-amz-meta-size'] || '0', 10),
+        destination: '',
+        filename: fileKey,
+        path: '',
+        stream: data.Body as Readable,
+        buffer: buffer,
+      };
+
+      return file;
+    } catch (error) {
+      console.error('S3 Read Error:', error);
+      throw new Error('Failed to read file from S3');
+    }
+  }
+
+  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Uint8Array[] = [];
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
   }
 
   public async saveMediaToDB(

@@ -71,7 +71,7 @@ router.get('/all', userInfo.getCurrentUserInfo, handleCampaignGet);
 // Route to add a new campaign
 router.post(
   '/add-new',
-  upload.array('media', 4),
+  upload.array('media', 2),
   userInfo.getCurrentUserInfo,
   handleAddNewCampaignNew
 );
