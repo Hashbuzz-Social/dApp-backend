@@ -2,7 +2,8 @@
 FROM node:18-alpine AS build
 
 # Install required system dependencies for native builds
-RUN apk add --no-cache python3 make g++ 
+RUN apk add --no-cache python3 make g++ openssl
+
 
 # Set working directory
 WORKDIR /app
