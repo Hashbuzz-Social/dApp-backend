@@ -11,8 +11,7 @@ Dockerfile
 .vscode
 /src/.keys
 /src/.trailsetters
-package-lock.json
-.github/** 
+package-lock.json 
 docker-compose.yml
 .DS_Store
 /src/appConfig-local.ts
