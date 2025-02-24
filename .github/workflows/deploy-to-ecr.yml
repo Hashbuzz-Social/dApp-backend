@@ -3,40 +3,37 @@ name: Build and Push Docker Image to ECR
 on:
   push:
     branches:
-      - master  # Trigger on pushes to the main branch
+      - master  # Trigger on pushes to the master branch
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1  # Replace with your AWS region
 
-      # Step 3: Log in to Amazon ECR
-      - name: Log in to ECR
+      - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 4: Build, tag, and push the Docker image to ECR
       - name: Build, Tag, and Push Image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        # docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build --cache-from=type=gha --cache-to=type=gha,mode=max -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # Optional: Print the image URI
       - name: Output Image URI
-        run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_BACKEND }}:latest"
+        run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_BACKEND }}:${{ github.sha }}"
