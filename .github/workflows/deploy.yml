@@ -1,23 +1,67 @@
-name: Connect to DigitalOcean Droplet
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - staging
+      - master
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+    paths:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (test/staging/live)'
+        required: true
+        default: 'test'
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
 
 jobs:
-  ssh-to-droplet:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Install SSH Client
-        run: sudo apt-get update && sudo apt-get install -y sshpass
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Connect to DigitalOcean Droplet via SSH
-        env:
-          SSH_USERNAME: ${{ secrets.DIGITALOCEAN_USERNAME }}
-          SSH_PASSWORD: ${{ secrets.DIGITALOCEAN_PASSWORD }}
-          SSH_HOST: ${{ secrets.DIGITALOCEAN_HOST }}
+      - name: Set Environment Variables
         run: |
-          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" 
-          "bash hashbuzz-dev/dApp-backend/scripts/deploy.sh"
+          if [ "${{ github.event.inputs.environment }}" == "test" ]; then
+            echo "ECR_REPOSITORY=my-app-test" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_SERVICE_TEST }}" >> $GITHUB_ENV
+            echo "ECS_TASK_DEFINITION=${{ secrets.ECS_TASK_DEFINITION_TEST }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            echo "ECR_REPOSITORY=my-app-staging" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_SERVICE_STAGING }}" >> $GITHUB_ENV
+            echo "ECS_TASK_DEFINITION=${{ secrets.ECS_TASK_DEFINITION_STAGING }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "live" ]; then
+            echo "ECR_REPOSITORY=my-app-live" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_SERVICE_LIVE }}" >> $GITHUB_ENV
+            echo "ECS_TASK_DEFINITION=${{ secrets.ECS_TASK_DEFINITION_LIVE }}" >> $GITHUB_ENV
+          fi
+
+      - name: Log in to AWS ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, Tag, and Push Docker Image to ECR
+        run: |
+          IMAGE_TAG=$(date +%s)
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Register New Task Definition
+        run: |
+          aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION --query taskDefinition > task-def.json
+          cat task-def.json | jq '.containerDefinitions[0].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY':'$IMAGE_TAG'"' > new-task-def.json
+          TASK_REVISION=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query "taskDefinition.revision" --output text)
+          echo "TASK_REVISION=$TASK_REVISION" >> $GITHUB_ENV
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_DEFINITION:$TASK_REVISION
