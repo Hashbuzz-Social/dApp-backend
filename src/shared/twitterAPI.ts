@@ -7,7 +7,6 @@ import TwitterApi, {
 } from 'twitter-api-v2';
 import { decrypt } from './encryption';
 import createPrismaClient from './prisma';
-import { user_user } from '@prisma/client';
 
 TwitterApiV2Settings.debug = true;
 
@@ -306,54 +305,6 @@ const sendDMFromHashBuzz = async (recipient_id: string, text: string) => {
   });
 };
 
-async function createTwitterClient(
-  user: Partial<user_user>
-): Promise<TwitterApi> {
-  const configs = await getConfig();
-
-  if (!user.twitter_access_token || !user.twitter_access_token_secret) {
-    throw new Error('Twitter access tokens are not available for the user');
-  }
-
-  return createTwitterClientWithTokens(
-    user.twitter_access_token,
-    user.twitter_access_token_secret,
-    configs
-  );
-}
-
-async function createTwitterBizClient(
-  user: Partial<user_user>
-): Promise<TwitterApi> {
-  const configs = await getConfig();
-
-  if (!user.business_twitter_access_token || !user.business_twitter_access_token_secret) {
-    throw new Error('Twitter access tokens are not available for the user');
-  }
-
-  return createTwitterClientWithTokens(
-    user.business_twitter_access_token,
-    user.business_twitter_access_token_secret,
-    configs
-  );
-}
-
-function createTwitterClientWithTokens(
-  accessToken: string,
-  accessSecret: string,
-  configs: any
-): TwitterApi {
-  const decryptedAccessToken = decrypt(accessToken, configs.encryptions.encryptionKey);
-  const decryptedAccessSecret = decrypt(accessSecret, configs.encryptions.encryptionKey);
-
-  return new TwitterApi({
-    appKey: configs.xApp.xAPIKey,
-    appSecret: configs.xApp.xAPISecreate,
-    accessToken: decryptedAccessToken,
-    accessSecret: decryptedAccessSecret,
-  });
-}
-
 export default {
   getAllReplies,
   getPublicMetrics,
@@ -364,6 +315,4 @@ export default {
   tweeterApiForUser,
   sendDMFromHashBuzz,
   HashbuzzTwitterClient,
-  createTwitterClient,
-  createTwitterBizClient,
 } as const;

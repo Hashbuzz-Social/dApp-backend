@@ -7,12 +7,13 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { campaign_media } from '@prisma/client';
+import { decrypt } from '@shared/encryption';
 import createPrismaClient from '@shared/prisma';
-import twitterClient from '@shared/twitterAPI';
+import twitterAPI from '@shared/twitterAPI';
+import { Readable } from 'stream';
 import { TwitterApi } from 'twitter-api-v2';
 import { v4 as uuidv4 } from 'uuid';
 import userService from './user-service';
-import { Readable } from 'stream';
 
 export class MediaService {
   private twitterClient: TwitterApi | null;
@@ -97,11 +98,28 @@ export class MediaService {
     console.log('Uploading to Twitter userId', file.filename);
     try {
       const user = await userService.getUserById(userId);
-      if (!user) {
+      if (
+        !user ||
+        !user.business_twitter_access_token ||
+        !user.business_twitter_access_token_secret
+      ) {
         throw new Error('User not found');
       }
-      this.twitterClient = await twitterClient.createTwitterBizClient(user);
-      const mediaId = await this.twitterClient.v1.uploadMedia(file.buffer, {
+
+      const config = await getConfig();
+
+      const userTwitter = await twitterAPI.tweeterApiForUser({
+        accessToken: decrypt(
+          user.business_twitter_access_token,
+          config.encryptions.encryptionKey
+        ),
+        accessSecret: decrypt(
+          user?.business_twitter_access_token_secret,
+          config.encryptions.encryptionKey
+        ),
+      });
+
+      const mediaId = await userTwitter.v1.uploadMedia(file.buffer, {
         mimeType: file.mimetype,
       });
       return mediaId;
