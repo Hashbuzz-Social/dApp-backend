@@ -6,6 +6,7 @@ import integrationRouter from "./integrations";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
 import userInfo from "@middleware/userInfo";
+import { V201Router } from "src/v201";
 
 
 // Export the base-router
@@ -135,5 +136,7 @@ baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurr
  *         description: Forbidden
  */
 baseRouter.use("/integrations", authMiddleware.isHavingValidAst, integrationRouter);
+
+baseRouter.use('/v201', authMiddleware.isHavingValidAst , V201Router);
 
 export default baseRouter;
