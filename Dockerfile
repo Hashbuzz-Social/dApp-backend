@@ -38,7 +38,7 @@ ENV JET_LOGGER_MODE=FILE \
     HEDERA_NETWORK=mainnet \
     REPO=hashbuzz/dApp-backend \
     MIRROR_NODE=https://mainnet-public.mirrornode.hedera.com \
-    BUCKET_NAME=campaign-media\
+    BUCKET_NAME=campaign-media \
     BUCKET_ENDPOINT=https://sfo3.digitaloceanspaces.com \
     BUCKET_REGION=sfo3
 

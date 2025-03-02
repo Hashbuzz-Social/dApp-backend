@@ -1,47 +1,59 @@
-import { CampaignLog, campaignstatus as CampaignStatus, Prisma, campaign_twittercard, transactions, user_balances, user_user, whiteListedTokens } from "@prisma/client";
-import initHederaService from "@services/hedera-service";
-import { addMinutesToTime, convertToTinyHbar, rmKeyFrmData } from "@shared/helper";
-import createPrismaClient from "@shared/prisma";
-import logger from "jet-logger";
-import JSONBigInt from "json-bigint";
-import { isEmpty, isNil } from "lodash";
-import moment from "moment";
-import { getConfig } from "@appConfig";
-import RedisClient, { CampaignCardData } from "./redis-servie";
-import { MediaService } from "./media-service";
+import {
+  CampaignLog,
+  campaignstatus as CampaignStatus,
+  Prisma,
+  campaign_twittercard,
+  transactions,
+  user_balances,
+  user_user,
+  whiteListedTokens,
+} from '@prisma/client';
+import initHederaService from '@services/hedera-service';
+import {
+  addMinutesToTime,
+  convertToTinyHbar,
+  rmKeyFrmData,
+} from '@shared/helper';
+import createPrismaClient from '@shared/prisma';
+import logger from 'jet-logger';
+import JSONBigInt from 'json-bigint';
+import { isEmpty, isNil } from 'lodash';
+import moment from 'moment';
+import { getConfig } from '@appConfig';
+import RedisClient, { CampaignCardData } from './redis-servie';
+import { MediaService } from './media-service';
 
 export enum LYFCycleStages {
-  CREATED = "status:created",
-  RUNNING = "status:running",
-  PAUSED = "status:paused",
-  COMPLETED = "status:completed",
-  EXPIRED = "status:expired",
+  CREATED = 'status:created',
+  RUNNING = 'status:running',
+  PAUSED = 'status:paused',
+  COMPLETED = 'status:completed',
+  EXPIRED = 'status:expired',
 }
 
 export enum CampaignCommands {
-  StartCampaign = "Campaign::satrt",
-  ClaimReward = "Campaign::reward-claim",
-  AdminApprovedCampaign = "Campaign::admin-approved",
-  AdminRejectedCampaign = "Campaign::admin-rejected",
+  StartCampaign = 'Campaign::satrt',
+  ClaimReward = 'Campaign::reward-claim',
+  AdminApprovedCampaign = 'Campaign::admin-approved',
+  AdminRejectedCampaign = 'Campaign::admin-rejected',
 }
 
-export type CampaignTypes = "HBAR" | "FUNGIBLE";
+export type CampaignTypes = 'HBAR' | 'FUNGIBLE';
 
+// Like	Repost	Quote	Reply
 export interface createCampaignParams {
   name: string;
   tweet_text: string;
-  comment_reward: string;
-  retweet_reward: string;
-  like_reward: string;
-  quote_reward: string;
-  follow_reward: string;
-  campaign_budget: string;
+  expcted_engagers: number;
+  campaign_budget: number;
   media: string[];
   type: CampaignTypes;
   fungible_token_id?: string;
 }
 
-type TransactionRecord = NonNullable<Omit<transactions, "id" | "created_at" | "network">>;
+type TransactionRecord = NonNullable<
+  Omit<transactions, 'id' | 'created_at' | 'network'>
+>;
 
 export type CardOwner = user_user & { user_balances: user_balances[] };
 
@@ -59,7 +71,10 @@ class CampaignLifeCycleBase {
     this.redisClient = new RedisClient(redisServerUrl);
   }
 
-  static async create<T extends CampaignLifeCycleBase>(this: new (redisServerUrl: string) => T, id: number | bigint): Promise<T> {
+  static async create<T extends CampaignLifeCycleBase>(
+    this: new (redisServerUrl: string) => T,
+    id: number | bigint
+  ): Promise<T> {
     const config = await getConfig();
     const instance = new this(config.db.redisServerURI);
     await instance.loadRequiredData(id);
@@ -122,14 +137,14 @@ class CampaignLifeCycleBase {
         throw new Error(`Owner details for campaign card ID ${id} not found`);
       }
     } catch (error) {
-      console.error("Error loading campaign card data:", error);
-      throw new Error("Failed to load campaign card data");
+      console.error('Error loading campaign card data:', error);
+      throw new Error('Failed to load campaign card data');
     }
   }
 
   protected ensureCampaignCardLoaded(): campaign_twittercard {
     if (!this.campaignCard) {
-      throw new Error("Campaign card data is not loaded");
+      throw new Error('Campaign card data is not loaded');
     }
 
     return this.campaignCard;
@@ -137,7 +152,7 @@ class CampaignLifeCycleBase {
 
   protected ensureCardOwnerDataLoaded(): CardOwner {
     if (!this.cardOwner) {
-      throw new Error("Campaign card owner data is not loaded");
+      throw new Error('Campaign card owner data is not loaded');
     }
 
     return this.cardOwner;
@@ -148,7 +163,9 @@ class CampaignLifeCycleBase {
     return card.card_status.toLowerCase() === status.toLowerCase();
   }
 
-  protected async updateDBForRunningStatus(card: campaign_twittercard): Promise<campaign_twittercard> {
+  protected async updateDBForRunningStatus(
+    card: campaign_twittercard
+  ): Promise<campaign_twittercard> {
     const currentTime = moment();
     const prisma = await createPrismaClient();
     return await prisma.campaign_twittercard.update({
@@ -158,12 +175,19 @@ class CampaignLifeCycleBase {
         last_thread_tweet_id: this.lastThreadId,
         card_status: CampaignStatus.CampaignRunning,
         campaign_start_time: currentTime.toISOString(),
-        campaign_close_time: addMinutesToTime(currentTime.toISOString(), this.campaignDurationInMin),
+        campaign_close_time: addMinutesToTime(
+          currentTime.toISOString(),
+          this.campaignDurationInMin
+        ),
       },
     });
   }
 
-  protected async handleError(campaignId: number | bigint, message: string, error: any): Promise<void> {
+  protected async handleError(
+    campaignId: number | bigint,
+    message: string,
+    error: any
+  ): Promise<void> {
     logger.err(
       `Error for campaign ID ${campaignId}: ${message}
             Error::${error}`
@@ -181,7 +205,9 @@ class CampaignLifeCycleBase {
     });
   }
 
-  protected async logCampaignData(params: NonNullable<Omit<CampaignLog, "id" | "timestamp">>) {
+  protected async logCampaignData(
+    params: NonNullable<Omit<CampaignLog, 'id' | 'timestamp'>>
+  ) {
     const prisma = await createPrismaClient();
     const { campaign_id, status, data, message } = params;
     await prisma.campaignLog.create({
@@ -195,9 +221,15 @@ class CampaignLifeCycleBase {
   }
 
   protected async createTransactionRecord(params: TransactionRecord) {
-    const { amount, transaction_type, transaction_id, transaction_data, status } = params;
+    const {
+      amount,
+      transaction_type,
+      transaction_id,
+      transaction_data,
+      status,
+    } = params;
     const prisma = await createPrismaClient();
-    const hederaService = await initHederaService()
+    const hederaService = await initHederaService();
     return await prisma.transactions.create({
       data: {
         network: hederaService.network,
@@ -205,22 +237,34 @@ class CampaignLifeCycleBase {
         transaction_type,
         transaction_id,
         status,
-        transaction_data: JSONBigInt.parse(JSONBigInt.stringify(transaction_data)),
+        transaction_data: JSONBigInt.parse(
+          JSONBigInt.stringify(transaction_data)
+        ),
       },
     });
   }
 
   protected generateRandomString(length: number) {
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    return Array.from({ length }, () => characters.charAt(Math.floor(Math.random() * characters.length))).join("");
+    const characters =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () =>
+      characters.charAt(Math.floor(Math.random() * characters.length))
+    ).join('');
   }
 
-  protected async getRewardsValues(reward: string, type: CampaignTypes, tokenId?: string) {
+  protected async getRewardsValues(
+    reward: number,
+    type: CampaignTypes,
+    tokenId?: string
+  ) {
     const prisma = await createPrismaClient();
-    if (type === "HBAR" && !tokenId) {
+    if (type === 'HBAR' && !tokenId) {
       return convertToTinyHbar(reward);
     } else {
-      if (!this.tokenData || this.tokenData.id.toString() !== tokenId?.toString()) {
+      if (
+        !this.tokenData ||
+        this.tokenData.id.toString() !== tokenId?.toString()
+      ) {
         this.tokenData = await prisma.whiteListedTokens.findUnique({
           where: { token_id: tokenId?.toString() },
         });
@@ -230,19 +274,16 @@ class CampaignLifeCycleBase {
     }
   }
 
-  public async createNewCampaign({ fungible_token_id, ...params }: createCampaignParams, userId: number | bigint) {
-    const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type, media } = params;
+  private calculateMaxActivityReward(engagers: number, budget: number) {
+    return budget / engagers / 4;
+  }
 
-    // console.log('type of media',media , typeof media)
-
-    // const mediaService = new MediaService();
-    // await mediaService.initialize();
-
-    // const mediaIds: string[] = [];
-
-    // const mediaUploadPromises = media.map(mediaFile => mediaService.uploadToTwitter(mediaFile, userId));
-    // const uploadedMediaIds = await Promise.all(mediaUploadPromises);
-    // mediaIds.push(...uploadedMediaIds);
+  public async createNewCampaign(
+    { fungible_token_id, ...params }: createCampaignParams,
+    userId: number | bigint
+  ) {
+    const { name, tweet_text, expcted_engagers, campaign_budget, type, media } =
+      params;
 
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
@@ -252,11 +293,13 @@ class CampaignLifeCycleBase {
     if (emptyFields.length > 0) {
       return {
         error: true,
-        message: `The following fields are required and should not be empty: ${emptyFields.join(", ")}.`,
+        message: `The following fields are required and should not be empty: ${emptyFields.join(
+          ', '
+        )}.`,
       };
     }
 
-    if (type === "FUNGIBLE" && !fungible_token_id) {
+    if (type === 'FUNGIBLE' && !fungible_token_id) {
       return {
         error: true,
         message: `Token id feild should not empty`,
@@ -264,16 +307,43 @@ class CampaignLifeCycleBase {
     }
 
     const contract_id = this.generateRandomString(20);
+    const maxActivityReward = this.calculateMaxActivityReward(
+      expcted_engagers,
+      Number(campaign_budget)
+    );
 
     try {
-      const campaignData: Prisma.XOR<Prisma.campaign_twittercardCreateInput, Prisma.campaign_twittercardUncheckedCreateInput> = {
+      const campaignData: Prisma.XOR<
+        Prisma.campaign_twittercardCreateInput,
+        Prisma.campaign_twittercardUncheckedCreateInput
+      > = {
         name,
         tweet_text,
-        comment_reward: await this.getRewardsValues(comment_reward, type, fungible_token_id),
-        retweet_reward: await this.getRewardsValues(retweet_reward, type, fungible_token_id),
-        like_reward: await this.getRewardsValues(like_reward, type, fungible_token_id),
-        quote_reward: await this.getRewardsValues(quote_reward, type, fungible_token_id),
-        campaign_budget: await this.getRewardsValues(campaign_budget, type, fungible_token_id),
+        comment_reward: await this.getRewardsValues(
+          maxActivityReward,
+          type,
+          fungible_token_id
+        ),
+        retweet_reward: await this.getRewardsValues(
+          maxActivityReward,
+          type,
+          fungible_token_id
+        ),
+        like_reward: await this.getRewardsValues(
+          maxActivityReward,
+          type,
+          fungible_token_id
+        ),
+        quote_reward: await this.getRewardsValues(
+          maxActivityReward,
+          type,
+          fungible_token_id
+        ),
+        campaign_budget: await this.getRewardsValues(
+          campaign_budget,
+          type,
+          fungible_token_id
+        ),
         card_status: CampaignStatus.ApprovalPending,
         amount_spent: 0,
         amount_claimed: 0,
@@ -284,7 +354,7 @@ class CampaignLifeCycleBase {
         owner_id: userId,
       };
 
-      if (type === "FUNGIBLE") {
+      if (type === 'FUNGIBLE') {
         campaignData.fungible_token_id = fungible_token_id?.toString();
         campaignData.decimals = this.tokenData?.decimals || 0;
       }
@@ -295,7 +365,15 @@ class CampaignLifeCycleBase {
 
       return {
         success: true,
-        data: JSONBigInt.parse(JSONBigInt.stringify(rmKeyFrmData(newCampaign, ["last_reply_checkedAt", "last_thread_tweet_id", "contract_id"]))),
+        data: JSONBigInt.parse(
+          JSONBigInt.stringify(
+            rmKeyFrmData(newCampaign, [
+              'last_reply_checkedAt',
+              'last_thread_tweet_id',
+              'contract_id',
+            ])
+          )
+        ),
       };
     } catch (err) {
       // Report error
@@ -313,15 +391,24 @@ class CampaignLifeCycleBase {
 
     const prisma = await createPrismaClient();
     if (card.contract_id) {
-      redisLog = await this.redisClient.readCampaignCardStatus(card.contract_id!);
-      campaignLogData = await prisma.campaignLog.findMany({ where: { campaign_id: card.id } });
+      redisLog = await this.redisClient.readCampaignCardStatus(
+        card.contract_id!
+      );
+      campaignLogData = await prisma.campaignLog.findMany({
+        where: { campaign_id: card.id },
+      });
       return { redisLog, campaignLogData };
     }
     return { redisLog, campaignLogData };
   }
 
   // Helper method to update campaign status on Redis
-  protected async updateCampaignStatus(contractId: string, subTask?: string, isSuccess: boolean = false, LYFCycleStage: LYFCycleStages = LYFCycleStages.RUNNING) {
+  protected async updateCampaignStatus(
+    contractId: string,
+    subTask?: string,
+    isSuccess: boolean = false,
+    LYFCycleStage: LYFCycleStages = LYFCycleStages.RUNNING
+  ) {
     await this.redisClient.updateCampaignCardStatus({
       card_contract_id: contractId,
       LYFCycleStage: LYFCycleStages.RUNNING,
@@ -338,7 +425,12 @@ class CampaignLifeCycleBase {
    * @param {string} [campaignExpiryTimestamp] - The expiry timestamp of the campaign (optional).
    * @returns {Promise<campaign_twittercard>} The updated campaign card.
    */
-  protected async updateCampaignCardToComplete(id: number | bigint, last_thread_tweet_id: string, card_status: CampaignStatus = CampaignStatus.RewardDistributionInProgress, campaignExpiryTimestamp?: string) {
+  protected async updateCampaignCardToComplete(
+    id: number | bigint,
+    last_thread_tweet_id: string,
+    card_status: CampaignStatus = CampaignStatus.RewardDistributionInProgress,
+    campaignExpiryTimestamp?: string
+  ) {
     const prisma = await createPrismaClient();
     return await prisma.campaign_twittercard.update({
       where: { id },

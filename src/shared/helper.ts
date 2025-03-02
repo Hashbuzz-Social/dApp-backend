@@ -43,7 +43,7 @@ export const buildCampaignAddress = (campaignerAddress: string, campaign_id: str
   return campaignAddress;
 };
 
-export const convertToTinyHbar = (amount: string) => Math.round(parseFloat(amount) * 1e8);
+export const convertToTinyHbar = (amount: number) => Math.round(amount * 1e8);
 export const convertTinyHbarToHbar = (amount: number) => amount / 1e8;
 
 export const formatTokenBalancesObject = (token: whiteListedTokens, balance_record?: user_balances) => {
