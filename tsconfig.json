@@ -75,7 +75,11 @@
       "@middleware/*": ["src/middleware/*"],
       "@validator/*": ["src/validator/*"],
       "@smartContract": ["src/smartContract"],
-      "@controller/*": ["src/controller/*"]
+      "@controller/*": ["src/controller/*"],
+      "@V201/types": ["src/V201/Types"],
+      "@V201/modules/*": ["src/V201/Modules/*"],
+      "@V201/events/*": ["src/V201/AppEvents/*"],
+      "@V201/middleware/*": ["src/V201/Middleware/*"],
     },
     "useUnknownInCatchVariables": false
   },

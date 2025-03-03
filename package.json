@@ -45,7 +45,11 @@
     "@middleware": "dist/middleware",
     "@validator": "dist/validator",
     "@smartContract": "dist/smartContract",
-    "@controller": "dist/controller"
+    "@controller": "dist/controller",
+    "@V201/types":"dist/V201/Types",
+    "@V201/modules":"dist/V201/Modules",
+    "@V201/events":"dist/V201/AppEvents",
+    "@V201/middleware":"dist/V201/Middleware"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

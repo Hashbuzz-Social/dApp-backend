@@ -1,5 +1,7 @@
 // filepath: /home/hashbuzz-social/Desktop/hashbuzz/dApp-backend/src/v201/modules/campaigns/Controller.ts
 
+// import { DraftCampaignBody } from '';
+import { DraftCampaignBody } from '@V201/types';
 import { Request, Response } from 'express';
 
 class CampaignController {
@@ -8,8 +10,10 @@ class CampaignController {
         // TODO: Implement logic to fetch and return campaign statistics
     }
 
+    async createCampaign(req: Request, res: Response): Promise<void> {}
+
     // Method to create a new campaign
-    async createCampaign(req: Request, res: Response): Promise<void> {
+    async draftCampaign(req: Request<{} , {} , DraftCampaignBody>, res: Response): Promise<void> {
         // TODO: Implement logic to create a new campaign
     }
 
