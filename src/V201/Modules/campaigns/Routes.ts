@@ -1,16 +1,25 @@
+import userInfo from '@middleware/userInfo';
 import express from 'express';
-import CampaignController from './Controller';
 import {
   storeMediaToS3,
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
+  validatePublishCampaignBody,
 } from 'src/V201/MiddleWare';
-import userInfo from '@middleware/userInfo';
+import CampaignController from './Controller';
 
+/**
+ * @swagger
+ * tags:
+ *   name: Campaigns
+ *   description: API endpoints for managing campaigns
+ */
+
+/**
+ * Express router to mount campaign related functions on.
+ * @type {Router}
+ */
 const router = express.Router();
-
-// Route to get camcampaignRouterpaign stats
-router.get('/all', CampaignController.getCampaignStats);
 
 // Route to create a new campaign
 router.post(
@@ -22,10 +31,11 @@ router.post(
   CampaignController.draftCampaign
 );
 
-router.post('/publish', CampaignController.createCampaign);
-
-router.post('/stop', CampaignController.createCampaign);
-
-router.patch('/:campaignId', CampaignController.updateCampaign); // update content till campaign is in draft state.
+router.post(
+  '/publish',
+  validatePublishCampaignBody,
+  userInfo.getCurrentUserInfo,
+  CampaignController.startPublishingCampaign
+);
 
 export default router;

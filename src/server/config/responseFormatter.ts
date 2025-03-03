@@ -30,7 +30,7 @@ const responseFormatter = (req: Request, res: Response, next: NextFunction) => {
     res.status(OK).json(response);
   };
 
-  res.created = (data: any, message: string = "Created Successfully.") => {
+  res.created = <T>(data: T, message: string = "Created Successfully.") => {
     res.status(CREATED).json({
       status: "success",
       message,

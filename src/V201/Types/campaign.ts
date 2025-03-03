@@ -9,3 +9,9 @@ export interface DraftCampaignBody {
   type: CampaignTypes;
   fungible_token_id?: string;
 }
+
+export interface PubishCampaignBody {
+  campaignId: number;
+  campaignDuration?: number;
+  anyFinalComment?: string;
+}
