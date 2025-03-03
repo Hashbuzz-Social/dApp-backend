@@ -80,6 +80,7 @@
       "@V201/modules/*": ["src/V201/Modules/*"],
       "@V201/events/*": ["src/V201/AppEvents/*"],
       "@V201/middleware/*": ["src/V201/Middleware/*"],
+      "@V201/PrismaClient": ["src/V201/prismaClient"],
     },
     "useUnknownInCatchVariables": false
   },

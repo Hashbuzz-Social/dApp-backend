@@ -5,6 +5,7 @@ import {
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
 } from 'src/V201/MiddleWare';
+import userInfo from '@middleware/userInfo';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.post(
   '/draft',
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
+  userInfo.getCurrentUserInfo,
   storeMediaToS3,
   CampaignController.draftCampaign
 );

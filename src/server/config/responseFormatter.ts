@@ -8,7 +8,7 @@ const { OK, CREATED, ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, INTERNAL_SERV
 declare module "express-serve-static-core" {
   interface Response {
     success(data: any, message?: string): void;
-    created(data: any, message?: string): void;
+    created<T>(data: T, message?: string): void;
     accepted(data: any, message?: string): void;
     error(message: string, code?: number, errors?: any): void;
     unauthorized(message?: string): void;

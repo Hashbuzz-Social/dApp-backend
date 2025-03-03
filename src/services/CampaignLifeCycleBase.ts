@@ -1,3 +1,4 @@
+import { getConfig } from '@appConfig';
 import {
   CampaignLog,
   campaignstatus as CampaignStatus,
@@ -19,10 +20,8 @@ import logger from 'jet-logger';
 import JSONBigInt from 'json-bigint';
 import { isEmpty, isNil } from 'lodash';
 import moment from 'moment';
-import { getConfig } from '@appConfig';
 import RedisClient, { CampaignCardData } from './redis-servie';
-import { MediaService } from './media-service';
-import { DraftCampaignBody } from '@V201/types';
+import { generateRandomString } from '@V201/modules/common';
 
 export enum LYFCycleStages {
   CREATED = 'status:created',
@@ -248,13 +247,6 @@ class CampaignLifeCycleBase {
     });
   }
 
-  protected generateRandomString(length: number) {
-    const characters =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from({ length }, () =>
-      characters.charAt(Math.floor(Math.random() * characters.length))
-    ).join('');
-  }
 
   protected async getRewardsValues(
     reward: string,
@@ -278,23 +270,6 @@ class CampaignLifeCycleBase {
     }
   }
 
-  
-
-  public async draftCampaign(
-    campaignBody: DraftCampaignBody,
-    userId: number | bigint
-  ) {
-    const {
-      name,
-      tweet_text,
-      expected_engaged_users,
-      campaign_budget,
-      type,
-      media,
-      fungible_token_id,
-    } = campaignBody;
-
-  }
 
   public async createNewCampaign(
     { fungible_token_id, ...params }: createCampaignParams,
@@ -332,7 +307,7 @@ class CampaignLifeCycleBase {
       };
     }
 
-    const contract_id = this.generateRandomString(20);
+    const contract_id = generateRandomString(20);
 
     try {
       const campaignData: Prisma.XOR<
