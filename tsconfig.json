@@ -78,6 +78,7 @@
       "@controller/*": ["src/controller/*"],
       "@V201/types": ["src/V201/Types"],
       "@V201/modules/*": ["src/V201/Modules/*"],
+      "@V201/Modals/*": ["src/V201/Modals/*"],
       "@V201/events/*": ["src/V201/AppEvents/*"],
       "@V201/middleware/*": ["src/V201/Middleware/*"],
       "@V201/PrismaClient": ["src/V201/prismaClient"],

@@ -107,6 +107,8 @@ model campaign_twittercard {
 
   @@index([owner_id], map: "campaign_twittercard_owner_id_90f418c7")
   @@index([owner_id], map: "campaign_owner_id_index")
+  @@index([tweet_id], map: "campaign_twittercard_tweet_id_index")
+  @@unique([tweet_id], map: "unique_tweet_id")
 }
 
 model CampaignLog {
