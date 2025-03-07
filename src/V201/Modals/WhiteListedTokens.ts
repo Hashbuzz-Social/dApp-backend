@@ -38,7 +38,7 @@ class WhiteListedTokensModel {
     }
   }
 
-  async updateToken(id: bigint, data: any) {
+  async updateToken(id: bigint, data: Prisma.whiteListedTokensUpdateInput) {
     try {
       return await this.prisma.whiteListedTokens.update({
         where: { id },

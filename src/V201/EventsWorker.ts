@@ -1,6 +1,7 @@
 import {
   handleCampaignPublishTransaction,
   publshCampaignContentHandler,
+  publshCampaignErrorHandler,
 } from '@V201/modules/campaigns';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
@@ -31,9 +32,9 @@ const processEvent = async <T extends keyof EventPayloadMap>(
 
     // handle event CAMPAIGN_PUBLISH_ERROR event
     case CampaignEvents.CAMPAIGN_PUBLISH_ERROR:
-      const { error } =
+      const errorPayload =
         payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_ERROR];
-      console.error('Error processing event:', error);
+      publshCampaignErrorHandler(errorPayload);
       break;
 
     default:

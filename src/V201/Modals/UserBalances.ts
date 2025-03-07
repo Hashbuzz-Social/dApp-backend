@@ -38,7 +38,7 @@ class UserBalancesModel {
         }
     }
 
-    async updateBalance(id: bigint, data: any) {
+    async updateBalance(id: bigint, data: Prisma.user_balancesUpdateInput) {
         try {
             return await this.prisma.user_balances.update({
                 where: { id },

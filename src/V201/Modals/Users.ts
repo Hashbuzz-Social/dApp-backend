@@ -38,7 +38,7 @@ class UsersModel {
         }
     }
 
-    async updateUser(id: bigint, data: any) {
+    async updateUser(id: bigint, data: Prisma.user_userUpdateInput) {
         try {
             return await this.prisma.user_user.update({
                 where: { id },
