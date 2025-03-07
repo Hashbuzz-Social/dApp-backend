@@ -1,14 +1,22 @@
-import { createClient } from "redis";
+import RedisClient from '@services/redis-servie';
+import appConfigManager from 'src/V201/appConfigManager';
 
-const redisClient = createClient({ url: process.env.REDIS_URL });
-
-redisClient.on("error", (err) => console.error("Redis Error:", err));
+const getRedisClient = async () => {
+  const configs = await appConfigManager.getConfig();
+  const rClinet = new RedisClient(configs.db.redisServerURI);
+  return rClinet.client;
+};
 
 export const publishToQueue = async (queue: string, data: any) => {
+  const redisClient = await getRedisClient();
   await redisClient.rPush(queue, JSON.stringify(data));
 };
 
-export const consumeFromQueue = async (queue: string, callback: (data: any) => void) => {
+export const consumeFromQueue = async (
+  queue: string,
+  callback: (data: any) => void
+) => {
+  const redisClient = await getRedisClient();
   while (true) {
     const data = await redisClient.lPop(queue);
     if (data) {

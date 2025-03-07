@@ -7,6 +7,11 @@ import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import UserBalancesModel from '@V201/Modals/UserBalances';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import PrismaClientManager from '@V201/PrismaClient';
+import logger from 'jet-logger';
+import tweetService from '@services/twitterCard-service';
+import { logCampaignStatus } from '@V201/modules/common';
+import { publishEvent } from 'src/V201/eventPublisher';
+import { CampaignEvents } from '@V201/events/campaign';
 
 const validationMessages = {
   runningCardExists: 'There is a card already in running status',
@@ -122,8 +127,8 @@ export const startPublishingCampaign = async (
   ).getCampaignsWithOwnerData(campaignId);
   const cardOwner = card?.user_user;
 
-  if (!card) {
-    throw new Error('Campaign not found');
+  if (!card || !cardOwner) {
+    throw new Error('Could not fetch campaign by tweet ID.');
   }
 
   const isValidToMakeRunning = await isCampaignValidForMakeRunning(
@@ -134,6 +139,21 @@ export const startPublishingCampaign = async (
   if (!isValidToMakeRunning.isValid) {
     throw new Error(isValidToMakeRunning.message);
   }
+
+  logger.info('Campaign is valid for publishing');
+  // Emit event to perform SM transaction
+  publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_CONTENT, {
+    cardOwner,
+    card,
+  });
+};
+
+export const publshCampaignContentHandler = async (
+  cardOwner: user_user,
+  card: campaign_twittercard
+): Promise<void> => {
+  const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
+  await logCampaignStatus(card.contract_id!, 'firstTweetOut', true);
 };
 
 const publshCampaignSMTransactionHandler = async (
