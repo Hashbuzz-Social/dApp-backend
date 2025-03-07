@@ -3,7 +3,7 @@ import RedisClient from '@services/redis-servie';
 import appConfigManager from 'src/V201/appConfigManager';
 
 // Helper method to update campaign status on Redis
-export const logCampaignStatus = async (
+export const updateCampaignInMemoryStatus = async (
   contractId: string,
   subTask?: string,
   isSuccess: boolean = false,

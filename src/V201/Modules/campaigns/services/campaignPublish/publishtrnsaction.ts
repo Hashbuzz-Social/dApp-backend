@@ -1,9 +1,15 @@
-import { campaign_twittercard, network, user_user } from '@prisma/client';
+import {
+  campaign_twittercard,
+  campaignstatus,
+  network,
+  user_user,
+} from '@prisma/client';
 import { addFungibleAndNFTCampaign } from '@services/contract-service';
 import { allocateBalanceToCampaign } from '@services/transaction-service';
 import { CampaignEvents } from '@V201/events/campaign';
+import CampaignLogsModel from '@V201/Modals/CampaignLogs';
 import TransactionRecordModel from '@V201/Modals/TransactionRecord';
-import { safeParsedData } from '@V201/modules/common';
+import { safeParsedData, updateCampaignInMemoryStatus } from '@V201/modules/common';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
@@ -28,7 +34,10 @@ const handleSmartContractTransaction = async (
     const prisma = await PrismaClientManager.getInstance();
     const apConfig = await appConfigManager.getConfig();
 
-    await new TransactionRecordModel(prisma).createTransaction({
+    // log transaction record
+    const transactionRecord = await new TransactionRecordModel(
+      prisma
+    ).createTransaction({
       transaction_data: safeParsedData({
         ...transactionDetails,
         status: transactionDetails.status.toString(),
@@ -39,6 +48,26 @@ const handleSmartContractTransaction = async (
       transaction_type: 'campaign_top_up',
       network: apConfig.network.network as network,
     });
+
+    // log campaign status update
+    const logableCampaignData = {
+      campaign_id: card.id,
+      status: campaignstatus.CampaignRunning,
+      message: `Campaign balance ${card.campaign_budget} is added to the SM Contract`,
+      data: safeParsedData({
+        transaction_id: transactionDetails.transactionId,
+        status: transactionDetails.status,
+        amount: Number(card.campaign_budget),
+        transactionLogId: transactionRecord.id.toString(),
+      }),
+    };
+
+    await new CampaignLogsModel(prisma).createLog({
+      ...logableCampaignData,
+      campaign: { connect: { id: card.id } },
+    });
+
+    updateCampaignInMemoryStatus(card.contract_id!, "transactionLogsCreated", true);
   } catch (error) {
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
