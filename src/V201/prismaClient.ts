@@ -1,3 +1,11 @@
+
+
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { Pool } from 'pg';
+import AppConfigManager from './appConfigManager';
+import { AppConfig } from 'src/@types/AppConfig';
+
 /**
  * @class PrismaClientManager
  * @description Singleton class to manage the PrismaClient instance with a PostgreSQL adapter.
@@ -29,13 +37,6 @@
  *
  * @event beforeExit - Listens for the 'beforeExit' event to disconnect the PrismaClient and end the PostgreSQL pool.
  */
-
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Prisma } from '@prisma/client';
-import { Pool } from 'pg';
-import AppConfigManager from './appConfigManager';
-
-
 class PrismaClientManager {
   private static instance: PrismaClient | null = null;
   private static instancePromise: Promise<PrismaClient> | null = null;

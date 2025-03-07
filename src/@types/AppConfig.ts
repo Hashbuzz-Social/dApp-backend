@@ -1,3 +1,5 @@
+import { network } from "@prisma/client";
+
 export interface AppConfig {
     app: {
         /** App port number */

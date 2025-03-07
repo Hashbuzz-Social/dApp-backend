@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma, campaignstatus } from '@prisma/client';
 
+
+
 class CampaignTwitterCardModel {
   private prisma: PrismaClient;
 
@@ -38,7 +40,7 @@ class CampaignTwitterCardModel {
     }
   }
 
-  async updateCampaign(id: bigint, data: any) {
+  async updateCampaign(id: bigint, data: Prisma.campaign_twittercardUpdateInput) {
     try {
       return await this.prisma.campaign_twittercard.update({
         where: { id },

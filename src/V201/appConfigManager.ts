@@ -26,9 +26,11 @@
  */
 
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
+import { network } from '@prisma/client';
 import logger from 'jet-logger';
 import { AppConfig } from 'src/@types/AppConfig';
 import { ConfigurationFactory } from 'src/server/provideres';
+
 
 class AppConfigManager {
   private static instance: AppConfigManager;

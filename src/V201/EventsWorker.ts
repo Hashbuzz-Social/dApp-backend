@@ -1,4 +1,7 @@
-import { publshCampaignContentHandler } from '@V201/modules/campaigns';
+import {
+  handleCampaignPublishTransaction,
+  publshCampaignContentHandler,
+} from '@V201/modules/campaigns';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
 import { CampaignEvents } from './AppEvents';
@@ -12,10 +15,25 @@ const processEvent = async <T extends keyof EventPayloadMap>(
   console.log(`Processing event ${eventType}`, payload);
 
   switch (eventType) {
+    // handle event CAMPAIGN_PUBLISH_CONTENT event
     case CampaignEvents.CAMPAIGN_PUBLISH_CONTENT:
-      const { cardOwner, card } =
+      const publishContentPayload =
         payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT];
-      publshCampaignContentHandler(cardOwner, card);
+      publshCampaignContentHandler(publishContentPayload);
+      break;
+
+    // handle event CAMPAIGN_PUBLISH_DO_SM_TRANSACTION event
+    case CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION:
+      const trnsactionPayload =
+        payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION];
+      handleCampaignPublishTransaction(trnsactionPayload);
+      break;
+
+    // handle event CAMPAIGN_PUBLISH_ERROR event
+    case CampaignEvents.CAMPAIGN_PUBLISH_ERROR:
+      const { error } =
+        payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_ERROR];
+      console.error('Error processing event:', error);
       break;
 
     default:
