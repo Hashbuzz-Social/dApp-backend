@@ -1,11 +1,14 @@
 import { campaignstatus, Prisma } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import { convertToTinyHbar, rmKeyFrmData } from '@shared/helper';
+import { CampaignEvents } from '@V201/events/campaign';
+
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { generateRandomString, safeParsedData } from '@V201/modules/common';
 import PrismaClientManager from '@V201/PrismaClient';
 import { DraftCampaignBody } from '@V201/types';
 import logger from 'jet-logger';
+import { publishEvent } from 'src/V201/eventPublisher';
 
 const calculateMaxActivityReward = (engagers: number, budget: number) =>
   budget / engagers / 4;
@@ -57,7 +60,6 @@ export const draftCampaign = async (
       throw new Error('Fungible token ID is required for fungible campaigns');
     }
 
-
     // initiate The token Data here.
     let tokenData;
     if (fungible_token_id) {
@@ -65,7 +67,6 @@ export const draftCampaign = async (
         prisma
       ).getTokenDataByAddress(fungible_token_id.toString());
     }
-
 
     // Calculate reward values for different activities and the total campaign budget
     const rewardValues = await Promise.all([
@@ -141,6 +142,14 @@ export const draftCampaign = async (
       'last_thread_tweet_id',
       'contract_id',
     ]); // Remove sensitive keys from the data
+
+    publishEvent(CampaignEvents.CAMPAIGN_DRAFT_SUCCESS, {
+      userId,
+      campaignId: newCampaign.id,
+      createdAt: new Date(),
+      budget: newCampaign.campaign_budget!,
+      type: newCampaign.type as CampaignTypes,
+    }); // Publish the campaign created event
 
     return safeParsedData(sanitizedData); // Return the sanitized campaign data
   } catch (err) {

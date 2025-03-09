@@ -7,6 +7,8 @@ import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
 import { CampaignEvents } from './AppEvents';
 import { consumeFromQueue } from './redisQueue';
+import Logger from 'jet-logger';
+import { safeStringifyData } from './Modules/common';
 
 const processEvent = async <T extends keyof EventPayloadMap>(
   eventId: number | bigint,
@@ -36,6 +38,15 @@ const processEvent = async <T extends keyof EventPayloadMap>(
         payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_ERROR];
       publshCampaignErrorHandler(errorPayload);
       break;
+    case CampaignEvents.CAMPAIGN_DRAFT_SUCCESS:
+      const draftPayload =
+        payload as EventPayloadMap[CampaignEvents.CAMPAIGN_DRAFT_SUCCESS];
+      Logger.info(
+        `Campaign Drafted Successfully with payload ${safeStringifyData(
+          draftPayload
+        )}`
+      );
+      break;
 
     default:
       break;
@@ -49,6 +60,13 @@ const processEvent = async <T extends keyof EventPayloadMap>(
   });
 };
 
+console.log('Starting event consumer...');
+
 consumeFromQueue('event-queue', async (event) => {
+  event = JSON.parse(event);
+  if (!event || !event.eventId || !event.eventType) {
+    console.error('Invalid event format:', event);
+    return;
+  }
   await processEvent(event.eventId, event.eventType, event.payload);
 });

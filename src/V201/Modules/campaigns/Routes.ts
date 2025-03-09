@@ -19,10 +19,10 @@ import CampaignController from './Controller';
  * Express router to mount campaign related functions on.
  * @type {Router}
  */
-const router = express.Router();
+const campaignRouter = express.Router();
 
 // Route to create a new campaign
-router.post(
+campaignRouter.post(
   '/draft',
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
@@ -31,11 +31,11 @@ router.post(
   CampaignController.draftCampaign
 );
 
-router.post(
+campaignRouter.post(
   '/publish',
   validatePublishCampaignBody,
   userInfo.getCurrentUserInfo,
   CampaignController.startPublishingCampaign
 );
 
-export default router;
+export default campaignRouter;

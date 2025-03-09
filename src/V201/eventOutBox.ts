@@ -13,15 +13,21 @@
  * console.log(savedEvent);
  * ```
  */
+import { safeStringifyData } from './Modules/common';
 import PrismaClientManager from './prismaClient';
 
 export const saveEvent = async (eventType: string, payload: any) => {
-  const prisma = await PrismaClientManager.getInstance();
-
-  return await prisma.eventOutBox.create({
-    data: {
-      event_type: eventType,
-      payload: JSON.stringify(payload),
-    },
-  });
+  try {
+    const prisma = await PrismaClientManager.getInstance();
+    const result = await prisma.eventOutBox.create({
+      data: {
+        event_type: eventType,
+        payload: safeStringifyData(payload),
+      },
+    });
+    console.log(`Event saved: ${eventType}`, result);
+    return result;
+  } catch (error) {
+    console.error('Error saving event:', error);
+  }
 };

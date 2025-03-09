@@ -7,6 +7,6 @@ const router = Router();
 
 router.use("/sse",  sseRoutes ); // Protected SSE endpoint
 
-router.use('/campaigns', campaignRouter);
+router.use('/campaign', campaignRouter);
 
 export default router;
