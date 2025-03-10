@@ -9,7 +9,15 @@ import { allocateBalanceToCampaign } from '@services/transaction-service';
 import { CampaignEvents } from '@V201/events/campaign';
 import CampaignLogsModel from '@V201/Modals/CampaignLogs';
 import TransactionRecordModel from '@V201/Modals/TransactionRecord';
-import { safeParsedData, updateCampaignInMemoryStatus } from '@V201/modules/common';
+import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
+import {
+  updateFungibleBalanceOfCard,
+  updateHabrBalanceOfCard,
+} from '@V201/modules/Balance';
+import {
+  safeParsedData,
+  updateCampaignInMemoryStatus,
+} from '@V201/modules/common';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
@@ -67,7 +75,17 @@ const handleSmartContractTransaction = async (
       campaign: { connect: { id: card.id } },
     });
 
-    updateCampaignInMemoryStatus(card.contract_id!, "transactionLogsCreated", true);
+    updateCampaignInMemoryStatus(
+      card.contract_id!,
+      'transactionLogsCreated',
+      true
+    );
+
+    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT, {
+      card,
+      cardOwner,
+    });
+    
   } catch (error) {
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
@@ -103,11 +121,17 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
       contract_id
     );
 
+    if (!contractStateUpdateResult) {
+      throw new Error('Failed to update contract state');
+    }
+
+    await updateHabrBalanceOfCard(card);
+
     return {
       contract_id,
       transactionId: contractStateUpdateResult?.transactionId,
       receipt: contractStateUpdateResult?.receipt,
-      status: contractStateUpdateResult?.status._code.toString(),
+      status: contractStateUpdateResult?.status._code.toString(),  
     };
   });
 };
@@ -142,6 +166,17 @@ export const publshCampaignSMTransactionHandlerFungible = async (
 
     if (!transactionDetails) {
       throw new Error('Failed to add campaign to contract');
+    }
+
+    const tokendata = await new WhiteListedTokensModel(
+      await PrismaClientManager.getInstance()
+    ).getTokenDataByAddress(fungible_token_id);
+
+    if (!tokendata) {
+      logger.warn('Token data not found');
+    }
+    if (tokendata) {
+      await updateFungibleBalanceOfCard(card, tokendata);
     }
 
     return transactionDetails;

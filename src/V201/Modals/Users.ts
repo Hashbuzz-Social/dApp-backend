@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, user_user } from '@prisma/client';
 
 class UsersModel {
     private prisma: PrismaClient;
@@ -72,6 +72,21 @@ class UsersModel {
         }
     }
 
+    async updateUserBalance(id: number | bigint, amount: number, operation: "increment" | "decrement" | "update"): Promise<user_user> {
+        try {
+            const data = operation === "increment" ? { available_budget: { increment: amount } }
+                        : operation === "decrement" ? { available_budget: { decrement: amount } }
+                        : { available_budget: amount };
+
+            return await this.prisma.user_user.update({
+                where: { id },
+                data,
+            });
+        } catch (error) {
+            console.error('Error updating user balance:', error);
+            throw new Error('Could not update user balance.');
+        }
+    }
     
 
     getUserModel() {

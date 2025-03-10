@@ -21,3 +21,11 @@ export type CampaignDraftPayLoad = {
   budget: number;
   type: CampaignTypes;
 };
+
+export type CampaignCloseJobPayload = {
+  userId: number | bigint;
+  cardId: number | bigint;
+  type: CampaignTypes;
+  createdAt: Date;
+  tweetId: string;
+};
