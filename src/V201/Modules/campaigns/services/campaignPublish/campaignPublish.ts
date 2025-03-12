@@ -18,7 +18,7 @@ import { isCampaignValidForMakeRunning } from './validation';
 
 export const startPublishingCampaign = async (
   campaignId: number,
-  userId: number
+  userId: number | bigint
 ): Promise<void> => {
   try {
     const prisma = await PrismaClientManager.getInstance();
@@ -30,6 +30,10 @@ export const startPublishingCampaign = async (
 
     if (!card || !cardOwner) {
       throw new Error('Could not fetch campaign by tweet ID.');
+    }
+
+    if(cardOwner.id !== userId) {
+      throw new Error('User is not authorized to publish this campaign.');
     }
 
     const isValidToMakeRunning = await isCampaignValidForMakeRunning(

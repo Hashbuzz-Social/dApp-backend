@@ -172,9 +172,13 @@ const publishTweetORThread = async (params: PublishTweetParams) => {
     if (isThread && parentTweetId) {
       card = await rwClient.v2.reply(tweetText, parentTweetId);
     } else {
-      card = await rwClient.v2.tweet(tweetText, {
-        media: { media_ids: mediaIds },
-      });
+      if (mediaIds.length > 0) {
+        card = await rwClient.v2.tweet(tweetText, {
+          media: { media_ids: mediaIds },
+        });
+      } else {
+        card = await rwClient.v2.tweet(tweetText);
+      }
     }
     return card.data.id;
   }

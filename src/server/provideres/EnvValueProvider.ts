@@ -12,11 +12,9 @@ export class EnvValueProvider {
     get(defaultValue?: string): string {
         const value = process.env[this.variableName];
         if (value !== undefined) {
-            this.log?.info(`Environment variable "${this.variableName}" fetched successfully.`);
             return value;
         }
         if (defaultValue !== undefined) {
-            this.log?.info(`Using default value for environment variable "${this.variableName}".`);
             return defaultValue;
         }
         this.log?.err(`Environment variable "${this.variableName}" is not set. Returning empty string.`);

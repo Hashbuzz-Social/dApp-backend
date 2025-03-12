@@ -4,6 +4,7 @@ import associatedTokens from "./associatedTokens";
 import { cronJobs, scheduleOptions } from "./cronJob";
 import setVariables from "./setVariables";
 import "../V201/EventsWorker.ts";
+import "../V201/SchedulesJobHandlers.ts";
 
 const preStartJobs = async () => {
   await setVariables();

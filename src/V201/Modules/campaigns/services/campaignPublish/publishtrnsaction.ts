@@ -2,6 +2,7 @@ import {
   campaign_twittercard,
   campaignstatus,
   network,
+  Prisma,
   user_user,
 } from '@prisma/client';
 import { addFungibleAndNFTCampaign } from '@services/contract-service';
@@ -58,18 +59,21 @@ const handleSmartContractTransaction = async (
     });
 
     // log campaign status update
-    const logableCampaignData = {
-      campaign_id: card.id,
-      status: campaignstatus.CampaignRunning,
-      message: `Campaign balance ${card.campaign_budget} is added to the SM Contract`,
-      data: safeParsedData({
-        transaction_id: transactionDetails.transactionId,
-        status: transactionDetails.status,
-        amount: Number(card.campaign_budget),
-        transactionLogId: transactionRecord.id.toString(),
-      }),
-    };
-
+    const logableCampaignData: Omit<Prisma.CampaignLogCreateInput, 'campaign'> =
+      {
+        status: campaignstatus.CampaignRunning,
+        message: `Campaign balance ${card.campaign_budget} is added to the SM Contract`,
+        data: safeParsedData({
+          transaction_id: transactionDetails.transactionId,
+          status: transactionDetails.status,
+          amount: Number(card.campaign_budget),
+          transactionLogId: transactionRecord.id.toString(),
+        }),
+      };
+    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT, {
+      card,
+      cardOwner,
+    });
     await new CampaignLogsModel(prisma).createLog({
       ...logableCampaignData,
       campaign: { connect: { id: card.id } },
@@ -80,12 +84,6 @@ const handleSmartContractTransaction = async (
       'transactionLogsCreated',
       true
     );
-
-    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT, {
-      card,
-      cardOwner,
-    });
-    
   } catch (error) {
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
@@ -131,7 +129,7 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
       contract_id,
       transactionId: contractStateUpdateResult?.transactionId,
       receipt: contractStateUpdateResult?.receipt,
-      status: contractStateUpdateResult?.status._code.toString(),  
+      status: contractStateUpdateResult?.status._code.toString(),
     };
   });
 };

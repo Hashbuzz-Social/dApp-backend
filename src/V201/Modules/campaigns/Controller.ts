@@ -1,10 +1,8 @@
 import { DraftCampaignBody, PubishCampaignBody } from '@V201/types';
 import { Request, Response } from 'express';
-import { draftCampaign } from './services';
+import { draftCampaign, startPublishingCampaign } from './services';
 
 class CampaignController {
-
-
   // Method to create a new campaign
   async draftCampaign(
     req: Request<{}, {}, DraftCampaignBody>,
@@ -37,15 +35,16 @@ class CampaignController {
     if (!userId) {
       throw new Error('User ID not found');
     }
+    await startPublishingCampaign(campaignId, userId);
 
-
-
-    // Assuming publishCampaign is a service method that publishes the campaign
-
-    return res.accepted({}, 'Campaign is being published');
+    return res.accepted(
+      {
+        campaignId,
+        userId,
+      },
+      'Campaign is being published'
+    );
   }
-
-
 }
 
 export default new CampaignController();

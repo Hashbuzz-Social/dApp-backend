@@ -1,6 +1,5 @@
 import { campaign_twittercard, user_user } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
-import { CampaignEvents } from '@V201/events/campaign';
 
 export type CampaignPublishPayLoad = {
   cardOwner: user_user;

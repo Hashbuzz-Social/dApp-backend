@@ -2,6 +2,7 @@ import {
   handleCampaignPublishTransaction,
   publshCampaignContentHandler,
   publshCampaignErrorHandler,
+  publishCampaignSecondContent,
 } from '@V201/modules/campaigns';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
@@ -30,6 +31,12 @@ const processEvent = async <T extends keyof EventPayloadMap>(
       const trnsactionPayload =
         payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION];
       handleCampaignPublishTransaction(trnsactionPayload);
+      break;
+
+    case CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT:
+      const secondContentPayload =
+        payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT];
+      publishCampaignSecondContent(secondContentPayload);
       break;
 
     // handle event CAMPAIGN_PUBLISH_ERROR event
