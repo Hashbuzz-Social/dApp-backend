@@ -157,7 +157,9 @@ class SessionManager {
       (trailsetter) => trailsetter.walletId === accAddress
     );
 
-    if (globalThis.adminAddress.includes(accAddress)) {
+    // Ensure globalThis.adminAddress is typed as string[]
+    const adminAddress = (globalThis as any).adminAddress as string[] | undefined;
+    if (adminAddress && adminAddress.includes(accAddress)) {
       return 'SUPER_ADMIN';
     } else if (isCurrentUserTrailsetter) {
       // loigic to verify the  NFT holding position and then go for the role

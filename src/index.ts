@@ -6,7 +6,6 @@ import { logError, logInfo } from "@shared/helper";
 import createPrismaClient from "@shared/prisma";
 import afterStartJobs from "./after-start";
 import { getConfig } from "./appConfig";
-import preStartJobs from "./pre-start";
 import server from "./server";
 
 let redisClient: RedisClient;
@@ -67,7 +66,6 @@ async function init() {
     const config = await getConfig();
     redisClient = new RedisClient(config.db.redisServerURI);
 
-    await preStartJobs();
     await testPrismaConnection();
     await testRedisConnection(redisClient)
     await afterStartJobs();

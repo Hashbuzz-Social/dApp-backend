@@ -10,9 +10,9 @@ export const cronJobs = [
   {
     schedule: "* * * * *",// Every minute
     task: () => {
-      crontabService.updateCardStatus();
-      crontabService.autoCampaignClose();
-      crontabService.checkCampaignCloseTime();
+      // crontabService.updateCardStatus();
+      // crontabService.autoCampaignClose();
+      // crontabService.checkCampaignCloseTime();
       // crontabService.scheduleExpiryTasks();
     },
   },
@@ -25,7 +25,7 @@ export const cronJobs = [
   {
     schedule: "*/2 * * * *", // Every 2 minutes
     task: () => {
-      crontabService.checkForRepliesAndUpdateEngagementsData();
+      // crontabService.checkForRepliesAndUpdateEngagementsData();
     },
   },
   {
@@ -48,7 +48,7 @@ export const cronJobs = [
   {
     schedule: "0 0 * * *", // Every day at midnight
     task: () => {
-      crontabService.checkForRepliesAndUpdateEngagementsData();
+      // crontabService.checkForRepliesAndUpdateEngagementsData();
     },
   },
 ];

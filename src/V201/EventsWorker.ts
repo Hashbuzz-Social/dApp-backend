@@ -1,15 +1,15 @@
 import {
   handleCampaignPublishTransaction,
+  publishCampaignSecondContent,
   publshCampaignContentHandler,
   publshCampaignErrorHandler,
-  publishCampaignSecondContent,
 } from '@V201/modules/campaigns';
 import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
-import { BalanceEvents, CampaignEvents } from './AppEvents';
-import { consumeFromQueue } from './redisQueue';
 import Logger from 'jet-logger';
+import { BalanceEvents, CampaignEvents } from './AppEvents';
 import { safeStringifyData } from './Modules/common';
+import { consumeFromQueue } from './redisQueue';
 
 const processEvent = async <T extends keyof EventPayloadMap>(
   eventId: number | bigint,
