@@ -212,7 +212,9 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
 
         if (userWithWallet.length > 0) {
             const cardDetails = await getCardDetails(cardId);
-            if (!cardDetails) throw new Error("Card details not found");
+            if (!cardDetails) {
+                throw new Error("Card details not found");
+            }
 
             const { user_user: campaigner, ...card } = cardDetails;
             const rewards = _getRewardsFromCard(card);
@@ -243,7 +245,6 @@ export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
     } catch (error) {
         console.error(error);
         logger.err(`Error in performAutoRewardingForEligibleUser: ${error}`);
-        throw new Error("Error in performAutoRewardingForEligibleUser");
     }
 };
 

@@ -6,13 +6,13 @@ import setVariables from "./setVariables";
 
 const preStartJobs = async () => {
   await setVariables();
-  associatedTokens.checkAvailableTokens();
+  // associatedTokens.checkAvailableTokens();
   // Schedule all cron jobs
   // cronTasksService.scheduleExpiryTasks();
   cronJobs.forEach(({ schedule, task }) => {
     cron.schedule(schedule, task, scheduleOptions).start();
   });
-  console.log("Pre-start jobs done");
+  console.log("Pre-start jobs done => latest");
 };
 
 export default preStartJobs;
