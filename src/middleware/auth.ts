@@ -8,6 +8,10 @@ import { verifyAccessToken } from "@shared/Verify";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { getConfig } from "@appConfig";
+declare global {
+  // Adjust the type as needed, here it's assumed to be string[]
+  var adminAddress: string[];
+}
 
 const AUTH_TOKEN_NOT_PRESENT_ERR = "Authentication token not found.";
 const AUTH_TOKEN_INVALID_ERR = "Authentication token is invalid.";
