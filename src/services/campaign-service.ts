@@ -60,6 +60,11 @@ export const updateCampaignStatus = async (campaignId: number | bigint, status: 
   });
 };
 
+/**
+ * 
+ * @param card Campaign card to perform close operation on
+ * @returns 
+ */
 export const completeCampaignOperation = async (card: campaign_twittercard) => {
   logger.warn("Complete operation started");
   const closeCmapaign = await CloseCmapignLyfCycle.create(card.id);
@@ -68,6 +73,11 @@ export const completeCampaignOperation = async (card: campaign_twittercard) => {
 };
 
 
+/**
+ * 
+ * @param id Campaign ID to perform expiry operation on
+ * @returns Promise resolving to the result of the campaign expiry operation
+ */
 export const perFormCampaignExpiryOperation = async (id: number | bigint) => {
   const expiryInstance = await CampaignExpiryOperation.create(id);
   await expiryInstance.performCampaignExpiryOperation();

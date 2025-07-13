@@ -27,7 +27,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
     logger.info(`Campaign expiry operation started for id::: ${card.id} `);
 
     logger.info("Reward again for last mile eligible user");
-    //await performAutoRewardingForEligibleUser(card.id);
+    await performAutoRewardingForEligibleUser(card.id);
 
     if (this.hasValidAccessTokens(cardOwner)) {
       if (card.type === "HBAR") {
