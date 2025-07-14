@@ -105,7 +105,7 @@ export const allocateBalanceToCampaign = async (
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const stateUppdateData = await campaignLifecycleService.addCampaignOrTopUp(campaignAddress, campaignerAccount, amounts)
 
-    if ('dataDecoded' in stateUppdateData && stateUppdateData.dataDecoded) {
+    if (stateUppdateData && 'dataDecoded' in stateUppdateData && stateUppdateData.dataDecoded) {
       const updatedBalance = stateUppdateData.dataDecoded[0];
       logger.info(`Campaigner updated balance after campaign::${campaignAddress} created: ${Number(updatedBalance).toString()}`);
     }

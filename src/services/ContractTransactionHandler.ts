@@ -50,7 +50,7 @@ class ContractTransactions {
             .addBool(deposit);
 
         const result = await this.hederaContract.callContractWithStateChange("updateBalance", params, createTransactionMemo("updateBalance", memo));
-        if ('dataDecoded' in result && result.dataDecoded) {
+        if (result && 'dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }
         throw new Error("Failed to decode data");
@@ -65,7 +65,7 @@ class ContractTransactions {
 
         const result = await this.hederaContract.callContractWithStateChange("addFungibleAmount", params, createTransactionMemo("addFungibleAmount", memo));
 
-        if ('dataDecoded' in result && result.dataDecoded) {
+        if (result && 'dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }
         throw new Error("Failed to decode data");
@@ -79,7 +79,7 @@ class ContractTransactions {
             .addUint256(amount); // Changed from addUint64 to addUint256
 
         const result = await this.hederaContract.callContractWithStateChange("reimburseBalanceForFungible", params, createTransactionMemo("reimburseBalanceForFungible", memo));
-        if ('dataDecoded' in result && result.dataDecoded) {
+        if (result && 'dataDecoded' in result && result.dataDecoded) {
             return result.dataDecoded[0];
         }
         throw new Error("Failed to decode data");

@@ -8,7 +8,6 @@ import logger from "jet-logger";
 import JSONBigInt from "json-bigint";
 import ContractCampaignLifecycle from "./ContractCampaignLifecycle";
 import ContractUtils from "./ContractUtilsHandlers";
-// import { hederaSDKCallHandler } from "./HederaSDKCalls";
 import { getConfig } from "@appConfig";
 import HederaSDKCalls from "./HederaSDKCalls";
 
@@ -92,7 +91,7 @@ export async function expiryFungibleCampaign(card: campaign_twittercard, cardOwn
 
     const expiryCampaignStateUpdate = await campaignLifecycleService.expiryFungibleCampaign(props);
 
-    logger.info(`- Expiry campaign transaction status for card ${card.id.toString()} ::: ${expiryCampaignStateUpdate.status.toString()}`);
+    logger.info(`- Expiry campaign transaction status for card ${card.id.toString()} ::: ${expiryCampaignStateUpdate?.status.toString()}`);
 
     return expiryCampaignStateUpdate;
   }
@@ -109,7 +108,7 @@ export async function expiryCampaign(card: campaign_twittercard, cardOwner: user
   if (contractDetails?.contract_id && cardOwner.hedera_wallet_id && card.contract_id) {
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);
     const campagnExpiryStatusUpdate = await campaignLifecycleService.expiryCampaign(card.contract_id, cardOwner.hedera_wallet_id);
-    logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${campagnExpiryStatusUpdate.status.toString()} `);
+    logger.info(`Expiry campaign SM transaction status for card ${card.id}:::${campagnExpiryStatusUpdate?.status.toString()} `);
 
     return campagnExpiryStatusUpdate;
   } else {
