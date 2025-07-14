@@ -86,4 +86,12 @@ export interface AppConfig {
         /** AWS S3 bucket endpoint */
         endpoint: string
     }
+    mailer: {
+        /** Email user for sending alerts */
+        emailUser: string,
+        /** Email password for sending alerts */
+        emailPass: string,
+        /** Email address to receive alerts */
+        alertReceiver: string
+    }
 }
