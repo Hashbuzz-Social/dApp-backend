@@ -171,10 +171,12 @@ const publishTweetORThread = async (params: PublishTweetParams) => {
     const rwClient = userTwitter.readWrite;
     if (isThread && parentTweetId) {
       card = await rwClient.v2.reply(tweetText, parentTweetId);
-    } else {
+    } else if(mediaIds.length > 0){
       card = await rwClient.v2.tweet(tweetText, {
         media: { media_ids: mediaIds },
       });
+    }else{
+      card = await rwClient.v2.tweet(tweetText);
     }
     return card.data.id;
   }
