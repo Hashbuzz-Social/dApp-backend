@@ -14,8 +14,8 @@ class NetworkHelpers {
 
         // Add a response interceptor
         this.axiosInstance.interceptors.response.use(
-            this.handleResponse,
-            this.handleError
+            this.handleResponse.bind(this),
+            this.handleError.bind(this)
         );
     }
 
@@ -72,7 +72,6 @@ class NetworkHelpers {
 
     async getTransactionDetails<T>(transactionId: string): Promise<T> {
         if (!transactionId) throw new Error('Token ID not defined!');
-        //${nodeURI}/api/v1/transactions/${convertTrxString(transactionId)}?nonce=0
         try {
             const response = await this.axiosInstance.get<T>(`/api/v1/transactions/${convertTrxString(transactionId)}?nonce=0`);
             return response.data;

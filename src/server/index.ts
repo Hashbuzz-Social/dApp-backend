@@ -275,18 +275,17 @@ const initializeApp = async () => {
   /**
    * Error handling middleware
    */
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
     if (isHttpError(err)) {
-      return res.status(err.status).send({ error: err });
+      return res.status(err.status).json({ error: err.message });
     }
 
     console.error('Internal Server Error:', err.message); // Logging error details
-    res.status(500).send({
+    logger.err(err, true);
+    res.status(500).json({
       error: { message: 'Internal Server Error', description: err.message },
     });
-
-    logger.err(err, true);
-    next(err);
+    // Do not call next(err) here to prevent server crash and duplicate responses
   });
 
   // Front-end content
