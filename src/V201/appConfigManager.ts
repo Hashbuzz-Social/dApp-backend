@@ -31,7 +31,6 @@ import logger from 'jet-logger';
 import { AppConfig } from 'src/@types/AppConfig';
 import { ConfigurationFactory } from 'src/server/provideres';
 
-
 class AppConfigManager {
   private static instance: AppConfigManager;
   private secretsManager = new SecretsManager({ region: 'us-east-1' });
@@ -94,6 +93,11 @@ class AppConfigManager {
           region: provider.env('BUCKET_REGION'),
           bucketName: provider.env('BUCKET_NAME'),
           endpoint: provider.env('BUCKET_ENDPOINT'),
+        },
+        mailer: {
+          emailUser: provider.env('EMAIL_USER'),
+          emailPass: provider.env('EMAIL_PASS'),
+          alertReceiver: provider.env('ALERT_RECEIVER'),
         },
       }),
     });
