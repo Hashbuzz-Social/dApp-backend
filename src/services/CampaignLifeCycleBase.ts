@@ -270,22 +270,8 @@ class CampaignLifeCycleBase {
     }
   }
 
-
-  public async createNewCampaign(
-    { fungible_token_id, ...params }: createCampaignParams,
-    userId: number | bigint
-  ) {
-    const {
-      name,
-      tweet_text,
-      comment_reward,
-      retweet_reward,
-      like_reward,
-      quote_reward,
-      campaign_budget,
-      type,
-      media,
-    } = params;
+  public async createNewCampaign({ fungible_token_id, media ,  ...params }: createCampaignParams, userId: number | bigint) {
+    const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type } = params;
     const prisma = await createPrismaClient();
     const emptyFields = Object.entries(params)
       .filter(([, value]) => isEmpty(value))

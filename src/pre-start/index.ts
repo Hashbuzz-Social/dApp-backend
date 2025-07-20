@@ -14,7 +14,7 @@ const preStartJobs = async () => {
   cronJobs.forEach(({ schedule, task }) => {
     cron.schedule(schedule, task, scheduleOptions).start();
   });
-  console.log("Pre-start jobs done");
+  console.log("Pre-start jobs done => latest");
 };
 
 export default preStartJobs;
