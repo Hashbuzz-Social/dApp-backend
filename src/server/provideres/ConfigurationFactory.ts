@@ -28,7 +28,7 @@ export class ConfigurationFactory<TConfiguration> {
                 return async () => provider.get();
             },
             secret: (secretName, defaultValue) => {
-                const provider = new SecretsManagerProvider(this.factoryConfig.log, factoryConfig.secretsManagerClient, secretName);
+                const provider = new SecretsManagerProvider(factoryConfig.secretsManagerClient, secretName, this.factoryConfig.log);
                 return async () => provider.get(defaultValue);
             },
         });
