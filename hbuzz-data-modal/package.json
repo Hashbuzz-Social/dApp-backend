@@ -1,0 +1,20 @@
+{
+    "name": "hbuzz-data-modal",
+    "version": "1.0.0",
+    "description": "Data modal repository for HashBuzz dApp backend",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "keywords": [
+        "hashbuzz",
+        "data",
+        "modal",
+        "backend",
+        "dapp"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {}
+}
