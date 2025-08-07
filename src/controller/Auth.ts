@@ -34,6 +34,11 @@ export const handleGenerateAuthAst = async (req: Request, res: Response, next: N
   return sessionManager.handleGenerateAuthAst(req, res, next);
 };
 
+export const handleGenerateAuthAstv2 = async (req: Request, res: Response, next: NextFunction) => {
+  const sessionManager = await SessionManager.create()
+  return sessionManager.handleGenerateAuthAstv2(req, res, next);
+};
+
 export const handleLogout = async (req: Request, res: Response, next: NextFunction) => {
   const sessionManager = await SessionManager.create()
   return sessionManager.handleLogout(req, res, next);

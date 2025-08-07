@@ -120,6 +120,7 @@ const havingValidPayloadToken = async (req: Request, res: Response, next: NextFu
     const accessSecret = appConfig.encryptions.jwtSecreatForAccessToken;
     jwt.verify(token, accessSecret, (err, payload) => {
       if (err) {
+        console.error("JWT verification error:", err);
         return next(new UnauthorizeError(INVALID_SIGNATURE_TOKEN_ERR));
       }
 
@@ -132,6 +133,7 @@ const havingValidPayloadToken = async (req: Request, res: Response, next: NextFu
       }
     });
   } catch (err) {
+    console.error(err);
     return next(new UnauthorizeError(AUTH_TOKEN_INVALID_ERR));
   }
 };

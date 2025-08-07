@@ -57,6 +57,18 @@ export type GenerateAstPayload = {
   };
 };
 
+
+export type GenerateAstPayloadV2 = {
+  payload: Payload;
+  signatures: {
+    server: string;
+    wallet: {
+      accountId: string;
+      signature: string;
+    };
+  };
+};
+
 export type Token = { token_id: string; balance: number };
 
 export type RewardsObj = {

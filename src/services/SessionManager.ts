@@ -1,5 +1,5 @@
 import { getConfig } from '@appConfig';
-import { AccountId } from '@hashgraph/sdk';
+import { AccountId, PublicKey } from '@hashgraph/sdk';
 import { d_decrypt } from '@shared/encryption';
 import { ErrorWithCode } from '@shared/errors';
 import { base64ToUint8Array } from '@shared/helper';
@@ -13,6 +13,7 @@ import { createAstToken, genrateRefreshToken } from './authToken-service';
 import initHederaService from './hedera-service';
 import RedisClient from './redis-servie';
 import signingService from './signing-service';
+import { GenerateAstPayloadV2, Payload } from 'src/@types/custom';
 
 const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
 
@@ -29,45 +30,34 @@ class SessionManager {
     return new SessionManager(config.db.redisServerURI);
   }
 
-  /** Public Methods
-   * @description Generate auth AST token for the user
-   * @param {Request} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   * @returns {Promise<void>}
+  /**
+   * Handles the common logic for generating auth AST tokens (v1 and v2).
    */
-  async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
+  private async handleGenerateAuthAstCommon(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    options: {
+      getSignatureValidation: () => Promise<boolean> | boolean;
+      getAccountId: () => string;
+    }
+  ): Promise<void> {
     try {
-      const { payload, clientPayload, signatures } = req.body;
-      const { server, wallet } = signatures;
-      const { value, accountId } = wallet;
-
       const config = await getConfig();
 
-      const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(
-        accountId
-      );
-      const isSignaturesValid = this.validateSignatures(
-        payload,
-        clientPayload,
-        server,
-        value,
-        clientAccountPublicKey
-      );
-
+      const isSignaturesValid = await options.getSignatureValidation();
       if (!isSignaturesValid) {
-        return res
-          .status(400)
-          .json({ auth: false, message: 'Invalid signature.' });
+        res.status(400).json({ auth: false, message: 'Invalid signature.' });
+        return;
       }
 
       let deviceId = await this.handleDeviceId(req, res);
-
       if (!deviceId) {
         return res.error('Device ID not found', BAD_REQUEST);
       }
 
       const { deviceType, ipAddress, userAgent } = this.getDeviceInfo(req);
+      const accountId = options.getAccountId();
       const accAddress = AccountId.fromString(accountId).toSolidityAddress();
 
       const user = await this.upsertUserData(accAddress, accountId);
@@ -84,8 +74,7 @@ class SessionManager {
         expiry
       );
 
-      // return res.created(resposeData, "Signature authenticated successfully");
-      return res.status(OK).json({
+      res.status(OK).json({
         message: 'Login Successfully',
         auth: true,
         ast: token,
@@ -95,6 +84,85 @@ class SessionManager {
     } catch (err) {
       next(err);
     }
+  }
+
+  /** Public Methods
+   * @description Generate auth AST token for the user (v1)
+   */
+  async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
+    await this.handleGenerateAuthAstCommon(req, res, next, {
+      getSignatureValidation: async () => {
+        const { payload, clientPayload, signatures } = req.body;
+        const { server, wallet } = signatures;
+        const { value, accountId } = wallet;
+        const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(
+          accountId
+        );
+        return this.validateSignatures(
+          payload,
+          clientPayload,
+          server,
+          value,
+          clientAccountPublicKey
+        );
+      },
+      getAccountId: () => req.body.signatures.wallet.accountId,
+    });
+  }
+
+  /**
+   * @description Generate auth AST token for the user (v2)
+   */
+  public async handleGenerateAuthAstv2(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    await this.handleGenerateAuthAstCommon(req, res, next, {
+      getSignatureValidation: async () => {
+        const { payload, signatures } =
+          req.body as GenerateAstPayloadV2;
+        const { server, wallet } = signatures;
+        const { signature, accountId } = wallet;
+        const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(
+          accountId
+        );
+        return this.validateSignatureSv2({
+          originalPayload: payload,
+          clientSignature: signature,
+          serverSignature: server,
+          clientAccountPublicKey,
+        });
+      },
+      getAccountId: () =>
+        (req.body as GenerateAstPayloadV2).signatures.wallet.accountId,
+    });
+  }
+
+  private async validateSignatureSv2({
+    originalPayload,
+    clientSignature,
+    serverSignature,
+    clientAccountPublicKey,
+  }: {
+    originalPayload: Payload;
+    clientSignature: string;
+    serverSignature: string;
+    clientAccountPublicKey: string;
+  }) {
+    const hederaService = await initHederaService();
+    const isClinetSigValid = this.clientVerifySignature({
+      message: JSON.stringify(originalPayload),
+      signature: clientSignature,
+      publicKeyStr: clientAccountPublicKey,
+    });
+    const isServerSigValid = this.verifySignature(
+      originalPayload,
+      hederaService.operatorKey.publicKey.toStringRaw(),
+      serverSignature
+    );
+    console.log({ isClinetSigValid, isServerSigValid });
+    return isClinetSigValid && isServerSigValid;
   }
 
   private async fetchAndVerifyPublicKey(accountId: string): Promise<string> {
@@ -122,6 +190,29 @@ class SessionManager {
       value
     );
     return isServerSigValid && isClientSigValid;
+  }
+
+  private prefixMessageToSign(message: string) {
+    return '\x19Hedera Signed Message:\n' + message.length + message;
+  }
+
+  private clientVerifySignature({
+    message,
+    signature,
+    publicKeyStr,
+  }: {
+    message: string;
+    signature: string;
+    publicKeyStr: string;
+  }) {
+    const messageWithPrefix = this.prefixMessageToSign(message);
+    const messageBytes = Buffer.from(messageWithPrefix, 'utf-8');
+    const isValid = PublicKey.fromString(publicKeyStr).verify(
+      messageBytes,
+      base64ToUint8Array(signature)
+    );
+
+    return isValid;
   }
 
   async handleDeviceId(req: Request, res: Response) {

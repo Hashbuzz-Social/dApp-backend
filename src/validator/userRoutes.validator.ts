@@ -2,7 +2,7 @@ import { ParamMissingError } from "@shared/errors";
 import { NextFunction, Request, Response } from "express";
 import { CustomValidator, validationResult } from "express-validator";
 import statusCodes from "http-status-codes";
-import { CreateTranSactionEntity, GenerateAstPayload } from "src/@types/custom";
+import { CreateTranSactionEntity, GenerateAstPayload, GenerateAstPayloadV2 } from "src/@types/custom";
 
 const { BAD_REQUEST } = statusCodes;
 
@@ -55,6 +55,24 @@ export const validateGenerateAstPayload: CustomValidator = (body: GenerateAstPay
   }
 
   throw new ParamMissingError("Signature payload format is not correct.");
+}
+
+export const validateGenerateAstPayloadV2: CustomValidator = (body: GenerateAstPayloadV2) => {
+  if (
+    body &&
+    typeof body === 'object' &&
+    'payload' in body &&
+    typeof body.payload === 'object' &&
+    'signatures' in body &&
+    typeof body.signatures === 'object' &&
+    typeof body.signatures.server === 'string' &&
+    typeof body.signatures.wallet === 'object' &&
+    typeof body.signatures.wallet.accountId === 'string' &&
+    typeof body.signatures.wallet.signature === 'string'
+  ) {
+    return true;
+  }
+  throw new ParamMissingError('Signature payload v2 format is not correct.');
 }
 
 export const  validateTransactionIdString = (input: string)  => {

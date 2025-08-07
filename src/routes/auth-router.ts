@@ -3,6 +3,7 @@ import {
   handleAuthPing,
   handleCreateChallenge,
   handleGenerateAuthAst,
+  handleGenerateAuthAstv2,
   handleLogout,
   handleRefreshToken,
 } from '@controller/Auth';
@@ -15,6 +16,7 @@ import auth from '@middleware/auth';
 import {
   checkErrResponse,
   validateGenerateAstPayload,
+  validateGenerateAstPayloadV2,
 } from '@validator/userRoutes.validator';
 import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
@@ -111,6 +113,15 @@ authRouter.post(
   body().custom(validateGenerateAstPayload),
   checkErrResponse,
   handleGenerateAuthAst
+);
+
+authRouter.post(
+  '/generate-v2',
+  auth.deviceIdIsRequired,
+  auth.havingValidPayloadToken,
+  body().custom(validateGenerateAstPayloadV2),
+  checkErrResponse,
+  handleGenerateAuthAstv2
 );
 
 authRouter.get('/csrf-token', (req:Request, res:Response) => {
