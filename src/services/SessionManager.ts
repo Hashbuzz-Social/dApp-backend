@@ -2,7 +2,11 @@ import { getConfig } from '@appConfig';
 import { AccountId, PublicKey } from '@hashgraph/sdk';
 import { d_decrypt } from '@shared/encryption';
 import { ErrorWithCode } from '@shared/errors';
-import { base64ToUint8Array, sanitizeUserCoreData } from '@shared/helper';
+import {
+  base64ToUint8Array,
+  sanitizeUserCoreData,
+  sensitizeUserData,
+} from '@shared/helper';
 import NetworkHelpers from '@shared/NetworkHelpers';
 import createPrismaClient from '@shared/prisma';
 import { verifyRefreshToken } from '@shared/Verify';
@@ -451,6 +455,7 @@ class SessionManager {
         status: 'active',
         device_id: d_decrypt(device_id, config.encryptions.encryptionKey),
         wallet_id: user_user.hedera_wallet_id,
+        user: req.currentUser ? JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(req.currentUser))) : null,
       });
     } catch (err) {
       next(err);
