@@ -12,13 +12,27 @@ export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) 
   return d;
 };
 
+export const sanitizeUserCoreData = (userData: Partial<user_user>) => {
+  return rmKeyFrmData(userData, [
+    "salt",
+    "hash",
+    "twitter_access_token",
+    "business_twitter_access_token",
+    "business_twitter_access_token_secret",
+    "twitter_access_token_secret",
+    "last_login",
+    "date_joined",
+    "personal_twitter_id",
+    "accountAddress",
+  ]);
+};
+
 export const sensitizeUserData = async (userData: Partial<user_user>) => {
   const hederaService = await initHederaService();
   const accountMatch = hederaService.operatorId.toString() === userData.hedera_wallet_id;
   const adminActive = Boolean(accountMatch && userData.salt && userData.hash);
   return {
-    // eslint-disable-next-line max-len
-    ...rmKeyFrmData(userData, ["salt", "hash", "twitter_access_token", "business_twitter_access_token", "business_twitter_access_token_secret", "twitter_access_token_secret", "last_login", "date_joined", "personal_twitter_id", "accountAddress"]),
+    ...sanitizeUserCoreData(userData),
     adminActive,
   };
 };

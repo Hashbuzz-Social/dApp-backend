@@ -2,27 +2,31 @@ import { getConfig } from '@appConfig';
 import { AccountId, PublicKey } from '@hashgraph/sdk';
 import { d_decrypt } from '@shared/encryption';
 import { ErrorWithCode } from '@shared/errors';
-import { base64ToUint8Array } from '@shared/helper';
+import { base64ToUint8Array, sanitizeUserCoreData } from '@shared/helper';
 import NetworkHelpers from '@shared/NetworkHelpers';
 import createPrismaClient from '@shared/prisma';
 import { verifyRefreshToken } from '@shared/Verify';
 import { NextFunction, Request, Response } from 'express';
 import HttpStatusCodes from 'http-status-codes';
 import BJSON from 'json-bigint';
+import { GenerateAstPayloadV2, Payload } from 'src/@types/custom';
 import { createAstToken, genrateRefreshToken } from './authToken-service';
 import initHederaService from './hedera-service';
 import RedisClient from './redis-servie';
 import signingService from './signing-service';
-import { GenerateAstPayloadV2, Payload } from 'src/@types/custom';
+import JSONBigInt from 'json-bigint';
 
-const { OK, BAD_REQUEST, UNAUTHORIZED } = HttpStatusCodes;
+const { OK, BAD_REQUEST, UNAUTHORIZED, INTERNAL_SERVER_ERROR } =
+  HttpStatusCodes;
 
 class SessionManager {
   private redisclinet: RedisClient;
+  private secureCookie: boolean;
 
   /** Constructor Methods */
   constructor(redisServerURI: string) {
     this.redisclinet = new RedisClient(redisServerURI);
+    this.secureCookie = process.env.NODE_ENV === 'production';
   }
 
   static async create(): Promise<SessionManager> {
@@ -63,6 +67,12 @@ class SessionManager {
       const user = await this.upsertUserData(accAddress, accountId);
       const { token, refreshToken, expiry, kid } =
         (await this.generateTokens(accountId, user.id.toString())) || {};
+      if (!token || !refreshToken) {
+        throw new ErrorWithCode(
+          'Token generation failed',
+          INTERNAL_SERVER_ERROR
+        );
+      }
 
       await this.checkAndUpdateSession(
         user.id,
@@ -74,12 +84,30 @@ class SessionManager {
         expiry
       );
 
+      // Express example
+      res.cookie('access_token', token, {
+        httpOnly: this.secureCookie,
+        secure: this.secureCookie,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 1000 * 60 * 15, // 15 minutes
+      });
+
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: this.secureCookie,
+        secure: this.secureCookie,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      });
+
       res.status(OK).json({
         message: 'Login Successfully',
         auth: true,
-        ast: token,
-        refreshToken,
         deviceId: d_decrypt(deviceId, config.encryptions.encryptionKey),
+        user: JSONBigInt.parse(
+          JSONBigInt.stringify(sanitizeUserCoreData(user))
+        ),
       });
     } catch (err) {
       next(err);
@@ -120,8 +148,7 @@ class SessionManager {
   ): Promise<void> {
     await this.handleGenerateAuthAstCommon(req, res, next, {
       getSignatureValidation: async () => {
-        const { payload, signatures } =
-          req.body as GenerateAstPayloadV2;
+        const { payload, signatures } = req.body as GenerateAstPayloadV2;
         const { server, wallet } = signatures;
         const { signature, accountId } = wallet;
         const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(
@@ -206,7 +233,7 @@ class SessionManager {
     publicKeyStr: string;
   }) {
     const messageWithPrefix = this.prefixMessageToSign(message);
-    const messageBytes = Buffer.from(messageWithPrefix, 'utf-8');
+    const messageBytes = new TextEncoder().encode(messageWithPrefix);
     const isValid = PublicKey.fromString(publicKeyStr).verify(
       messageBytes,
       base64ToUint8Array(signature)
@@ -222,7 +249,12 @@ class SessionManager {
       res.cookie(
         'device_id',
         d_decrypt(deviceId, config.encryptions.encryptionKey),
-        { httpOnly: true, secure: true, sameSite: 'strict' }
+        {
+          httpOnly: true,
+          secure: this.secureCookie,
+          sameSite: 'strict',
+          path: '/',
+        }
       );
     }
     return deviceId;
@@ -275,7 +307,7 @@ class SessionManager {
 
   async generateTokens(accountId: string, userId: string) {
     const { token, kid } = (await this.createToken(accountId, userId)) || {};
-    const refreshToken = this.createRefreshToken(accountId, userId);
+    const refreshToken = await this.createRefreshToken(accountId, userId);
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     return { token, refreshToken, expiry, kid };
   }
@@ -323,8 +355,14 @@ class SessionManager {
       await prisma.user_sessions.delete({ where: { id: session.id } });
       this.redisclinet.delete(`session::${id}::${device_id}`);
 
-      res.clearCookie('aSToken', { path: '/', httpOnly: true });
-      res.clearCookie('refreshToken', { path: '/', httpOnly: true });
+      res.clearCookie('access_token', { path: '/', httpOnly: true });
+      res.clearCookie('refresh_token', { path: '/', httpOnly: true });
+      res.clearCookie('device_id', {
+        path: '/',
+        httpOnly: true,
+        secure: this.secureCookie,
+        sameSite: 'strict',
+      });
       req.session.destroy((err) => {
         if (err) {
           return next(err);

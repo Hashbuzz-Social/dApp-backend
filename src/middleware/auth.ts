@@ -19,17 +19,28 @@ const SIGNING_MESSAGE_EXPIRED_ERR = "Signing message is expired";
 const ERROR_WHILE_FINDINF_DEVICE_ID = "Device id not found in request headers";
 
 
-const getBearerToken = (req: Request): string => {
-  const bearerHeader = req.headers["authorization"];
-  if (!bearerHeader) {
-    throw new UnauthorizeError(AUTH_TOKEN_NOT_PRESENT_ERR);
-  }
-  const token = bearerHeader.split(" ")[1];
-  if (!token) {
+/**
+ * Extracts auth token from Authorization header or access_token cookie.
+ * @throws UnauthorizeError if no valid token is found
+ */
+const getAuthToken = (req: Request): string => {
+  // Check Authorization header first
+  const authHeader = req.headers.authorization;
+  if (authHeader && typeof authHeader === 'string') {
+    const parts = authHeader.split(' ');
+    if (parts[0] === 'Bearer' && parts[1]) {
+      req.token = parts[1];
+      return parts[1];
+    }
     throw new UnauthorizeError(AUTH_TOKEN_INVALID_ERR);
   }
-  req.token = token;
-  return token;
+  // Fallback to access_token cookie
+  const cookieToken = req.cookies?.access_token;
+  if (cookieToken && typeof cookieToken === 'string') {
+    req.token = cookieToken;
+    return cookieToken;
+  }
+  throw new UnauthorizeError(AUTH_TOKEN_NOT_PRESENT_ERR);
 };
 
 const getHeadersData = async (req: Request) => {
@@ -65,7 +76,7 @@ const deviceIdIsRequired = async (req: Request, res: Response, next: NextFunctio
 
 const isHavingValidAst = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const bearerToken = getBearerToken(req);
+    const bearerToken = getAuthToken(req);
     const hederaService = await initHederaService();
 
     const { payload } = await verifyAccessToken(bearerToken);
