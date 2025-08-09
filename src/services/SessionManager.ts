@@ -500,7 +500,7 @@ class SessionManager {
         device_id: d_decrypt(device_id, config.encryptions.encryptionKey),
         wallet_id: user_user.hedera_wallet_id,
         isAuthenticated: !!isExistingUser,
-        isXAccountLinked: !!user_user.x_account_id,
+        connectedXAccount: isExistingUser?.personal_twitter_handle,
       });
     } catch (err) {
       next(err);
