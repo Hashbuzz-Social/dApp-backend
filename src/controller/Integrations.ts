@@ -13,12 +13,14 @@ export const handlePersonalTwitterHandle = async (req: Request, res: Response, n
   try {
     if (user_id) {
       const config = await getConfig();
-      const url = await twitterAuthUrl({ callbackUrl: `${config.app.xCallBackHost}/auth/twitter-return/`, user_id });
+      // Use frontend callback URL for stateful handling
+      const callbackUrl = `${config.app.appURL}/auth/twitter-callback`;
+      const url = await twitterAuthUrl({ callbackUrl, user_id });
       return res.status(OK).json({ url });
     }
   } catch (err) {
     console.log(err);
-    next(new ErrorWithCode("Error while create twittwe auth link", INTERNAL_SERVER_ERROR));
+    next(new ErrorWithCode("Error while create twitter auth link", INTERNAL_SERVER_ERROR));
   }
 };
 
@@ -124,5 +126,86 @@ export const handleTwitterBizRegister = async (req: Request, res: Response) => {
       Location: `${appURl}?brandConnection=fail&message=${message}`,
     });
     res.end();
+  }
+};
+
+// New API endpoint for handling Twitter callback via API instead of redirect
+export const handleTwitterCallbackAPI = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { oauth_token, oauth_verifier } = req.body;
+    const user_id = req.currentUser?.id;
+    
+    if (!oauth_token || !oauth_verifier) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing OAuth parameters" 
+      });
+    }
+
+    // Process the OAuth callback
+    const { loginResult, user_id: authUserId } = await authLogin({ oauth_token, oauth_verifier });
+    const { client: loggedClient, accessToken, accessSecret } = loginResult;
+    const meUser = await loggedClient.v2.me();
+    const { username, id, name, profile_image_url } = meUser.data;
+    
+    const config = await getConfig();
+    const prisma = await createPrismaClient();
+
+    // Update user with Twitter information
+    const user = await prisma.user_user.update({
+      where: { id: authUserId },
+      data: {
+        personal_twitter_handle: username,
+        personal_twitter_id: id,
+        twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
+        twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
+        profile_image_url: profile_image_url ?? "",
+        name,
+      },
+    });
+
+    return res.status(OK).json({
+      success: true,
+      username,
+      message: "X account connected successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "Failed to connect X account"
+    });
+  }
+};
+
+// New endpoint to check X account connection status
+export const handleCheckXAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user_id = req.currentUser?.id;
+    if (!user_id) {
+      return res.status(401).json({ 
+        isConnected: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    const prisma = await createPrismaClient();
+    const user = await prisma.user_user.findUnique({
+      where: { id: user_id },
+      select: { 
+        personal_twitter_handle: true,
+        personal_twitter_id: true,
+      }
+    });
+
+    return res.status(OK).json({
+      isConnected: !!(user?.personal_twitter_handle && user?.personal_twitter_id),
+      handle: user?.personal_twitter_handle || undefined
+    });
+
+  } catch (error) {
+    console.log(error);
+    next(new ErrorWithCode("Error checking X account status", INTERNAL_SERVER_ERROR));
   }
 };

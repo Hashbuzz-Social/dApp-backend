@@ -19,6 +19,7 @@ import initHederaService from './hedera-service';
 import RedisClient from './redis-servie';
 import signingService from './signing-service';
 import JSONBigInt from 'json-bigint';
+import userService from './user-service';
 
 const { OK, BAD_REQUEST, UNAUTHORIZED, INTERNAL_SERVER_ERROR } =
   HttpStatusCodes;
@@ -451,11 +452,16 @@ class SessionManager {
 
       const { user_user, device_id } = session;
 
+      const isExistingUser = await userService.findUserByWalletId(
+        user_user.hedera_wallet_id as string
+      );
+
       return res.status(OK).json({
         status: 'active',
         device_id: d_decrypt(device_id, config.encryptions.encryptionKey),
         wallet_id: user_user.hedera_wallet_id,
-        user: req.currentUser ? JSONBigInt.parse(JSONBigInt.stringify(sensitizeUserData(req.currentUser))) : null,
+        isAuthenticated: !!isExistingUser,
+        isXAccountLinked: !!user_user.x_account_id,
       });
     } catch (err) {
       next(err);
