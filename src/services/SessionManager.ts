@@ -391,15 +391,30 @@ class SessionManager {
 
   async handleRefreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = req.cookies.refresh_token;
       const deviceId = req.deviceId;
+
+      if (!refreshToken) {
+        return res
+          .status(UNAUTHORIZED)
+          .json({ message: 'No refresh token provided' });
+      }
+
+      if (!deviceId) {
+        return res
+          .status(BAD_REQUEST)
+          .json({ message: 'Device ID required' });
+      }
 
       const prisma = await createPrismaClient();
 
       const { id, kid } = await this.tokenResolver(refreshToken);
 
-      if (!id && !kid)
-        throw new ErrorWithCode('Invalid refresh token', UNAUTHORIZED);
+      if (!id || !kid) {
+        return res
+          .status(UNAUTHORIZED)
+          .json({ message: 'Invalid refresh token' });
+      }
 
       const session = await prisma.user_sessions.findFirst({
         where: { user_id: Number(id), kid, device_id: deviceId },
@@ -412,14 +427,38 @@ class SessionManager {
           .json({ message: 'Invalid refresh token' });
       }
 
+      // Check if session has expired
+      if (session.expires_at && new Date() > session.expires_at) {
+        return res
+          .status(UNAUTHORIZED)
+          .json({ message: 'Session expired' });
+      }
+
       const { token: newToken, kid: newkid } =
         (await this.createToken(
           session.user_user.hedera_wallet_id,
           session.user_id.toString()
         )) || {};
+      
+      if (!newToken || !newkid) {
+        throw new ErrorWithCode(
+          'Token generation failed',
+          INTERNAL_SERVER_ERROR
+        );
+      }
+
       const newExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      await this.updateSession(session.id, newkid!, newExpiry);
+      await this.updateSession(session.id, newkid, newExpiry);
+
+      // Set new access token cookie with same settings as login
+      res.cookie('access_token', newToken, {
+        httpOnly: this.secureCookie,
+        secure: this.secureCookie,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 1000 * 60 * 15, // 15 minutes
+      });
 
       return res
         .status(OK)

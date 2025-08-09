@@ -63,7 +63,6 @@ authRouter.post(
 authRouter.post(
   '/refresh-token',
   auth.isHavingValidAst,
-  body('refreshToken').isString(),
   checkErrResponse,
   handleRefreshToken
 );
