@@ -132,13 +132,20 @@ export const handleTwitterBizRegister = async (req: Request, res: Response) => {
 // New API endpoint for handling Twitter callback via API instead of redirect
 export const handleTwitterCallbackAPI = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { oauth_token, oauth_verifier } = req.body;
+    const { oauth_token, oauth_verifier, variant } = req.body;
     const user_id = req.currentUser?.id;
     
     if (!oauth_token || !oauth_verifier) {
       return res.status(400).json({ 
         success: false, 
         message: "Missing OAuth parameters" 
+      });
+    }
+
+    if (!variant || !["personal", "business"].includes(variant)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid or missing variant parameter. Must be 'personal' or 'business'" 
       });
     }
 
@@ -151,23 +158,44 @@ export const handleTwitterCallbackAPI = async (req: Request, res: Response, next
     const config = await getConfig();
     const prisma = await createPrismaClient();
 
-    // Update user with Twitter information
-    const user = await prisma.user_user.update({
-      where: { id: authUserId },
-      data: {
+    // Prepare update data based on variant
+    let updateData: any = {};
+    let successMessage = "";
+
+    if (variant === "personal") {
+      updateData = {
         personal_twitter_handle: username,
         personal_twitter_id: id,
         twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
         twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
         profile_image_url: profile_image_url ?? "",
         name,
-      },
+      };
+      successMessage = "Personal X account connected successfully";
+    } else if (variant === "business") {
+      updateData = {
+        business_twitter_handle: username,
+        business_twitter_id: id,
+        business_twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
+        business_twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
+        business_profile_image_url: profile_image_url ?? "",
+        business_name: name,
+        is_active: true, // Activate user when business account is connected
+      };
+      successMessage = "Business X account connected successfully";
+    }
+
+    // Update user with Twitter information
+    const user = await prisma.user_user.update({
+      where: { id: authUserId },
+      data: updateData,
     });
 
     return res.status(OK).json({
       success: true,
       username,
-      message: "X account connected successfully"
+      variant,
+      message: successMessage
     });
 
   } catch (error) {
