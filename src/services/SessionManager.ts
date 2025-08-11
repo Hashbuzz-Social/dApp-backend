@@ -183,7 +183,7 @@ class SessionManager {
     clientAccountPublicKey: string;
   }) {
     const hederaService = await initHederaService();
-    const isClinetSigValid = this.clientVerifySignature({
+    const isClientSigValid = this.clientVerifySignature({
       message: JSON.stringify(originalPayload),
       signature: clientSignature,
       publicKeyStr: clientAccountPublicKey,
