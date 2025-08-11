@@ -91,7 +91,7 @@ class SessionManager {
 
       // Express example
       res.cookie('access_token', token, {
-        httpOnly: this.secureCookie,
+        httpOnly: true,
         secure: this.secureCookie,
         sameSite: 'lax',
         path: '/',
