@@ -56,8 +56,16 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
     // Create a client from temporary tokens
     const { loginResult, user_id } = await authLogin({ oauth_token, oauth_verifier });
     const { client: loggedClient, accessToken, accessSecret } = loginResult;
-    const meUser = await loggedClient.v2.me();
+    const meUser = await loggedClient.v2.me({
+      "user.fields": ["profile_image_url", "name", "username", "id", "description", "verified"]
+    });
     const { username, id, name, profile_image_url } = meUser.data;
+    
+    // Log to see what's available
+    console.log("Twitter API Response (personal):", JSON.stringify(meUser.data, null, 2));
+    
+    // Create fallback profile image URL if not provided by API
+    const profileImageUrl = profile_image_url || `https://unavatar.io/twitter/${username}` || "";
     const prisma = await createPrismaClient();
 
 
@@ -68,7 +76,7 @@ export const handleTwitterReturnUrl = async (req: Request, res: Response) => {
         personal_twitter_id: id,
         twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
         twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
-        profile_image_url: profile_image_url ?? "",
+        profile_image_url: profileImageUrl,
         name,
       },
     });
@@ -101,8 +109,13 @@ export const handleTwitterBizRegister = async (req: Request, res: Response) => {
     // Create a client from temporary tokens
     const { loginResult, user_id } = await authLogin({ oauth_token, oauth_verifier });
     const { client: loggedClient, accessToken, accessSecret } = loginResult;
-    const meUser = await loggedClient.v2.me();
-    const { username } = meUser.data;
+    const meUser = await loggedClient.v2.me({
+      "user.fields": ["profile_image_url", "name", "username", "id", "description", "verified"]
+    });
+    const { username, id, name, profile_image_url } = meUser.data;
+    
+    // Log to see what's available
+    console.log("Twitter API Response (business):", JSON.stringify(meUser.data, null, 2));
     const prisma = await createPrismaClient();
     await prisma.user_user.update({
       where: {
@@ -152,8 +165,16 @@ export const handleTwitterCallbackAPI = async (req: Request, res: Response, next
     // Process the OAuth callback
     const { loginResult, user_id: authUserId } = await authLogin({ oauth_token, oauth_verifier });
     const { client: loggedClient, accessToken, accessSecret } = loginResult;
-    const meUser = await loggedClient.v2.me();
+    const meUser = await loggedClient.v2.me({
+      "user.fields": ["profile_image_url", "name", "username", "id", "description", "verified"]
+    });
     const { username, id, name, profile_image_url } = meUser.data;
+    
+    // Log the full response to see what's available
+    console.log("Twitter API Response:", JSON.stringify(meUser.data, null, 2));
+    
+    // Create fallback profile image URL if not provided by API
+    const profileImageUrl = profile_image_url || `https://unavatar.io/twitter/${username}` || "";
     
     const config = await getConfig();
     const prisma = await createPrismaClient();
@@ -168,18 +189,15 @@ export const handleTwitterCallbackAPI = async (req: Request, res: Response, next
         personal_twitter_id: id,
         twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
         twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
-        profile_image_url: profile_image_url ?? "",
+        profile_image_url: profileImageUrl,
         name,
       };
       successMessage = "Personal X account connected successfully";
     } else if (variant === "business") {
       updateData = {
         business_twitter_handle: username,
-        business_twitter_id: id,
         business_twitter_access_token: encrypt(accessToken, config.encryptions.encryptionKey),
         business_twitter_access_token_secret: encrypt(accessSecret, config.encryptions.encryptionKey),
-        business_profile_image_url: profile_image_url ?? "",
-        business_name: name,
         is_active: true, // Activate user when business account is connected
       };
       successMessage = "Business X account connected successfully";
