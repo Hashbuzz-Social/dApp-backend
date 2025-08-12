@@ -91,7 +91,7 @@ class SessionManager {
 
       // Express example
       res.cookie('access_token', token, {
-        httpOnly: this.secureCookie,
+        httpOnly: true,
         secure: this.secureCookie,
         sameSite: 'lax',
         path: '/',
@@ -183,7 +183,7 @@ class SessionManager {
     clientAccountPublicKey: string;
   }) {
     const hederaService = await initHederaService();
-    const isClinetSigValid = this.clientVerifySignature({
+    const isClientSigValid = this.clientVerifySignature({
       message: JSON.stringify(originalPayload),
       signature: clientSignature,
       publicKeyStr: clientAccountPublicKey,
