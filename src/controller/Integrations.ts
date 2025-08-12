@@ -30,7 +30,7 @@ export const handleBizTwitterHandle = async (req: Request, res: Response, next: 
 
   if (user_id) {
     twitterAuthUrl({
-      callbackUrl: `${config.app.xCallBackHost}/auth/business-twitter-return/`,
+      callbackUrl: `${config.app.appURL}/business-handle-callback`,
       isBrand: true,
       user_id,
     })
