@@ -5,20 +5,18 @@ import { ErrorWithCode } from '@shared/errors';
 import {
   base64ToUint8Array,
   sanitizeUserCoreData,
-  sensitizeUserData,
 } from '@shared/helper';
 import NetworkHelpers from '@shared/NetworkHelpers';
 import createPrismaClient from '@shared/prisma';
 import { verifyRefreshToken } from '@shared/Verify';
 import { NextFunction, Request, Response } from 'express';
 import HttpStatusCodes from 'http-status-codes';
-import BJSON from 'json-bigint';
+import { default as BJSON, default as JSONBigInt } from 'json-bigint';
 import { GenerateAstPayloadV2, Payload } from 'src/@types/custom';
 import { createAstToken, genrateRefreshToken } from './authToken-service';
 import initHederaService from './hedera-service';
 import RedisClient from './redis-servie';
 import signingService from './signing-service';
-import JSONBigInt from 'json-bigint';
 import userService from './user-service';
 
 const { OK, BAD_REQUEST, UNAUTHORIZED, INTERNAL_SERVER_ERROR } =
@@ -193,8 +191,8 @@ class SessionManager {
       hederaService.operatorKey.publicKey.toStringRaw(),
       serverSignature
     );
-    console.log({ isClinetSigValid, isServerSigValid });
-    return isClinetSigValid && isServerSigValid;
+    console.log({ isClientSigValid, isServerSigValid });
+    return isClientSigValid && isServerSigValid;
   }
 
   private async fetchAndVerifyPublicKey(accountId: string): Promise<string> {
