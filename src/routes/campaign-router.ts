@@ -103,7 +103,7 @@ router.get(
 router.get('/card-status', twitterCardStatsData);
 
 // Route to get reward details
-router.get('/reward-details', rewardDetails);
+router.get('/reward-details',  userInfo.getCurrentUserInfo, rewardDetails);
 
 // Route to interact with OpenAI
 router.post('/chatgpt', validateQuery('message').isString(), openAi);

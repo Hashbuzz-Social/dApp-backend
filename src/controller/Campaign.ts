@@ -488,8 +488,32 @@ export const checkCampaignBalances = async (
 };
 
 export const rewardDetails = async (req: Request, res: Response) => {
-  const user = await getRewardDetails(req.currentUser?.hedera_wallet_id!);
-  return res
-    .status(OK)
-    .json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
+  try {
+    // Check if user is authenticated and has a hedera_wallet_id
+    if (!req.currentUser) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'User not found' 
+      });
+    }
+
+    if (!req.currentUser.hedera_wallet_id) {
+      return res.status(400).json({ 
+        error: true, 
+        message: 'Hedera wallet ID not found for user' 
+      });
+    }
+
+    const user = await getRewardDetails(req.currentUser.hedera_wallet_id);
+    return res
+      .status(OK)
+      .json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
+  } catch (error) {
+    console.error('Error in rewardDetails controller:', error);
+    return res.status(500).json({ 
+      error: true, 
+      message: 'Failed to fetch reward details',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 };
