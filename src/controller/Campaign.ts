@@ -258,21 +258,34 @@ export const statusUpdateHandler = async (
 
 export const handleCampaignGet = async (
   req: Request,
-  res: Response,
-  next: NextFunction
+  res: Response
 ) => {
   const prisma = await createPrismaClient();
-  const allCampaigns = await prisma.campaign_twittercard.findMany({
-    where: {
-      owner_id: req.currentUser?.id,
-    },
-    orderBy: {
-      id: 'desc',
+  const { page = 1, limit = 20 } = req.pagination || {};
+  const skip = (page - 1) * limit;
+
+  // Use aggregate to get both count and paginated data in a single call
+  const [campaigns, total] = await prisma.$transaction([
+    prisma.campaign_twittercard.findMany({
+      where: { owner_id: req.currentUser?.id },
+      orderBy: { id: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.campaign_twittercard.count({
+      where: { owner_id: req.currentUser?.id },
+    }),
+  ]);
+  return res.status(OK).json({
+ 
+    data: JSONBigInt.parse(JSONBigInt.stringify(campaigns)),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(Number(total) / Number(limit)),
     },
   });
-  return res
-    .status(OK)
-    .json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
 };
 
 export const handleAddNewCampaignNew = async (

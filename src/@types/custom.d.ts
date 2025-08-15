@@ -1,3 +1,14 @@
+// Extend Express Request to include pagination for campaign routes
+import 'express';
+
+declare module 'express' {
+  interface Request {
+    pagination?: {
+      page: number;
+      limit: number;
+    };
+  }
+}
 import "express";
 import { user_user } from "@prisma/client";
 
