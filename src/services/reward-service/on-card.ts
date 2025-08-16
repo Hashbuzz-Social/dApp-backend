@@ -3,7 +3,7 @@ import {
     campaign_twittercard
 } from "@prisma/client";
 import { checkTokenAssociation } from "@shared/helper";
-import createPrismaClient from "@shared/prisma";
+import { getPrismaClient } from "@shared/prisma";
 import logger from "jet-logger";
 import { RewardsObj } from "src/@types/custom";
 import {
@@ -34,7 +34,7 @@ const _calculateTotalRewardForAnUser = async (
     engagedUserID: string,
     cardID: bigint | number
 ): Promise<{ total: number; ids: bigint[] }> => {
-    const prisma = await createPrismaClient();
+    const prisma = await getPrismaClient();
     const { like_reward, retweet_reward, quote_reward, comment_reward } = rewards;
     let total = 0;
     const ids: bigint[] = [];
@@ -61,7 +61,7 @@ const _calculateTotalRewardForAnUser = async (
 };
 
 const _updateEngagementsToPaid = async (ids: bigint[]) => {
-    const prisma = await createPrismaClient();
+    const prisma = await getPrismaClient();
     return await prisma.campaign_tweetengagements.updateMany({
         data: {
             payment_status: "PAID",
@@ -76,7 +76,7 @@ const _updateEngagementsToPaid = async (ids: bigint[]) => {
 
 
 const getCardDetails = async (cardId: bigint) => {
-    const prisma = await createPrismaClient();
+    const prisma = await getPrismaClient();
     return await prisma.campaign_twittercard.findUnique({
         where: { id: cardId },
         include: {
@@ -181,7 +181,7 @@ const distributeRewardsToUsers = async (totalRewardMappedWithUser: {
 export const performAutoRewardingForEligibleUser = async (cardId: bigint) => {
     logger.info("Executing Auto reward process::");
     console.log("Executing Auto reward process::");
-    const prisma = await createPrismaClient();
+    const prisma = await getPrismaClient();
     try {
         const engagementsByUser = await prisma.campaign_tweetengagements.groupBy({
             by: ["user_id"],

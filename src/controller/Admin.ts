@@ -240,7 +240,7 @@ export const handleWhiteListToken = async (
       create: {
         name: tokenData.name,
         token_id: tokenId,
-        tokendata: tokenData,
+        tokendata: JSON.parse(JSON.stringify(tokenData)),
         token_type: tokenType,
         added_by: userId,
         token_symbol: tokenSymbol,
@@ -249,7 +249,7 @@ export const handleWhiteListToken = async (
       },
       update: {
         token_id: tokenId,
-        tokendata: tokenData,
+        tokendata: JSON.parse(JSON.stringify(tokenData)),
       },
     });
 

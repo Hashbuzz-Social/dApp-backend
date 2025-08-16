@@ -1,10 +1,9 @@
 import { user_user } from '@prisma/client';
-import createPrismaClient from '@shared/prisma';
-import prisma from '@shared/prisma';
+import { getPrismaClient } from '@shared/prisma';
 
 export const getAllUser = async (params: { limit: number; offset: number }) => {
   const { limit, offset } = params;
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const users = await prisma.user_user.findMany({
     take: limit,
     skip: offset,
@@ -15,7 +14,7 @@ export const getAllUser = async (params: { limit: number; offset: number }) => {
 };
 
 const updateWalletId = async (walletId: string, userId: bigint) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const user = await prisma.user_user.findUnique({ where: { id: userId } });
   if (!user?.hedera_wallet_id) {
     const updateUserWallet = await prisma.user_user.update({
@@ -28,21 +27,21 @@ const updateWalletId = async (walletId: string, userId: bigint) => {
 };
 
 const getUserByHederaWalletTd = async (hedera_wallet_id: string) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findUnique({
     where: { hedera_wallet_id },
   });
 };
 
 const getUserByAccountAddress = async (accountAddress: string) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findUnique({
     where: { accountAddress },
   });
 };
 
 export const getUserById = async (id: number | bigint) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findUnique({
     where: { id },
   });
@@ -51,7 +50,7 @@ export const getUserById = async (id: number | bigint) => {
 const getUserByPersonalTwitterHandle = async (
   personal_twitter_handle: string
 ) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findFirst({
     where: {
       personal_twitter_handle,
@@ -63,7 +62,7 @@ const getAstForUserByAccountAddress = async (
   userId: number | bigint,
   deviceId: string
 ) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_sessions.findFirst({
     where: { user_id: userId, device_id: deviceId },
   });
@@ -74,7 +73,7 @@ const topUp = async (
   amounts: number,
   operation: 'increment' | 'decrement' | 'update'
 ) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   if (operation === 'increment')
     return await prisma.user_user.update({
       where: {
@@ -114,7 +113,7 @@ const totalReward = async (
   amounts: number,
   operation: 'increment' | 'decrement' | 'update'
 ) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   if (operation === 'increment')
     return await prisma.user_user.update({
       where: {
@@ -149,7 +148,7 @@ const totalReward = async (
 };
 
 const getUserByTwitterId = async (personal_twitter_id: string) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findFirst({
     where: {
       personal_twitter_id,
@@ -170,7 +169,7 @@ const updateTokenBalanceForUser = async ({
   user_id: number | bigint;
   decimal: number;
 }) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const balRecord = await prisma.user_balances.findFirst({
     where: { user_id, token_id },
   });
@@ -215,7 +214,7 @@ const updateUserById = async (
   id: number | bigint,
   data: Partial<Omit<user_user, 'id'>>
 ) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.update({
     where: {
       id,
@@ -225,7 +224,7 @@ const updateUserById = async (
 };
 
 const findUserByWalletId = async (walletId: string) => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.user_user.findFirst({
     where: {
       hedera_wallet_id: walletId,

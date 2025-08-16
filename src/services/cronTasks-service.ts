@@ -4,7 +4,7 @@ import { updateAllEngagementsForCard, updateRepliesToDB } from "@services/engage
 import twitterCardService from "@services/twitterCard-service";
 import functions from "@shared/functions";
 import { logInfo } from "@shared/helper";
-import createPrismaClient from "@shared/prisma";
+import { getPrismaClient } from "@shared/prisma";
 import logger from "jet-logger";
 import moment from "moment";
 import { scheduleJob } from "node-schedule";
@@ -12,16 +12,16 @@ import { scheduleJob } from "node-schedule";
 
 const manageTwitterCardStatus = async (): Promise<void> => {
   const allActiveCards = await twitterCardService.allActiveTwitterCard();
-  const activeCardIds = allActiveCards.map(card => card.tweet_id).filter(Boolean);
+  const activeCardIds = allActiveCards.map((card: any) => card.tweet_id).filter(Boolean);
 
   if (!allActiveCards.length) {
     logger.info("No active cards found in DB");
     return;
   }
 
-  await Promise.all(allActiveCards.map(async (card) => {
+  await Promise.all(allActiveCards.map(async (card: any) => {
     const { comment_reward, retweet_reward, like_reward, quote_reward, id, name, campaign_budget } = card;
-    const prisma = await createPrismaClient();
+    const prisma = await getPrismaClient();
     const publicMetrics: CampaignTweetStats | null = await prisma.campaign_tweetstats.findUnique({ where: { twitter_card_id: id } });
 
     if (!publicMetrics || !(retweet_reward && like_reward && quote_reward && comment_reward)) {
@@ -64,7 +64,7 @@ const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
     const thresholdSeconds = 60;
     const allActiveCards = await twitterCardService.allActiveTwitterCard();
 
-    await Promise.all(allActiveCards.map(async (card) => {
+    await Promise.all(allActiveCards.map(async (card: any) => {
       const { last_reply_checkedAt, tweet_id, id } = card;
       if (!tweet_id) return;
 
@@ -81,7 +81,7 @@ const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
 
 const scheduleExpiryTasks = async (): Promise<void> => {
   logInfo("Scheduling expiry tasks");
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const completedTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: CampaignStatus.RewardDistributionInProgress,
@@ -101,7 +101,7 @@ const scheduleExpiryTasks = async (): Promise<void> => {
 };
 
 const autoCampaignClose = async (): Promise<void> => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const runningTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({ where: { card_status: CampaignStatus.CampaignRunning } });
 
   await Promise.all(runningTasks.map(async (task) => {
@@ -115,7 +115,7 @@ const autoCampaignClose = async (): Promise<void> => {
 };
 
 const updateQueueStatus = async (id: bigint): Promise<CampaignTwitterCard> => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   return await prisma.campaign_twittercard.update({
     where: { id },
     data: { is_added_to_queue: true },
@@ -123,7 +123,7 @@ const updateQueueStatus = async (id: bigint): Promise<CampaignTwitterCard> => {
 };
 
 const checkCampaignCloseTime = async (): Promise<void> => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   const tasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
     where: {
       card_status: CampaignStatus.CampaignRunning,
@@ -140,7 +140,7 @@ const checkCampaignCloseTime = async (): Promise<void> => {
 };
 
 const checkPreviousCampaignCloseTime = async (): Promise<boolean> => {
-  const prisma = await createPrismaClient();
+  const prisma = await getPrismaClient();
   logger.info("Checking backlog campaigns");
   const now = new Date();
 

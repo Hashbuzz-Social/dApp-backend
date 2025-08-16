@@ -191,7 +191,6 @@ class SessionManager {
       hederaService.operatorKey.publicKey.toStringRaw(),
       serverSignature
     );
-    console.log({ isClientSigValid, isServerSigValid });
     return isClientSigValid && isServerSigValid;
   }
 
