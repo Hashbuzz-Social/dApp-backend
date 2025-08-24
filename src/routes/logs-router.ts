@@ -1,20 +1,16 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { handleGetLogs, handleGetLogsPage } from '../controller/Logs';
-import checkWritePermission from '../middleware/checkWritePermission';
+import { Router } from 'express';
+import { handleGetLogs, handleGetLogsPage, getLogStats, rotateLogsManually } from '../controller/Logs';
 
 const logsRouter = Router();
 
-// Async wrapper for middleware
-const asyncMiddleware = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-};
+// UI route for logs page - temporary auth-free access
+logsRouter.get('/', handleGetLogsPage);
 
-// UI route for logs page
-logsRouter.get('/', asyncMiddleware(checkWritePermission), handleGetLogsPage);
+// API route for logs data - temporary auth-free access  
+logsRouter.get('/api', handleGetLogs);
 
-// API route for logs data
-logsRouter.get('/api', asyncMiddleware(checkWritePermission), handleGetLogs);
+// Log management routes - temporary auth-free access
+logsRouter.get('/stats', getLogStats);
+logsRouter.post('/rotate', rotateLogsManually);
 
 export default logsRouter;

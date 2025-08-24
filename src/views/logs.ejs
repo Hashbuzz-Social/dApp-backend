@@ -41,9 +41,14 @@
             font-weight: 600;
         }
 
-        .user-info {
+        .auth-info {
             font-size: 14px;
             opacity: 0.9;
+        }
+        
+        .auth-status {
+            color: #17a2b8;
+            font-weight: 500;
         }
 
         .controls {
@@ -245,12 +250,8 @@
     <div class="container">
         <div class="header">
             <h1><%= title %></h1>
-            <div class="user-info">
-                <% if (user) { %>
-                    Logged in as: <%= user.username %>
-                <% } else { %>
-                    Not authenticated
-                <% } %>
+            <div class="auth-info">
+                <span class="auth-status">Auth-free access (Development Mode)</span>
             </div>
         </div>
 
@@ -459,12 +460,14 @@
             const container = document.getElementById('logsContainer');
             container.style.display = 'block';
 
-            if (data.logs.length === 0) {
+            const logs = data.data || []; // API returns logs in data.data field
+
+            if (logs.length === 0) {
                 container.innerHTML = '<div class="no-logs">No logs found for the selected filters.</div>';
                 return;
             }
 
-            container.innerHTML = data.logs.map(log => {
+            container.innerHTML = logs.map(log => {
                 const timestamp = new Date(log.timestamp).toLocaleString();
                 return `
                     <div class="log-entry">
@@ -482,14 +485,14 @@
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
 
-            if (pagination.totalPages > 1) {
+            if (pagination && pagination.totalPages > 1) {
                 paginationDiv.style.display = 'flex';
-                paginationInfo.textContent = `Page ${pagination.currentPage} of ${pagination.totalPages} (${pagination.totalItems} total items)`;
+                paginationInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total items)`;
                 
-                prevBtn.disabled = !pagination.hasPrevPage;
-                nextBtn.disabled = !pagination.hasNextPage;
+                prevBtn.disabled = pagination.page <= 1;
+                nextBtn.disabled = pagination.page >= pagination.totalPages;
                 
-                currentPage = pagination.currentPage;
+                currentPage = pagination.page;
                 totalPages = pagination.totalPages;
             } else {
                 paginationDiv.style.display = 'none';
@@ -500,12 +503,13 @@
             const stats = document.getElementById('stats');
             stats.style.display = 'flex';
 
-            const logCounts = data.logs.reduce((acc, log) => {
+            const logs = data.data || []; // API returns logs in data.data field
+            const logCounts = logs.reduce((acc, log) => {
                 acc[log.level] = (acc[log.level] || 0) + 1;
                 return acc;
             }, {});
 
-            document.getElementById('totalLogs').textContent = data.pagination.totalItems;
+            document.getElementById('totalLogs').textContent = data.pagination?.total || logs.length;
             document.getElementById('errorCount').textContent = logCounts.ERROR || 0;
             document.getElementById('warnCount').textContent = logCounts.WARN || 0;
             document.getElementById('infoCount').textContent = logCounts.INFO || 0;

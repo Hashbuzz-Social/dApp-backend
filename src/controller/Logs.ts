@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as fs from 'fs';
-import * as path from 'path';
-import logger from 'jet-logger';
+import logger from '../config/logger';
+import { logRotationService } from '../services/LogRotationService';
 
 // Helper function to parse a single log entry
 const parseLogEntry = (logLine: string): any => {
@@ -77,24 +77,56 @@ export const handleGetLogs = (req: Request, res: Response, next: NextFunction): 
       endDate 
     } = req.query;
     
-    const logFilePath = path.join(process.cwd(), 'logs', 'jet-logger.log');
+    // Use log rotation service to get available log files
+    const logFiles = logRotationService.getLogFiles();
 
-    if (!fs.existsSync(logFilePath)) {
-      res.status(404).json({
+    // Read from all available log files (within 7-day limit)
+    let allLogs: any[] = [];
+    for (const logFile of logFiles) {
+      if (fs.existsSync(logFile)) {
+        try {
+          const content = fs.readFileSync(logFile, 'utf-8');
+          const fileLogs = parseLogEntries(content);
+          allLogs = allLogs.concat(fileLogs);
+        } catch (fileError) {
+          logger.err(`Error reading log file ${logFile}: ${String(fileError)}`);
+        }
+      }
+    }
+
+    if (allLogs.length === 0) {
+      res.json({
         success: false,
-        message: 'Log file not found',
-        data: []
+        message: 'No log files found',
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 100,
+          total: 0,
+          totalPages: 0
+        },
+        filters: {
+          timeRange,
+          level,
+          search,
+          startDate,
+          endDate
+        }
       });
       return;
     }
 
-    const logContent = fs.readFileSync(logFilePath, 'utf-8');
-    let logs = parseLogEntries(logContent);
+    // Sort logs by timestamp (newest first)
+    allLogs.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(String(a.timestamp)).getTime() : 0;
+      const timeB = b.timestamp ? new Date(String(b.timestamp)).getTime() : 0;
+      return timeB - timeA;
+    });
 
     // Filter by time range
     const customStart = startDate ? new Date(startDate as string) : undefined;
     const customEnd = endDate ? new Date(endDate as string) : undefined;
-    logs = filterLogsByTimeRange(logs, timeRange as string, customStart, customEnd);
+    let logs = filterLogsByTimeRange(allLogs, timeRange as string, customStart, customEnd);
 
     // Filter by level if provided
     if (level && typeof level === 'string') {
@@ -139,9 +171,65 @@ export const handleGetLogs = (req: Request, res: Response, next: NextFunction): 
   }
 };
 
+/**
+ * Render the logs page
+ */
 export const handleGetLogsPage = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    res.render('logs');
+    res.render('logs', { 
+      title: 'System Logs',
+      timeRanges: [
+        { value: '30min', label: 'Last 30 Minutes' },
+        { value: '1hour', label: 'Last Hour' },
+        { value: 'today', label: 'Today' },
+        { value: '7days', label: 'Last 7 Days' },
+        { value: 'custom', label: 'Custom Range' }
+      ]
+    });
+  } catch (error) {
+    logger.err(error as Error);
+    next(error);
+  }
+};
+
+/**
+ * Get log statistics and rotation information
+ */
+export const getLogStats = (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    const stats = logRotationService.getLogStats();
+    
+    res.json({
+      success: true,
+      data: {
+        ...stats,
+        rotation: {
+          maxLogSize: '10MB',
+          maxLogFiles: 7,
+          retentionDays: 7
+        }
+      }
+    });
+  } catch (error) {
+    logger.err(error as Error);
+    next(error);
+  }
+};
+
+/**
+ * Manually trigger log rotation
+ */
+export const rotateLogsManually = (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    const rotated = logRotationService.rotate();
+    
+    res.json({
+      success: true,
+      data: {
+        rotated,
+        message: rotated ? 'Log rotation completed successfully' : 'No rotation needed or rotation failed'
+      }
+    });
   } catch (error) {
     logger.err(error as Error);
     next(error);

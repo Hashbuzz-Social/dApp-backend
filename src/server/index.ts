@@ -12,7 +12,10 @@ import lusca from 'lusca';
 import fs from 'fs';
 import helmet from 'helmet';
 import { isHttpError } from 'http-errors';
-import logger from 'jet-logger';
+import '../pre-start'; // Must be the first import
+import logger from '../config/logger'; // Use configured logger
+import { logRotationService } from '../services/LogRotationService';
+import { initializeLogRotation as setupLogRotation } from '../config/logConfig';
 import morgan from 'morgan';
 import passport from 'passport';
 import { Strategy as GitHubStrategy } from 'passport-github2';
@@ -273,7 +276,7 @@ const initializeApp = async () => {
     swaggerUi.setup(swaggerSpec)
   );
 
-  // Logs routes - require GitHub authentication and write permissions
+  // Logs routes - temporary auth-free access (will be replaced with Hedera wallet + WalletConnect auth later)
   app.use('/logs', logsRouter);
 
   // Routes setup without session for /api and /auth
@@ -281,9 +284,12 @@ const initializeApp = async () => {
   app.use('/auth', authRouter);
 
   /**
-   * Error handling middleware
+   * Error handling middleware - next parameter required by Express even if unused
    */
-  app.use((err: Error, req: Request, res: Response) => {
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    // Mark next as used to satisfy linting
+    void next;
+    
     if (isHttpError(err)) {
       return res.status(err.status).json({ error: err.message });
     }
@@ -317,6 +323,25 @@ const initializeApp = async () => {
   });
 };
 
+// Initialize log rotation
+const initializeLogRotation = () => {
+  // Use the setup function from config
+  setupLogRotation();
+  
+  // Schedule periodic log rotation checks every hour
+  setInterval(() => {
+    try {
+      logRotationService.rotateIfNeeded();
+      logRotationService.cleanup(); // Clean up old files beyond retention
+    } catch (error) {
+      logger.err(`Log rotation error: ${String(error)}`);
+    }
+  }, 60 * 60 * 1000); // 1 hour
+
+  logger.info('Log rotation service initialized');
+};
+
 initializeApp();
+initializeLogRotation();
 
 export default app;
