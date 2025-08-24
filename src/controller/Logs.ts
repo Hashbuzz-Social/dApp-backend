@@ -6,9 +6,11 @@ import { logRotationService } from '../services/LogRotationService';
 // Helper function to parse a single log entry
 const parseLogEntry = (logLine: string): any => {
   try {
+    // Try to parse as JSON first (in case logs are in JSON format)
     return JSON.parse(logLine);
   } catch {
-    const match = logLine.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+(\w+)\s+(.+)/);
+    // Parse the jet-logger format: [2025-08-24T09:04:07.533Z] INFO: message
+    const match = logLine.match(/^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\]\s+(\w+):\s+(.+)$/);
     if (match) {
       return {
         timestamp: new Date(match[1]),
@@ -16,6 +18,7 @@ const parseLogEntry = (logLine: string): any => {
         message: match[3]
       };
     }
+    // Fallback for any unmatched lines
     return {
       timestamp: new Date(),
       level: 'INFO',

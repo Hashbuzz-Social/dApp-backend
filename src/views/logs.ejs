@@ -425,9 +425,9 @@
                     if (data.error) {
                         showError(data.message);
                     } else {
-                        displayLogs(data.data);
-                        updatePagination(data.data.pagination);
-                        updateStats(data.data);
+                        displayLogs(data);
+                        updatePagination(data.pagination);
+                        updateStats(data);
                     }
                 })
                 .catch(error => {
@@ -499,17 +499,17 @@
             }
         }
 
-        function updateStats(data) {
+        function updateStats(response) {
             const stats = document.getElementById('stats');
             stats.style.display = 'flex';
 
-            const logs = data.data || []; // API returns logs in data.data field
+            const logs = response.data || []; // response.data contains the logs array
             const logCounts = logs.reduce((acc, log) => {
                 acc[log.level] = (acc[log.level] || 0) + 1;
                 return acc;
             }, {});
 
-            document.getElementById('totalLogs').textContent = data.pagination?.total || logs.length;
+            document.getElementById('totalLogs').textContent = response.pagination?.total || logs.length;
             document.getElementById('errorCount').textContent = logCounts.ERROR || 0;
             document.getElementById('warnCount').textContent = logCounts.WARN || 0;
             document.getElementById('infoCount').textContent = logCounts.INFO || 0;

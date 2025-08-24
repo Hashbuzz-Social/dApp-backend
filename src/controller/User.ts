@@ -1,7 +1,7 @@
 import { formatTokenBalancesObject, sensitizeUserData } from "@shared/helper";
 import { NextFunction, Request, Response } from "express";
 import StatusCodes from "http-status-codes";
-import logger from "jet-logger";
+import logger from "../config/logger";
 import JSONBigInt from "json-bigint";
 import userService from "@services/user-service";
 import { ParamMissingError } from "@shared/errors";

@@ -1,10 +1,10 @@
+import { getConfig } from '@appConfig';
+import logger from "../config/logger";
 import { AccountId } from "@hashgraph/sdk";
 import { user_balances, user_user, whiteListedTokens } from "@prisma/client";
 import initHederaService from "@services/hedera-service";
 import moment from "moment-timezone";
 import { Token } from "src/@types/custom";
-import { getConfig } from "@appConfig";
-import logger from "jet-logger"
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const rmKeyFrmData = <T extends Object>(d: T, listOfKey: Array<keyof T>) => {
@@ -140,13 +140,16 @@ export const waitFor = (ms?: number): Promise<void> => {
 
 /**
  * Log messages to both console and logger
-  */
+ */
 export const logInfo = (message: string) => {
-  console.log(message);
+  process.stdout.write(`${message}\n`);
   logger.info(message);
 }
 
 export const logError = (message: string, error?: any) => {
-  console.error(message, error);
-  logger.err(message, error);
+  process.stderr.write(`${message}\n`);
+  logger.err(message);
+  if (error) {
+    logger.err(error as Error, true);
+  }
 }
