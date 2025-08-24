@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .user-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+        }
+
+        .form-control {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            padding: 15px 0;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+
+        .logs-container {
+            max-height: 600px;
+            overflow-y: auto;
+            background: #212529;
+        }
+
+        .log-entry {
+            padding: 8px 30px;
+            border-bottom: 1px solid #343a40;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-entry:hover {
+            background: #343a40;
+        }
+
+        .log-timestamp {
+            color: #6c757d;
+            margin-right: 10px;
+        }
+
+        .log-level {
+            margin-right: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .log-level-INFO { background: #28a745; color: white; }
+        .log-level-ERROR { background: #dc3545; color: white; }
+        .log-level-WARN { background: #ffc107; color: black; }
+        .log-level-DEBUG { background: #17a2b8; color: white; }
+        .log-level-UNKNOWN { background: #6c757d; color: white; }
+
+        .log-message {
+            color: #f8f9fa;
+        }
+
+        .pagination {
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+
+        .pagination-info {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 6px;
+        }
+
+        .no-logs {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            background: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-control {
+                min-width: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><%= title %></h1>
+            <div class="user-info">
+                <% if (user) { %>
+                    Logged in as: <%= user.username %>
+                <% } else { %>
+                    Not authenticated
+                <% } %>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="controls-row">
+                <div class="form-group">
+                    <label>Time Range</label>
+                    <select id="timeRange" class="form-control">
+                        <option value="last30min">Last 30 Minutes</option>
+                        <option value="lastHour" selected>Last Hour</option>
+                        <option value="today">Today</option>
+                        <option value="last7days">Last 7 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="customDates" style="display: none;">
+                    <label>Start Date</label>
+                    <input type="datetime-local" id="startDate" class="form-control">
+                </div>
+
+                <div class="form-group" id="customDatesEnd" style="display: none;">
+                    <label>End Date</label>
+                    <input type="datetime-local" id="endDate" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Log Level</label>
+                    <select id="logLevel" class="form-control">
+                        <option value="">All Levels</option>
+                        <option value="ERROR">Error</option>
+                        <option value="WARN">Warning</option>
+                        <option value="INFO">Info</option>
+                        <option value="DEBUG">Debug</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Search</label>
+                    <input type="text" id="searchText" class="form-control" placeholder="Search logs...">
+                </div>
+
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="filterBtn" class="btn btn-primary">Filter Logs</button>
+                </div>
+
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                </div>
+            </div>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalLogs">0</div>
+                    <div class="stat-label">Total Logs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="errorCount">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="warnCount">0</div>
+                    <div class="stat-label">Warnings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="infoCount">0</div>
+                    <div class="stat-label">Info</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingDiv" class="loading">
+            Loading logs...
+        </div>
+
+        <div id="errorDiv" class="error" style="display: none;"></div>
+
+        <div id="logsContainer" class="logs-container" style="display: none;"></div>
+
+        <div id="paginationDiv" class="pagination" style="display: none;">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-controls">
+                <button id="prevBtn" class="btn btn-secondary">Previous</button>
+                <button id="nextBtn" class="btn btn-secondary">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadLogs();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('timeRange').addEventListener('change', function() {
+                const customDates = document.getElementById('customDates');
+                const customDatesEnd = document.getElementById('customDatesEnd');
+                if (this.value === 'custom') {
+                    customDates.style.display = 'block';
+                    customDatesEnd.style.display = 'block';
+                } else {
+                    customDates.style.display = 'none';
+                    customDatesEnd.style.display = 'none';
+                }
+            });
+
+            document.getElementById('filterBtn').addEventListener('click', function() {
+                currentPage = 1;
+                loadLogs();
+            });
+
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                currentPage = 1;
+                loadLogs();
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadLogs();
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadLogs();
+                }
+            });
+
+            // Auto-refresh every 30 seconds
+            setInterval(function() {
+                if (document.getElementById('timeRange').value !== 'custom') {
+                    loadLogs();
+                }
+            }, 30000);
+        }
+
+        function loadLogs() {
+            showLoading();
+
+            const params = new URLSearchParams({
+                timeRange: document.getElementById('timeRange').value,
+                page: currentPage.toString(),
+                limit: '50'
+            });
+
+            const logLevel = document.getElementById('logLevel').value;
+            if (logLevel) params.append('level', logLevel);
+
+            const searchText = document.getElementById('searchText').value;
+            if (searchText) params.append('search', searchText);
+
+            if (document.getElementById('timeRange').value === 'custom') {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                if (startDate) params.append('startDate', startDate);
+                if (endDate) params.append('endDate', endDate);
+            }
+
+            fetch(`/logs/api?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.message);
+                    } else {
+                        displayLogs(data.data);
+                        updatePagination(data.data.pagination);
+                        updateStats(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Failed to load logs: ' + error.message);
+                });
+        }
+
+        function showLoading() {
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('errorDiv').style.display = 'none';
+            document.getElementById('logsContainer').style.display = 'none';
+            document.getElementById('paginationDiv').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingDiv').style.display = 'none';
+            document.getElementById('errorDiv').textContent = message;
+            document.getElementById('errorDiv').style.display = 'block';
+            document.getElementById('logsContainer').style.display = 'none';
+            document.getElementById('paginationDiv').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+        }
+
+        function displayLogs(data) {
+            document.getElementById('loadingDiv').style.display = 'none';
+            document.getElementById('errorDiv').style.display = 'none';
+
+            const container = document.getElementById('logsContainer');
+            container.style.display = 'block';
+
+            if (data.logs.length === 0) {
+                container.innerHTML = '<div class="no-logs">No logs found for the selected filters.</div>';
+                return;
+            }
+
+            container.innerHTML = data.logs.map(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                return `
+                    <div class="log-entry">
+                        <span class="log-timestamp">[${timestamp}]</span>
+                        <span class="log-level log-level-${log.level}">${log.level}</span>
+                        <span class="log-message">${escapeHtml(log.message)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updatePagination(pagination) {
+            const paginationDiv = document.getElementById('paginationDiv');
+            const paginationInfo = document.getElementById('paginationInfo');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (pagination.totalPages > 1) {
+                paginationDiv.style.display = 'flex';
+                paginationInfo.textContent = `Page ${pagination.currentPage} of ${pagination.totalPages} (${pagination.totalItems} total items)`;
+                
+                prevBtn.disabled = !pagination.hasPrevPage;
+                nextBtn.disabled = !pagination.hasNextPage;
+                
+                currentPage = pagination.currentPage;
+                totalPages = pagination.totalPages;
+            } else {
+                paginationDiv.style.display = 'none';
+            }
+        }
+
+        function updateStats(data) {
+            const stats = document.getElementById('stats');
+            stats.style.display = 'flex';
+
+            const logCounts = data.logs.reduce((acc, log) => {
+                acc[log.level] = (acc[log.level] || 0) + 1;
+                return acc;
+            }, {});
+
+            document.getElementById('totalLogs').textContent = data.pagination.totalItems;
+            document.getElementById('errorCount').textContent = logCounts.ERROR || 0;
+            document.getElementById('warnCount').textContent = logCounts.WARN || 0;
+            document.getElementById('infoCount').textContent = logCounts.INFO || 0;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

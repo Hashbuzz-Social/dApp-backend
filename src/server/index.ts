@@ -1,5 +1,6 @@
 import authRouter from '@routes/auth-router';
 import apiRouter from '@routes/index';
+import logsRouter from '@routes/logs-router';
 import axios from 'axios';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -73,20 +74,15 @@ const initializeApp = async () => {
   );
 
   // Error handling for CSRF token mismatch
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.log('Error:', err.message); // Logging error details
-    console.log('Error code:', err);
-
-    if (err.message === 'CSRF token mismatch') {
-      // CSRF token mismatch error
-      console.error('CSRF Token Mismatch. Resetting session.');
-
-      res.clearCookie('XSRF-TOKEN');
-      return res
-        .status(403)
-        .json({ message: 'CSRF token mismatch. Please refresh the page.' });
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    if (err && err.code === 'EBADCSRFTOKEN') {
+      logger.err('CSRF Token Mismatch. Resetting session.');
+      req.session?.destroy(() => {
+        res.status(403).json({ error: 'CSRF token mismatch. Session reset.' });
+      });
+    } else {
+      next(err);
     }
-    next(err);
   });
 
   // Middleware to send CSRF token to React frontend
@@ -161,48 +157,53 @@ const initializeApp = async () => {
           config.app.xCallBackHost ?? 'http://localhost:4000'
         }/auth/github/callback`,
       },
-      async (
+      (
         accessToken: string,
         refreshToken: string,
         profile: any,
         done: (error: any, user?: any, info?: any) => void
       ) => {
-        try {
-          // Verify token scopes
-          const tokenInfo = await axios.get('https://api.github.com/user', {
-            headers: { Authorization: `token ${accessToken}` },
-          });
+        // Make the function async
+        (async () => {
+          try {
+            // Verify token scopes
+            await axios.get('https://api.github.com/user', {
+              headers: { Authorization: `token ${accessToken}` },
+            });
 
-          // Construct the API URL
-          const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/collaborators/${profile.username}`;
-          console.log('GitHub API URL:', apiUrl);
+            // Construct the API URL
+            const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/collaborators/${String(profile.username)}`;
+            logger.info('GitHub API URL: ' + apiUrl);
 
-          // Verify if the user has access to the specified repository
-          const response = await axios.get(apiUrl, {
-            headers: {
-              Authorization: `token ${accessToken}`,
-            },
-          });
+            // Verify if the user has access to the specified repository
+            const response = await axios.get(apiUrl, {
+              headers: {
+                Authorization: `token ${accessToken}`,
+              },
+            });
 
-          if (response.status === 204) {
-            console.log('User has access to the repository.');
-            return done(null, profile);
-          } else {
-            console.log('User does not have access to the repository.');
+            if (response.status === 204) {
+              logger.info('User has access to the repository.');
+              // Store access token in the profile for later use
+              profile.accessToken = accessToken;
+              return done(null, profile);
+            } else {
+              logger.info('User does not have access to the repository.');
+              return done(null, false, {
+                message: 'You do not have access to this repository.',
+              });
+            }
+          } catch (error) {
+            if (axios.isAxiosError(error)) {
+              logger.err('GitHub API error: ' + String(error.response?.data));
+            } else {
+              logger.err('Unexpected error: ' + String(error));
+            }
             return done(null, false, {
-              message: 'You do not have access to this repository.',
+              message: 'Error verifying repository access.',
             });
           }
-        } catch (error) {
-          if (axios.isAxiosError(error)) {
-            console.error('GitHub API error:', error.response?.data);
-          } else {
-            console.error('Unexpected error:', error);
-          }
-          return done(null, false, {
-            message: 'Error verifying repository access.',
-          });
-        }
+        })();
       }
     )
   );
@@ -223,7 +224,7 @@ const initializeApp = async () => {
   // GitHub OAuth Routes
   app.get(
     '/auth/github',
-    passport.authenticate('github', { scope: ['user:email', 'repo'] })
+    passport.authenticate('github', { scope: ['user:email', 'repo'] }) as express.RequestHandler
   );
 
   app.get(
@@ -231,9 +232,13 @@ const initializeApp = async () => {
     passport.authenticate('github', {
       failureRedirect: '/non-allowed',
       failureMessage: true,
-    }), // Enhanced error handling
-    (req, res) => {
-      console.log('GitHub authentication successful, redirecting to API docs.');
+    }) as express.RequestHandler, // Enhanced error handling
+    (req: Request, res: Response) => {
+      // Store access token in session for later use
+      if (req.user && (req.user as any).accessToken) {
+        (req.session as any).accessToken = (req.user as any).accessToken;
+      }
+      logger.info('GitHub authentication successful, redirecting to API docs.');
       res.redirect('/api-docs');
     }
   );
@@ -247,7 +252,7 @@ const initializeApp = async () => {
     if (req.isAuthenticated()) {
       return next();
     }
-    console.log('User not authenticated, redirecting to GitHub auth.');
+    logger.info('User not authenticated, redirecting to GitHub auth.');
     res.redirect('/auth/github');
   };
 
@@ -268,6 +273,9 @@ const initializeApp = async () => {
     swaggerUi.setup(swaggerSpec)
   );
 
+  // Logs routes - require GitHub authentication and write permissions
+  app.use('/logs', logsRouter);
+
   // Routes setup without session for /api and /auth
   app.use('/api', apiRouter);
   app.use('/auth', authRouter);
@@ -275,13 +283,12 @@ const initializeApp = async () => {
   /**
    * Error handling middleware
    */
-  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: Error, req: Request, res: Response) => {
     if (isHttpError(err)) {
       return res.status(err.status).json({ error: err.message });
     }
 
-    console.error('Internal Server Error:', err.message); // Logging error details
-    logger.err(err, true);
+    logger.err('Internal Server Error: ' + err.message);
     res.status(500).json({
       error: { message: 'Internal Server Error', description: err.message },
     });
