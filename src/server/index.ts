@@ -107,15 +107,17 @@ const initializeApp = async () => {
   }
 
   if (process.env.NODE_ENV === 'production') {
-    app.use(helmet());
+    // Security middleware with custom CSP
     app.use(
-      helmet.contentSecurityPolicy({
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
         },
       })
     );
