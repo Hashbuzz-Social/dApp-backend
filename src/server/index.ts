@@ -113,6 +113,7 @@ const initializeApp = async () => {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
           objectSrc: ["'none'"],
           upgradeInsecureRequests: [],
         },
