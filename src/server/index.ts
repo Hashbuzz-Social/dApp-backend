@@ -306,7 +306,7 @@ const initializeApp = async () => {
   app.set('view engine', 'ejs');
   app.set('views', viewsDir);
 
-  const staticDir = path.join(__dirname, '../public');
+  const staticDir = path.join(__dirname, '../../public');
   app.use(express.static(staticDir));
 
   // Read package.json

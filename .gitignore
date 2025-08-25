@@ -241,7 +241,6 @@ npm-shrinkwrap.json
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -257,3 +256,4 @@ public
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
+src/public/css/logs.css
