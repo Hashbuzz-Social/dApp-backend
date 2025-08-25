@@ -12,7 +12,7 @@ export class EnvValueProvider {
     get(defaultValue?: string): string {
         const value = process.env[this.variableName];
         if (value !== undefined) {
-            this.log?.info(`Environment variable "${this.variableName}" fetched successfully.`);
+            // Removed excessive environment variable success logging to reduce spam
             return value;
         }
         if (defaultValue !== undefined) {
