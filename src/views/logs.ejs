@@ -28,12 +28,12 @@
                     </select>
                 </div>
 
-                <div class="form-group" id="customDates" style="display: none;">
+                <div class="form-group hidden" id="customDates">
                     <label>Start Date</label>
                     <input type="datetime-local" id="startDate" class="form-control">
                 </div>
 
-                <div class="form-group" id="customDatesEnd" style="display: none;">
+                <div class="form-group hidden" id="customDatesEnd">
                     <label>End Date</label>
                     <input type="datetime-local" id="endDate" class="form-control">
                 </div>
@@ -65,7 +65,7 @@
                 </div>
             </div>
 
-            <div class="stats" id="stats" style="display: none;">
+            <div class="stats hidden" id="stats">
                 <div class="stat-item">
                     <div class="stat-value" id="totalLogs">0</div>
                     <div class="stat-label">Total Logs</div>
@@ -89,11 +89,11 @@
             Loading logs...
         </div>
 
-        <div id="errorDiv" class="error" style="display: none;"></div>
+        <div id="errorDiv" class="error hidden"></div>
 
-        <div id="logsContainer" class="logs-container" style="display: none;"></div>
+        <div id="logsContainer" class="logs-container hidden"></div>
 
-        <div id="paginationDiv" class="pagination" style="display: none;">
+        <div id="paginationDiv" class="pagination hidden">
             <div class="pagination-info" id="paginationInfo"></div>
             <div class="pagination-controls">
                 <button id="prevBtn" class="btn btn-secondary">Previous</button>
@@ -117,11 +117,11 @@
                 const customDates = document.getElementById('customDates');
                 const customDatesEnd = document.getElementById('customDatesEnd');
                 if (this.value === 'custom') {
-                    customDates.style.display = 'block';
-                    customDatesEnd.style.display = 'block';
+                    customDates.classList.remove('hidden');
+                    customDatesEnd.classList.remove('hidden');
                 } else {
-                    customDates.style.display = 'none';
-                    customDatesEnd.style.display = 'none';
+                    customDates.classList.add('hidden');
+                    customDatesEnd.classList.add('hidden');
                 }
             });
 
@@ -197,28 +197,28 @@
         }
 
         function showLoading() {
-            document.getElementById('loadingDiv').style.display = 'block';
-            document.getElementById('errorDiv').style.display = 'none';
-            document.getElementById('logsContainer').style.display = 'none';
-            document.getElementById('paginationDiv').style.display = 'none';
-            document.getElementById('stats').style.display = 'none';
+            document.getElementById('loadingDiv').classList.remove('hidden');
+            document.getElementById('errorDiv').classList.add('hidden');
+            document.getElementById('logsContainer').classList.add('hidden');
+            document.getElementById('paginationDiv').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
         }
 
         function showError(message) {
-            document.getElementById('loadingDiv').style.display = 'none';
+            document.getElementById('loadingDiv').classList.add('hidden');
             document.getElementById('errorDiv').textContent = message;
-            document.getElementById('errorDiv').style.display = 'block';
-            document.getElementById('logsContainer').style.display = 'none';
-            document.getElementById('paginationDiv').style.display = 'none';
-            document.getElementById('stats').style.display = 'none';
+            document.getElementById('errorDiv').classList.remove('hidden');
+            document.getElementById('logsContainer').classList.add('hidden');
+            document.getElementById('paginationDiv').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
         }
 
         function displayLogs(data) {
-            document.getElementById('loadingDiv').style.display = 'none';
-            document.getElementById('errorDiv').style.display = 'none';
+            document.getElementById('loadingDiv').classList.add('hidden');
+            document.getElementById('errorDiv').classList.add('hidden');
 
             const container = document.getElementById('logsContainer');
-            container.style.display = 'block';
+            container.classList.remove('hidden');
 
             const logs = data.data || []; // API returns logs in data.data field
 
@@ -246,7 +246,7 @@
             const nextBtn = document.getElementById('nextBtn');
 
             if (pagination && pagination.totalPages > 1) {
-                paginationDiv.style.display = 'flex';
+                paginationDiv.classList.remove('hidden');
                 paginationInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total items)`;
                 
                 prevBtn.disabled = pagination.page <= 1;
@@ -255,13 +255,13 @@
                 currentPage = pagination.page;
                 totalPages = pagination.totalPages;
             } else {
-                paginationDiv.style.display = 'none';
+                paginationDiv.classList.add('hidden');
             }
         }
 
         function updateStats(response) {
             const stats = document.getElementById('stats');
-            stats.style.display = 'flex';
+            stats.classList.remove('hidden');
 
             const logs = response.data || []; // response.data contains the logs array
             const logCounts = logs.reduce((acc, log) => {
