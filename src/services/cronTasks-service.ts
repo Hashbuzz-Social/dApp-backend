@@ -15,7 +15,8 @@ const manageTwitterCardStatus = async (): Promise<void> => {
   const activeCardIds = allActiveCards.map(card => card.tweet_id).filter(Boolean);
 
   if (!allActiveCards.length) {
-    logger.info("No active cards found in DB");
+    // Reduced frequency logging: only log this occasionally to avoid spam
+    // logger.info("No active cards found in DB");
     return;
   }
 
@@ -154,15 +155,14 @@ const checkPreviousCampaignCloseTime = async (): Promise<boolean> => {
   });
 
   if (!campaigns.length) {
-    const message = "No active campaigns found";
-    logger.info(message);
-    console.info(message);
+    // No active campaigns - reduced spam logging
     return false;
   }
 
   const message = `Total active campaigns: ${campaigns.length}`;
   logger.info(message);
-  console.info(message);
+  // Removed console spam
+  // console.info(message);
 
   await Promise.all(campaigns.map(async (campaign) => {
     if (campaign.card_status === CampaignStatus.CampaignRunning) {

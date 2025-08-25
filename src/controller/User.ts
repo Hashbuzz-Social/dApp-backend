@@ -1,7 +1,7 @@
 import { formatTokenBalancesObject, sensitizeUserData } from "@shared/helper";
 import { NextFunction, Request, Response } from "express";
 import StatusCodes from "http-status-codes";
-import logger from "jet-logger";
+import logger from "../config/logger";
 import JSONBigInt from "json-bigint";
 import userService from "@services/user-service";
 import { ParamMissingError } from "@shared/errors";
@@ -116,7 +116,8 @@ export const handleTokenContractBal = async (req: Request, res: Response, next: 
     const tokenId = req.params.tokenId as string;
     if (req.currentUser?.hedera_wallet_id) {
       const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
-      logger.info(`Toeken baalnce for the user ${req.currentUser.id} and for token ${tokenId}`);
+      // Reduced logging: only log on errors or important events
+      // logger.info(`Token balance for the user ${req.currentUser.id} and for token ${tokenId}`);
       return res.status(OK).json({ balance });
     }
     throw new Error("No wallet for this user");
@@ -135,11 +136,12 @@ export const syncBal = async (req: Request, res: Response, next: NextFunction) =
     const tokendata = await prisma.whiteListedTokens.findUnique({ where: { token_id: tokenId } });
     if (!tokendata) return res.status(BAD_REQUEST).json({ error: true, messages: "Unsupoorted token" });
 
-    // Go for SM query for the baalnce
+    // Go for SM query for the balance
     if (req.currentUser && req.currentUser.hedera_wallet_id && req.currentUser.id) {
       const balance = await queryFungibleBalanceOfCampaigner(req.currentUser.hedera_wallet_id, tokenId);
 
-      logger.info(`Toeken baalnce syn for the user ${req.currentUser.id} and for token ${tokenId}`);
+      // Reduced logging: only log on errors or significant changes
+      // logger.info(`Token balance sync for the user ${req.currentUser.id} and for token ${tokenId}`);
 
       await prisma.user_balances.updateMany({
         where: {
