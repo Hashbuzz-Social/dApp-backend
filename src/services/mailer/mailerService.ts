@@ -1,6 +1,7 @@
 // mailerService.ts
 import nodemailer from 'nodemailer';
 import { getConfig } from "@appConfig";
+import logger from 'src/config/logger';
 
 /**
  * Example usage:
@@ -17,10 +18,9 @@ import { getConfig } from "@appConfig";
 
 class MailerService {
     private transporter: nodemailer.Transporter | null = null;
-    private emailUser: string = '';
-    private alertReceiver: string = '';
+    private emailUser = '';
+    private alertReceiver = '';
 
-    private constructor() {}
 
     static async create(): Promise<MailerService> {
         const instance = new MailerService();
@@ -53,9 +53,9 @@ class MailerService {
 
         try {
             const info = await this.transporter.sendMail(mailOptions);
-            console.log('Email sent: ' + info.response);
+            logger.info(`Email sent: ${String(info.response)}`);
         } catch (error) {
-            console.error('Error sending email:', error);
+            logger.err(`Error sending email: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }
