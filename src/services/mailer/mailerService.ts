@@ -39,7 +39,7 @@ class MailerService {
         return instance;
     }
 
-    async sendLowBalanceAlert(currentBalance: number): Promise<void> {
+    async sendLowBalanceAlert(currentBalance: number, account: string): Promise<void> {
         if (!this.transporter) {
             throw new Error('Transporter not initialized');
         }
@@ -48,7 +48,7 @@ class MailerService {
             from: this.emailUser,
             to: this.alertReceiver,
             subject: '⚠️ Escrow Account Low Balance',
-            text: `Alert: The escrow account balance is low. Current balance: $${currentBalance} HBAR. Please top up the account.`
+            text: `Alert: The escrow account balance is low. Current balance: ${currentBalance} HBAR. Please top up the account ${account}.`
         };
 
         try {

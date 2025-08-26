@@ -281,7 +281,7 @@ async deploy(bytecode: string): Promise<ContractId | null> {
         'Insufficient balance for transaction. Please top up your account.'
       );
       const mailer = await MailerService.create();
-      await mailer.sendLowBalanceAlert(curentClinetBalance / 1_000_000_000); // Convert tinybars to hbars
+      await mailer.sendLowBalanceAlert(curentClinetBalance / 1_000_000_00 , hederaService.operatorId.toString()); // Convert tinybars to hbars
     }
     return isSufficientBalance;
   }
