@@ -9,6 +9,7 @@ import moment from "moment";
 import { getConfig } from "@appConfig";
 import RedisClient, { CampaignCardData } from "./redis-servie";
 import { MediaService } from "./media-service";
+import JSONBigint from "json-bigint"
 
 export enum LYFCycleStages {
   CREATED = "status:created",
@@ -99,10 +100,14 @@ class CampaignLifeCycleBase {
 
       // if token id avialable for card load token data
       if (card.fungible_token_id) {
+        console.log("Loading token data for card:", card.fungible_token_id);
         const token = await prisma.whiteListedTokens.findUnique({
           where: { token_id: String(card.fungible_token_id) },
         });
-        if (token) this.tokenData = token;
+        console.log("Token data loaded:", token);
+        if (token) {
+          this.tokenData = token;
+        }
       }
 
       // Query for the running card count
@@ -233,6 +238,12 @@ class CampaignLifeCycleBase {
   public async createNewCampaign({ fungible_token_id, media ,  ...params }: createCampaignParams, userId: number | bigint) {
     const { name, tweet_text, comment_reward, retweet_reward, like_reward, quote_reward, campaign_budget, type } = params;
     const prisma = await createPrismaClient();
+    if (fungible_token_id) {
+      console.log("Loading token data for card:", fungible_token_id);
+      this.tokenData = await prisma.whiteListedTokens.findUnique({
+        where: { token_id: String(fungible_token_id) },
+      });
+    }
     const emptyFields = Object.entries(params)
       .filter(([, value]) => isEmpty(value))
       .map(([key]) => key);
@@ -244,10 +255,10 @@ class CampaignLifeCycleBase {
       };
     }
 
-    if (type === "FUNGIBLE" && !fungible_token_id) {
+    if (type === "FUNGIBLE" && !fungible_token_id || !this.tokenData) {
       return {
         error: true,
-        message: `Token id feild should not empty`,
+        message: `Token id field should not be empty`,
       };
     }
 
@@ -274,8 +285,11 @@ class CampaignLifeCycleBase {
 
       if (type === "FUNGIBLE") {
         campaignData.fungible_token_id = fungible_token_id?.toString();
-        campaignData.decimals = this.tokenData?.decimals || 0;
+        campaignData.decimals = this.tokenData?.decimals ?? 0;
       }
+
+      console.log("Campaign Data:", JSONBigint.stringify(campaignData));
+      console.log("data" , JSONBigint.stringify(this.tokenData));
 
       const newCampaign = await prisma.campaign_twittercard.create({
         data: { ...campaignData },
