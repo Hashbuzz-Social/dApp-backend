@@ -1,7 +1,7 @@
 // mailerService.ts
 import nodemailer from 'nodemailer';
 import { getConfig } from "@appConfig";
-import logger from 'src/config/logger';
+import logger from "../../config/logger";
 
 /**
  * Example usage:
