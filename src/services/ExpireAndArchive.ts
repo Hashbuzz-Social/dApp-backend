@@ -61,7 +61,7 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
       // Step 1: Smart Contract Transaction for HBAR expiry
       try {
         const expiryresponse = await habrSMExpriryCampaignCall(card, cardOwner);
-        if ('dataDecoded' in expiryresponse && expiryresponse.dataDecoded) {
+        if (expiryresponse && 'dataDecoded' in expiryresponse && expiryresponse.dataDecoded) {
           balances = Number(expiryresponse.dataDecoded[0]);
         }
         logger.info(`HBAR Smart Contract transaction successful for card ID: ${card.id}`);

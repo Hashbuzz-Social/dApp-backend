@@ -50,12 +50,24 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
       // Step 2: Perform smart contract transaction
       try {
         const contractStateUpdateResult = await this.performSmartContractTransaction(card);
-        transactionDetails = {
-          contract_id: card.contract_id!,
-          transactionId: contractStateUpdateResult?.transactionId,
-          receipt: contractStateUpdateResult?.receipt,
-          status: contractStateUpdateResult?.status._code.toString(),
+
+        if (
+          contractStateUpdateResult &&
+          typeof contractStateUpdateResult === "object" &&
+          "transactionId" in contractStateUpdateResult &&
+          "receipt" in contractStateUpdateResult &&
+          "status" in contractStateUpdateResult
+        ) {
+          transactionDetails = {
+            contract_id: card.contract_id!,
+            transactionId: (contractStateUpdateResult as any).transactionId,
+            receipt: (contractStateUpdateResult as any).receipt,
+            status: (contractStateUpdateResult as any).status._code?.toString?.() ?? (contractStateUpdateResult as any).status?.toString?.() ?? "",
+          };
+        } else {
+          throw new Error("Invalid contract state update result: missing transaction details");
         }
+
         await this.updateCampaignStatus(card.contract_id!, "contractTransaction", true);
         logger.info(`Smart contract transaction successful for card ID: ${card.id}`);
       } catch (error) {

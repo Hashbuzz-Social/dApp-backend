@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/stylesheets/logs.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><%= title %></h1>
+            <div class="auth-info">
+                <span class="auth-status">Auth-free access (Development Mode)</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="controls-row">
+                <div class="form-group">
+                    <label>Time Range</label>
+                    <select id="timeRange" class="form-control">
+                        <option value="last30min">Last 30 Minutes</option>
+                        <option value="lastHour" selected>Last Hour</option>
+                        <option value="today">Today</option>
+                        <option value="last7days">Last 7 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <div class="form-group hidden" id="customDates">
+                    <label>Start Date</label>
+                    <input type="datetime-local" id="startDate" class="form-control">
+                </div>
+
+                <div class="form-group hidden" id="customDatesEnd">
+                    <label>End Date</label>
+                    <input type="datetime-local" id="endDate" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Log Level</label>
+                    <select id="logLevel" class="form-control">
+                        <option value="">All Levels</option>
+                        <option value="ERROR">Error</option>
+                        <option value="WARN">Warning</option>
+                        <option value="INFO">Info</option>
+                        <option value="DEBUG">Debug</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Search</label>
+                    <input type="text" id="searchText" class="form-control" placeholder="Search logs...">
+                </div>
+
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="filterBtn" class="btn btn-primary">Filter Logs</button>
+                </div>
+
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                </div>
+            </div>
+
+            <div class="stats hidden" id="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalLogs">0</div>
+                    <div class="stat-label">Total Logs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="errorCount">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="warnCount">0</div>
+                    <div class="stat-label">Warnings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="infoCount">0</div>
+                    <div class="stat-label">Info</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingDiv" class="loading">
+            Loading logs...
+        </div>
+
+        <div id="errorDiv" class="error hidden"></div>
+
+        <div id="logsContainer" class="logs-container hidden"></div>
+
+        <div id="paginationDiv" class="pagination hidden">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-controls">
+                <button id="prevBtn" class="btn btn-secondary">Previous</button>
+                <button id="nextBtn" class="btn btn-secondary">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/logs.js"></script>
+</body>
+</html>

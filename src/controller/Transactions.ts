@@ -178,10 +178,14 @@ export const handleCampaignFundAllocation = async (req: Request, res: Response, 
     const campaignerId = campaignDetails.owner_id;
 
     //?  call the function to update the balances of the camp
-    const { transactionId, receipt } = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount, campaignDetails.contract_id);
-    await userService.topUp(campaignerId, amounts, "decrement");
+    const allocationResult = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount, campaignDetails.contract_id);
 
-    return res.status(CREATED).json({ transactionId, receipt });
+    if ('transactionId' in allocationResult && 'receipt' in allocationResult) {
+      await userService.topUp(campaignerId, amounts, "decrement");
+      return res.status(CREATED).json({ transactionId: allocationResult.transactionId, receipt: allocationResult.receipt });
+    } else {
+      return res.status(BAD_REQUEST).json({ error: true, message: "Failed to allocate balance to campaign." });
+    }
   }
 
   return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" })

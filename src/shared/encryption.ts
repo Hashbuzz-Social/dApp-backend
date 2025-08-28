@@ -10,9 +10,10 @@ const ivLength = 16; // For AES, this is always 16
  * @returns The encrypted text in the format iv:encryptedText.
  */
 const encrypt = (text: string, encryptionKey: string): string => {
-
   const iv = crypto.randomBytes(ivLength);
-  const cipher = crypto.createCipheriv(algorithm, Buffer.from(encryptionKey, 'hex'), iv);
+  const key = new Uint8Array(Buffer.from(encryptionKey, 'hex'));
+  const ivArray = new Uint8Array(iv);
+  const cipher = crypto.createCipheriv(algorithm, key, ivArray);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return `${iv.toString('hex')}:${encrypted}`;
@@ -25,8 +26,9 @@ const encrypt = (text: string, encryptionKey: string): string => {
  */
 const decrypt = (text: string, encryptionKey: string): string => {
   const [ivString, encryptedText] = text.split(':');
-  const iv = Buffer.from(ivString, 'hex');
-  const decipher = crypto.createDecipheriv(algorithm, Buffer.from(encryptionKey, 'hex'), iv);
+  const iv = new Uint8Array(Buffer.from(ivString, 'hex'));
+  const key = new Uint8Array(Buffer.from(encryptionKey, 'hex'));
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
@@ -35,7 +37,7 @@ const decrypt = (text: string, encryptionKey: string): string => {
 /**
  * Deterministic encryption and decryption of data for device_id specific for now.
  */
-const d_iv = Buffer.alloc(ivLength, 0); // Use a zero-filled IV for deterministic encryption
+const d_iv = new Uint8Array(ivLength); // Use a zero-filled IV for deterministic encryption
 
 /**
  * Encrypts data deterministically using AES-256-CTR.
@@ -43,9 +45,11 @@ const d_iv = Buffer.alloc(ivLength, 0); // Use a zero-filled IV for deterministi
  * @returns The encrypted text in hexadecimal format.
  */
 const d_encrypt = (text: string, encryptionKey: string): string => {
-  const cipher = crypto.createCipheriv(d_algo, Buffer.from(encryptionKey, 'hex'), d_iv);
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
-  return encrypted.toString('hex');
+  const key = new Uint8Array(Buffer.from(encryptionKey, 'hex'));
+  const cipher = crypto.createCipheriv(d_algo, key, d_iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
 };
 
 /**
@@ -54,9 +58,11 @@ const d_encrypt = (text: string, encryptionKey: string): string => {
  * @returns The decrypted text.
  */
 const d_decrypt = (hash: string, encryptionKey: string): string => {
-  const decipher = crypto.createDecipheriv(d_algo, Buffer.from(encryptionKey, 'hex'), d_iv);
-  const decrypted = Buffer.concat([decipher.update(Buffer.from(hash, 'hex')), decipher.final()]);
-  return decrypted.toString('utf8');
+  const key = new Uint8Array(Buffer.from(encryptionKey, 'hex'));
+  const decipher = crypto.createDecipheriv(d_algo, key, d_iv);
+  let decrypted = decipher.update(hash, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 };
 
 export { encrypt, decrypt, d_encrypt, d_decrypt };

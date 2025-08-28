@@ -36,6 +36,9 @@ class ContractUtils {
             .addBool(isWhitelisted);
 
         const contractCallResponse = await this.hederaContract.callContractWithStateChange("associateToken", params, transactionMemo.associateToken);
+        if (!contractCallResponse) {
+            throw new Error("contractCallResponse is undefined");
+        }
         return contractCallResponse.status;
     }
 
@@ -54,6 +57,9 @@ class ContractUtils {
     async addCampaigner(newCampaigner: string): Promise<Status> {
         const params = new ContractFunctionParameters().addAddress(AccountId.fromString(newCampaigner).toSolidityAddress());
         const response = await this.hederaContract.callContractWithStateChange("addCampaigner", params, transactionMemo.addCampaigner);
+        if (!response) {
+            throw new Error("response is undefined");
+        }
         return response.status;
     }
 

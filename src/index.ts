@@ -64,6 +64,7 @@ process.on("SIGINT", gracefulShutdown);
  */
 async function init() {
   try {
+    console.log('Initializing server')
     const config = await getConfig();
     redisClient = new RedisClient(config.db.redisServerURI);
 

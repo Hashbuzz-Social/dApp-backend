@@ -3,7 +3,7 @@ import logger from "jet-logger";
 import { getConfig } from "@appConfig";
 import { network } from "@prisma/client"
 
-interface HederaClientConfig {
+export interface HederaClientConfig {
   hederaClient: Client;
   network: network;
   operatorAccount: string;

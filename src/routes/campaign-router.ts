@@ -6,6 +6,7 @@ import {
   makeCardRunning,
   rewardDetails,
 } from '@controller/Campaign';
+import { Request, Response, NextFunction } from 'express';
 import { MediaController } from '@controller/MediaController';
 import { openAi } from '@controller/openAi';
 import { twitterCardStatsData } from '@controller/User';
@@ -15,10 +16,11 @@ import { CampaignCommands } from '@services/CampaignLifeCycleBase';
 import { checkErrResponse } from '@validator/userRoutes.validator';
 import { Router } from 'express';
 import { body, query as validateQuery } from 'express-validator';
-import { Request } from 'express';
+// ...existing code...
 import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
+import { parseQueryPagination } from '@middleware/pagination';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -65,8 +67,15 @@ router.post(
   makeCardRunning
 );
 
-// Route to get all campaigns
-router.get('/all', userInfo.getCurrentUserInfo, handleCampaignGet);
+
+// Route to get all campaigns with pagination
+// Usage: GET /all?page=1&limit=20
+router.get(
+  '/all',
+  userInfo.getCurrentUserInfo,
+  parseQueryPagination,
+  handleCampaignGet
+);
 
 // Route to add a new campaign
 router.post(
@@ -103,7 +112,7 @@ router.get(
 router.get('/card-status', twitterCardStatsData);
 
 // Route to get reward details
-router.get('/reward-details', rewardDetails);
+router.get('/reward-details',  userInfo.getCurrentUserInfo, rewardDetails);
 
 // Route to interact with OpenAI
 router.post('/chatgpt', validateQuery('message').isString(), openAi);

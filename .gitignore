@@ -1,17 +1,259 @@
-node_modules
-logs
-# Keep environment variables out of version control
-.env*
-**/node_modules
-dist/
-**/**/*.log
-xxxx.txt
-tokens.txt
-Dockerfile
-.vscode
-/src/.keys
-/src/.trailsetters
-package-lock.json 
-docker-compose.yml
-.DS_Store
+# ===================================================
+# HashBuzz dApp Backend - Git Ignore Configuration
+# ===================================================
+
+# === DEPENDENCIES ===
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# === ENVIRONMENT & CONFIGURATION ===
+# Environment variables (keep all .env files out of version control)
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Local configuration overrides
 /src/appConfig-local.ts
+config/local.json
+config/production.json
+
+# === BUILD OUTPUTS ===
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+lib/
+*.tsbuildinfo
+
+# === LOGS ===
+logs/
+*.log
+**/**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# === RUNTIME & PROCESS FILES ===
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# === TEMPORARY FILES ===
+tmp/
+temp/
+.tmp/
+.cache/
+.sass-cache/
+.eslintcache
+
+# === DEVELOPMENT TOOLS ===
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# === DATABASE ===
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Database migrations (if using custom migrations)
+migrations/
+**/migrations/
+
+# === SECURITY & KEYS ===
+# Private keys and certificates
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+/src/.keys/
+/src/.trailsetters/
+private-key.txt
+secret-key.txt
+*.private
+*.secret
+
+# === BLOCKCHAIN & CRYPTO ===
+# Wallet files
+wallet.json
+*.wallet
+mnemonic.txt
+seed.txt
+
+# Contract artifacts (keep if needed for deployment)
+# contracts/artifacts/
+# contracts/cache/
+
+# === UPLOADS & MEDIA ===
+public/uploads/
+uploads/
+user-uploads/
+media/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp4
+*.avi
+*.mov
+*.webm
+
+# But keep placeholder files and examples
+!public/uploads/.gitkeep
+!uploads/.gitkeep
+!public/uploads/README.md
+
+# === TESTING ===
+# Test coverage
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+*.lcov
+
+# Test databases
+test.db
+test.sqlite
+*-test.db
+
+# === DOCUMENTATION GENERATION ===
+docs/generated/
+api-docs/
+typedoc/
+
+# === DEPLOYMENT ===
+# Docker files (if not needed in repo)
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+
+# Kubernetes manifests (if sensitive)
+k8s/secrets/
+*.secret.yaml
+
+# Terraform state files
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# === PROJECT SPECIFIC ===
+# Custom tokens and configuration
+tokens.txt
+xxxx.txt
+*.token
+*.tokens
+
+# Local scripts and utilities
+scripts/local/
+local-scripts/
+dev-scripts/
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# === MONITORING & ANALYTICS ===
+# APM and monitoring configs with secrets
+newrelic.js
+elastic-apm-node.js
+
+# === PACKAGE MANAGERS ===
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# npm
+.npm
+npm-shrinkwrap.json
+
+# === RUNTIME ENVIRONMENTS ===
+# Node.js
+.node_repl_history
+.npm
+
+# === MISC ===
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Gatsby files
+.cache/
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+.tmp
+.temp
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+src/public/css/logs.css

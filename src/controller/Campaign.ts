@@ -258,21 +258,34 @@ export const statusUpdateHandler = async (
 
 export const handleCampaignGet = async (
   req: Request,
-  res: Response,
-  next: NextFunction
+  res: Response
 ) => {
   const prisma = await createPrismaClient();
-  const allCampaigns = await prisma.campaign_twittercard.findMany({
-    where: {
-      owner_id: req.currentUser?.id,
-    },
-    orderBy: {
-      id: 'desc',
+  const { page = 1, limit = 20 } = req.pagination || {};
+  const skip = (page - 1) * limit;
+
+  // Use aggregate to get both count and paginated data in a single call
+  const [campaigns, total] = await prisma.$transaction([
+    prisma.campaign_twittercard.findMany({
+      where: { owner_id: req.currentUser?.id },
+      orderBy: { id: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.campaign_twittercard.count({
+      where: { owner_id: req.currentUser?.id },
+    }),
+  ]);
+  return res.status(OK).json({
+ 
+    data: JSONBigInt.parse(JSONBigInt.stringify(campaigns)),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(Number(total) / Number(limit)),
     },
   });
-  return res
-    .status(OK)
-    .json(JSONBigInt.parse(JSONBigInt.stringify(allCampaigns)));
 };
 
 export const handleAddNewCampaignNew = async (
@@ -488,8 +501,32 @@ export const checkCampaignBalances = async (
 };
 
 export const rewardDetails = async (req: Request, res: Response) => {
-  const user = await getRewardDetails(req.currentUser?.hedera_wallet_id!);
-  return res
-    .status(OK)
-    .json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
+  try {
+    // Check if user is authenticated and has a hedera_wallet_id
+    if (!req.currentUser) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'User not found' 
+      });
+    }
+
+    if (!req.currentUser.hedera_wallet_id) {
+      return res.status(400).json({ 
+        error: true, 
+        message: 'Hedera wallet ID not found for user' 
+      });
+    }
+
+    const user = await getRewardDetails(req.currentUser.hedera_wallet_id);
+    return res
+      .status(OK)
+      .json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
+  } catch (error) {
+    console.error('Error in rewardDetails controller:', error);
+    return res.status(500).json({ 
+      error: true, 
+      message: 'Failed to fetch reward details',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 };

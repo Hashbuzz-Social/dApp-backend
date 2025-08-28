@@ -235,7 +235,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
     const rewardDistributeTime = new Date(addMinutesToTime(this.date.toISOString(), 1));
     scheduleJob(rewardDistributeTime, () => {
       logger.info("Reward distribution scheduled at::" + rewardDistributeTime.toISOString());
-      performAutoRewardingForEligibleUser(card.id);
+      //performAutoRewardingForEligibleUser(card.id);
     });
   }
 
