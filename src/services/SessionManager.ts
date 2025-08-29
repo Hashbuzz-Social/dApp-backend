@@ -15,7 +15,7 @@ import { default as BJSON, default as JSONBigInt } from 'json-bigint';
 import { GenerateAstPayloadV2, Payload } from 'src/@types/custom';
 import { createAstToken, genrateRefreshToken } from './authToken-service';
 import initHederaService from './hedera-service';
-import RedisClient from './redis-servie';
+import RedisClient from './redis-service';
 import signingService from './signing-service';
 import userService from './user-service';
 

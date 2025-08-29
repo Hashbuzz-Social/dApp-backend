@@ -103,7 +103,7 @@ class RedisClient {
     public async readCampaignCardStatus(card_contract_id: string): Promise<CampaignCardData | null> {
         try {
             const cardData = await this.read(card_contract_id);
-            return cardData ? JSON.parse(cardData) : null;
+            return cardData ? (JSON.parse(cardData) as CampaignCardData) : null;
         } catch (error) {
             console.error("Error reading campaign card status:", error);
             return null;
