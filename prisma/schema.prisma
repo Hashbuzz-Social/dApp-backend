@@ -28,12 +28,12 @@ model user_sessions {
 model campaign_media {
   id                   BigInt                @id @default(autoincrement())
   media_type           String                @db.VarChar(255)
-  aws_location         String                @db.VarChar(255)
   twitter_media_id     String                @db.VarChar(50)
   owner_id             BigInt
+  aws_location         String                @db.VarChar(255)
   campaign_id          BigInt?
-  user_user            user_user?            @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_media_owner_id_76524538_fk_user_user_id")
   campaign_twittercard campaign_twittercard? @relation(fields: [campaign_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_media_campaign_id_fk_campaign_twittercard_id")
+  user_user            user_user             @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_media_owner_id_76524538_fk_user_user_id")
 
   @@index([owner_id], map: "campaign_media_owner_id_76524538")
   @@index([campaign_id], map: "campaign_media_campaign_id_index")
@@ -99,11 +99,11 @@ model campaign_twittercard {
   is_added_to_queue         Boolean?                    @default(false)
   card_status               campaignstatus
   campaignLogs              CampaignLog[]
+  campaign_media            campaign_media[]
   campaign_participation    campaign_participation[]
   campaign_tweetengagements campaign_tweetengagements[]
   campaign_tweetstats       campaign_tweetstats?
   user_user                 user_user                   @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "campaign_twittercard_owner_id_90f418c7_fk_user_user_id")
-  campaign_media            campaign_media[]
 
   @@index([owner_id], map: "campaign_twittercard_owner_id_90f418c7")
   @@index([owner_id], map: "campaign_owner_id_index")
