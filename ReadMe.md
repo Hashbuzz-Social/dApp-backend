@@ -20,6 +20,10 @@
 - [📝 API Documentation](#-api-documentation)
 - [🧪 Testing](#-testing)
 - [🚀 Deployment](#-deployment)
+  - [🐳 Docker Deployment](#-docker-deployment)
+  - [📦 Available Docker Profiles](#-available-docker-profiles)
+  - [🛠️ Development Commands](#️-development-commands)
+  - [📈 Monitoring & Health Checks](#-monitoring--health-checks)
 - [📚 Code Standards & Rules](#-code-standards--rules)
 - [🐛 Error Handling](#-error-handling)
 - [🔒 Security](#-security)
@@ -60,6 +64,28 @@ npm run dev
 ```
 
 The server will start on `http://localhost:4000` by default.
+
+### 🐳 Quick Start with Docker (Recommended)
+
+For a complete development environment with database and monitoring:
+
+```bash
+# Copy environment template and configure
+cp .env.example .env
+
+# Start development environment with all services
+docker compose --profile dev up -d
+
+# View service status
+docker compose ps
+
+# Access services:
+# - API: http://localhost:4000
+# - Database UI: http://localhost:5555
+# - Monitoring: http://localhost:3001
+```
+
+This sets up the entire stack including PostgreSQL, Redis, monitoring, and development tools automatically.
 
 ## 🏗️ Architecture Overview
 
@@ -108,6 +134,7 @@ HashBuzz dApp Backend follows a **layered monolithic architecture** with clear s
 ## 🛠️ Tech Stack
 
 ### Core Technologies
+
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js 4.18+
 - **Language**: TypeScript 5.0+
@@ -116,16 +143,19 @@ HashBuzz dApp Backend follows a **layered monolithic architecture** with clear s
 - **Cache**: Redis 6.0+
 
 ### Blockchain Integration
+
 - **Hedera Hashgraph SDK**: For DLT operations
 - **Smart Contracts**: Solidity contracts on Hedera
 - **Wallet Integration**: Hedera native wallets
 
 ### External APIs
+
 - **Twitter API v2**: Social media integrations
 - **OpenAI GPT**: AI-powered content generation
 - **File Storage**: Local/cloud file handling
 
 ### Development Tools
+
 - **Build**: ts-node, TypeScript compiler
 - **Linting**: ESLint with TypeScript rules
 - **Formatting**: Prettier
@@ -256,6 +286,7 @@ The application validates all required environment variables on startup. Missing
 
 1. **Install PostgreSQL** (version 13 or higher)
 2. **Create Database**:
+
    ```sql
    CREATE DATABASE hashbuzz_db;
    CREATE USER hashbuzz_user WITH ENCRYPTED PASSWORD 'your_password';
@@ -296,6 +327,7 @@ Key tables and their purposes:
 ### Getting Started for Developers
 
 1. **Fork and Clone**:
+
    ```bash
    git fork https://github.com/hashbuzz/dApp-backend.git
    git clone https://github.com/your-username/dApp-backend.git
@@ -303,6 +335,7 @@ Key tables and their purposes:
    ```
 
 2. **Setup Development Environment**:
+
    ```bash
    npm install
    cp .env.example .env
@@ -318,6 +351,7 @@ Key tables and their purposes:
 ### Development Workflow
 
 1. **Create Feature Branch**:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -325,6 +359,7 @@ Key tables and their purposes:
 2. **Make Changes** following our code standards
 
 3. **Test Your Changes**:
+
    ```bash
    npm run lint      # Check code style
    npm run test      # Run tests
@@ -332,6 +367,7 @@ Key tables and their purposes:
    ```
 
 4. **Commit and Push**:
+
    ```bash
    git add .
    git commit -m "feat: add your feature description"
@@ -365,6 +401,7 @@ npm run env-config      # Validate environment configuration
 ## 📝 API Documentation
 
 ### Base URL
+
 - Development: `http://localhost:4000`
 - Production: `https://api.hashbuzz.com` (example)
 
@@ -379,6 +416,7 @@ Authorization: Bearer <jwt_token>
 ### API Endpoints Overview
 
 #### Authentication (`/auth`)
+
 ```bash
 POST   /auth/challenge          # Create auth challenge
 POST   /auth/generate           # Generate auth token
@@ -388,6 +426,7 @@ POST   /auth/admin-login        # Admin authentication
 ```
 
 #### User Management (`/api/users`)
+
 ```bash
 GET    /api/users/current       # Get current user
 PUT    /api/users/update        # Update user profile
@@ -396,6 +435,7 @@ POST   /api/users/sync-balance  # Sync token balance
 ```
 
 #### Campaign Management (`/api/campaign`)
+
 ```bash
 GET    /api/campaign/all        # Get all campaigns
 POST   /api/campaign/add-new    # Create new campaign
@@ -406,6 +446,7 @@ POST   /api/campaign/chatgpt    # AI content generation
 ```
 
 #### Admin Operations (`/api/admin`)
+
 ```bash
 GET    /api/admin/user/all      # Get all users
 POST   /api/admin/list-token    # Add new token
@@ -417,6 +458,7 @@ GET    /api/admin/twitter-pending-cards # Get pending campaigns
 ### Request/Response Examples
 
 #### Create Campaign
+
 ```bash
 POST /api/campaign/add-new
 Content-Type: multipart/form-data
@@ -436,6 +478,7 @@ Content-Type: multipart/form-data
 ```
 
 #### Response Format
+
 ```json
 {
   "success": true,
@@ -452,6 +495,7 @@ Content-Type: multipart/form-data
 ## 🧪 Testing
 
 ### Test Structure
+
 ```
 spec/
 ├── unit/                    # Unit tests
@@ -461,6 +505,7 @@ spec/
 ```
 
 ### Running Tests
+
 ```bash
 # Run all tests
 npm run test
@@ -508,35 +553,187 @@ npm run start
 
 ### Docker Deployment
 
-```dockerfile
-# Dockerfile
-FROM node:18-alpine
+#### 🐳 Quick Start with Docker Compose
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
+The easiest way to run the entire stack:
 
-COPY dist ./dist
-COPY prisma ./prisma
+```bash
+# Copy environment template
+cp .env.example .env
 
-EXPOSE 4000
-CMD ["npm", "start"]
+# Edit critical values (passwords, secrets, API keys)
+nano .env
+
+# Start development environment
+docker compose --profile dev up -d
+
+# Or start production with monitoring
+docker compose --profile monitoring --profile backup up -d
+```
+
+#### 📦 Available Docker Profiles
+
+| Profile | Services | Use Case |
+|---------|----------|----------|
+| `default` | API, PostgreSQL, Redis | Basic production |
+| `dev` | + Prisma Studio, Debug port | Development |
+| `monitoring` | + Prometheus, Grafana, Loki | Production monitoring |
+| `backup` | + Automated DB backups | Production backup |
+| `proxy` | + Nginx reverse proxy | SSL/Load balancing |
+
+#### 🚀 Docker Services
+
+```yaml
+# Core services included:
+services:
+  api:          # Main backend application (Port 4000)
+  postgres:     # Primary database (Port 5432)
+  redis:        # Cache and sessions (Port 6379)
+  
+  # Development tools (--profile dev)
+  prisma-studio: # Database browser (Port 5555)
+  
+  # Monitoring stack (--profile monitoring)
+  prometheus:   # Metrics collection (Port 9090)
+  grafana:      # Dashboards (Port 3001)
+  loki:         # Log aggregation (Port 3100)
+  
+  # Production features
+  backup:       # Automated DB backups
+  nginx:        # Reverse proxy (Port 80/443)
+```
+
+#### 🛠️ Development Commands
+
+```bash
+# Start development environment
+./docker-dev.sh dev
+
+# View logs
+docker compose logs -f api
+
+# Access container shell
+docker compose exec api sh
+
+# Run database migrations
+docker compose exec api yarn prisma migrate deploy
+
+# Check service health
+docker compose ps
+./docker-dev.sh health
+```
+
+#### 📊 Image Sizes
+
+| Variant | Size | Use Case |
+|---------|------|----------|
+| Standard (Node 22 Alpine) | 483MB | Development, full features |
+| Minimal (Distroless) | 183MB | Production, size-critical |
+
+#### 🔧 Environment Configuration
+
+Critical variables to configure in `.env`:
+
+```bash
+# Security (REQUIRED)
+POSTGRES_PASSWORD=your_secure_password
+JWT_SECRET=your_256_bit_random_string
+SESSION_SECRET=your_session_secret
+
+# Email Alerts (RECOMMENDED)
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+ALERT_RECEIVER="admin@domain.com support@domain.com"
+
+# Hedera Configuration
+HEDERA_NETWORK=testnet
+HEDERA_ACCOUNT_ID=0.0.xxxxx
+HEDERA_PRIVATE_KEY=your_private_key
+
+# Social Media APIs
+TWITTER_API_KEY=your_key
+TWITTER_API_SECRET=your_secret
+TWITTER_BEARER_TOKEN=your_token
+```
+
+#### 📈 Monitoring & Health Checks
+
+Access monitoring dashboards:
+
+- **API Health**: http://localhost:4000/health
+- **Grafana Dashboards**: http://localhost:3001 (admin / configured password)
+- **Prometheus Metrics**: http://localhost:9090
+- **Prisma Studio**: http://localhost:5555 (dev profile)
+
+All services include health checks and automatic restarts.
+
+#### 💾 Automated Backups
+
+Database backups run daily at 2 AM (configurable):
+
+```bash
+# Manual backup
+docker compose exec backup /backup.sh
+
+# List backups
+docker compose exec backup ls -la /backups/
+
+# Restore backup
+docker compose exec backup /restore.sh /backups/backup-YYYYMMDD-HHMMSS.sql
+```
+
+#### 🔒 Security Features
+
+- ✅ Non-root user execution
+- ✅ Read-only containers where possible
+- ✅ Resource limits and health checks
+- ✅ Network isolation
+- ✅ Secrets management via environment variables
+- ✅ Multi-stage builds for minimal attack surface
+
+#### 🚨 Troubleshooting
+
+Common issues and solutions:
+
+```bash
+# Check service status
+docker compose ps
+
+# View service logs
+docker compose logs -f [service_name]
+
+# Restart services
+docker compose restart [service_name]
+
+# Full cleanup (DESTRUCTIVE)
+docker compose down -v --remove-orphans
+
+# Check resource usage
+docker stats
 ```
 
 ### Environment Considerations
 
-- Set `NODE_ENV=production`
-- Use secure secrets and keys
-- Configure proper database connections
-- Set up monitoring and logging
-- Configure reverse proxy (nginx)
-- Enable SSL/TLS certificates
+- **Production**: Set `NODE_ENV=production`, use strong secrets
+- **Security**: Configure firewall rules, enable SSL certificates
+- **Monitoring**: Set up alerts and log rotation
+- **Backup**: Test restore procedures regularly
+- **Performance**: Adjust resource limits based on load
+
+### Additional Docker Documentation
+
+For more detailed Docker information, see:
+
+- **[DOCKER_README.md](./DOCKER_README.md)** - Comprehensive Docker usage guide
+- **[DOCKER_QUICKSTART.md](./DOCKER_QUICKSTART.md)** - Step-by-step quick start guide
+- **[.env.example](./.env.example)** - Complete environment variable reference
 
 ## 📚 Code Standards & Rules
 
 ### TypeScript Guidelines
 
 1. **Strict Type Safety**:
+
    ```typescript
    // ✅ Good: Explicit typing
    interface UserCreateRequest {
@@ -546,10 +743,11 @@ CMD ["npm", "start"]
    }
 
    // ❌ Bad: Any type
-   function createUser(data: any) { }
+   function createUser(data: any) {}
    ```
 
 2. **Error Handling**:
+
    ```typescript
    // ✅ Good: Proper error handling
    try {
@@ -562,6 +760,7 @@ CMD ["npm", "start"]
    ```
 
 3. **Async/Await Pattern**:
+
    ```typescript
    // ✅ Good: Async/await
    async function fetchUserData(id: string): Promise<User> {
@@ -571,7 +770,7 @@ CMD ["npm", "start"]
 
    // ❌ Bad: Promise chains
    function fetchUserData(id: string) {
-     return userService.findById(id).then(user => user);
+     return userService.findById(id).then((user) => user);
    }
    ```
 
@@ -607,16 +806,18 @@ import type { User, Campaign } from '@types';
 ### Database Interaction Rules
 
 1. **Always use Prisma client**:
+
    ```typescript
    // ✅ Good
    const user = await prisma.user_user.findUnique({
-     where: { id: userId }
+     where: { id: userId },
    });
 
    // ❌ Bad: Raw SQL unless absolutely necessary
    ```
 
 2. **Proper transaction handling**:
+
    ```typescript
    // ✅ Good: Use transactions for multiple operations
    await prisma.$transaction(async (tx) => {
@@ -640,6 +841,7 @@ import type { User, Campaign } from '@types';
 ### API Design Rules
 
 1. **RESTful Design**:
+
    ```
    GET    /api/campaigns           # Get all campaigns
    GET    /api/campaigns/:id       # Get specific campaign
@@ -649,6 +851,7 @@ import type { User, Campaign } from '@types';
    ```
 
 2. **Response Format**:
+
    ```typescript
    // ✅ Good: Consistent response structure
    interface ApiResponse<T> {
@@ -674,6 +877,7 @@ import type { User, Campaign } from '@types';
 ### Security Rules
 
 1. **Input Validation**:
+
    ```typescript
    // ✅ Good: Validate all inputs
    const { error, value } = campaignSchema.validate(req.body);
@@ -683,6 +887,7 @@ import type { User, Campaign } from '@types';
    ```
 
 2. **Authentication Check**:
+
    ```typescript
    // ✅ Good: Check authentication for protected routes
    if (!req.currentUser) {
@@ -699,11 +904,12 @@ import type { User, Campaign } from '@types';
 ### Performance Rules
 
 1. **Database Queries**:
+
    ```typescript
    // ✅ Good: Limit query results
    const campaigns = await prisma.campaign_twittercard.findMany({
      take: 100,
-     select: { id: true, name: true, status: true }
+     select: { id: true, name: true, status: true },
    });
 
    // ❌ Bad: Unlimited queries
@@ -755,19 +961,24 @@ throw new ErrorWithCode('Campaign not found', 404);
 
 ```typescript
 // middleware/error.middleware.ts
-export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   logger.error('Error occurred:', err);
-  
+
   if (err instanceof ErrorWithCode) {
     return res.status(err.statusCode).json({
       error: true,
-      message: err.message
+      message: err.message,
     });
   }
-  
+
   return res.status(500).json({
     error: true,
-    message: 'Internal server error'
+    message: 'Internal server error',
   });
 };
 ```
@@ -785,6 +996,7 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
 ### Authentication Flow
 
 1. **Challenge-Response Authentication**:
+
    ```
    Client → GET /auth/challenge → Server (returns challenge)
    Client → POST /auth/generate (with signed challenge) → Server (returns JWT)
@@ -853,20 +1065,24 @@ test(campaign): add unit tests for campaign service
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] Manual testing completed
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated

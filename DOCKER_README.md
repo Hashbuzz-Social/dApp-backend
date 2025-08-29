@@ -3,23 +3,27 @@
 ## 🌟 Features
 
 ### **Multi-Stage Build**
+
 - **Dependencies Stage**: Optimized dependency installation
-- **Build Stage**: Application compilation and Prisma generation  
+- **Build Stage**: Application compilation and Prisma generation
 - **Production Stage**: Minimal runtime image with security hardening
 
 ### **Security Enhancements**
+
 - ✅ **Non-root user**: Runs as `hashbuzz` user (UID 1001)
 - ✅ **Minimal attack surface**: Alpine Linux base with only required packages
 - ✅ **Proper file permissions**: Secure ownership and access controls
 - ✅ **Signal handling**: Uses `dumb-init` for proper process management
 
 ### **Performance Optimizations**
+
 - ✅ **Layer caching**: Optimized layer order for faster rebuilds
 - ✅ **Minimal image size**: Production image ~200MB (vs ~800MB+ without optimization)
 - ✅ **Dependency pruning**: Only production dependencies in final image
 - ✅ **Build context optimization**: Enhanced `.dockerignore` excludes unnecessary files
 
 ### **Monitoring & Health**
+
 - ✅ **Health checks**: Built-in container health monitoring
 - ✅ **Structured logging**: Configurable log formats and outputs
 - ✅ **Graceful shutdown**: Proper signal handling for clean restarts
@@ -35,6 +39,7 @@ docker compose version
 ## 🚀 Quick Start
 
 ### **1. Build the Image**
+
 ```bash
 # Build with build args (optional)
 docker build \
@@ -44,6 +49,7 @@ docker build \
 ```
 
 ### **2. Run with Docker Compose (Recommended)**
+
 ```bash
 # Start the full stack
 docker compose up -d
@@ -56,6 +62,7 @@ docker compose --profile proxy up -d
 ```
 
 ### **3. Run Standalone Container**
+
 ```bash
 # Run the backend container
 docker run -d \
@@ -113,6 +120,7 @@ docker compose --profile proxy --profile backup up
 ## 📊 Monitoring
 
 ### **Health Checks**
+
 ```bash
 # Check container health
 docker compose ps
@@ -122,6 +130,7 @@ docker inspect hashbuzz-backend-api --format='{{.State.Health}}'
 ```
 
 ### **Logs**
+
 ```bash
 # View application logs
 docker compose logs -f hashbuzz-backend
@@ -134,6 +143,7 @@ docker compose logs --tail=100 -f hashbuzz-backend
 ```
 
 ### **Metrics**
+
 ```bash
 # Container stats
 docker stats hashbuzz-backend-api
@@ -145,6 +155,7 @@ docker compose top
 ## 🔧 Development
 
 ### **Development Build**
+
 ```bash
 # Build for development
 docker build --target build -t hashbuzz-backend:dev .
@@ -158,6 +169,7 @@ docker run -it \
 ```
 
 ### **Debugging**
+
 ```bash
 # Access container shell
 docker compose exec hashbuzz-backend sh
@@ -174,6 +186,7 @@ docker run -p 4000:4000 -p 9229:9229 \
 ## 🛠️ Maintenance
 
 ### **Database Operations**
+
 ```bash
 # Run Prisma migrations
 docker compose exec hashbuzz-backend npx prisma migrate deploy
@@ -186,6 +199,7 @@ docker compose exec postgres psql -U hashbuzz -d hashbuzz
 ```
 
 ### **Backup & Restore**
+
 ```bash
 # Create manual backup
 docker compose exec postgres pg_dump -U hashbuzz hashbuzz > backup.sql
@@ -198,6 +212,7 @@ docker compose --profile backup up -d
 ```
 
 ### **Updates**
+
 ```bash
 # Rebuild and restart
 docker compose build --no-cache
@@ -214,6 +229,7 @@ docker compose up -d --scale hashbuzz-backend=1
 ### **Common Issues**
 
 #### **Container won't start**
+
 ```bash
 # Check logs
 docker compose logs hashbuzz-backend
@@ -226,6 +242,7 @@ docker compose config
 ```
 
 #### **Database connection issues**
+
 ```bash
 # Test database connectivity
 docker compose exec hashbuzz-backend node -e "
@@ -236,6 +253,7 @@ prisma.\$connect().then(() => console.log('Connected')).catch(console.error);
 ```
 
 #### **Performance issues**
+
 ```bash
 # Check resource usage
 docker stats
@@ -245,6 +263,7 @@ docker compose up --memory=1g hashbuzz-backend
 ```
 
 ### **Debug Mode**
+
 ```bash
 # Enable debug logging
 docker compose up -e DEBUG=* hashbuzz-backend
@@ -256,6 +275,7 @@ docker compose up -e LOG_LEVEL=debug hashbuzz-backend
 ## 📈 Production Deployment
 
 ### **Production Checklist**
+
 - [ ] Set strong passwords in `.env`
 - [ ] Configure proper SSL certificates
 - [ ] Set up log rotation
@@ -265,6 +285,7 @@ docker compose up -e LOG_LEVEL=debug hashbuzz-backend
 - [ ] Set up health check endpoints
 
 ### **Security Hardening**
+
 ```bash
 # Scan for vulnerabilities
 docker scout cves hashbuzz-backend:latest
@@ -275,6 +296,7 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
 ```
 
 ### **Scaling**
+
 ```bash
 # Horizontal scaling
 docker compose up --scale hashbuzz-backend=3
@@ -285,11 +307,11 @@ docker compose --profile proxy up -d
 
 ## 📝 Image Information
 
-| Stage | Size | Purpose |
-|-------|------|---------|
+| Stage        | Size   | Purpose                 |
+| ------------ | ------ | ----------------------- |
 | Dependencies | ~400MB | Dependency installation |
-| Build | ~600MB | Application compilation |
-| Production | ~200MB | Runtime execution |
+| Build        | ~600MB | Application compilation |
+| Production   | ~200MB | Runtime execution       |
 
 ## 🤝 Contributing
 
