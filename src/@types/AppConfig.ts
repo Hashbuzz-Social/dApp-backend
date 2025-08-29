@@ -91,7 +91,7 @@ export interface AppConfig {
         emailUser: string,
         /** Email password for sending alerts */
         emailPass: string,
-        /** Email address to receive alerts */
+        /** Space-separated email addresses to receive alerts (e.g., "admin@example.com support@example.com") */
         alertReceiver: string
     }
 }
