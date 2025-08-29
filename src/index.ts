@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import RedisClient from "@services/redis-servie";
+import RedisClient from "@services/redis-service";
 import { logError, logInfo } from "@shared/helper";
 import createPrismaClient from "@shared/prisma";
 import afterStartJobs from "./after-start";

@@ -2,7 +2,7 @@
 import { generateKeyPairSync } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import cron from "node-cron";
-import RedisClient from "@services/redis-servie";
+import RedisClient from "@services/redis-service";
 import { getConfig } from "@appConfig";
 
 // Interface for Key Pair

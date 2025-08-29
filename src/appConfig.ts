@@ -1,7 +1,7 @@
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import logger from 'jet-logger';
 import { AppConfig } from './@types/AppConfig';
-import { ConfigurationFactory } from './server/provideres';
+import { ConfigurationFactory } from './server/providers';
 
 const secretsManager = new SecretsManager({ region: 'us-east-1' });
 

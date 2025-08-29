@@ -7,7 +7,7 @@ import JSONBigInt from "json-bigint";
 import { isEmpty, isNil } from "lodash";
 import moment from "moment";
 import { getConfig } from "@appConfig";
-import RedisClient, { CampaignCardData } from "./redis-servie";
+import RedisClient, { CampaignCardData } from "./redis-service";
 import { MediaService } from "./media-service";
 import JSONBigint from "json-bigint"
 

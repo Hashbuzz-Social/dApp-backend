@@ -7,6 +7,7 @@ Thank you for your interest in contributing to HashBuzz dApp Backend! This docum
 ### 1. Prerequisites Setup
 
 Ensure you have the following installed:
+
 - **Node.js**: 18.0.0 or higher ([Download](https://nodejs.org/))
 - **npm**: 8.0.0 or higher (comes with Node.js)
 - **PostgreSQL**: 13.0 or higher ([Download](https://www.postgresql.org/download/))
@@ -52,6 +53,7 @@ We follow **Git Flow** with these branch types:
 ### Feature Development Process
 
 1. **Create Feature Branch**:
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -59,6 +61,7 @@ We follow **Git Flow** with these branch types:
    ```
 
 2. **Development Cycle**:
+
    ```bash
    # Make your changes
    npm run lint          # Check code style
@@ -67,6 +70,7 @@ We follow **Git Flow** with these branch types:
    ```
 
 3. **Commit Changes**:
+
    ```bash
    git add .
    git commit -m "feat(scope): description"
@@ -84,6 +88,7 @@ We follow **Git Flow** with these branch types:
 ### TypeScript Guidelines
 
 #### 1. Type Safety
+
 ```typescript
 // ✅ GOOD: Explicit interfaces
 interface CampaignRequest {
@@ -108,15 +113,16 @@ async function createCampaign(data: CampaignRequest): Promise<Campaign> {
 ```
 
 #### 2. Naming Conventions
+
 ```typescript
 // Interfaces: PascalCase
-interface UserProfile { }
+interface UserProfile {}
 
-// Classes: PascalCase  
-class CampaignService { }
+// Classes: PascalCase
+class CampaignService {}
 
 // Functions/Variables: camelCase
-const getUserById = async (id: string) => { }
+const getUserById = async (id: string) => {};
 
 // Constants: UPPER_SNAKE_CASE
 const MAX_CAMPAIGN_DURATION = 86400;
@@ -127,6 +133,7 @@ const MAX_CAMPAIGN_DURATION = 86400;
 ```
 
 #### 3. Import Organization
+
 ```typescript
 // 1. Node.js built-in modules
 import fs from 'fs';
@@ -148,24 +155,25 @@ import type { Campaign, User } from '@types';
 ### Database Best Practices
 
 #### 1. Prisma Client Usage
+
 ```typescript
 // ✅ GOOD: Proper connection management
 export const getUserCampaigns = async (userId: string) => {
   let prisma;
   try {
     prisma = await createPrismaClient();
-    
+
     const campaigns = await prisma.campaign_twittercard.findMany({
       where: { user_id: userId },
       select: {
         id: true,
         name: true,
         status: true,
-        created_at: true
+        created_at: true,
       },
-      take: 100 // Limit results
+      take: 100, // Limit results
     });
-    
+
     return campaigns;
   } catch (error) {
     logger.error('Failed to fetch user campaigns:', error);
@@ -180,23 +188,23 @@ export const getUserCampaigns = async (userId: string) => {
 // ✅ GOOD: Transaction usage
 export const createCampaignWithRewards = async (data: CampaignData) => {
   const prisma = await createPrismaClient();
-  
+
   try {
     return await prisma.$transaction(async (tx) => {
       const campaign = await tx.campaign_twittercard.create({
         data: {
           name: data.name,
-          budget: data.budget
-        }
+          budget: data.budget,
+        },
       });
-      
+
       await tx.campaign_rewards.createMany({
-        data: data.rewards.map(reward => ({
+        data: data.rewards.map((reward) => ({
           campaign_id: campaign.id,
-          ...reward
-        }))
+          ...reward,
+        })),
       });
-      
+
       return campaign;
     });
   } finally {
@@ -206,21 +214,22 @@ export const createCampaignWithRewards = async (data: CampaignData) => {
 ```
 
 #### 2. Query Optimization
+
 ```typescript
 // ✅ GOOD: Efficient queries
 const getActiveCampaigns = async () => {
   return await prisma.campaign_twittercard.findMany({
-    where: { 
+    where: {
       status: 'ACTIVE',
-      end_date: { gte: new Date() }
+      end_date: { gte: new Date() },
     },
     select: {
       id: true,
       name: true,
-      budget: true
+      budget: true,
     },
     take: 50,
-    orderBy: { created_at: 'desc' }
+    orderBy: { created_at: 'desc' },
   });
 };
 
@@ -233,6 +242,7 @@ const getAllCampaigns = async () => {
 ### API Design Standards
 
 #### 1. Controller Structure
+
 ```typescript
 // controllers/Campaign.ts
 export const createCampaign = async (req: Request, res: Response) => {
@@ -241,7 +251,7 @@ export const createCampaign = async (req: Request, res: Response) => {
     if (!req.currentUser) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Authentication required',
       });
     }
 
@@ -251,61 +261,61 @@ export const createCampaign = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        details: error.details
+        details: error.details,
       });
     }
 
     // 3. Business logic
     const campaign = await campaignService.create({
       ...value,
-      userId: req.currentUser.id
+      userId: req.currentUser.id,
     });
 
     // 4. Success response
     return res.status(201).json({
       success: true,
       data: campaign,
-      message: 'Campaign created successfully'
+      message: 'Campaign created successfully',
     });
-
   } catch (error) {
     logger.error('Campaign creation error:', error);
-    
+
     if (error instanceof ErrorWithCode) {
       return res.status(error.statusCode).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
     });
   }
 };
 ```
 
 #### 2. Service Layer Pattern
+
 ```typescript
 // services/campaign-service/index.ts
 class CampaignService {
   async create(data: CreateCampaignRequest): Promise<Campaign> {
     // 1. Validate business rules
     await this.validateCampaignRules(data);
-    
+
     // 2. Process data
     const processedData = this.processCampaignData(data);
-    
+
     // 3. Create in database
     const campaign = await this.createInDatabase(processedData);
-    
+
     // 4. Post-creation tasks
     await this.handlePostCreation(campaign);
-    
+
     return campaign;
   }
-  
+
   private async validateCampaignRules(data: CreateCampaignRequest) {
     // Business validation logic
     if (data.budget < MIN_CAMPAIGN_BUDGET) {
@@ -320,6 +330,7 @@ export default new CampaignService();
 ### Error Handling Standards
 
 #### 1. Custom Error Classes
+
 ```typescript
 // shared/errors.ts
 export class ErrorWithCode extends Error {
@@ -347,6 +358,7 @@ export class NotFoundError extends ErrorWithCode {
 ```
 
 #### 2. Global Error Handler
+
 ```typescript
 // middleware/error.middleware.ts
 export const errorHandler = (
@@ -360,20 +372,20 @@ export const errorHandler = (
     stack: err.stack,
     url: req.url,
     method: req.method,
-    user: req.currentUser?.id
+    user: req.currentUser?.id,
   });
 
   if (err instanceof ErrorWithCode) {
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
-      code: err.code
+      code: err.code,
     });
   }
 
   return res.status(500).json({
     success: false,
-    message: 'Internal server error'
+    message: 'Internal server error',
   });
 };
 ```
@@ -381,6 +393,7 @@ export const errorHandler = (
 ## 🧪 Testing Guidelines
 
 ### Test Structure
+
 ```
 spec/
 ├── unit/                    # Unit tests for individual functions
@@ -398,6 +411,7 @@ spec/
 ### Writing Tests
 
 #### 1. Unit Tests
+
 ```typescript
 // spec/unit/services/campaign-service.spec.ts
 import { CampaignService } from '@services/campaign-service';
@@ -417,12 +431,12 @@ describe('CampaignService', () => {
       // Arrange
       const campaignData = {
         name: 'Test Campaign',
-        budget: 1000
+        budget: 1000,
       };
-      
+
       mockPrisma.campaign_twittercard.create.mockResolvedValue({
         id: 1,
-        ...campaignData
+        ...campaignData,
       });
 
       // Act
@@ -432,7 +446,7 @@ describe('CampaignService', () => {
       expect(result.id).toBe(1);
       expect(result.name).toBe('Test Campaign');
       expect(mockPrisma.campaign_twittercard.create).toHaveBeenCalledWith({
-        data: campaignData
+        data: campaignData,
       });
     });
 
@@ -440,19 +454,20 @@ describe('CampaignService', () => {
       // Arrange
       const campaignData = {
         name: 'Test Campaign',
-        budget: 0 // Invalid budget
+        budget: 0, // Invalid budget
       };
 
       // Act & Assert
-      await expect(campaignService.create(campaignData))
-        .rejects
-        .toThrow('Budget too low');
+      await expect(campaignService.create(campaignData)).rejects.toThrow(
+        'Budget too low'
+      );
     });
   });
 });
 ```
 
 #### 2. Integration Tests
+
 ```typescript
 // spec/integration/api/campaign.spec.ts
 import request from 'supertest';
@@ -473,7 +488,7 @@ describe('Campaign API', () => {
       const campaignData = {
         name: 'Integration Test Campaign',
         budget: 1000,
-        type: 'HBAR'
+        type: 'HBAR',
       };
 
       const response = await request(app)
@@ -499,6 +514,7 @@ describe('Campaign API', () => {
 ```
 
 ### Test Commands
+
 ```bash
 # Run all tests
 npm run test
@@ -522,13 +538,16 @@ npm run test -- spec/unit/services/campaign*
 ## 📋 Pull Request Guidelines
 
 ### PR Template
+
 Use this template for all pull requests:
 
 ```markdown
 ## 📝 Description
+
 Brief description of the changes made.
 
 ## 🎯 Type of Change
+
 - [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
 - [ ] ✨ New feature (non-breaking change which adds functionality)
 - [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
@@ -537,12 +556,14 @@ Brief description of the changes made.
 - [ ] 🧪 Test improvements
 
 ## 🧪 Testing
+
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] Manual testing completed
 - [ ] New tests added for new functionality
 
 ## 📝 Checklist
+
 - [ ] My code follows the style guidelines of this project
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas
@@ -552,24 +573,29 @@ Brief description of the changes made.
 - [ ] New and existing unit tests pass locally with my changes
 
 ## 🔗 Related Issues
+
 Closes #(issue_number)
 
 ## 📸 Screenshots (if applicable)
+
 <!-- Add screenshots for UI changes -->
 
 ## 📋 Additional Notes
+
 <!-- Any additional information about the PR -->
 ```
 
 ### PR Review Process
 
 1. **Automated Checks**: All PRs must pass:
+
    - ESLint checks
    - TypeScript compilation
    - Unit tests
    - Build process
 
 2. **Code Review**: At least one team member must review:
+
    - Code quality and standards
    - Security considerations
    - Performance implications
@@ -585,6 +611,7 @@ Closes #(issue_number)
 We use [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 ### Format
+
 ```
 <type>(<scope>): <description>
 
@@ -594,6 +621,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) specificatio
 ```
 
 ### Types
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -605,6 +633,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) specificatio
 - `ci`: CI/CD changes
 
 ### Examples
+
 ```bash
 feat(campaign): add reward distribution logic
 fix(auth): resolve JWT token validation issue
@@ -615,6 +644,7 @@ chore(deps): update dependencies to latest versions
 ```
 
 ### Scope Guidelines
+
 - `auth`: Authentication related
 - `campaign`: Campaign management
 - `user`: User management
@@ -629,6 +659,7 @@ chore(deps): update dependencies to latest versions
 ## 🔧 Development Tools
 
 ### Required IDE Extensions (VS Code)
+
 ```json
 {
   "recommendations": [
@@ -642,6 +673,7 @@ chore(deps): update dependencies to latest versions
 ```
 
 ### IDE Configuration
+
 ```json
 // .vscode/settings.json
 {
@@ -657,20 +689,25 @@ chore(deps): update dependencies to latest versions
 ## 🚀 Release Process
 
 ### Version Numbering
+
 We follow [Semantic Versioning](https://semver.org/):
+
 - `MAJOR.MINOR.PATCH` (e.g., 1.2.3)
 - `MAJOR`: Breaking changes
 - `MINOR`: New features (backward compatible)
 - `PATCH`: Bug fixes (backward compatible)
 
 ### Release Checklist
+
 1. **Pre-release**:
+
    - [ ] All tests pass
    - [ ] Documentation updated
    - [ ] CHANGELOG.md updated
    - [ ] Version bumped in package.json
 
 2. **Release**:
+
    - [ ] Create release branch
    - [ ] Tag release
    - [ ] Deploy to staging
@@ -685,6 +722,7 @@ We follow [Semantic Versioning](https://semver.org/):
 ## 🆘 Getting Help
 
 ### Resources
+
 1. **Documentation**: Start with this README
 2. **Code Examples**: Check existing controllers and services
 3. **API Documentation**: Use Postman collection or inline docs
@@ -693,6 +731,7 @@ We follow [Semantic Versioning](https://semver.org/):
 ### Common Issues & Solutions
 
 #### Database Connection Issues
+
 ```bash
 # Reset database connection
 npm run db:pull
@@ -703,6 +742,7 @@ pg_ctl status
 ```
 
 #### TypeScript Errors
+
 ```bash
 # Clear TypeScript cache
 npx tsc --build --clean
@@ -712,6 +752,7 @@ npm run readyPrisma
 ```
 
 #### Development Server Issues
+
 ```bash
 # Clear node_modules and reinstall
 rm -rf node_modules package-lock.json
@@ -723,6 +764,7 @@ npm run dev
 ```
 
 ### Contact
+
 - **Issues**: Create GitHub issue with detailed description
 - **Questions**: Tag team members in comments
 - **Urgent**: Contact team lead directly
@@ -734,6 +776,7 @@ npm run dev
 Thank you for contributing to HashBuzz dApp Backend. Your work helps build the future of decentralized social media campaigns!
 
 Remember:
+
 - 🧹 **Clean code** is better than clever code
 - 🧪 **Test everything** you write
 - 📝 **Document your changes**
