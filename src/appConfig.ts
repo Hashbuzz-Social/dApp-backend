@@ -15,8 +15,8 @@ const configFactory = new ConfigurationFactory<AppConfig>({
   builder: (provider) => ({
     app: {
       port: provider.envAsNumber('PORT', 4000),
-      adminAddresses: provider.env('ADMIN_ADDRESS'),
-      openAIKey: provider.env('OPEN_AI_KEY'),
+      adminAddresses: provider.secret('ADMIN_ADDRESS'),
+      openAIKey: provider.secret('OPEN_AI_KEY'),
       defaultRewardClaimDuration: provider.envAsNumber(
         'REWARD_CALIM_DURATION',
         7
@@ -28,44 +28,44 @@ const configFactory = new ConfigurationFactory<AppConfig>({
       mirrorNodeURL: provider.env('MIRROR_NODE'),
     },
     encryptions: {
-      jwtSecreatForAccessToken: provider.env('J_ACCESS_TOKEN_SECRET'),
-      jwtSecreateForRefreshToken: provider.env('J_REFRESH_TOKEN_SECRET'),
-      encryptionKey: provider.env('ENCRYPTION_KEY'),
-      sessionSecreat: provider.env('SESSION_SECRET'),
+      jwtSecreatForAccessToken: provider.secret('J_ACCESS_TOKEN_SECRET'),
+      jwtSecreateForRefreshToken: provider.secret('J_REFRESH_TOKEN_SECRET'),
+      encryptionKey: provider.secret('ENCRYPTION_KEY'),
+      sessionSecreat: provider.secret('SESSION_SECRET'),
     },
     repo: {
       repo: provider.env('REPO'),
-      repoClientID: provider.env('REPO_CLIENT_ID'),
-      repoClientSecret: provider.env('REPO_CLIENT_SECRET'),
+      repoClientID: provider.secret('REPO_CLIENT_ID'),
+      repoClientSecret: provider.secret('REPO_CLIENT_SECRET'),
     },
     db: {
-      dbServerURI: provider.env('DATABASE_URL'),
-      redisServerURI: provider.env('REDIS_URL'),
+      dbServerURI: provider.secret('DATABASE_URL'),
+      redisServerURI: provider.secret('REDIS_URL'),
     },
     xApp: {
-      xAPIKey: provider.env('TWITTER_API_KEY'),
-      xAPISecreate: provider.env('TWITTER_API_SECRET'),
-      xUserToken: provider.env('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
-      xHashbuzzAccAccessToken: provider.env('HASHBUZZ_ACCESS_TOKEN'),
-      xHashbuzzAccSecreateToken: provider.env('HASHBUZZ_ACCESS_SECRET'),
+      xAPIKey: provider.secret('TWITTER_API_KEY'),
+      xAPISecreate: provider.secret('TWITTER_API_SECRET'),
+      xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
+      xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
+      xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
     },
     network: {
       network: provider.env('HEDERA_NETWORK'),
-      privateKey: provider.env('HEDERA_PRIVATE_KEY'),
-      publicKey: provider.env('HEDERA_PUBLIC_KEY'),
-      contractAddress: provider.env('HASHBUZZ_CONTRACT_ADDRESS'),
-      accountID: provider.env('HEDERA_ACCOUNT_ID'),
+      privateKey: provider.secret('HEDERA_PRIVATE_KEY'),
+      publicKey: provider.secret('HEDERA_PUBLIC_KEY'),
+      contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
+      accountID: provider.secret('HEDERA_ACCOUNT_ID'),
     },
     bucket: {
-      accessKeyId: provider.env('BUCKET_ACCESS_KEY_ID'),
-      secretAccessKey: provider.env('BUCKET_SECRET_ACCESS_KEY'),
+      accessKeyId: provider.secret('BUCKET_ACCESS_KEY_ID'),
+      secretAccessKey: provider.secret('BUCKET_SECRET_ACCESS_KEY'),
       region: provider.env('BUCKET_REGION'),
       bucketName: provider.env('BUCKET_NAME'),
       endpoint: provider.env('BUCKET_ENDPOINT'),
     },
     mailer: {
       emailUser: provider.env('EMAIL_USER'),
-      emailPass: provider.env('EMAIL_PASS'),
+      emailPass: provider.secret('EMAIL_PASS'),
       alertReceiver: provider.env('ALERT_RECEIVER'),
     },
   }),
