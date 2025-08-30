@@ -24,7 +24,7 @@ const configFactory = new ConfigurationFactory<AppConfig>({
       defaultCampaignDuratuon: provider.envAsNumber('CAMPAIGN_DURATION', 7),
       appURL: provider.env('FRONTEND_URL'),
       xCallBackHost: provider.env('TWITTER_CALLBACK_HOST'),
-      whitelistedDomains: provider.env('FRONTEND_URL'),
+      whitelistedDomains: provider.env('FRONTEND_URL', 'https://www.hashbuzz.social,https://hashbuzz.social,http://localhost:3000'),
       mirrorNodeURL: provider.env('MIRROR_NODE'),
     },
     encryptions: {
@@ -85,7 +85,7 @@ export const getConfig = async (): Promise<AppConfig> => {
   if (!cachedConfig || !isCacheValid()) {
     await loadConfig();
   }
-  return cachedConfig!;
+  return cachedConfig as AppConfig;
 };
 
 loadConfig(); // Load configuration at startup

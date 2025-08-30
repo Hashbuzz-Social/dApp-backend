@@ -1,76 +1,49 @@
 # =============================================================================
-# HASHBUZZ DAPP BACKEND - SIZE-OPTIMIZED DOCKERFILE
+# HASHBUZZ DAPP BACKEND - OPTIMIZED DOCKERFILE (Fixed)
 # =============================================================================
-# Ultra-lightweight multi-stage build for production deployment
-# Target: <200MB final image size
+# Multi-stage build for production deployment - Based on working version
 
 # =============================================================================
-# Stage 1: Base Dependencies
+# Build Stage 
 # =============================================================================
-FROM node:22-alpine AS base
+FROM node:20-alpine AS build
 
-# Install only essential system dependencies
-RUN apk add --no-cache \
-    dumb-init \
-    && rm -rf /var/cache/apk/* /tmp/*
+# Install required system dependencies for native builds
+RUN apk add --no-cache python3 make g++ openssl && \
+    rm -rf /var/cache/apk/* /tmp/*
 
+# Set working directory
 WORKDIR /app
 
-# =============================================================================
-# Stage 2: Build Dependencies and Application
-# =============================================================================
-FROM node:22-alpine AS build
-
-# Install build dependencies in a single layer
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    openssl \
-    && rm -rf /var/cache/apk/* /tmp/*
-
-WORKDIR /app
-
-# Copy package files for dependency installation
+# Copy package.json and package-lock.json to install dependencies first
 COPY package*.json ./
 COPY prisma/ ./prisma/
 
-# Install ALL dependencies (including dev) for building
-RUN npm ci --no-audit --no-fund \
-    && npm cache clean --force
+# Install dependencies
+RUN npm install
 
-# Copy source code
+# Ensure jsonwebtoken is available in production (it's in devDependencies)
+RUN npm install --save jsonwebtoken
+
+# Copy the rest of the application code
 COPY . .
 
-# Generate Prisma client and build application
-RUN npx prisma generate \
-    && npm run build \
-    && npm prune --omit=dev --omit=optional \
-    && npm cache clean --force \
-    && rm -rf /root/.npm
+# Generate Prisma client
+RUN npx prisma generate
 
-# Remove unnecessary files after build
-RUN rm -rf \
-    src/ \
-    scripts/ \
-    docs/ \
-    *.md \
-    .git* \
-    .env.example \
-    .prettierrc \
-    .editorconfig \
-    tsconfig*.json \
-    build.ts
+# Build the application
+RUN npm run build
+
+# Ensure jsonwebtoken is available for production
+RUN npm install --save jsonwebtoken
+
+# Clean cache but keep node_modules
+RUN npm cache clean --force
 
 # =============================================================================
-# Stage 3: Production Runtime (Ultra-minimal)
+# Production Stage - Use the build stage directly
 # =============================================================================
-FROM node:22-alpine AS production
-
-# Add metadata
-LABEL maintainer="Hashbuzz Team" \
-      version="2.0" \
-      description="Hashbuzz dApp Backend API Server - Optimized"
+FROM build AS production
 
 # Install only runtime essentials
 RUN apk add --no-cache \
@@ -82,23 +55,11 @@ RUN apk add --no-cache \
 RUN addgroup -g 1001 -S nodejs \
     && adduser -S hashbuzz -u 1001 -G nodejs
 
-# Set working directory
-WORKDIR /app
-
-# Create necessary directories
+# Create necessary directories and set permissions
 RUN mkdir -p logs uploads \
     && chown -R hashbuzz:nodejs /app
 
-# Copy only production files from build stage
-COPY --from=build --chown=hashbuzz:nodejs /app/dist ./dist
-COPY --from=build --chown=hashbuzz:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=hashbuzz:nodejs /app/package.json ./package.json
-COPY --from=build --chown=hashbuzz:nodejs /app/prisma/schema.prisma ./prisma/schema.prisma
-
-# Copy minimal runtime assets
-COPY --from=build --chown=hashbuzz:nodejs /app/public ./public
-
-# Set production environment variables
+# Set production environment variables (matching your working version)
 ENV NODE_ENV=production \
     JET_LOGGER_MODE=FILE \
     JET_LOGGER_FILEPATH=logs/jet-logger.log \
@@ -129,8 +90,6 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:4000/health || exit 1
 
-# Use dumb-init for proper signal handling
+# Use dumb-init for proper signal handling and start with npm start (like your working version)
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
