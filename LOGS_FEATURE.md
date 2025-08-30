@@ -9,12 +9,15 @@ The logs feature provides a web-based interface for viewing application logs wit
 ## Features
 
 ### Authentication & Authorization
+
 - **GitHub OAuth Integration**: Uses existing GitHub OAuth strategy
 - **Write Permission Check**: Verifies that authenticated users have write permissions to the repository
 - **Session Management**: Maintains GitHub access tokens in session for permission verification
 
 ### Log Filtering Options
+
 - **Time Ranges**:
+
   - Last 30 minutes
   - Last hour
   - Today
@@ -26,6 +29,7 @@ The logs feature provides a web-based interface for viewing application logs wit
 - **Pagination**: Support for large log files with configurable page sizes
 
 ### User Interface
+
 - **Modern Web UI**: Clean, responsive design with dark theme for log display
 - **Real-time Updates**: Auto-refresh every 30 seconds
 - **Statistics**: Shows log count by level (errors, warnings, info)
@@ -36,29 +40,36 @@ The logs feature provides a web-based interface for viewing application logs wit
 ### Files Created/Modified
 
 #### Controllers
+
 - `src/controller/Logs.ts` - Handles log retrieval and UI rendering
 
 #### Middleware
+
 - `src/middleware/checkWritePermission.ts` - Verifies GitHub write permissions
 
 #### Routes
+
 - `src/routes/logs-router.ts` - Express router for log endpoints
 
 #### Views
+
 - `src/views/logs.ejs` - Complete web interface for log viewing
 
 #### Server Integration
+
 - Modified `src/server/index.ts` to include logs routes and store GitHub access tokens
 
 ### API Endpoints
 
 #### GET /logs
+
 - **Description**: Renders the logs viewing web interface
 - **Authentication**: GitHub OAuth required
 - **Authorization**: Write permissions required
 - **Response**: HTML page with logs viewer
 
 #### GET /logs/api
+
 - **Description**: REST API for retrieving log data
 - **Authentication**: GitHub OAuth required
 - **Authorization**: Write permissions required
@@ -104,28 +115,34 @@ The logs feature provides a web-based interface for viewing application logs wit
 ## Configuration
 
 ### Environment Variables
+
 No additional environment variables required. Uses existing GitHub OAuth configuration:
+
 - `GITHUB_CLIENT_ID`
 - `GITHUB_CLIENT_SECRET`
 - `GITHUB_REPO` - Repository name for permission checks
 
 ### Log File Location
+
 - Default: `logs/jet-logger.log`
 - Configurable in the controller if needed
 
 ## Technical Details
 
 ### Log Parsing
+
 - Parses jet-logger format: `[timestamp] LEVEL: message`
 - Extracts timestamp, level, and message
 - Handles malformed log entries gracefully
 
 ### Performance
+
 - File reading is done asynchronously
 - Pagination prevents memory issues with large log files
 - Client-side filtering reduces server load
 
 ### Error Handling
+
 - Graceful handling of missing log files
 - Network error recovery
 - Invalid date range handling
@@ -133,11 +150,13 @@ No additional environment variables required. Uses existing GitHub OAuth configu
 ## Development Notes
 
 ### TypeScript Considerations
+
 - Some async middleware warnings exist but don't affect functionality
 - Uses express-async-errors for proper error handling
 - Type-safe implementations throughout
 
 ### Future Enhancements
+
 - Log rotation management
 - Export functionality (CSV, JSON)
 - Real-time streaming with WebSockets
@@ -147,12 +166,14 @@ No additional environment variables required. Uses existing GitHub OAuth configu
 ## Troubleshooting
 
 ### Common Issues
+
 1. **Authentication Failed**: Ensure GitHub OAuth is configured correctly
 2. **Permission Denied**: User needs write access to the repository
 3. **No Logs Found**: Check log file exists at `logs/jet-logger.log`
 4. **Server Errors**: Check application logs for specific error details
 
 ### Debug Mode
+
 - Development mode shows additional console logs
 - Error details are logged via jet-logger
 - Network requests can be monitored in browser dev tools
@@ -167,4 +188,4 @@ No additional environment variables required. Uses existing GitHub OAuth configu
 
 ---
 
-*This feature integrates seamlessly with the existing Hashbuzz dApp backend infrastructure and maintains the same security standards as other admin features.*
+_This feature integrates seamlessly with the existing Hashbuzz dApp backend infrastructure and maintains the same security standards as other admin features._

@@ -21,6 +21,8 @@ pnpm-lock.yaml
 .env.test
 .env.production
 .env.staging
+.env.localdev
+.env.remotedev
 
 # Local configuration overrides
 /src/appConfig-local.ts

@@ -1,12 +1,77 @@
-logs
-# Keep environment variables out of version control
+# =============================================================================
+# HASHBUZZ DAPP BACKEND - ENHANCED DOCKERIGNORE
+# =============================================================================
+# Optimize Docker build context by excluding unnecessary files
+
+# Logs and runtime data
+logs/
+*.log
+*.log.*
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Environment and configuration files
 .env
-node_modules
-dist
-apidocs
-.vscode
-SmartContract-v1
-/src/appConfig-local.ts
-/scripts
+.env.*
 session-sec.js
 keys.json
+/src/appConfig-local.ts
+
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+apidocs/
+*.tgz
+
+# Development tools
+.vscode/
+.idea/
+SmartContract-v1/
+/scripts/
+
+# Version control
+.git/
+.gitignore
+
+# Node.js specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.node_repl_history
+coverage/
+.nyc_output
+
+# TypeScript
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+
+# Temporary files
+temp/
+tmp/
+uploads/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
