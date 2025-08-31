@@ -36,20 +36,25 @@ const initializeApp = async () => {
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
-      // In production, get domains from environment variable
       const envDomains = config.app.whitelistedDomains || [];
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const whitelist = [
         ...envDomains,
         'http://localhost:3000',
-        'http://localhost:3001', // Add additional localhost ports
+        'http://localhost:3001',
         'https://www.hashbuzz.social',
         'https://hashbuzz.social',
         'www.hashbuzz.social'
       ].map(domain => domain.trim());
 
-      // Log the origin for debugging
       logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
       logger.info(`Whitelisted domains: ${whitelist.join(', ')}`);
+
+      // Allow all origins in development
+      if (isDevelopment) {
+        logger.info('Development mode - allowing all origins');
+        return callback(null, true);
+      }
 
       // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) {
@@ -66,7 +71,7 @@ const initializeApp = async () => {
       }
     },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    credentials: true, // Allow credentials (cookies) to be sent
+    credentials: true,
   };
 
   // Middleware setup

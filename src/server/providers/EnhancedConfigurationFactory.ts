@@ -24,7 +24,7 @@ export class EnhancedConfigurationFactory {
         };
     }
 
-    async getConfiguration(): Promise<AppConfig> {
+    async getConfiguration(): Promise<AppConfig | undefined> {
         try {
             const rawConfig = await this.buildConfiguration();
             
@@ -32,7 +32,8 @@ export class EnhancedConfigurationFactory {
             const validationResult = ConfigurationValidator.validateConfig(rawConfig);
             if (!validationResult.isValid) {
                 this.logger.err(`Configuration validation failed: ${validationResult.errors.join(', ')}`);
-                throw new Error(`Configuration validation failed: ${validationResult.errors.join(', ')}`);
+                console.error(`Configuration validation failed: ${validationResult.errors.join(', ')}`);
+                return undefined;
             }
             
             this.logger.info('Configuration loaded and validated successfully');
@@ -40,7 +41,8 @@ export class EnhancedConfigurationFactory {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             this.logger.err(`Failed to load configuration: ${errorMessage}`);
-            throw new Error(`Configuration loading failed: ${(error as Error).message}`);
+            console.error(`Configuration loading failed: ${(error as Error).message}`);
+            return undefined;
         }
     }
 
@@ -144,8 +146,13 @@ export class EnhancedConfigurationFactory {
             const value = await this.retryOperation(async () => {
                 // Dynamically determine secret ID based on environment
                 const environment = this.getEnv('NODE_ENV', 'development');
+                const isOnlyLocalEnv = environment === 'development' && this.getEnv('HEDERA_NETWORK') ===  HederaNetwork.TESTNET;
                 const secretId = environment === 'production' ? 'Prod_Variables_V2' : 'Dev_Variables_V2';
-                
+
+                if (isOnlyLocalEnv) {
+                   return this.getEnv(secretName, defaultValue);
+                }
+
                 // Fetch the main secrets object
                 const result = await this.secretsManager.getSecretValue({ SecretId: secretId });
                 
@@ -159,7 +166,7 @@ export class EnhancedConfigurationFactory {
                     this.logger.warn(`Secret ${secretName} not found, using default value`);
                     return defaultValue;
                 }
-                throw new Error(`Secret ${secretName} not found and no default provided`);
+                console.error(`Secret ${secretName} not found and no default provided`);
             }
 
             // Cache the value
@@ -184,14 +191,15 @@ export class EnhancedConfigurationFactory {
             this.logger.info(`Using default value for ${varName}`);
             return defaultValue;
         }
-        throw new Error(`Environment variable ${varName} is required but not set`);
+        console.error(`Environment variable ${varName} is required but not set`);
+        return '';
     }
 
     private getEnvAsNumber(varName: string, defaultValue?: number): number {
         const strValue = this.getEnv(varName, defaultValue?.toString());
         const numValue = Number(strValue);
         if (isNaN(numValue)) {
-            throw new Error(`Environment variable ${varName} must be a valid number, got: ${strValue}`);
+            console.error(`Environment variable ${varName} must be a valid number, got: ${strValue}`);
         }
         return numValue;
     }
@@ -205,7 +213,9 @@ export class EnhancedConfigurationFactory {
         if (['false', '0', 'no', 'off'].includes(lowerValue)) {
             return false;
         }
-        throw new Error(`Environment variable ${varName} must be a valid boolean, got: ${strValue}`);
+        console.error(`Environment variable ${varName} must be a valid boolean, got: ${strValue}`);
+        // Fallback: return false if invalid value
+        return false;
     }
 
     private getEnvAsArray(varName: string, defaultValue?: string): string[] {
@@ -240,6 +250,7 @@ export class EnhancedConfigurationFactory {
         if (lastError) {
             throw lastError;
         }
+        console.error('Unknown error occurred during retry operation');
         throw new Error('Unknown error occurred during retry operation');
     }
 
