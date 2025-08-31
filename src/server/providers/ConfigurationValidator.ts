@@ -1,8 +1,45 @@
 import Joi from 'joi';
+import { PrivateKey } from '@hashgraph/sdk';
 import { AppConfig, Environment, AwsRegion, HederaNetwork, LogLevel } from '../../@types/AppConfig';
 
 export class ConfigurationValidator {
     
+    /**
+     * Custom validator for Hedera private keys that accepts multiple formats
+     */
+    private static validateHederaPrivateKey = (value: string, helpers: Joi.CustomHelpers) => {
+        try {
+            // Try different Hedera SDK private key formats
+            
+            // 1. Try raw hex format (64 characters)
+            if (/^[0-9a-fA-F]{64}$/.test(value)) {
+                PrivateKey.fromStringECDSA(value);
+                return value;
+            }
+            
+            // 2. Try DER/PKCS#8 format (longer hex string)
+            if (/^[0-9a-fA-F]{90,200}$/.test(value)) {
+                PrivateKey.fromStringDer(value);
+                return value;
+            }
+            
+            // 3. Try ED25519 raw format
+            if (/^[0-9a-fA-F]{64}$/.test(value)) {
+                PrivateKey.fromStringED25519(value);
+                return value;
+            }
+            
+            // 4. Try general fromString method (handles multiple formats)
+            PrivateKey.fromString(value);
+            return value;
+            
+        } catch (error) {
+            return helpers.error('any.invalid', { 
+                message: 'Invalid Hedera private key format. Supported formats: 64-character hex (raw), DER/PKCS#8 hex, or Hedera SDK string format'
+            });
+        }
+    };
+
     private static readonly configSchema = Joi.object({
         app: Joi.object({
             port: Joi.number().integer().min(1).max(65535).required(),
@@ -59,7 +96,7 @@ export class ConfigurationValidator {
 
         network: Joi.object({
             network: Joi.string().valid(...Object.values(HederaNetwork)).required(),
-            privateKey: Joi.string().pattern(/^[0-9a-fA-F]{64}$/).required(),
+            privateKey: Joi.string().custom(ConfigurationValidator.validateHederaPrivateKey).required(),
             publicKey: Joi.string().required(),
             contractAddress: Joi.string().required(),
             accountID: Joi.string().pattern(/^0\.0\.\d+$/).required()
