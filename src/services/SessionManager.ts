@@ -93,8 +93,6 @@ class SessionManager {
 
       // Enhanced cookie configuration for cross-domain support
       const cookieConfig = await getConfig();
-      const isDevServer = cookieConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
-      const isDevelopment = process.env.NODE_ENV === 'development';
       
       // Set session data to ensure session is created and saved
       (req.session as any).userId = user.id.toString();
@@ -115,7 +113,13 @@ class SessionManager {
       
       // SECURITY: Strict cookie configuration based on environment and trusted origins
       const origin = req.get('origin') || req.get('referer') || '';
+      const host = req.get('host');
       const isProduction = process.env.NODE_ENV === 'production';
+      
+      // ENHANCED: Detect if this IS the dev server itself (not just a client)
+      const isRunningOnDevServer = host?.includes('testnet-dev-api.hashbuzz.social') || 
+                                  process.env.SERVER_ENV === 'development' ||
+                                  process.env.SERVER_ENV === 'staging';
       
       // Define trusted origins for cross-origin cookie sharing
       const trustedCrossOrigins = [
@@ -127,24 +131,35 @@ class SessionManager {
       
       // SECURITY: Only allow sameSite=none for explicitly trusted origins
       const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
-      const isLocalhost = origin.includes('localhost');
+      
+      // DEBUG: Log cookie configuration decision
+      console.log('=== COOKIE CONFIG DEBUG ===');
+      console.log(`Request Host: ${host || 'undefined'}`);
+      console.log(`Request Origin: ${origin || 'undefined'}`);
+      console.log(`NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+      console.log(`SERVER_ENV: ${process.env.SERVER_ENV || 'undefined'}`);
+      console.log(`isProduction: ${String(isProduction)}`);
+      console.log(`isRunningOnDevServer: ${String(isRunningOnDevServer)}`);
+      console.log(`isTrustedCrossOrigin: ${String(isTrustedCrossOrigin)}`);
       
       // SECURITY: Determine cookie security based on environment and origin
       let cookieSettings;
-      if (isProduction) {
+      if (isProduction && !isRunningOnDevServer) {
         // PRODUCTION: Always secure, only sameSite=none for trusted origins
         cookieSettings = {
           secure: true,
           sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
           domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
         };
-      } else if (isTrustedCrossOrigin) {
-        // DEVELOPMENT: Trusted dev servers get cross-origin support
+        console.log('COOKIE CONFIG: Production mode - secure=true, sameSite=' + cookieSettings.sameSite);
+      } else if (isTrustedCrossOrigin || isRunningOnDevServer) {
+        // DEVELOPMENT/DEV SERVER: Trusted dev servers get cross-origin support
         cookieSettings = {
           secure: true, // Required for sameSite=none
           sameSite: 'none',
           domain: '.hashbuzz.social',
         };
+        console.log('COOKIE CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none, domain=.hashbuzz.social');
       } else {
         // DEVELOPMENT: Localhost and other origins get standard settings
         cookieSettings = {
@@ -152,7 +167,10 @@ class SessionManager {
           sameSite: 'lax',
           domain: undefined,
         };
+        console.log('COOKIE CONFIG: Localhost mode - secure=false, sameSite=lax, domain=undefined');
       }
+      
+      console.log('=== END COOKIE CONFIG DEBUG ===');
       
       // Access token cookie - with strict security controls
       res.cookie('access_token', token, {

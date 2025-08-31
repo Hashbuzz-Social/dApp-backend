@@ -85,7 +85,13 @@ const initializeApp = async () => {
   // SECURITY: Strict session configuration with environment-aware security
   app.use((req, res, next) => {
     const origin = req.get('origin') || req.get('referer') || '';
+    const host = req.get('host');
     const isProduction = process.env.NODE_ENV === 'production';
+    
+    // ENHANCED: Detect if this IS the dev server itself
+    const isRunningOnDevServer = host?.includes('testnet-dev-api.hashbuzz.social') || 
+                                process.env.SERVER_ENV === 'development' ||
+                                process.env.SERVER_ENV === 'staging';
     
     // SECURITY: Define trusted origins for cross-origin cookie sharing
     const trustedCrossOrigins = [
@@ -97,31 +103,46 @@ const initializeApp = async () => {
     
     const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
     
+    // DEBUG: Log session configuration decision
+    logger.info('=== SESSION CONFIG DEBUG ===');
+    logger.info(`Request Host: ${host || 'undefined'}`);
+    logger.info(`Request Origin: ${origin || 'undefined'}`);
+    logger.info(`NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+    logger.info(`SERVER_ENV: ${process.env.SERVER_ENV || 'undefined'}`);
+    logger.info(`isProduction: ${String(isProduction)}`);
+    logger.info(`isRunningOnDevServer: ${String(isRunningOnDevServer)}`);
+    logger.info(`isTrustedCrossOrigin: ${String(isTrustedCrossOrigin)}`);
+    
     // SECURITY: Determine session security based on environment and origin
     let sessionConfig: {
       secure: boolean;
       sameSite: 'strict' | 'lax' | 'none';
     };
     
-    if (isProduction) {
+    if (isProduction && !isRunningOnDevServer) {
       // PRODUCTION: Maximum security, only trusted cross-origin allowed
       sessionConfig = {
         secure: true,
         sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
       };
-    } else if (isTrustedCrossOrigin) {
-      // DEVELOPMENT: Trusted dev servers get cross-origin support
+      logger.info('SESSION CONFIG: Production mode - secure=true, sameSite=' + sessionConfig.sameSite);
+    } else if (isTrustedCrossOrigin || isRunningOnDevServer) {
+      // DEVELOPMENT/DEV SERVER: Trusted dev servers get cross-origin support
       sessionConfig = {
         secure: true, // Required for sameSite=none
         sameSite: 'none',
       };
+      logger.info('SESSION CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none');
     } else {
       // DEVELOPMENT: Localhost gets standard security
       sessionConfig = {
         secure: false,
         sameSite: 'lax',
       };
+      logger.info('SESSION CONFIG: Localhost mode - secure=false, sameSite=lax');
     }
+    
+    logger.info('=== END SESSION CONFIG DEBUG ===');
     
     const sessionMiddleware = session({
       secret: config.encryptions.sessionSecret,
