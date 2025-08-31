@@ -63,6 +63,11 @@ class ConfigurationManager {
         try {
             logger.info('Loading application configuration...');
             const config = await this.configFactory.getConfiguration();
+            
+            if (!config) {
+                throw new Error('Configuration validation failed - received undefined config');
+            }
+            
             logger.info('Configuration loaded successfully');
             return config;
         } catch (error) {
