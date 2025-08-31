@@ -142,8 +142,12 @@ export class EnhancedConfigurationFactory {
 
         try {
             const value = await this.retryOperation(async () => {
+                // Dynamically determine secret ID based on environment
+                const environment = this.getEnv('NODE_ENV', 'development');
+                const secretId = environment === 'production' ? 'Prod_Variables_V2' : 'Dev_Variables_V2';
+                
                 // Fetch the main secrets object
-                const result = await this.secretsManager.getSecretValue({ SecretId: "Prod_Variables_V2" });
+                const result = await this.secretsManager.getSecretValue({ SecretId: secretId });
                 
                 // Parse the JSON and extract the specific secret
                 const secretData = JSON.parse(result.SecretString || '{}') as Record<string, string>;
