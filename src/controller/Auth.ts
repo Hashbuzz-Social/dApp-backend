@@ -39,7 +39,7 @@ export const handleCreateChallenge = async (
   const payload = {
     url: params.url ?? 'hashbuzz.social',
     data: {
-      token: generateSigningToken(config.encryptions.jwtSecreatForAccessToken),
+      token: generateSigningToken(config.encryptions.jwtSecretForAccessToken),
     },
   };
   const { signature, serverSigningAccount } = await signingService.signData(

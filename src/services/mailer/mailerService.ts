@@ -46,11 +46,8 @@ class MailerService {
         const config = await getConfig();
         instance.emailUser = config.mailer.emailUser;
         
-        // Parse space-separated email addresses
-        const receiverString = config.mailer.alertReceiver;
-        instance.alertReceivers = receiverString
-            .split(' ')
-            .map(email => email.trim())
+        // Use the array directly from config
+        instance.alertReceivers = config.mailer.alertReceivers
             .filter(email => email.length > 0 && instance.isValidEmail(email));
 
         if (instance.alertReceivers.length === 0) {

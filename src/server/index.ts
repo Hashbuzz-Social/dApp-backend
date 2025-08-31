@@ -36,16 +36,33 @@ const initializeApp = async () => {
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
+      // In production, get domains from environment variable
+      const envDomains = config.app.whitelistedDomains || [];
       const whitelist = [
-        ...config.app.whitelistedDomains.split(','),
+        ...envDomains,
         'http://localhost:3000',
+        'http://localhost:3001', // Add additional localhost ports
         'https://www.hashbuzz.social',
+        'https://hashbuzz.social',
         'www.hashbuzz.social'
-      ];
-      if (!origin || whitelist.includes(origin)) {
+      ].map(domain => domain.trim());
+
+      // Log the origin for debugging
+      logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
+      logger.info(`Whitelisted domains: ${whitelist.join(', ')}`);
+
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) {
+        logger.info('Request with no origin - allowing');
+        return callback(null, true);
+      }
+
+      if (whitelist.includes(origin)) {
+        logger.info(`Origin ${origin} is whitelisted - allowing`);
         callback(null, true);
       } else {
-        callback(new Error('API blocked by CORS policy'));
+        logger.warn(`Origin ${origin} is not whitelisted - blocking`);
+        callback(new Error(`API blocked by CORS policy. Origin '${origin}' not allowed.`));
       }
     },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
@@ -59,7 +76,7 @@ const initializeApp = async () => {
   app.use(cookieParser());
   app.use(
     session({
-      secret: config.encryptions.sessionSecreat,
+      secret: config.encryptions.sessionSecret,
       cookie: { maxAge: 60000, secure: process.env.NODE_ENV === 'production' },
       resave: false,
       saveUninitialized: true,
@@ -141,7 +158,7 @@ const initializeApp = async () => {
   });
   app.use(limiter);
 
-  const sessionSecret = config.encryptions.sessionSecreat;
+  const sessionSecret = config.encryptions.sessionSecret;
 
   // Session setup
   const swaggerSession = session({

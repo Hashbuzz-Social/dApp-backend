@@ -53,7 +53,7 @@ const getAllUsersWhoLikedOnTweetId = async (
 
   const twitterClient = new TwitterApi({
     appKey: configs.xApp.xAPIKey,
-    appSecret: configs.xApp.xAPISecreate,
+    appSecret: configs.xApp.xAPISecret,
     accessToken: token,
     accessSecret: secret,
   });
@@ -90,7 +90,7 @@ const getAllRetweetOfTweetId = async (tweetId: string, user_user: any) => {
 
   const twitterClient = new TwitterApi({
     appKey: configs.xApp.xAPIKey,
-    appSecret: configs.xApp.xAPISecreate,
+    appSecret: configs.xApp.xAPISecret,
     accessToken: token,
     accessSecret: secret,
   });
@@ -132,7 +132,7 @@ const getAllUsersWhoQuotedOnTweetId = async (
 
   const twitterClient = new TwitterApi({
     appKey: appConfig.xApp.xAPIKey,
-    appSecret: appConfig.xApp.xAPISecreate,
+    appSecret: appConfig.xApp.xAPISecret,
     accessToken: token,
     accessSecret: secret,
   });
@@ -192,7 +192,7 @@ const getPublicMetrics = async (tweetIds: string | string[], cardId: any) => {
 
     const tweeterApi = new TwitterApi({
       appKey: appConfig.xApp.xAPIKey,
-      appSecret: appConfig.xApp.xAPISecreate,
+      appSecret: appConfig.xApp.xAPISecret,
       accessToken: token,
       accessSecret: secret,
     });
@@ -232,7 +232,7 @@ const getAllReplies = async (
 
   const client = new TwitterApi({
     appKey: config.xApp.xAPIKey,
-    appSecret: config.xApp.xAPISecreate,
+    appSecret: config.xApp.xAPISecret,
     accessToken: tToken,
     accessSecret: tTokenSecret,
   });
@@ -278,7 +278,7 @@ const tweeterApiForUser = async ({
   const configs = await getConfig();
   const tweeterApi = new TwitterApi({
     appKey: configs.xApp.xAPIKey,
-    appSecret: configs.xApp.xAPISecreate,
+    appSecret: configs.xApp.xAPISecret,
     accessToken,
     accessSecret,
   });
@@ -291,7 +291,7 @@ const HashbuzzTwitterClient = async () => {
   const configs = await getConfig();
   return tweeterApiForUser({
     accessToken: configs.xApp.xHashbuzzAccAccessToken,
-    accessSecret: configs.xApp.xHashbuzzAccSecreateToken,
+    accessSecret: configs.xApp.xHashbuzzAccSecretToken,
   });
 };
 
@@ -348,7 +348,7 @@ function createTwitterClientWithTokens(
 
   return new TwitterApi({
     appKey: configs.xApp.xAPIKey,
-    appSecret: configs.xApp.xAPISecreate,
+    appSecret: configs.xApp.xAPISecret,
     accessToken: decryptedAccessToken,
     accessSecret: decryptedAccessSecret,
   });

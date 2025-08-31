@@ -5,6 +5,7 @@ import createPrismaClient from "@shared/prisma";
 import { NextFunction, Request, Response } from "express";
 import HttpStatusCodes from "http-status-codes";
 import { getConfig } from "@appConfig";
+import logger from "../config/logger";
 
 const { OK, INTERNAL_SERVER_ERROR, TEMPORARY_REDIRECT } = HttpStatusCodes;
 
@@ -15,11 +16,12 @@ export const handlePersonalTwitterHandle = async (req: Request, res: Response, n
       const config = await getConfig();
       // Use frontend callback URL for stateful handling
       const callbackUrl = `${config.app.appURL}/auth/twitter-callback`;
+      logger.warn("Twitter auth URL generated:" + callbackUrl);
+      console.info("Twitter auth URL generated:" + callbackUrl);
       const url = await twitterAuthUrl({ callbackUrl, user_id });
       return res.status(OK).json({ url });
     }
   } catch (err) {
-    console.log(err);
     next(new ErrorWithCode("Error while create twitter auth link", INTERNAL_SERVER_ERROR));
   }
 };
@@ -28,9 +30,12 @@ export const handleBizTwitterHandle = async (req: Request, res: Response, next: 
   const user_id = req.currentUser?.id;
   const config = await getConfig();
 
+  const callbackUrl = `${config.app.appURL}/business-handle-callback`
+  logger.warn("Business Twitter auth URL generated:" + callbackUrl);
+  console.info("Business Twitter auth URL generated:" + callbackUrl);
   if (user_id) {
     twitterAuthUrl({
-      callbackUrl: `${config.app.appURL}/business-handle-callback`,
+      callbackUrl ,
       isBrand: true,
       user_id,
     })

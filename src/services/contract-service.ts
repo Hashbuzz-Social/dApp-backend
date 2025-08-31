@@ -65,7 +65,7 @@ export async function addFungibleAndNFTCampaign(tokenId: string, amount: number,
 export async function closeFungibleAndNFTCampaign(campaign: string) {
   const contractDetails = await provideActiveContract();
   const appConfig = await getConfig();
-  const expiryDuration = Number(appConfig.app.defaultCampaignDuratuon ?? 15) * 60;
+  const expiryDuration = Number(appConfig.app.defaultCampaignDuration ?? 15) * 60;
 
   if (contractDetails?.contract_id) {
     const campaignLifecycleService = new ContractCampaignLifecycle(contractDetails.contract_id);

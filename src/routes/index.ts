@@ -11,6 +11,20 @@ import userInfo from "@middleware/userInfo";
 // Export the base-router
 const baseRouter = Router();
 
+// Health check endpoint - no authentication required
+baseRouter.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin || 'no-origin',
+    userAgent: req.headers['user-agent'],
+    corsHeaders: {
+      'access-control-allow-origin': res.getHeader('access-control-allow-origin'),
+      'access-control-allow-credentials': res.getHeader('access-control-allow-credentials'),
+    }
+  });
+});
+
 /**
  * @swagger
  * tags:

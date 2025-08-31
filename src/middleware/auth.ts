@@ -139,7 +139,7 @@ const havingValidPayloadToken = async (
     const appConfig = await getConfig();
     jwt.verify(
       token,
-      appConfig.encryptions.jwtSecreatForAccessToken,
+      appConfig.encryptions.jwtSecretForAccessToken,
       (err, payload) => {
         if (err) {
           console.error('JWT verification error:', err);

@@ -1,5 +1,4 @@
-import { AccountBalanceQuery, AccountId, Client, PrivateKey, TopicCreateTransaction } from "@hashgraph/sdk";
-import logger from "jet-logger";
+import { AccountBalanceQuery, AccountId, Client, PrivateKey } from "@hashgraph/sdk";
 import { getConfig } from "@appConfig";
 import { network } from "@prisma/client"
 
@@ -23,7 +22,36 @@ async function initializeHederaClient(): Promise<HederaClientConfig> {
   }
 
   const operatorId = AccountId.fromString(accountID);
-  const operatorKey = PrivateKey.fromStringECDSA(privateKey);
+  
+  // Try different Hedera private key formats in order of preference
+  let operatorKey: PrivateKey;
+  try {
+    // First try the general fromString method (handles multiple formats)
+    operatorKey = PrivateKey.fromString(privateKey);
+  } catch (error1) {
+    try {
+      // Try ECDSA format for 64-character hex keys
+      if (/^[0-9a-fA-F]{64}$/.test(privateKey)) {
+        operatorKey = PrivateKey.fromStringECDSA(privateKey);
+      } else {
+        // Try DER format for longer hex strings (PKCS#8)
+        operatorKey = PrivateKey.fromStringDer(privateKey);
+      }
+    } catch (error2) {
+      try {
+        // Try ED25519 format as last resort
+        operatorKey = PrivateKey.fromStringED25519(privateKey);
+      } catch (error3) {
+        const error1Msg = error1 instanceof Error ? error1.message : String(error1);
+        const error2Msg = error2 instanceof Error ? error2.message : String(error2);
+        const error3Msg = error3 instanceof Error ? error3.message : String(error3);
+        throw new Error(
+          `Invalid private key format. Cannot parse private key using any supported Hedera format. ` +
+          `Original errors: ${error1Msg}, ${error2Msg}, ${error3Msg}`
+        );
+      }
+    }
+  }
 
   let client: Client;
   switch (network) {
