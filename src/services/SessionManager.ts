@@ -29,7 +29,11 @@ class SessionManager {
   /** Constructor Methods */
   constructor(redisServerURI: string) {
     this.redisclinet = new RedisClient(redisServerURI);
-    this.secureCookie = process.env.NODE_ENV === 'production';
+    // Set secure cookie for production OR when running on HTTPS (like dev server)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isHttpsEnv = Boolean(process.env.BACKEND_URL?.includes('https://') || 
+                              process.env.API_URL?.includes('https://'));
+    this.secureCookie = isProduction || (process.env.NODE_ENV !== 'development' && isHttpsEnv);
   }
 
   static async create(): Promise<SessionManager> {
@@ -87,21 +91,29 @@ class SessionManager {
         expiry
       );
 
-      // Express example
+      // Enhanced cookie configuration for cross-domain support
+      const cookieConfig = await getConfig();
+      const isDevServer = cookieConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
+      // Access token cookie
       res.cookie('access_token', token, {
         httpOnly: true,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        secure: this.secureCookie || isDevServer, // Force secure for dev server
+        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax', // 'none' for cross-domain
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
+        domain: isDevServer ? '.hashbuzz.social' : undefined, // Set domain for dev server
       });
 
+      // Refresh token cookie  
       res.cookie('refresh_token', refreshToken, {
-        httpOnly: this.secureCookie,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        httpOnly: true, // Fix: was incorrectly set to this.secureCookie
+        secure: this.secureCookie || isDevServer, // Force secure for dev server
+        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax', // 'none' for cross-domain
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        domain: isDevServer ? '.hashbuzz.social' : undefined, // Set domain for dev server
       });
 
       res.status(OK).json({
@@ -246,17 +258,22 @@ class SessionManager {
   }
 
   async handleDeviceId(req: Request, res: Response) {
-    let deviceId = req.deviceId;
+    const deviceId = req.deviceId;
     const config = await getConfig();
+    
     if (deviceId) {
+      const isDevServer = config.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
       res.cookie(
         'device_id',
         d_decrypt(deviceId, config.encryptions.encryptionKey),
         {
           httpOnly: true,
-          secure: this.secureCookie,
-          sameSite: 'strict',
+          secure: this.secureCookie || isDevServer,
+          sameSite: isDevServer || !isDevelopment ? 'none' : 'strict',
           path: '/',
+          domain: isDevServer ? '.hashbuzz.social' : undefined,
         }
       );
     }
@@ -449,13 +466,19 @@ class SessionManager {
 
       await this.updateSession(session.id, newkid, newExpiry);
 
-      // Set new access token cookie with same settings as login
+      // Enhanced cookie configuration for refresh token endpoint
+      const refreshConfig = await getConfig();
+      const isDevServer = refreshConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
+      const isDevelopment = process.env.NODE_ENV === 'development';
+
+      // Set new access token cookie with enhanced cross-domain settings
       res.cookie('access_token', newToken, {
-        httpOnly: this.secureCookie,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        httpOnly: true,
+        secure: this.secureCookie || isDevServer,
+        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax',
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
+        domain: isDevServer ? '.hashbuzz.social' : undefined,
       });
 
       return res
