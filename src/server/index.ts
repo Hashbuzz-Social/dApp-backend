@@ -82,25 +82,63 @@ const initializeApp = async () => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
-    // Session configuration with localhost and dev server support
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  app.use(
-    session({
+  // SECURITY: Strict session configuration with environment-aware security
+  app.use((req, res, next) => {
+    const origin = req.get('origin') || req.get('referer') || '';
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // SECURITY: Define trusted origins for cross-origin cookie sharing
+    const trustedCrossOrigins = [
+      'https://testnet-dev-api.hashbuzz.social',
+      'https://dev.hashbuzz.social', 
+      'https://www.hashbuzz.social',
+      'https://hashbuzz.social'
+    ];
+    
+    const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+    
+    // SECURITY: Determine session security based on environment and origin
+    let sessionConfig: {
+      secure: boolean;
+      sameSite: 'strict' | 'lax' | 'none';
+    };
+    
+    if (isProduction) {
+      // PRODUCTION: Maximum security, only trusted cross-origin allowed
+      sessionConfig = {
+        secure: true,
+        sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+      };
+    } else if (isTrustedCrossOrigin) {
+      // DEVELOPMENT: Trusted dev servers get cross-origin support
+      sessionConfig = {
+        secure: true, // Required for sameSite=none
+        sameSite: 'none',
+      };
+    } else {
+      // DEVELOPMENT: Localhost gets standard security
+      sessionConfig = {
+        secure: false,
+        sameSite: 'lax',
+      };
+    }
+    
+    const sessionMiddleware = session({
       secret: config.encryptions.sessionSecret,
-      name: 'hashbuzz.sid', // Custom session name
+      name: 'hashbuzz.sid',
       cookie: { 
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        secure: false, // Default to false for localhost compatibility
-        httpOnly: true, // Prevent XSS attacks
-        sameSite: 'lax', // Lax works for localhost and cross-origin
+        secure: sessionConfig.secure,
+        httpOnly: true,
+        sameSite: sessionConfig.sameSite,
       },
       resave: false,
-      saveUninitialized: true, // Create sessions for all requests
-      rolling: true, // Reset expiration on activity
-    })
-  );
+      saveUninitialized: true,
+      rolling: true,
+    });
+    
+    sessionMiddleware(req, res, next);
+  });
   app.use(
     lusca({
       csrf: false,

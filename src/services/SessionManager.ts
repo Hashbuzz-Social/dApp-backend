@@ -113,22 +113,65 @@ class SessionManager {
         });
       });
       
-      // Access token cookie - using localhost-friendly settings
+      // SECURITY: Strict cookie configuration based on environment and trusted origins
+      const origin = req.get('origin') || req.get('referer') || '';
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // Define trusted origins for cross-origin cookie sharing
+      const trustedCrossOrigins = [
+        'https://testnet-dev-api.hashbuzz.social',
+        'https://dev.hashbuzz.social',
+        'https://www.hashbuzz.social',
+        'https://hashbuzz.social'
+      ];
+      
+      // SECURITY: Only allow sameSite=none for explicitly trusted origins
+      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+      const isLocalhost = origin.includes('localhost');
+      
+      // SECURITY: Determine cookie security based on environment and origin
+      let cookieSettings;
+      if (isProduction) {
+        // PRODUCTION: Always secure, only sameSite=none for trusted origins
+        cookieSettings = {
+          secure: true,
+          sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+          domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
+        };
+      } else if (isTrustedCrossOrigin) {
+        // DEVELOPMENT: Trusted dev servers get cross-origin support
+        cookieSettings = {
+          secure: true, // Required for sameSite=none
+          sameSite: 'none',
+          domain: '.hashbuzz.social',
+        };
+      } else {
+        // DEVELOPMENT: Localhost and other origins get standard settings
+        cookieSettings = {
+          secure: false,
+          sameSite: 'lax',
+          domain: undefined,
+        };
+      }
+      
+      // Access token cookie - with strict security controls
       res.cookie('access_token', token, {
         httpOnly: true,
-        secure: false, // Always false for localhost compatibility
-        sameSite: 'lax', // Lax works for both localhost and cross-origin
+        secure: cookieSettings.secure,
+        sameSite: cookieSettings.sameSite as any,
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
+        domain: cookieSettings.domain,
       });
 
-      // Refresh token cookie - using localhost-friendly settings
+      // Refresh token cookie - with strict security controls
       res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
-        secure: false, // Always false for localhost compatibility
-        sameSite: 'lax', // Lax works for both localhost and cross-origin
+        secure: cookieSettings.secure,
+        sameSite: cookieSettings.sameSite as any,
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        domain: cookieSettings.domain,
       });
 
       res.status(OK).json({
@@ -277,18 +320,50 @@ class SessionManager {
     const config = await getConfig();
     
     if (deviceId) {
-      const isDevServer = config.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      // SECURITY: Use same trusted origin logic as access tokens
+      const origin = req.get('origin') || req.get('referer') || '';
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      const trustedCrossOrigins = [
+        'https://testnet-dev-api.hashbuzz.social',
+        'https://dev.hashbuzz.social',
+        'https://www.hashbuzz.social',
+        'https://hashbuzz.social'
+      ];
+      
+      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+      
+      // SECURITY: Determine cookie security based on environment and origin
+      let cookieSettings;
+      if (isProduction) {
+        cookieSettings = {
+          secure: true,
+          sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+          domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
+        };
+      } else if (isTrustedCrossOrigin) {
+        cookieSettings = {
+          secure: true,
+          sameSite: 'none',
+          domain: '.hashbuzz.social',
+        };
+      } else {
+        cookieSettings = {
+          secure: false,
+          sameSite: 'lax',
+          domain: undefined,
+        };
+      }
       
       res.cookie(
         'device_id',
         d_decrypt(deviceId, config.encryptions.encryptionKey),
         {
           httpOnly: true,
-          secure: this.secureCookie || isDevServer,
-          sameSite: isDevServer || !isDevelopment ? 'none' : 'strict',
+          secure: cookieSettings.secure,
+          sameSite: cookieSettings.sameSite as any,
           path: '/',
-          domain: isDevServer ? '.hashbuzz.social' : undefined,
+          domain: cookieSettings.domain,
         }
       );
     }
