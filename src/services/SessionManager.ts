@@ -96,24 +96,39 @@ class SessionManager {
       const isDevServer = cookieConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
       const isDevelopment = process.env.NODE_ENV === 'development';
       
-      // Access token cookie
+      // Set session data to ensure session is created and saved
+      (req.session as any).userId = user.id.toString();
+      (req.session as any).accountId = accountId;
+      (req.session as any).deviceId = deviceId;
+      (req.session as any).authenticated = true;
+      
+      // Force session save to ensure Set-Cookie header is sent
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      // Access token cookie - using localhost-friendly settings
       res.cookie('access_token', token, {
         httpOnly: true,
-        secure: this.secureCookie || isDevServer, // Force secure for dev server
-        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax', // 'none' for cross-domain
+        secure: false, // Always false for localhost compatibility
+        sameSite: 'lax', // Lax works for both localhost and cross-origin
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
-        domain: isDevServer ? '.hashbuzz.social' : undefined, // Set domain for dev server
       });
 
-      // Refresh token cookie  
+      // Refresh token cookie - using localhost-friendly settings
       res.cookie('refresh_token', refreshToken, {
-        httpOnly: true, // Fix: was incorrectly set to this.secureCookie
-        secure: this.secureCookie || isDevServer, // Force secure for dev server
-        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax', // 'none' for cross-domain
+        httpOnly: true,
+        secure: false, // Always false for localhost compatibility
+        sameSite: 'lax', // Lax works for both localhost and cross-origin
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-        domain: isDevServer ? '.hashbuzz.social' : undefined, // Set domain for dev server
       });
 
       res.status(OK).json({

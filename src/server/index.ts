@@ -82,24 +82,22 @@ const initializeApp = async () => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
-  // Enhanced session configuration for dev server and production
+    // Session configuration with localhost and dev server support
   const isProduction = process.env.NODE_ENV === 'production';
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const isDevServer = config.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
   
   app.use(
     session({
       secret: config.encryptions.sessionSecret,
       name: 'hashbuzz.sid', // Custom session name
       cookie: { 
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours instead of 60 seconds
-        secure: isProduction || isDevServer, // Secure for production and HTTPS dev server
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: false, // Default to false for localhost compatibility
         httpOnly: true, // Prevent XSS attacks
-        sameSite: isDevelopment ? 'lax' : 'none', // Allow cross-site for dev, strict for prod
-        domain: isDevServer ? '.hashbuzz.social' : undefined // Set domain for dev server
+        sameSite: 'lax', // Lax works for localhost and cross-origin
       },
       resave: false,
-      saveUninitialized: false, // Don't create sessions for unauthenticated users
+      saveUninitialized: true, // Create sessions for all requests
       rolling: true, // Reset expiration on activity
     })
   );
