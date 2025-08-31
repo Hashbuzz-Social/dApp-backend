@@ -11,7 +11,7 @@ export const twitterAuthUrl = async ({ callbackUrl, isBrand, user_id }: { callba
     const prisma = await createPrismaClient();
     const config = await getConfig();
     let authLink;
-    const client = new TwitterApi({ appKey: config.xApp.xAPIKey, appSecret: config.xApp.xAPISecreate });
+    const client = new TwitterApi({ appKey: config.xApp.xAPIKey, appSecret: config.xApp.xAPISecret });
 
     if (isBrand) authLink = await client.generateAuthLink(callbackUrl, { linkMode: "authorize" });
     else authLink = await client.generateAuthLink(callbackUrl);

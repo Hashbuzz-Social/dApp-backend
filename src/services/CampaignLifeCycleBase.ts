@@ -79,7 +79,7 @@ class CampaignLifeCycleBase {
     const prisma = await createPrismaClient();
     const appConfig = await getConfig();
 
-    this.campaignDurationInMin = appConfig.app.defaultCampaignDuratuon;
+    this.campaignDurationInMin = appConfig.app.defaultCampaignDuration;
 
     try {
       // Query for the card

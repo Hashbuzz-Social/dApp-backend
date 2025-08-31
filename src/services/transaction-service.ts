@@ -205,7 +205,7 @@ export const closeCampaignSMTransaction = async (campaign: string) => {
 
   const contractDetails = await provideActiveContract();
   const congis = await getConfig();
-  const timeDuration = Number(congis.app.defaultCampaignDuratuon) * 60;
+  const timeDuration = Number(congis.app.defaultCampaignDuration) * 60;
 
   console.log("Inside close campaign", { campaign, timeDuration });
 

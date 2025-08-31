@@ -37,9 +37,9 @@ const initializeApp = async () => {
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
       // In production, get domains from environment variable
-      const envDomains = config.app.whitelistedDomains || '';
+      const envDomains = config.app.whitelistedDomains || [];
       const whitelist = [
-        ...envDomains.split(',').filter(domain => domain.trim()),
+        ...envDomains,
         'http://localhost:3000',
         'http://localhost:3001', // Add additional localhost ports
         'https://www.hashbuzz.social',
@@ -76,7 +76,7 @@ const initializeApp = async () => {
   app.use(cookieParser());
   app.use(
     session({
-      secret: config.encryptions.sessionSecreat,
+      secret: config.encryptions.sessionSecret,
       cookie: { maxAge: 60000, secure: process.env.NODE_ENV === 'production' },
       resave: false,
       saveUninitialized: true,
@@ -158,7 +158,7 @@ const initializeApp = async () => {
   });
   app.use(limiter);
 
-  const sessionSecret = config.encryptions.sessionSecreat;
+  const sessionSecret = config.encryptions.sessionSecret;
 
   // Session setup
   const swaggerSession = session({

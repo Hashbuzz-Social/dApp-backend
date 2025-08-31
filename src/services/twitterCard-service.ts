@@ -226,7 +226,7 @@ const publishSecondThread = async (
 
   const formattedDate = formattedDateTime(moment().toISOString());
   const configs = await getConfig();
-  const campaignDurationInMin = configs.app.defaultCampaignDuratuon;
+  const campaignDurationInMin = configs.app.defaultCampaignDuration;
 
   if (!tweet_text) throw new Error('Tweet text is missing.');
   if (!like_reward || !quote_reward || !retweet_reward || !comment_reward) {
@@ -287,7 +287,7 @@ const publishSecondThread = async (
 const publishTwitter = async (cardId: number | bigint) => {
   const prisma = await createPrismaClient();
   const configs = await getConfig();
-  const campaignDurationInMin = configs.app.defaultCampaignDuratuon;
+  const campaignDurationInMin = configs.app.defaultCampaignDuration;
 
   const [contractDetails, cardDetails] = await Promise.all([
     await provideActiveContract(),

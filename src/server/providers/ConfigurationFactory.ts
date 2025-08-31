@@ -39,18 +39,18 @@ export class ConfigurationFactory<TConfiguration> {
     }
 
     async getConfiguration(): Promise<TConfiguration> {
-        const apply = async (obj: any): Promise<any> => {
-            const result: any = {};
-            for (const key of Object.keys(obj)) {
+        const apply = async <T>(obj: ConfigurationProvider<T>): Promise<T> => {
+            const result = {} as T;
+            for (const key of Object.keys(obj) as Array<keyof T>) {
                 if (typeof obj[key] === 'function') {
-                    result[key] = await obj[key]();
+                    result[key] = await (obj[key] as () => Promise<T[typeof key]>)();
                 } else {
-                    result[key] = await apply(obj[key]);
+                    result[key] = await apply(obj[key] as ConfigurationProvider<T[typeof key]>);
                 }
             }
             return result;
         };
-        return apply(this.provider);
+        return apply<TConfiguration>(this.provider);
     }
 }
 

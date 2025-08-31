@@ -7,30 +7,41 @@ export interface AppConfig {
         /** OpenAI API key */
         openAIKey: string
         /** Default app config for reward claim duration in days */
-        defaultRewardClaimDuration: number,
+        defaultRewardClaimDuration: number
         /** Default app config for campaign duration in days */
-        defaultCampaignDuratuon: number,
+        defaultCampaignDuration: number
         /** App frontend URL */
-        appURL: string,
+        appURL: string
         /** App backend callback URL */
-        xCallBackHost: string;
-
-        /** App config */
-
-        whitelistedDomains: string
-
+        xCallBackHost: string
+        /** Whitelisted domains for CORS */
+        whitelistedDomains: string[]
+        /** Mirror node URL for Hedera */
         mirrorNodeURL: string
+        /** Environment: development, staging, production */
+        environment: Environment
+    }
+
+    aws: {
+        /** AWS region */
+        region: AwsRegion
+        /** Secrets Manager configuration */
+        secretsManager: {
+            cacheTtlMs: number
+            maxRetries: number
+            retryDelayMs: number
+        }
     }
 
     encryptions: {
         /** JWT secret for access token */
-        jwtSecreatForAccessToken: string
+        jwtSecretForAccessToken: string
         /** JWT secret for refresh token */
-        jwtSecreateForRefreshToken: string
+        jwtSecretForRefreshToken: string
         /** Database storage encryption key */
         encryptionKey: string
         /** Session secret for key rotation */
-        sessionSecreat: string
+        sessionSecret: string
     }
 
     repo: {
@@ -47,24 +58,30 @@ export interface AppConfig {
         dbServerURI: string,
         /** Redis server URI */
         redisServerURI: string,
+        /** Connection pool settings */
+        pool: {
+            min: number
+            max: number
+            idleTimeoutMs: number
+        }
     }
 
     xApp: {
         /** Twitter API key */
         xAPIKey: string,
         /** Twitter API secret */
-        xAPISecreate: string,
+        xAPISecret: string,
         /** Twitter app user token */
         xUserToken: string,
         /** Hashbuzz account access token */
         xHashbuzzAccAccessToken: string,
         /** Hashbuzz account secret token */
-        xHashbuzzAccSecreateToken: string
+        xHashbuzzAccSecretToken: string
     }
 
     network: {
         /** Network type: testnet or mainnet */
-        network: string,
+        network: HederaNetwork,
         /** Private key for the network */
         privateKey: string,
         /** Public key for the network */
@@ -80,7 +97,7 @@ export interface AppConfig {
         /** AWS secret access key */
         secretAccessKey: string,
         /** AWS region */
-        region: string
+        region: AwsRegion
         /** AWS S3 bucket name */
         bucketName: string
         /** AWS S3 bucket endpoint */
@@ -91,7 +108,71 @@ export interface AppConfig {
         emailUser: string,
         /** Email password for sending alerts */
         emailPass: string,
-        /** Space-separated email addresses to receive alerts (e.g., "admin@example.com support@example.com") */
-        alertReceiver: string
+        /** Email addresses to receive alerts */
+        alertReceivers: string[]
     }
+
+    monitoring: {
+        /** Enable metrics collection */
+        metricsEnabled: boolean,
+        /** Health check endpoint path */
+        healthCheckPath: string,
+        /** Log level */
+        logLevel: LogLevel
+    }
+
+    cache: {
+        /** Configuration cache TTL in milliseconds */
+        configCacheTtlMs: number,
+        /** Enable distributed caching */
+        distributedCache: boolean,
+        /** Cache key prefix */
+        keyPrefix: string
+    }
+
+    featureFlags: {
+        /** Enable new authentication flow */
+        enableNewAuth: boolean,
+        /** Enable enhanced logging */
+        enhancedLogging: boolean,
+        /** Enable rate limiting */
+        rateLimiting: boolean
+    }
+}
+
+// Enums for type safety
+export enum Environment {
+    DEVELOPMENT = 'development',
+    STAGING = 'staging',
+    PRODUCTION = 'production'
+}
+
+export enum AwsRegion {
+    US_EAST_1 = 'us-east-1',
+    US_WEST_2 = 'us-west-2',
+    EU_WEST_1 = 'eu-west-1'
+}
+
+export enum HederaNetwork {
+    TESTNET = 'testnet',
+    MAINNET = 'mainnet',
+    PREVIEWNET = 'previewnet'
+}
+
+export enum LogLevel {
+    ERROR = 'error',
+    WARN = 'warn',
+    INFO = 'info',
+    DEBUG = 'debug'
+}
+
+export interface CacheEntry {
+    value: string;
+    expiry: number;
+}
+
+export interface RetryConfig {
+    maxRetries: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
 }

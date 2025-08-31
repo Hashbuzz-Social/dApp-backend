@@ -1,91 +1,114 @@
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import logger from 'jet-logger';
 import { AppConfig } from './@types/AppConfig';
-import { ConfigurationFactory } from './server/providers';
+import { EnhancedConfigurationFactory } from './server/providers/EnhancedConfigurationFactory';
 
-const secretsManager = new SecretsManager({ region: 'us-east-1' });
+// Configuration state management
+class ConfigurationManager {
+    private static instance: ConfigurationManager;
+    private configFactory: EnhancedConfigurationFactory;
+    private cachedConfig: AppConfig | null = null;
+    private cacheTimestamp: number | null = null;
+    private loadingPromise: Promise<AppConfig> | null = null;
+    private cacheTtlMs = 3600000; // 1 hour default
 
-let cachedConfig: AppConfig | null = null;
-let cacheTimestamp: number | null = null;
-const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // Cache duration in milliseconds (e.g., 24 hours)
+    private constructor() {
+        const region = process.env.AWS_REGION || 'us-east-1';
+        const secretsManager = new SecretsManager({ region });
+        
+        this.configFactory = new EnhancedConfigurationFactory({
+            logger,
+            secretsManager,
+            retryConfig: {
+                maxRetries: parseInt(process.env.CONFIG_MAX_RETRIES || '3'),
+                baseDelayMs: parseInt(process.env.CONFIG_RETRY_BASE_DELAY_MS || '1000'),
+                maxDelayMs: parseInt(process.env.CONFIG_RETRY_MAX_DELAY_MS || '10000')
+            }
+        });
+    }
 
-const configFactory = new ConfigurationFactory<AppConfig>({
-  log: logger,
-  secretsManagerClient: secretsManager,
-  builder: (provider) => ({
-    app: {
-      port: provider.envAsNumber('PORT', 4000),
-      adminAddresses: provider.secret('ADMIN_ADDRESS'),
-      openAIKey: provider.secret('OPEN_AI_KEY'),
-      defaultRewardClaimDuration: provider.envAsNumber(
-        'REWARD_CALIM_DURATION',
-        7
-      ),
-      defaultCampaignDuratuon: provider.envAsNumber('CAMPAIGN_DURATION', 7),
-      appURL: provider.env('FRONTEND_URL'),
-      xCallBackHost: provider.env('TWITTER_CALLBACK_HOST'),
-      whitelistedDomains: provider.env('FRONTEND_URL', 'https://www.hashbuzz.social,https://hashbuzz.social,http://localhost:3000'),
-      mirrorNodeURL: provider.env('MIRROR_NODE'),
-    },
-    encryptions: {
-      jwtSecreatForAccessToken: provider.secret('J_ACCESS_TOKEN_SECRET'),
-      jwtSecreateForRefreshToken: provider.secret('J_REFRESH_TOKEN_SECRET'),
-      encryptionKey: provider.secret('ENCRYPTION_KEY'),
-      sessionSecreat: provider.secret('SESSION_SECRET'),
-    },
-    repo: {
-      repo: provider.env('REPO'),
-      repoClientID: provider.secret('REPO_CLIENT_ID'),
-      repoClientSecret: provider.secret('REPO_CLIENT_SECRET'),
-    },
-    db: {
-      dbServerURI: provider.secret('DATABASE_URL'),
-      redisServerURI: provider.secret('REDIS_URL'),
-    },
-    xApp: {
-      xAPIKey: provider.secret('TWITTER_API_KEY'),
-      xAPISecreate: provider.secret('TWITTER_API_SECRET'),
-      xUserToken: provider.secret('TWITTER_APP_USER_TOKEN'), // This is X App variable extention
-      xHashbuzzAccAccessToken: provider.secret('HASHBUZZ_ACCESS_TOKEN'),
-      xHashbuzzAccSecreateToken: provider.secret('HASHBUZZ_ACCESS_SECRET'),
-    },
-    network: {
-      network: provider.env('HEDERA_NETWORK'),
-      privateKey: provider.secret('HEDERA_PRIVATE_KEY'),
-      publicKey: provider.secret('HEDERA_PUBLIC_KEY'),
-      contractAddress: provider.secret('HASHBUZZ_CONTRACT_ADDRESS'),
-      accountID: provider.secret('HEDERA_ACCOUNT_ID'),
-    },
-    bucket: {
-      accessKeyId: provider.secret('BUCKET_ACCESS_KEY_ID'),
-      secretAccessKey: provider.secret('BUCKET_SECRET_ACCESS_KEY'),
-      region: provider.env('BUCKET_REGION'),
-      bucketName: provider.env('BUCKET_NAME'),
-      endpoint: provider.env('BUCKET_ENDPOINT'),
-    },
-    mailer: {
-      emailUser: provider.env('EMAIL_USER'),
-      emailPass: provider.secret('EMAIL_PASS'),
-      alertReceiver: provider.env('ALERT_RECEIVER'),
-    },
-  }),
+    static getInstance(): ConfigurationManager {
+        if (!ConfigurationManager.instance) {
+            ConfigurationManager.instance = new ConfigurationManager();
+        }
+        return ConfigurationManager.instance;
+    }
+
+    async getConfig(): Promise<AppConfig> {
+        // If we're already loading, wait for that promise
+        if (this.loadingPromise) {
+            return this.loadingPromise;
+        }
+
+        // Check if cache is still valid
+        if (this.cachedConfig && this.isCacheValid()) {
+            return this.cachedConfig;
+        }
+
+        // Start loading configuration
+        this.loadingPromise = this.loadConfiguration();
+        
+        try {
+            const config = await this.loadingPromise;
+            this.cachedConfig = config;
+            this.cacheTimestamp = Date.now();
+            this.cacheTtlMs = config.cache?.configCacheTtlMs || 3600000;
+            return config;
+        } finally {
+            this.loadingPromise = null;
+        }
+    }
+
+    private async loadConfiguration(): Promise<AppConfig> {
+        try {
+            logger.info('Loading application configuration...');
+            const config = await this.configFactory.getConfiguration();
+            logger.info('Configuration loaded successfully');
+            return config;
+        } catch (error) {
+            logger.err('Failed to load configuration: ' + String(error));
+
+            // Fallback to cached config if available
+            if (this.cachedConfig) {
+                logger.warn('Using stale cached configuration due to loading failure');
+                return this.cachedConfig;
+            }
+            
+            throw new Error(`Critical configuration loading failure: ${(error as Error).message}`);
+        }
+    }
+
+    private isCacheValid(): boolean {
+        if (!this.cacheTimestamp) return false;
+        return Date.now() - this.cacheTimestamp < this.cacheTtlMs;
+    }
+
+    // Force refresh configuration
+    async refreshConfig(): Promise<AppConfig> {
+        this.cachedConfig = null;
+        this.cacheTimestamp = null;
+        return this.getConfig();
+    }
+
+    // Health check method
+    healthCheck(): { status: 'healthy' | 'unhealthy'; lastLoaded: Date | null; cacheValid: boolean } {
+        return {
+            status: this.cachedConfig ? 'healthy' : 'unhealthy',
+            lastLoaded: this.cacheTimestamp ? new Date(this.cacheTimestamp) : null,
+            cacheValid: this.isCacheValid()
+        };
+    }
+}
+
+// Export the singleton instance methods
+const configManager = ConfigurationManager.getInstance();
+
+export const getConfig = (): Promise<AppConfig> => configManager.getConfig();
+export const refreshConfig = (): Promise<AppConfig> => configManager.refreshConfig();
+export const getConfigHealth = () => configManager.healthCheck();
+
+// Initialize configuration on module load
+getConfig().catch(error => {
+    logger.err('Failed to initialize configuration:' + String(error));
+    // Don't throw here to prevent module loading failure
 });
-
-const loadConfig = async () => {
-  cachedConfig = await configFactory.getConfiguration();
-  cacheTimestamp = Date.now();
-};
-
-const isCacheValid = (): boolean => {
-  if (!cacheTimestamp) return false;
-  return Date.now() - cacheTimestamp < CACHE_DURATION_MS;
-};
-
-export const getConfig = async (): Promise<AppConfig> => {
-  if (!cachedConfig || !isCacheValid()) {
-    await loadConfig();
-  }
-  return cachedConfig as AppConfig;
-};
-
-loadConfig(); // Load configuration at startup

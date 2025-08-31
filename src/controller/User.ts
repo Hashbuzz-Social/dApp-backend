@@ -49,7 +49,7 @@ export const handleCurrentUser = async (
     );
     const contractAddress = config.network.contractAddress;
     const collecterAddress = config.network.accountID;
-    const campaignDuration = config.app.defaultCampaignDuratuon;
+    const campaignDuration = config.app.defaultCampaignDuration;
     const campaignRewardDuration = config.app.defaultRewardClaimDuration;
     if (currentUser) {
       const senetizedUser = await sensitizeUserData(currentUser);
