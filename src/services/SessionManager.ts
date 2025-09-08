@@ -29,7 +29,11 @@ class SessionManager {
   /** Constructor Methods */
   constructor(redisServerURI: string) {
     this.redisclinet = new RedisClient(redisServerURI);
-    this.secureCookie = process.env.NODE_ENV === 'production';
+    // Set secure cookie for production OR when running on HTTPS (like dev server)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isHttpsEnv = Boolean(process.env.BACKEND_URL?.includes('https://') || 
+                              process.env.API_URL?.includes('https://'));
+    this.secureCookie = isProduction || (process.env.NODE_ENV !== 'development' && isHttpsEnv);
   }
 
   static async create(): Promise<SessionManager> {
@@ -87,21 +91,105 @@ class SessionManager {
         expiry
       );
 
-      // Express example
+      // Enhanced cookie configuration for cross-domain support
+      const cookieConfig = await getConfig();
+      
+      // Set session data to ensure session is created and saved
+      (req.session as any).userId = user.id.toString();
+      (req.session as any).accountId = accountId;
+      (req.session as any).deviceId = deviceId;
+      (req.session as any).authenticated = true;
+      
+      // Force session save to ensure Set-Cookie header is sent
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      // SECURITY: Strict cookie configuration based on environment and trusted origins
+      const origin = req.get('origin') || req.get('referer') || '';
+      const host = req.get('host');
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // ENHANCED: Detect if this IS the dev server itself (not just a client)
+      const isRunningOnDevServer = host?.includes('testnet-dev-api.hashbuzz.social') || 
+                                  process.env.SERVER_ENV === 'development' ||
+                                  process.env.SERVER_ENV === 'staging';
+      
+      // Define trusted origins for cross-origin cookie sharing
+      const trustedCrossOrigins = [
+        'https://testnet-dev-api.hashbuzz.social',
+        'https://dev.hashbuzz.social',
+        'https://www.hashbuzz.social',
+        'https://hashbuzz.social'
+      ];
+      
+      // SECURITY: Only allow sameSite=none for explicitly trusted origins
+      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+      
+      // DEBUG: Log cookie configuration decision
+      console.log('=== COOKIE CONFIG DEBUG ===');
+      console.log(`Request Host: ${host || 'undefined'}`);
+      console.log(`Request Origin: ${origin || 'undefined'}`);
+      console.log(`NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+      console.log(`SERVER_ENV: ${process.env.SERVER_ENV || 'undefined'}`);
+      console.log(`isProduction: ${String(isProduction)}`);
+      console.log(`isRunningOnDevServer: ${String(isRunningOnDevServer)}`);
+      console.log(`isTrustedCrossOrigin: ${String(isTrustedCrossOrigin)}`);
+      
+      // SECURITY: Determine cookie security based on environment and origin
+      let cookieSettings;
+      if (isProduction && !isRunningOnDevServer) {
+        // PRODUCTION: Always secure, only sameSite=none for trusted origins
+        cookieSettings = {
+          secure: true,
+          sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+          domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
+        };
+        console.log('COOKIE CONFIG: Production mode - secure=true, sameSite=' + cookieSettings.sameSite);
+      } else if (isTrustedCrossOrigin || isRunningOnDevServer) {
+        // DEVELOPMENT/DEV SERVER: Trusted dev servers get cross-origin support
+        cookieSettings = {
+          secure: true, // Required for sameSite=none
+          sameSite: 'none',
+          domain: '.hashbuzz.social',
+        };
+        console.log('COOKIE CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none, domain=.hashbuzz.social');
+      } else {
+        // DEVELOPMENT: Localhost and other origins get standard settings
+        cookieSettings = {
+          secure: false,
+          sameSite: 'lax',
+          domain: undefined,
+        };
+        console.log('COOKIE CONFIG: Localhost mode - secure=false, sameSite=lax, domain=undefined');
+      }
+      
+      console.log('=== END COOKIE CONFIG DEBUG ===');
+      
+      // Access token cookie - with strict security controls
       res.cookie('access_token', token, {
         httpOnly: true,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        secure: cookieSettings.secure,
+        sameSite: cookieSettings.sameSite as any,
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
+        domain: cookieSettings.domain,
       });
 
+      // Refresh token cookie - with strict security controls
       res.cookie('refresh_token', refreshToken, {
-        httpOnly: this.secureCookie,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        httpOnly: true,
+        secure: cookieSettings.secure,
+        sameSite: cookieSettings.sameSite as any,
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        domain: cookieSettings.domain,
       });
 
       res.status(OK).json({
@@ -246,17 +334,54 @@ class SessionManager {
   }
 
   async handleDeviceId(req: Request, res: Response) {
-    let deviceId = req.deviceId;
+    const deviceId = req.deviceId;
     const config = await getConfig();
+    
     if (deviceId) {
+      // SECURITY: Use same trusted origin logic as access tokens
+      const origin = req.get('origin') || req.get('referer') || '';
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      const trustedCrossOrigins = [
+        'https://testnet-dev-api.hashbuzz.social',
+        'https://dev.hashbuzz.social',
+        'https://www.hashbuzz.social',
+        'https://hashbuzz.social'
+      ];
+      
+      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+      
+      // SECURITY: Determine cookie security based on environment and origin
+      let cookieSettings;
+      if (isProduction) {
+        cookieSettings = {
+          secure: true,
+          sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+          domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
+        };
+      } else if (isTrustedCrossOrigin) {
+        cookieSettings = {
+          secure: true,
+          sameSite: 'none',
+          domain: '.hashbuzz.social',
+        };
+      } else {
+        cookieSettings = {
+          secure: false,
+          sameSite: 'lax',
+          domain: undefined,
+        };
+      }
+      
       res.cookie(
         'device_id',
         d_decrypt(deviceId, config.encryptions.encryptionKey),
         {
           httpOnly: true,
-          secure: this.secureCookie,
-          sameSite: 'strict',
+          secure: cookieSettings.secure,
+          sameSite: cookieSettings.sameSite as any,
           path: '/',
+          domain: cookieSettings.domain,
         }
       );
     }
@@ -449,13 +574,19 @@ class SessionManager {
 
       await this.updateSession(session.id, newkid, newExpiry);
 
-      // Set new access token cookie with same settings as login
+      // Enhanced cookie configuration for refresh token endpoint
+      const refreshConfig = await getConfig();
+      const isDevServer = refreshConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
+      const isDevelopment = process.env.NODE_ENV === 'development';
+
+      // Set new access token cookie with enhanced cross-domain settings
       res.cookie('access_token', newToken, {
-        httpOnly: this.secureCookie,
-        secure: this.secureCookie,
-        sameSite: 'lax',
+        httpOnly: true,
+        secure: this.secureCookie || isDevServer,
+        sameSite: isDevServer || !isDevelopment ? 'none' : 'lax',
         path: '/',
         maxAge: 1000 * 60 * 15, // 15 minutes
+        domain: isDevServer ? '.hashbuzz.social' : undefined,
       });
 
       return res

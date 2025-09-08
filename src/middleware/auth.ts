@@ -32,11 +32,13 @@ const getAuthToken = (req: Request): string => {
     req.token = cookieToken;
     return cookieToken;
   }
+  
   throw new UnauthorizeError(AuthError.AUTH_TOKEN_NOT_PRESENT);
 };
 
 const getHeadersData = async (req: Request) => {
   const config = await getConfig();
+  
   let deviceId =
     req.cookies.device_id ?? (req.headers['x-device-id'] as string);
   if (!deviceId)

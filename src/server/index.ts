@@ -36,20 +36,27 @@ const initializeApp = async () => {
   // Enhanced CORS options to include credentials
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
-      // In production, get domains from environment variable
       const envDomains = config.app.whitelistedDomains || [];
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const whitelist = [
         ...envDomains,
         'http://localhost:3000',
-        'http://localhost:3001', // Add additional localhost ports
+        'http://localhost:3001',
         'https://www.hashbuzz.social',
         'https://hashbuzz.social',
-        'www.hashbuzz.social'
+        'www.hashbuzz.social',
+        'https://testnet-dev-api.hashbuzz.social',
+        'https://dev.hashbuzz.social'
       ].map(domain => domain.trim());
 
-      // Log the origin for debugging
       logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
       logger.info(`Whitelisted domains: ${whitelist.join(', ')}`);
+
+      // Allow all origins in development
+      if (isDevelopment) {
+        logger.info('Development mode - allowing all origins');
+        return callback(null, true);
+      }
 
       // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) {
@@ -66,7 +73,7 @@ const initializeApp = async () => {
       }
     },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    credentials: true, // Allow credentials (cookies) to be sent
+    credentials: true,
   };
 
   // Middleware setup
@@ -74,14 +81,85 @@ const initializeApp = async () => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
-  app.use(
-    session({
+
+  // SECURITY: Strict session configuration with environment-aware security
+  app.use((req, res, next) => {
+    const origin = req.get('origin') || req.get('referer') || '';
+    const host = req.get('host');
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // ENHANCED: Detect if this IS the dev server itself
+    const isRunningOnDevServer = host?.includes('testnet-dev-api.hashbuzz.social') || 
+                                process.env.SERVER_ENV === 'development' ||
+                                process.env.SERVER_ENV === 'staging';
+    
+    // SECURITY: Define trusted origins for cross-origin cookie sharing
+    const trustedCrossOrigins = [
+      'https://testnet-dev-api.hashbuzz.social',
+      'https://dev.hashbuzz.social', 
+      'https://www.hashbuzz.social',
+      'https://hashbuzz.social'
+    ];
+    
+    const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
+    
+    // DEBUG: Log session configuration decision
+    logger.info('=== SESSION CONFIG DEBUG ===');
+    logger.info(`Request Host: ${host || 'undefined'}`);
+    logger.info(`Request Origin: ${origin || 'undefined'}`);
+    logger.info(`NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+    logger.info(`SERVER_ENV: ${process.env.SERVER_ENV || 'undefined'}`);
+    logger.info(`isProduction: ${String(isProduction)}`);
+    logger.info(`isRunningOnDevServer: ${String(isRunningOnDevServer)}`);
+    logger.info(`isTrustedCrossOrigin: ${String(isTrustedCrossOrigin)}`);
+    
+    // SECURITY: Determine session security based on environment and origin
+    let sessionConfig: {
+      secure: boolean;
+      sameSite: 'strict' | 'lax' | 'none';
+    };
+    
+    if (isProduction && !isRunningOnDevServer) {
+      // PRODUCTION: Maximum security, only trusted cross-origin allowed
+      sessionConfig = {
+        secure: true,
+        sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
+      };
+      logger.info('SESSION CONFIG: Production mode - secure=true, sameSite=' + sessionConfig.sameSite);
+    } else if (isTrustedCrossOrigin || isRunningOnDevServer) {
+      // DEVELOPMENT/DEV SERVER: Trusted dev servers get cross-origin support
+      sessionConfig = {
+        secure: true, // Required for sameSite=none
+        sameSite: 'none',
+      };
+      logger.info('SESSION CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none');
+    } else {
+      // DEVELOPMENT: Localhost gets standard security
+      sessionConfig = {
+        secure: false,
+        sameSite: 'lax',
+      };
+      logger.info('SESSION CONFIG: Localhost mode - secure=false, sameSite=lax');
+    }
+    
+    logger.info('=== END SESSION CONFIG DEBUG ===');
+    
+    const sessionMiddleware = session({
       secret: config.encryptions.sessionSecret,
-      cookie: { maxAge: 60000, secure: process.env.NODE_ENV === 'production' },
+      name: 'hashbuzz.sid',
+      cookie: { 
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: sessionConfig.secure,
+        httpOnly: true,
+        sameSite: sessionConfig.sameSite,
+      },
       resave: false,
       saveUninitialized: true,
-    })
-  );
+      rolling: true,
+    });
+    
+    sessionMiddleware(req, res, next);
+  });
   app.use(
     lusca({
       csrf: false,
@@ -158,17 +236,7 @@ const initializeApp = async () => {
   });
   app.use(limiter);
 
-  const sessionSecret = config.encryptions.sessionSecret;
-
-  // Session setup
-  const swaggerSession = session({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production' }, // Secure cookies in production
-  });
-
-  app.use(swaggerSession); // Apply session middleware globally
+  // Note: Session middleware already configured above with enhanced settings
 
   // Enhanced Passport GitHub Strategy with logging
   passport.use(
