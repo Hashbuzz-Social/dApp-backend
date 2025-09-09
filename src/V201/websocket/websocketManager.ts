@@ -56,11 +56,11 @@ export const attachWebSocketServer = (server: http.Server) => {
   return wss;
 };
 
-export const sendToUser = (userId: string, event: string, data: any) => {
+export const sendToUser = async (userId: string, event: string, data: any) => {
   const client = clients.get(userId);
   if (!client || client.readyState !== WebSocket.OPEN) return false;
   const payload = JSON.stringify({ event, data });
-  const message = encryptData(payload);
+  const message = await encryptData(payload);
   client.send(message);
   return true;
 };

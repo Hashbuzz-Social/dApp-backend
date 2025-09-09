@@ -24,21 +24,21 @@ export const publishToQueue = async (queue: string, data: any) => {
 
 export const consumeFromQueue = async (
   queue: string,
-  callback: (data: any) => void
+  callback: (data: any) => void,
+  options?: { signal?: AbortSignal }
 ) => {
   const redisClient = await getRedisClient();
   if (!redisClient.isOpen) {
     await redisClient.connect();
   }
 
-  const keepConsuming = true;
-  while (keepConsuming) {
+  while (!options?.signal?.aborted) {
     const data = await redisClient.lPop(queue);
     if (data) {
       callback(safeParsedData(data));
     } else {
       await setTimeout(100); // Small delay to prevent CPU overload
     }
-    // Optionally, you can set keepConsuming = false to break the loop if needed
+    // The loop will break if the AbortSignal is triggered
   }
 };
