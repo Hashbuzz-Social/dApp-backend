@@ -1,8 +1,8 @@
 import { Worker, Job } from 'bullmq';
-import appConfigManager from './appConfigManager';
 import { ScheduledEvent } from './AppEvents';
 import { TaskSchedulerJobType } from './schedulerQueue';
 import { parseRedisURL } from './Modules/common';
+import { getConfig } from '@appConfig';
 
 /**
  * WorkerManager handles the creation and shutdown of BullMQ workers for processing scheduled jobs.
@@ -19,7 +19,7 @@ class WorkerManager {
     jobType: T,
     processor: (job: Job<TaskSchedulerJobType<T>>) => Promise<void>
   ): Promise<void> {
-    const configs = await appConfigManager.getConfig();
+    const configs = await getConfig();
 
     const worker = new Worker<TaskSchedulerJobType<T>>(
       jobType,

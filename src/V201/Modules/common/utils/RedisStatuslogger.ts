@@ -1,15 +1,16 @@
+import { getConfig } from '@appConfig';
 import { LYFCycleStages } from '@services/CampaignLifeCycleBase';
-import RedisClient from '@services/redis-servie';
-import appConfigManager from 'src/V201/appConfigManager';
+import RedisClient from '@services/redis-service';
+
 
 // Helper method to update campaign status on Redis
 export const updateCampaignInMemoryStatus = async (
   contractId: string,
   subTask?: string,
-  isSuccess: boolean = false,
+  isSuccess = false,
   LYFCycleStage: LYFCycleStages = LYFCycleStages.RUNNING
 ) => {
-  const configs = await appConfigManager.getConfig();
+  const configs = await getConfig();
   const redisClient = new RedisClient(configs.db.redisServerURI);
   await redisClient.updateCampaignCardStatus({
     card_contract_id: contractId,

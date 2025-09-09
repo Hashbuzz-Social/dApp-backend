@@ -1,14 +1,15 @@
-import RedisClient from '@services/redis-servie';
-import appConfigManager from 'src/V201/appConfigManager';
+import RedisClient from '@services/redis-service'
+// import appConfigManager from 'src/V201/appConfigManager';
 import { safeParsedData, safeStringifyData } from './Modules/common';
 import { setTimeout } from 'timers/promises';
+import { getConfig } from '@appConfig';
 
 let redisClient: RedisClient | null = null;
 
 const getRedisClient = async () => {
   if (!redisClient) {
-    const configs = await appConfigManager.getConfig();
-    redisClient = new RedisClient(configs.db.redisServerURI);
+    const config = await getConfig();
+    redisClient = new RedisClient(config.db.redisServerURI);
   }
   return redisClient.client;
 };
@@ -30,12 +31,14 @@ export const consumeFromQueue = async (
     await redisClient.connect();
   }
 
-  while (true) {
+  const keepConsuming = true;
+  while (keepConsuming) {
     const data = await redisClient.lPop(queue);
     if (data) {
       callback(safeParsedData(data));
     } else {
       await setTimeout(100); // Small delay to prevent CPU overload
     }
+    // Optionally, you can set keepConsuming = false to break the loop if needed
   }
 };

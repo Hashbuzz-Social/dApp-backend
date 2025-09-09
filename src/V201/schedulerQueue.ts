@@ -1,8 +1,8 @@
 import { parseRedisURL, safeParsedData } from '@V201/modules/common';
 import { SheduleJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
-import appConfigManager from './appConfigManager';
 import { ScheduledEvent } from './AppEvents';
+import { getConfig } from '@appConfig';
 
 /**
  * Defines the structure of a task scheduler job.
@@ -39,7 +39,7 @@ class SchedulerQueue {
    * Initializes configuration settings.
    */
   private async initializeConfigs() {
-    this.configs = await appConfigManager.getConfig();
+    this.configs = await getConfig();
   }
 
   /**

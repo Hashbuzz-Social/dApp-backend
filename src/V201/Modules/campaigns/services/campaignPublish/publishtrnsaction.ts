@@ -1,3 +1,4 @@
+import { getConfig } from '@appConfig';
 import {
   campaign_twittercard,
   campaignstatus,
@@ -22,7 +23,6 @@ import {
 } from '@V201/modules/common';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
-import appConfigManager from 'src/V201/appConfigManager';
 import { publishEvent } from 'src/V201/eventPublisher';
 
 const handleSmartContractTransaction = async (
@@ -41,7 +41,7 @@ const handleSmartContractTransaction = async (
     );
 
     const prisma = await createPrismaClient();
-    const apConfig = await appConfigManager.getConfig();
+    const apConfig = await getConfig();
 
     // log transaction record
     const transactionRecord = await new TransactionRecordModel(
@@ -91,7 +91,7 @@ const handleSmartContractTransaction = async (
       message: error.message,
       error,
     });
-    logger.err('Error in handleSmartContractTransaction:', error instanceof Error ? error.stack || error.message : JSON.stringify(error));
+    logger.err('Error in handleSmartContractTransaction:' + (error instanceof Error ? error.stack || error.message : JSON.stringify(error)));
     throw error;
   }
 };
@@ -125,12 +125,29 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
 
     await updateHabrBalanceOfCard(card);
 
-    return {
-      contract_id,
-      transactionId: contractStateUpdateResult?.transactionId,
-      receipt: contractStateUpdateResult?.receipt,
-      status: contractStateUpdateResult?.status._code.toString(),
-    };
+    if (
+      contractStateUpdateResult &&
+      typeof contractStateUpdateResult === 'object' &&
+      'status' in contractStateUpdateResult &&
+      contractStateUpdateResult.status &&
+      '_code' in contractStateUpdateResult.status &&
+      'transactionId' in contractStateUpdateResult &&
+      'receipt' in contractStateUpdateResult
+    ) {
+      return {
+        contract_id,
+        transactionId: contractStateUpdateResult.transactionId,
+        receipt: contractStateUpdateResult.receipt,
+        status: contractStateUpdateResult.status._code.toString(),
+      };
+    } else {
+      return {
+        contract_id,
+        transactionId: 'transactionId' in contractStateUpdateResult ? (contractStateUpdateResult as any).transactionId : undefined,
+        receipt: 'receipt' in contractStateUpdateResult ? (contractStateUpdateResult as any).receipt : undefined,
+        status: undefined,
+      };
+    }
   });
 };
 

@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { sseRoutes } from "./sse";
 import {campaignRouter} from "./Modules";
 
 
 const router = Router();
 
-router.use("/sse",  sseRoutes ); // Protected SSE endpoint
+// websocket route placeholder: clients should connect directly to the WS server
+router.use('/websocket', (_req, res) => res.status(204).send());
 
 router.use('/campaign', campaignRouter);
 

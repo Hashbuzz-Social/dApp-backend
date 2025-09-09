@@ -65,11 +65,14 @@ class CampaignTwitterCardModel {
 
   async upsertCampaign(
     data: Prisma.campaign_twittercardCreateInput,
-    tweetId?: string
+    id?: number | bigint
   ) {
     try {
+      if (id === undefined) {
+        throw new Error('ID is required for upsert operation.');
+      }
       return await this.prisma.campaign_twittercard.upsert({
-        where: { tweet_id: tweetId },
+        where: { id },
         update: data,
         create: data,
       });
@@ -81,7 +84,7 @@ class CampaignTwitterCardModel {
 
   async getCampaignByTweetId(tweetId: string) {
     try {
-      return await this.prisma.campaign_twittercard.findUnique({
+      return await this.prisma.campaign_twittercard.findFirst({
         where: { tweet_id: tweetId },
       });
     } catch (error) {

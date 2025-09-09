@@ -1,3 +1,4 @@
+import { getConfig } from '@appConfig';
 import { campaignstatus } from '@prisma/client';
 import tweetService from '@services/twitterCard-service';
 import { addMinutesToTime } from '@shared/helper';
@@ -6,7 +7,6 @@ import { CampaignEvents, CampaignSheduledEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
-import appConfigManager from 'src/V201/appConfigManager';
 import { publishEvent } from 'src/V201/eventPublisher';
 import SchedulerQueue from 'src/V201/schedulerQueue';
 
@@ -37,7 +37,7 @@ export const publishCampaignSecondContent = async ({
     throw new Error('First tweet not published');
   }
   const currentTime = new Date();
-  const configs = await appConfigManager.getConfig();
+  const configs = await getConfig();
   const prisma = await createPrismaClient();
 
   const campaignDurationInMin = configs.app.defaultCampaignDuration;

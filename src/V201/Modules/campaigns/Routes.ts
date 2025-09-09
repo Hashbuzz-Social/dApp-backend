@@ -7,6 +7,7 @@ import {
   validatePublishCampaignBody,
 } from 'src/V201/MiddleWare';
 import CampaignController from './Controller';
+import asyncHandler from '@shared/asyncHandler';
 
 /**
  * @swagger
@@ -26,16 +27,16 @@ campaignRouter.post(
   '/draft',
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
-  userInfo.getCurrentUserInfo,
-  storeMediaToS3,
-  CampaignController.draftCampaign
+  asyncHandler(userInfo.getCurrentUserInfo),
+  asyncHandler(storeMediaToS3),
+  asyncHandler(CampaignController.draftCampaign.bind(CampaignController))
 );
 
 campaignRouter.post(
   '/publish',
   validatePublishCampaignBody,
-  userInfo.getCurrentUserInfo,
-  CampaignController.startPublishingCampaign
+  asyncHandler(userInfo.getCurrentUserInfo),
+  asyncHandler(CampaignController.startPublishingCampaign.bind(CampaignController))
 );
 
 export default campaignRouter;

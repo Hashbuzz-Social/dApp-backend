@@ -50,7 +50,7 @@
     "@V201/modules": "dist/V201/Modules",
     "@V201/events": "dist/V201/AppEvents",
     "@V201/middleware": "dist/V201/Middleware",
-    "@V201/Modals":"dist/V201/Modals"
+    "@V201/Modals": "dist/V201/Modals"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -117,6 +117,7 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.6.7",
     "bignumber.js": "^9.1.2",
+    "bullmq": "^5.58.5",
     "command-line-args": "^5.2.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",

@@ -7,7 +7,6 @@ import createPrismaClient from '@shared/prisma';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import UserBalancesModel from '@V201/Modals/UserBalances';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
-import PrismaClientManager from '@V201/PrismaClient';
   
   
 
