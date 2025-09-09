@@ -1,13 +1,10 @@
 import { campaign_twittercard, whiteListedTokens } from '@prisma/client';
+import createPrismaClient from '@shared/prisma';
 import { BalanceEvents } from '@V201/events/balances';
 import UserBalancesModel from '@V201/Modals/UserBalances';
 import UsersModel from '@V201/Modals/Users';
-import PrismaClientManager from '@V201/PrismaClient';
 import { publishEvent } from 'src/V201/eventPublisher';
 
-const getPrismaClient = async () => {
-  return await PrismaClientManager.getInstance();
-};
 
 const validateCardData = (card: campaign_twittercard) => {
   if (!card.campaign_budget || !card.owner_id) {
@@ -17,7 +14,7 @@ const validateCardData = (card: campaign_twittercard) => {
 
 export const updateHabrBalanceOfCard = async (card: campaign_twittercard) => {
   validateCardData(card);
-  const prismaClient = await getPrismaClient();
+  const prismaClient = await createPrismaClient();
   const updatedUser = await new UsersModel(prismaClient).updateUserBalance(
     card.owner_id,
     card.campaign_budget!,
@@ -41,7 +38,7 @@ export const updateFungibleBalanceOfCard = async (
     throw new Error('Missing required data for fungible balance update');
   }
 
-  const prismaClient = await getPrismaClient();
+  const prismaClient = await createPrismaClient();
   const updatedBalanceRecord = await new UserBalancesModel(
     prismaClient
   ).updateTokenBalanceForUser({

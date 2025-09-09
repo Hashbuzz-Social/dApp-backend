@@ -50,8 +50,7 @@
     "@V201/modules": "dist/V201/Modules",
     "@V201/events": "dist/V201/AppEvents",
     "@V201/middleware": "dist/V201/Middleware",
-    "@V201/Modals":"dist/V201/Modals",
-    "@V201/PrismaClient": "dist/V201/PrismaClient"
+    "@V201/Modals":"dist/V201/Modals"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

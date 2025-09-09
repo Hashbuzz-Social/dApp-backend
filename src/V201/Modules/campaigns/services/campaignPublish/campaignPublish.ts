@@ -3,10 +3,10 @@ import {
 } from '@prisma/client';
 import { CampaignEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
-import PrismaClientManager from '@V201/PrismaClient';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
 import { isCampaignValidForMakeRunning } from './validation';
+import createPrismaClient from '@shared/prisma';
 
 /**
  * Starts the process of publishing a campaign.
@@ -21,7 +21,7 @@ export const startPublishingCampaign = async (
   userId: number | bigint
 ): Promise<void> => {
   try {
-    const prisma = await PrismaClientManager.getInstance();
+    const prisma = await createPrismaClient();
 
     const card = await new CampaignTwitterCardModel(
       prisma
@@ -58,7 +58,7 @@ export const startPublishingCampaign = async (
       message: error.message,
       error,
     });
-    logger.err('Error in startPublishingCampaign:', error);
+    logger.err('Error in startPublishingCampaign: ' + (error instanceof Error ? error.message : String(error)));
     throw error;
   }
 };

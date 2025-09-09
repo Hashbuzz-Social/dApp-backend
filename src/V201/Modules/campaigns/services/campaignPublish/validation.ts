@@ -3,6 +3,7 @@ import {
     campaignstatus,
     user_user
 } from '@prisma/client';
+import createPrismaClient from '@shared/prisma';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import UserBalancesModel from '@V201/Modals/UserBalances';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
@@ -44,7 +45,7 @@ const validationMessages = {
       fungible_token_id,
     } = card;
   
-    const prisma = await PrismaClientManager.getInstance();
+    const prisma = await createPrismaClient();
   
     const runningCardCount = await new CampaignTwitterCardModel(
       prisma

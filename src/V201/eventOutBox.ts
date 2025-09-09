@@ -13,12 +13,12 @@
  * console.log(savedEvent);
  * ```
  */
+import createPrismaClient from '@shared/prisma';
 import { safeStringifyData } from './Modules/common';
-import PrismaClientManager from './prismaClient';
 
-export const saveEvent = async (eventType: string, payload: any) => {
+export const saveEvent = async (eventType: string, payload: Object) => {
   try {
-    const prisma = await PrismaClientManager.getInstance();
+    const prisma = await createPrismaClient();
     const result = await prisma.eventOutBox.create({
       data: {
         event_type: eventType,

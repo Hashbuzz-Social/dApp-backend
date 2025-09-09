@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { addFungibleAndNFTCampaign } from '@services/contract-service';
 import { allocateBalanceToCampaign } from '@services/transaction-service';
+import createPrismaClient from '@shared/prisma';
 import { CampaignEvents } from '@V201/events/campaign';
 import CampaignLogsModel from '@V201/Modals/CampaignLogs';
 import TransactionRecordModel from '@V201/Modals/TransactionRecord';
@@ -19,7 +20,6 @@ import {
   safeParsedData,
   updateCampaignInMemoryStatus,
 } from '@V201/modules/common';
-import PrismaClientManager from '@V201/PrismaClient';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
 import appConfigManager from 'src/V201/appConfigManager';
@@ -40,7 +40,7 @@ const handleSmartContractTransaction = async (
       `Smart contract transaction successful for card ID: ${card.id}`
     );
 
-    const prisma = await PrismaClientManager.getInstance();
+    const prisma = await createPrismaClient();
     const apConfig = await appConfigManager.getConfig();
 
     // log transaction record
@@ -62,7 +62,7 @@ const handleSmartContractTransaction = async (
     const logableCampaignData: Omit<Prisma.CampaignLogCreateInput, 'campaign'> =
       {
         status: campaignstatus.CampaignRunning,
-        message: `Campaign balance ${card.campaign_budget} is added to the SM Contract`,
+        message: `Campaign balance ${card.campaign_budget ?? 0} is added to the SM Contract`,
         data: safeParsedData({
           transaction_id: transactionDetails.transactionId,
           status: transactionDetails.status,
@@ -91,7 +91,7 @@ const handleSmartContractTransaction = async (
       message: error.message,
       error,
     });
-    logger.err('Error in handleSmartContractTransaction:', error);
+    logger.err('Error in handleSmartContractTransaction:', error instanceof Error ? error.stack || error.message : JSON.stringify(error));
     throw error;
   }
 };
@@ -167,7 +167,7 @@ export const publshCampaignSMTransactionHandlerFungible = async (
     }
 
     const tokendata = await new WhiteListedTokensModel(
-      await PrismaClientManager.getInstance()
+      await createPrismaClient()
     ).getTokenDataByAddress(fungible_token_id);
 
     if (!tokendata) {

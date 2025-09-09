@@ -1,11 +1,10 @@
 import { campaignstatus, Prisma } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import { convertToTinyHbar, rmKeyFrmData } from '@shared/helper';
+import createPrismaClient from '@shared/prisma';
 import { CampaignEvents } from '@V201/events/campaign';
-
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { generateRandomString, safeParsedData } from '@V201/modules/common';
-import PrismaClientManager from '@V201/PrismaClient';
 import { DraftCampaignBody } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
@@ -53,7 +52,7 @@ export const draftCampaign = async (
     Number(campaign_budget)
   ); // Calculate the maximum reward per activity
 
-  const prisma = await PrismaClientManager.getInstance(); // Get an instance of Prisma client
+  const prisma = await createPrismaClient(); // Get an instance of Prisma client
 
   try {
     if (type === 'FUNGIBLE' && !fungible_token_id) {
@@ -153,7 +152,7 @@ export const draftCampaign = async (
 
     return safeParsedData(sanitizedData); // Return the sanitized campaign data
   } catch (err) {
-    logger.err('Error:: Error while creating campaign', err); // Log the error
+    logger.err('Error:: Error while creating campaign'); // Log the error
     throw err; // Rethrow the error
   }
 };

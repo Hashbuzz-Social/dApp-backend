@@ -1,10 +1,10 @@
 import { campaignstatus } from '@prisma/client';
 import tweetService from '@services/twitterCard-service';
 import { addMinutesToTime } from '@shared/helper';
+import createPrismaClient from '@shared/prisma';
 import { CampaignEvents, CampaignSheduledEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
-import PrismaClientManager from '@V201/PrismaClient';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import appConfigManager from 'src/V201/appConfigManager';
 import { publishEvent } from 'src/V201/eventPublisher';
@@ -14,7 +14,7 @@ export const publshCampaignContentHandler = async ({
   cardOwner,
   card,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]): Promise<void> => {
-  const prisma = await PrismaClientManager.getInstance();
+  const prisma = await createPrismaClient();
   const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
   await updateCampaignInMemoryStatus(card.contract_id!, 'firstTweetOut', true);
   const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
@@ -38,9 +38,9 @@ export const publishCampaignSecondContent = async ({
   }
   const currentTime = new Date();
   const configs = await appConfigManager.getConfig();
-  const prisma = await PrismaClientManager.getInstance();
+  const prisma = await createPrismaClient();
 
-  const campaignDurationInMin = configs.app.defaultCampaignDuratuon;
+  const campaignDurationInMin = configs.app.defaultCampaignDuration;
 
   // publish second tweet
   const lastTweetThreadId = await tweetService.publishSecondThread(

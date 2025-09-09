@@ -2,8 +2,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { getConfig } from '@appConfig';
+import Logger from 'jet-logger';
 
-const createPrismaClient = async () => {
+const createPrismaClient = async (): Promise<PrismaClient> => {
     const configs = await getConfig();
     const pool = new Pool({ connectionString: configs.db.dbServerURI });
     const adapter = new PrismaPg(pool);
@@ -14,7 +15,7 @@ const createPrismaClient = async () => {
                     try {
                         return await query(args);
                     } catch (error) {
-                        console.error("Prisma error:", error);
+                        Logger.err(`Prisma error: ${String(error)}`);
 
                         switch (error.code) {
                             case 'P2002':
@@ -30,7 +31,7 @@ const createPrismaClient = async () => {
                 },
             },
         },
-    });
+    }) as unknown as PrismaClient;
 
     return prisma;
 }
