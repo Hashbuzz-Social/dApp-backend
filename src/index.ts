@@ -56,15 +56,15 @@ async function gracefulShutdown() {
   process.exit(0);
 }
 
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", () => { void gracefulShutdown(); });
+process.on("SIGINT", () => { void gracefulShutdown(); });
 
 /**
  * Initialize the server
  */
 async function init() {
   try {
-    console.log('Initializing server')
+  logInfo('Initializing server');
     const config = await getConfig();
     redisClient = new RedisClient(config.db.redisServerURI);
 
@@ -74,10 +74,21 @@ async function init() {
     await afterStartJobs();
 
     const port = config.app.port || 4000;
-    server.listen(port, () => {
+    const httpServer = server.listen(port, () => {
       const msg = `Server is running on http://localhost:${port}`;
       logInfo(msg);
     });
+
+    // Attach WebSocket server (if available)
+    try {
+      // Lazy import to avoid circular deps
+      const websocket = await import('./V201/websocket');
+      if (websocket && websocket.attach) {
+        websocket.attach(httpServer);
+      }
+    } catch (err) {
+      logInfo('WebSocket module not attached: ' + String(err));
+    }
   } catch (error) {
     const errMsg = "Failed to initialize the server";
     logError(errMsg, error);

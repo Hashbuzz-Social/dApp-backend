@@ -21,6 +21,7 @@ import {
 import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
 import { IsStrongPasswordOptions } from 'express-validator/src/options';
+import asyncHandler from '@shared/asyncHandler';
 
 const authRouter = Router();
 
@@ -45,10 +46,10 @@ const passwordCheck: IsStrongPasswordOptions = {
  */
 authRouter.post(
   '/logout',
-  auth.isHavingValidAst,
+  asyncHandler(auth.isHavingValidAst),
   checkErrResponse,
-  userInfo.getCurrentUserInfo,
-  handleLogout
+  asyncHandler(userInfo.getCurrentUserInfo),
+  asyncHandler(handleLogout)
 );
 
 /**
@@ -62,9 +63,10 @@ authRouter.post(
  */
 authRouter.post(
   '/refresh-token',
-  auth.isHavingValidAst,
+  asyncHandler(auth.isHavingValidAst),
+  body('refreshToken').isString(),
   checkErrResponse,
-  handleRefreshToken
+  asyncHandler(handleRefreshToken)
 );
 
 /**
@@ -73,7 +75,7 @@ authRouter.post(
  * @api GET /api/auth/twitter-return
  * @handler handleTwitterReturnUrl
  */
-authRouter.get('/twitter-return', handleTwitterReturnUrl);
+authRouter.get('/twitter-return', asyncHandler(handleTwitterReturnUrl));
 
 /**
  * Handle Twitter business registration return URL.
@@ -81,7 +83,7 @@ authRouter.get('/twitter-return', handleTwitterReturnUrl);
  * @api GET /api/auth/business-twitter-return
  * @handler handleTwitterBizRegister
  */
-authRouter.get('/business-twitter-return', handleTwitterBizRegister);
+authRouter.get('/business-twitter-return', asyncHandler(handleTwitterBizRegister));
 
 /**
  * Handle admin login.
@@ -95,32 +97,32 @@ authRouter.get('/business-twitter-return', handleTwitterBizRegister);
  */
 authRouter.post(
   '/admin-login',
-  auth.isHavingValidAst,
-  auth.isAdminRequesting,
-  userInfo.getCurrentUserInfo,
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(userInfo.getCurrentUserInfo),
   body('password').isStrongPassword(passwordCheck),
-  handleAdminLogin
+  asyncHandler(handleAdminLogin)
 );
 
 //dAppAccessRoutes
-authRouter.get('/ping', auth.isHavingValidAst, handleAuthPing);
-authRouter.get('/challenge', handleCreateChallenge);
+authRouter.get('/ping', asyncHandler(auth.isHavingValidAst), asyncHandler(handleAuthPing));
+authRouter.get('/challenge', asyncHandler(handleCreateChallenge));
 authRouter.post(
   '/generate',
-  auth.deviceIdIsRequired,
-  auth.havingValidPayloadToken,
+  asyncHandler(auth.deviceIdIsRequired),
+  asyncHandler(auth.havingValidPayloadToken),
   body().custom(validateGenerateAstPayload),
   checkErrResponse,
-  handleGenerateAuthAst
+  asyncHandler(handleGenerateAuthAst)
 );
 
 authRouter.post(
   '/generate-v2',
-  auth.deviceIdIsRequired,
-  auth.havingValidPayloadToken,
+  asyncHandler(auth.deviceIdIsRequired),
+  asyncHandler(auth.havingValidPayloadToken),
   body().custom(validateGenerateAstPayloadV2),
   checkErrResponse,
-  handleGenerateAuthAstv2
+  asyncHandler(handleGenerateAuthAstv2)
 );
 
 authRouter.get('/csrf-token', (req:Request, res:Response) => {

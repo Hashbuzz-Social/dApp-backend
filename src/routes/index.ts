@@ -6,6 +6,7 @@ import integrationRouter from "./integrations";
 import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
 import userInfo from "@middleware/userInfo";
+import { asyncHandler } from '@shared/asyncHandler';
 
 
 // Export the base-router
@@ -48,7 +49,7 @@ baseRouter.get('/health', (req, res) => {
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/users", authMiddleware.isHavingValidAst, userRouter);
+baseRouter.use("/users", asyncHandler(authMiddleware.isHavingValidAst), userRouter);
 
 /**
  * @swagger
@@ -73,7 +74,12 @@ baseRouter.use("/users", authMiddleware.isHavingValidAst, userRouter);
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdminRequesting, adminRouter);
+baseRouter.use(
+  "/admin",
+  asyncHandler(authMiddleware.isHavingValidAst),
+  asyncHandler(authMiddleware.isAdminRequesting),
+  adminRouter
+);
 
 /**
  * @swagger
@@ -98,7 +104,7 @@ baseRouter.use("/admin", authMiddleware.isHavingValidAst, authMiddleware.isAdmin
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
+baseRouter.use("/campaign", asyncHandler(authMiddleware.isHavingValidAst), campaignRouter);
 
 /**
  * @swagger
@@ -123,7 +129,12 @@ baseRouter.use("/campaign", authMiddleware.isHavingValidAst, campaignRouter);
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurrentUserInfo, transactionRouter);
+baseRouter.use(
+  "/transaction",
+  asyncHandler(authMiddleware.isHavingValidAst),
+  asyncHandler(userInfo.getCurrentUserInfo),
+  transactionRouter
+);
 
 /**
  * @swagger
@@ -148,6 +159,6 @@ baseRouter.use("/transaction", authMiddleware.isHavingValidAst, userInfo.getCurr
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/integrations", authMiddleware.isHavingValidAst, integrationRouter);
+baseRouter.use("/integrations", asyncHandler(authMiddleware.isHavingValidAst), integrationRouter);
 
 export default baseRouter;
