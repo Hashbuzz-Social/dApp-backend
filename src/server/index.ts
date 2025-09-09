@@ -144,10 +144,19 @@ const initializeApp = async () => {
     
     logger.info('=== END SESSION CONFIG DEBUG ===');
     
-    const sessionMiddleware = session({
+    // Build session middleware. In production prefer a Redis-backed store.
+    // We'll attempt to lazily initialize a shared Redis client and store.
+    // If connect-redis or redis are missing, fall back to the default memory store.
+    let sessionMiddleware: express.RequestHandler;
+
+    const isProductionEnv = process.env.NODE_ENV === 'production';
+
+    // Helper to create the base session options used in all environments
+    const makeSessionOptions = (store?: any) => ({
+      store,
       secret: config.encryptions.sessionSecret,
       name: 'hashbuzz.sid',
-      cookie: { 
+      cookie: {
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         secure: sessionConfig.secure,
         httpOnly: true,
@@ -157,7 +166,50 @@ const initializeApp = async () => {
       saveUninitialized: true,
       rolling: true,
     });
-    
+
+    // Attempt to use a Redis store only in production
+    if (isProductionEnv) {
+      try {
+        // Dynamically require to avoid hard dependency during development.
+        // Supply lightweight runtime-friendly typings so the TypeScript
+        // checker doesn't treat these as `any` and flag unsafe calls.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const connectRedis = require('connect-redis') as (sess: typeof session) => {
+          new (opts: { client: RedisClientLike }): session.Store;
+        };
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const redis = require('redis') as {
+          createClient: (opts?: any) => RedisClientLike;
+        };
+
+        type RedisClientLike = { connect?: () => Promise<void> } & Record<string, any>;
+
+        const RedisStore = connectRedis(session) as unknown as { new (opts: { client: RedisClientLike }): session.Store };
+
+        // Create or reuse a redis client stored on the app to avoid reconnects
+        if (!(app as any)._redisClient) {
+          (app as any)._redisClient = redis.createClient({ url: config.db?.redisServerURI ?? process.env.REDIS_URL });
+
+          const maybeClient = (app as any)._redisClient as RedisClientLike;
+          if (maybeClient.connect && typeof maybeClient.connect === 'function') {
+            maybeClient.connect().catch((e: any) => logger.err('Redis connect error: ' + String(e)));
+          }
+        }
+
+        const redisClient = (app as any)._redisClient as RedisClientLike;
+        const redisStore = new RedisStore({ client: redisClient });
+        sessionMiddleware = session(makeSessionOptions(redisStore));
+      } catch (err) {
+        // If Redis isn't available, log and fall back to memory store
+        logger.err('Redis session store unavailable, falling back to memory store: ' + String(err));
+        sessionMiddleware = session(makeSessionOptions());
+      }
+    } else {
+      // Non-production: use default memory store
+      sessionMiddleware = session(makeSessionOptions());
+    }
+
+    // Apply the created middleware
     sessionMiddleware(req, res, next);
   });
   app.use(
