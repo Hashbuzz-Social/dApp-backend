@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import passport from 'passport';
 import logger from '../config/logger';
 import { isHttpError } from 'http-errors';
 import responseFormatter from './config/responseFormatter';
@@ -27,8 +28,8 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
         'https://hashbuzz.social',
         'www.hashbuzz.social',
         'https://testnet-dev-api.hashbuzz.social',
-        'https://dev.hashbuzz.social'
-      ].map(domain => domain.trim());
+        'https://dev.hashbuzz.social',
+      ].map((domain) => domain.trim());
 
       logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
       logger.info(`Whitelisted domains: ${whitelist.join(', ')}`);
@@ -36,7 +37,9 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
       if (isDevelopment) return callback(null, true);
       if (!origin) return callback(null, true);
       if (whitelist.includes(origin)) return callback(null, true);
-      callback(new Error(`API blocked by CORS policy. Origin '${origin}' not allowed.`));
+      callback(
+        new Error(`API blocked by CORS policy. Origin '${origin}' not allowed.`)
+      );
     },
     methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     credentials: true,
@@ -49,6 +52,10 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
 
   // Session
   configureSession(app, config);
+
+  // Initialize Passport middleware (must be after session)
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   // Security middleware
   app.use(
@@ -64,11 +71,18 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
 
   // CSRF token error handler
   const isCsrfError = (obj: unknown): obj is { code?: string } => {
-    return typeof obj === 'object' && obj !== null && 'code' in (obj as Record<string, unknown>);
+    return (
+      typeof obj === 'object' &&
+      obj !== null &&
+      'code' in (obj as Record<string, unknown>)
+    );
   };
 
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-    if (isCsrfError(err) && (err as { code?: string }).code === 'EBADCSRFTOKEN') {
+    if (
+      isCsrfError(err) &&
+      (err as { code?: string }).code === 'EBADCSRFTOKEN'
+    ) {
       logger.err('CSRF Token Mismatch. Resetting session.');
       req.session?.destroy(() => {
         res.status(403).json({ error: 'CSRF token mismatch. Session reset.' });
@@ -83,7 +97,10 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
     const maybeReq = req as Request & { csrfToken?: () => string };
     if (typeof maybeReq.csrfToken === 'function') {
       const token = maybeReq.csrfToken();
-      res.cookie('XSRF-TOKEN', token, { httpOnly: false, secure: process.env.NODE_ENV === 'production' });
+      res.cookie('XSRF-TOKEN', token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+      });
     }
     next();
   });
@@ -132,15 +149,34 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
 
   // Read package.json and serve index view
   try {
-    const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf-8'));
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf-8')
+    );
     // Only render SPA for non-API/static paths. If the request targets API, auth, logs, or assets,
     // call next() so the appropriate routers can handle them (this avoids shadowing /logs etc).
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
       const p = req.path || '';
-      const skipPrefixes = ['/api', '/auth', '/logs', '/api-docs', '/favicon.ico', '/static', '/assets', '/uploads'];
-      const isAssetLike = p.includes('.') || skipPrefixes.some(pre => p === pre || p.startsWith(pre + '/') || p.startsWith(pre));
+      const skipPrefixes = [
+        '/api',
+        '/auth',
+        '/logs',
+        '/api-docs',
+        '/favicon.ico',
+        '/static',
+        '/assets',
+        '/uploads',
+      ];
+      const isAssetLike =
+        p.includes('.') ||
+        skipPrefixes.some(
+          (pre) => p === pre || p.startsWith(pre + '/') || p.startsWith(pre)
+        );
       if (isAssetLike) return next();
-      res.render('index', { root: viewsDir, version: packageJson.version, appUri: process.env.FRONTEND_URL });
+      res.render('index', {
+        root: viewsDir,
+        version: packageJson.version,
+        appUri: process.env.FRONTEND_URL,
+      });
     });
   } catch (err) {
     logger.err('Failed to read package.json for views: ' + String(err));
@@ -154,7 +190,11 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
     }
     const e = err as Error;
     logger.err('Internal Server Error: ' + e.message);
-    res.status(500).json({ error: { message: 'Internal Server Error', description: e.message } });
+    res
+      .status(500)
+      .json({
+        error: { message: 'Internal Server Error', description: e.message },
+      });
   });
 };
 
