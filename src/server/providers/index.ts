@@ -1,3 +1,2 @@
-export * from "./ConfigurationFactory"
-export * from "./EnhancedConfigurationFactory"
-export * from "./ConfigurationValidator"
+export * from './ConfigurationFactory';
+export * from './EnhancedConfigurationFactory';
