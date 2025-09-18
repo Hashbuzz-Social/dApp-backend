@@ -78,7 +78,7 @@ export const publishCampaignSecondContent = async ({
     }
   );
 
-  // Schedule Closing Event for the campaign
+  // Schedule Closing Event for the campaign with retry policies
   const scheduler = await SchedulerQueue.getInstance();
 
   await scheduler.addJob(CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
