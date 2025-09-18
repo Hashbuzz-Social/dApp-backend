@@ -3,3 +3,4 @@ export * from './CampaignTwitterCard';
 export * from './UserBalances';
 export * from './Users';
 export * from './TransactionRecord';
+export * from './Monitoring';
