@@ -4,6 +4,10 @@ import {
   CampaignPublishPayLoad,
   CampaignDraftPayLoad,
   CampaignCloseJobPayload,
+  CampaignClosedPayload,
+  CampaignBudgetRefundPayload,
+  CampaignRateUpdatedPayload,
+  CampaignClosingErrorPayload,
 } from './campaigns';
 import {
   CampaignerFuncgibleBalanceUpdatePayload,
@@ -16,11 +20,16 @@ export type EventPayloadMap = {
   [CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]: CampaignPublishPayLoad;
   [CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION]: CampaignPublishPayLoad;
   [CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT]: CampaignPublishPayLoad;
-  
+
   // Campaign Draft events
   [CampaignEvents.CAMPAIGN_DRAFT_SUCCESS]: CampaignDraftPayLoad;
-  
-  
+
+  // Campaign Close events
+  [CampaignEvents.CAMPAIGN_CLOSED]: CampaignClosedPayload;
+  [CampaignEvents.CAMPAIGN_BUDGET_REFUND]: CampaignBudgetRefundPayload;
+  [CampaignEvents.CAMPAIGN_RATE_UPDATED]: CampaignRateUpdatedPayload;
+  [CampaignEvents.CAMPAIGN_CLOSING_ERROR]: CampaignClosingErrorPayload;
+
   [BalanceEvents.CAMPAIGNER_HABR_BALANCE_UPDATE]: CampaignerHbarBalUpdatePayload;
   [BalanceEvents.CAMPAIGNER_FUNGIBLE_BALANCE_UPDATE]: CampaignerFuncgibleBalanceUpdatePayload;
 

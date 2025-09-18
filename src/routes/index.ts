@@ -7,22 +7,26 @@ import transactionRouter from "./transaction-router";
 import userRouter from "./user-router";
 import userInfo from "@middleware/userInfo";
 import { asyncHandler } from '@shared/asyncHandler';
-
+import { V201Router } from '../V201';
 
 // Export the base-router
 const baseRouter = Router();
 
 // Health check endpoint - no authentication required
 baseRouter.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     origin: req.headers.origin || 'no-origin',
     userAgent: req.headers['user-agent'],
     corsHeaders: {
-      'access-control-allow-origin': res.getHeader('access-control-allow-origin'),
-      'access-control-allow-credentials': res.getHeader('access-control-allow-credentials'),
-    }
+      'access-control-allow-origin': res.getHeader(
+        'access-control-allow-origin'
+      ),
+      'access-control-allow-credentials': res.getHeader(
+        'access-control-allow-credentials'
+      ),
+    },
   });
 });
 
@@ -49,7 +53,11 @@ baseRouter.get('/health', (req, res) => {
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/users", asyncHandler(authMiddleware.isHavingValidAst), userRouter);
+baseRouter.use(
+  '/users',
+  asyncHandler(authMiddleware.isHavingValidAst),
+  userRouter
+);
 
 /**
  * @swagger
@@ -75,7 +83,7 @@ baseRouter.use("/users", asyncHandler(authMiddleware.isHavingValidAst), userRout
  *         description: Forbidden
  */
 baseRouter.use(
-  "/admin",
+  '/admin',
   asyncHandler(authMiddleware.isHavingValidAst),
   asyncHandler(authMiddleware.isAdminRequesting),
   adminRouter
@@ -104,7 +112,11 @@ baseRouter.use(
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/campaign", asyncHandler(authMiddleware.isHavingValidAst), campaignRouter);
+baseRouter.use(
+  '/campaign',
+  asyncHandler(authMiddleware.isHavingValidAst),
+  campaignRouter
+);
 
 /**
  * @swagger
@@ -130,7 +142,7 @@ baseRouter.use("/campaign", asyncHandler(authMiddleware.isHavingValidAst), campa
  *         description: Forbidden
  */
 baseRouter.use(
-  "/transaction",
+  '/transaction',
   asyncHandler(authMiddleware.isHavingValidAst),
   asyncHandler(userInfo.getCurrentUserInfo),
   transactionRouter
@@ -159,6 +171,39 @@ baseRouter.use(
  *       403:
  *         description: Forbidden
  */
-baseRouter.use("/integrations", asyncHandler(authMiddleware.isHavingValidAst), integrationRouter);
+baseRouter.use(
+  '/integrations',
+  asyncHandler(authMiddleware.isHavingValidAst),
+  integrationRouter
+);
+
+/**
+ * @swagger
+ * tags:
+ *   name: V201 Campaigns
+ *   description: V201 Campaign API routes with new rewarding mechanism
+ */
+
+/**
+ * @swagger
+ * /v201:
+ *   get:
+ *     summary: V201 Campaign API routes
+ *     tags: [V201 Campaigns]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+baseRouter.use(
+  '/v201',
+  asyncHandler(authMiddleware.isHavingValidAst),
+  V201Router
+);
 
 export default baseRouter;

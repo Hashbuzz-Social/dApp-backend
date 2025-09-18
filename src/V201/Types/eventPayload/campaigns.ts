@@ -28,3 +28,33 @@ export type CampaignCloseJobPayload = {
   createdAt: Date;
   tweetId: string;
 };
+
+export type CampaignClosedPayload = {
+  campaignId: number | bigint;
+  userId: number | bigint;
+  actualEngagers: number;
+  expectedEngagers: number;
+  closedAt: Date;
+};
+
+export type CampaignBudgetRefundPayload = {
+  campaignId: number | bigint;
+  userId: number | bigint;
+  refundAmount: number;
+  reason: string;
+};
+
+export type CampaignRateUpdatedPayload = {
+  campaignId: number | bigint;
+  userId: number | bigint;
+  oldRate: number;
+  newRate: number;
+  reason: string;
+};
+
+export type CampaignClosingErrorPayload = {
+  campaignId: number | bigint;
+  userId: number | bigint;
+  error: string;
+  stage: string;
+};
