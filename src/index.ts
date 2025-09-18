@@ -64,14 +64,23 @@ process.on("SIGINT", () => { void gracefulShutdown(); });
  */
 async function init() {
   try {
-  logInfo('Initializing server');
+    logInfo('Initializing server');
     const config = await getConfig();
     redisClient = new RedisClient(config.db.redisServerURI);
 
-    await preStartJobs();
+    // DEPRECATED: Pre-start jobs disabled for maintenance. These were used for:
+    // - Setting up environment variables
+    // - Checking token availability
+    // - Scheduling cron jobs and expiry tasks
+    // await preStartJobs();
+
     await testPrismaConnection();
-    await testRedisConnection(redisClient)
-    await afterStartJobs();
+    await testRedisConnection(redisClient);
+
+    // DEPRECATED: After-start jobs disabled for maintenance. These were used for:
+    // - Checking previous campaign close times
+    // - Processing backlog campaigns
+    // await afterStartJobs();
 
     const port = config.app.port || 4000;
     const httpServer = server.listen(port, () => {

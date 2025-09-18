@@ -10,6 +10,11 @@ import moment from "moment";
 import { scheduleJob } from "node-schedule";
 
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Manages Twitter card status by checking active campaigns and updating spent amounts.
+ * Auto-closes campaigns when budget is exhausted.
+ */
 const manageTwitterCardStatus = async (): Promise<void> => {
   const allActiveCards = await twitterCardService.allActiveTwitterCard();
   const activeCardIds = allActiveCards.map(card => card.tweet_id).filter(Boolean);
@@ -60,6 +65,11 @@ const manageTwitterCardStatus = async (): Promise<void> => {
   }));
 };
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Checks for replies and updates engagement data for active campaigns.
+ * Updates reply database and all engagement metrics every 2 minutes.
+ */
 const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
   try {
     const thresholdSeconds = 60;
@@ -80,6 +90,11 @@ const checkForRepliesAndUpdateEngagementsData = async (): Promise<void> => {
   }
 };
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Schedules expiry tasks for campaigns with RewardDistributionInProgress status.
+ * Creates scheduled jobs for campaign expiry operations.
+ */
 const scheduleExpiryTasks = async (): Promise<void> => {
   logInfo("Scheduling expiry tasks");
   const prisma = await createPrismaClient();
@@ -101,6 +116,11 @@ const scheduleExpiryTasks = async (): Promise<void> => {
   logInfo("Expiry tasks scheduled");
 };
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Auto-closes running campaigns based on budget exhaustion or time expiry.
+ * Monitors all running campaigns and triggers completion operations.
+ */
 const autoCampaignClose = async (): Promise<void> => {
   const prisma = await createPrismaClient();
   const runningTasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({ where: { card_status: CampaignStatus.CampaignRunning } });
@@ -123,6 +143,11 @@ const updateQueueStatus = async (id: bigint): Promise<CampaignTwitterCard> => {
   });
 };
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Checks campaign close times and schedules close operations for upcoming campaigns.
+ * Adds campaigns to scheduling queue that haven't been queued yet.
+ */
 const checkCampaignCloseTime = async (): Promise<void> => {
   const prisma = await createPrismaClient();
   const tasks: CampaignTwitterCard[] = await prisma.campaign_twittercard.findMany({
@@ -140,6 +165,11 @@ const checkCampaignCloseTime = async (): Promise<void> => {
   }));
 };
 
+/**
+ * @deprecated This cron task is disabled for maintenance.
+ * Checks for previous campaign close times and processes backlog campaigns.
+ * Handles campaigns that should have closed but are still running or in reward distribution.
+ */
 const checkPreviousCampaignCloseTime = async (): Promise<boolean> => {
   const prisma = await createPrismaClient();
   logger.info("Checking backlog campaigns");
