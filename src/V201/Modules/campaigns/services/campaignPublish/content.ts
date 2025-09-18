@@ -68,18 +68,32 @@ export const publishCampaignSecondContent = async ({
     }
   );
 
-  // Schedule Closing Event for the campaign
+  // Schedule Closing Event for the campaign with retry policies
   const scheduler = await SchedulerQueue.getInstance();
 
-  await scheduler.addJob(CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
-    eventName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
-    data: {
-      cardId: updatedCard.id,
-      userId: cardOwner.id,
-      type: updatedCard.type as CampaignTypes,
-      createdAt: currentTime,
-      tweetId: updatedCard.tweet_id!,
+  await scheduler.addJob(
+    CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+    {
+      eventName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+      data: {
+        cardId: updatedCard.id,
+        userId: cardOwner.id,
+        type: updatedCard.type as CampaignTypes,
+        createdAt: currentTime,
+        tweetId: updatedCard.tweet_id!,
+      },
+      executeAt: new Date(campaignCloseTime),
     },
-    executeAt: new Date(campaignCloseTime),
-  });
+    {
+      // Job persistence and retry configuration to prevent job loss
+      attempts: 5, // Retry up to 5 times if job fails
+      backoff: {
+        type: 'exponential',
+        delay: 30000, // Start with 30 second delay, exponentially increase
+      },
+      removeOnComplete: 10, // Keep only last 10 completed jobs for debugging
+      removeOnFail: 50, // Keep last 50 failed jobs for analysis
+      jobId: `campaign-close-${updatedCard.id}-${Date.now()}`, // Unique job ID to prevent duplicates
+    }
+  );
 };

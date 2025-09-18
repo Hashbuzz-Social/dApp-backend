@@ -3,11 +3,12 @@ dotenv.config();
 
 import RedisClient from "@services/redis-service";
 import { logError, logInfo } from "@shared/helper";
-import createPrismaClient from "@shared/prisma";
-import afterStartJobs from "./after-start";
-import { getConfig } from "./appConfig";
-import preStartJobs from "./pre-start";
-import server from "./server";
+import createPrismaClient from '@shared/prisma';
+import { getConfig } from './appConfig';
+import server from './server';
+
+// Initialize BullMQ workers for scheduled jobs
+import './V201/SchedulesJobHandlers';
 
 let redisClient: RedisClient;
 /**
