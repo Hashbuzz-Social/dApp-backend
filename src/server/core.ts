@@ -32,7 +32,6 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
       ].map((domain) => domain.trim());
 
       logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
-      logger.info(`Whitelisted domains: ${whitelist.join(', ')}`);
 
       if (isDevelopment) return callback(null, true);
       if (!origin) return callback(null, true);

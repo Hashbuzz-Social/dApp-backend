@@ -2,15 +2,41 @@ import { campaignstatus, Prisma } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import { convertToTinyHbar, rmKeyFrmData } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
-import { CampaignEvents } from '@V201/events/campaign';
+import { CampaignEvents } from 'src/V201/AppEvents';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { generateRandomString, safeParsedData } from '@V201/modules/common';
 import { DraftCampaignBody } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
 
-const calculateMaxActivityReward = (engagers: number, budget: number) =>
-  budget / engagers / 4;
+/**
+ * Calculate the maximum activity reward rate based on equal distribution mechanism
+ * Formula: Max Activity Rate = (Budget ÷ Expected Users) ÷ 4
+ *
+ * @param expectedEngagers - Maximum number of expected users/engagers
+ * @param budget - Total campaign budget
+ * @returns Maximum reward rate per activity
+ */
+const calculateMaxActivityReward = (
+  expectedEngagers: number,
+  budget: number
+): number => {
+  if (expectedEngagers <= 0 || budget <= 0) {
+    throw new Error('Expected engagers and budget must be positive numbers');
+  }
+
+  // Equal reward distribution: Budget divided by expected users, then divided by 4 activities
+  // This ensures each activity gets equal reward rate
+  const maxActivityRate = budget / expectedEngagers / 4;
+
+  logger.info(`Equal Reward Distribution Calculation:
+    - Budget: ${budget}
+    - Expected Engagers: ${expectedEngagers}
+    - Max Activity Rate: ${maxActivityRate}
+    - Formula: (${budget} ÷ ${expectedEngagers}) ÷ 4 = ${maxActivityRate}`);
+
+  return maxActivityRate;
+};
 
 const getRewardsValues = (
   reward: number,
@@ -47,10 +73,6 @@ export const draftCampaign = async (
     fungible_token_id,
   } = campaignBody;
   const contract_id = generateRandomString(20); // Generate a random contract ID
-  const maxActivityReward = calculateMaxActivityReward(
-    expected_engaged_users,
-    Number(campaign_budget)
-  ); // Calculate the maximum reward per activity
 
   const prisma = await createPrismaClient(); // Get an instance of Prisma client
 
@@ -67,38 +89,50 @@ export const draftCampaign = async (
       ).getTokenDataByAddress(fungible_token_id.toString());
     }
 
-    // Calculate reward values for different activities and the total campaign budget
+    // Calculate equal reward distribution - all activities get the same reward rate
+    // Formula: Max Activity Rate = (Budget ÷ Expected Users) ÷ 4
+    const equalActivityReward = calculateMaxActivityReward(
+      expected_engaged_users,
+      Number(campaign_budget)
+    );
+
+    logger.info(`Equal Activity Reward Calculation:
+      - Expected Engagers: ${expected_engaged_users}
+      - Total Budget: ${campaign_budget}
+      - Equal Reward Per Activity: ${equalActivityReward}`);
+
+    // Apply equal reward rate to all 4 activity types + campaign budget conversion
     const rewardValues = await Promise.all([
       getRewardsValues(
-        maxActivityReward,
+        equalActivityReward,
         type,
         fungible_token_id,
         tokenData?.decimals?.toNumber()
-      ),
+      ), // comment_reward
       getRewardsValues(
-        maxActivityReward,
+        equalActivityReward,
         type,
         fungible_token_id,
         tokenData?.decimals?.toNumber()
-      ),
+      ), // retweet_reward
       getRewardsValues(
-        maxActivityReward,
+        equalActivityReward,
         type,
         fungible_token_id,
         tokenData?.decimals?.toNumber()
-      ),
+      ), // like_reward
       getRewardsValues(
-        maxActivityReward,
+        equalActivityReward,
         type,
         fungible_token_id,
         tokenData?.decimals?.toNumber()
-      ),
+      ), // quote_reward
       getRewardsValues(
         campaign_budget,
         type,
         fungible_token_id,
         tokenData?.decimals?.toNumber()
-      ),
+      ), // campaign_budget_value
     ]);
 
     const [
@@ -146,7 +180,7 @@ export const draftCampaign = async (
       userId,
       campaignId: newCampaign.id,
       createdAt: new Date(),
-      budget: newCampaign.campaign_budget!,
+      budget: newCampaign.campaign_budget || 0,
       type: newCampaign.type as CampaignTypes,
     }); // Publish the campaign created event
 

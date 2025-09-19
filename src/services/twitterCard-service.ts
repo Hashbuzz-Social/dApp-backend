@@ -13,6 +13,7 @@ import createPrismaClient from '@shared/prisma';
 import twitterAPI from '@shared/twitterAPI';
 import moment from 'moment';
 import { TweetV2PostTweetResult } from 'twitter-api-v2';
+import logger from 'jet-logger';
 import { provideActiveContract } from './contract-service';
 import { getConfig } from '@appConfig';
 import { MediaService } from './media-service';
@@ -169,16 +170,63 @@ const publishTweetORThread = async (params: PublishTweetParams) => {
     }
 
     const rwClient = userTwitter.readWrite;
-    if (isThread && parentTweetId) {
-      card = await rwClient.v2.reply(tweetText, parentTweetId);
-    } else if(mediaIds.length > 0){
-      card = await rwClient.v2.tweet(tweetText, {
-        media: { media_ids: mediaIds },
-      });
-    }else{
-      card = await rwClient.v2.tweet(tweetText);
+    try {
+      if (isThread && parentTweetId) {
+        card = await rwClient.v2.reply(tweetText, parentTweetId);
+      } else if (mediaIds.length > 0) {
+        card = await rwClient.v2.tweet(tweetText, {
+          media: { media_ids: mediaIds },
+        });
+      } else {
+        card = await rwClient.v2.tweet(tweetText);
+      }
+      return card.data.id;
+    } catch (error: any) {
+      // Handle specific Twitter API errors
+      if (
+        error.code === 401 ||
+        error.status === 401 ||
+        (error.data && error.data.status === 401)
+      ) {
+        const authExpiredMsg =
+          'TWITTER_AUTH_EXPIRED: Your 𝕏 account authentication has expired. ' +
+          'Please reconnect your business 𝕏 account to continue publishing campaigns.';
+        throw new Error(authExpiredMsg);
+      } else if (error.code === 403 || error.status === 403) {
+        const forbiddenMsg =
+          'TWITTER_FORBIDDEN: Your 𝕏 account does not have permission to perform ' +
+          'this action. Please check your account permissions.';
+        throw new Error(forbiddenMsg);
+      } else if (error.code === 429 || error.status === 429) {
+        const rateLimitMsg =
+          'TWITTER_RATE_LIMITED: 𝕏 API rate limit exceeded. ' +
+          'Please wait a few minutes before trying again.';
+        throw new Error(rateLimitMsg);
+      } else if (
+        error.message &&
+        typeof error.message === 'string' &&
+        error.message.includes('duplicate')
+      ) {
+        const duplicateMsg =
+          'TWITTER_DUPLICATE: This tweet content has already been posted. ' +
+          'Please modify your campaign text.';
+        throw new Error(duplicateMsg);
+      } else {
+        // Log the full error for debugging
+        logger.err(
+          `Twitter API Error: ${JSON.stringify({
+            code: error.code,
+            status: error.status,
+            message: error.message,
+          })}`
+        );
+        const errorMsg: string =
+          error.message && typeof error.message === 'string'
+            ? error.message
+            : 'Unknown Twitter API error';
+        throw new Error(`Failed to publish tweet: ${errorMsg}`);
+      }
     }
-    return card.data.id;
   }
   throw new Error('User does not have sufficient records.');
 };

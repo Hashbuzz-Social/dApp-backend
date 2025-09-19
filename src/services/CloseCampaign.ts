@@ -8,7 +8,7 @@ import { getConfig } from "@appConfig";
 import { perFormCampaignExpiryOperation } from "./campaign-service";
 import CampaignLifeCycleBase, { CardOwner, LYFCycleStages } from "./CampaignLifeCycleBase";
 import { closeFungibleAndNFTCampaign } from "./contract-service";
-import { performAutoRewardingForEligibleUser } from "./reward-service";
+import { performAutoRewardingForEligibleUser } from './reward-service/on-card';
 import { closeCampaignSMTransaction } from "./transaction-service";
 import twitterCardService from "./twitterCard-service";
 
@@ -204,6 +204,17 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
       throw new Error(`Failed to publish reward announcement tweet thread: ${err.message}`);
     }
 
+    // Step 4: Auto-reward distribution based on engagement data
+    try {
+      logger.info(`Starting auto-reward distribution for card ID: ${card.id}`);
+      await this.processAutoRewardDistribution(card);
+      logger.info(`Auto-reward distribution completed for card ID: ${card.id}`);
+      await this.updateCampaignStatus(card.contract_id!, "autoRewardDistribution", true, LYFCycleStages.COMPLETED);
+    } catch (err) {
+      logger.warn(`Auto-reward distribution failed for card ID: ${card.id}: ${err.message}`);
+      // Don't fail the campaign closing if reward distribution fails
+    }
+
     this.scheduleJobForExpiry(card.id, campaignExpiryTimestamp);
     logger.info(`Scheduled job for expiry for card ID: ${card.id}`);
   }
@@ -228,6 +239,22 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
   }
 
   /**
+   * Process auto-reward distribution using engagement data and existing reward service
+   */
+  private async processAutoRewardDistribution(card: campaign_twittercard): Promise<void> {
+    try {
+      // Use existing reward service that works with campaign_tweetengagements table
+      await performAutoRewardingForEligibleUser(card.id);
+
+      logger.info(`Auto reward distribution completed for campaign ${card.id} using existing reward service`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.err(`Error during auto reward distribution for campaign ${card.id}: ${errorMsg}`);
+      throw error;
+    }
+  }
+
+  /**
    * Schedule the reward distribution for the campaign.
    * @param {campaign_twittercard} card - The campaign card.
    */
@@ -248,7 +275,7 @@ class CloseCmapignLyfCycle extends CampaignLifeCycleBase {
    */
   private async handleErrorWhileClosing(cardId: number | bigint, message: string, error: any) {
     logger.err(
-      `${message} for card ID: ${cardId} 
+      `${message} for card ID: ${cardId}
               Error::: ${error}`
     );
     await this.updateCampaignStatus(this.campaignCard?.contract_id!, undefined, false, LYFCycleStages.COMPLETED);

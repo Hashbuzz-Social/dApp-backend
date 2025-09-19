@@ -9,6 +9,8 @@ import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import { publishEvent } from 'src/V201/eventPublisher';
 import SchedulerQueue from 'src/V201/schedulerQueue';
+import XEngagementTracker from '../xEngagementTracker';
+import logger from 'jet-logger';
 
 export const publshCampaignContentHandler = async ({
   cardOwner,
@@ -16,7 +18,9 @@ export const publshCampaignContentHandler = async ({
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]): Promise<void> => {
   const prisma = await createPrismaClient();
   const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
-  await updateCampaignInMemoryStatus(card.contract_id!, 'firstTweetOut', true);
+  if (card.contract_id) {
+    await updateCampaignInMemoryStatus(card.contract_id, 'firstTweetOut', true);
+  }
   const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
     card.id,
     {
@@ -50,7 +54,13 @@ export const publishCampaignSecondContent = async ({
   );
 
   // update campaign status
-  await updateCampaignInMemoryStatus(card.contract_id!, 'secondTweetOut', true);
+  if (card.contract_id) {
+    await updateCampaignInMemoryStatus(
+      card.contract_id,
+      'secondTweetOut',
+      true
+    );
+  }
 
   const campaignCloseTime = addMinutesToTime(
     currentTime.toISOString(),
@@ -78,8 +88,38 @@ export const publishCampaignSecondContent = async ({
       userId: cardOwner.id,
       type: updatedCard.type as CampaignTypes,
       createdAt: currentTime,
-      tweetId: updatedCard.tweet_id!,
+      tweetId: updatedCard.tweet_id || '',
     },
     executeAt: new Date(campaignCloseTime),
   });
+
+  // Start engagement tracking for the published campaign
+  try {
+    const engagementTracker = new XEngagementTracker();
+    const durationHours = campaignDurationInMin / 60; // Convert minutes to hours
+
+    if (updatedCard.tweet_id) {
+      await engagementTracker.startCampaignTracking(
+        updatedCard.id,
+        updatedCard.tweet_id,
+        BigInt(cardOwner.id),
+        durationHours
+      );
+
+      logger.info(`Started engagement tracking for campaign ${updatedCard.id}`);
+    } else {
+      logger.warn(
+        `No tweet_id found for campaign ${updatedCard.id}, skipping engagement tracking`
+      );
+    }
+  } catch (engagementError) {
+    const errorMsg =
+      engagementError instanceof Error
+        ? engagementError.message
+        : String(engagementError);
+    logger.err(
+      `Failed to start engagement tracking for campaign ${updatedCard.id}: ${errorMsg}`
+    );
+    // Don't fail the campaign publishing if engagement tracking fails
+  }
 };

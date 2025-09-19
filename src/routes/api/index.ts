@@ -1,8 +1,6 @@
 import { Router } from "express";
 import apiRouter from "../index";
-import authMiddleware from "@middleware/auth";
-import { V201Router } from "src/V201";
-import asyncHandler from "@shared/asyncHandler";
+
 
 const router = Router();
 /**
@@ -15,7 +13,6 @@ const router = Router();
  *       200:
  *         description: Successful response
  */
-router.use("/api", apiRouter);
-router.use('/v201', asyncHandler(authMiddleware.isHavingValidAst), V201Router);
+router.use('/api', apiRouter);
 
 export default router;
