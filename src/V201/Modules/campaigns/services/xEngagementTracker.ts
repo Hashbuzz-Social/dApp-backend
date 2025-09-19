@@ -1,6 +1,7 @@
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../eventPublisher';
+import { hcsEventPublisher } from '../../../hcsEventPublisher';
 import { CampaignEvents } from '@V201/events/campaign';
 import { publishToQueue } from '../../../redisQueue';
 import twitterAPI from '@shared/twitterAPI';
@@ -294,6 +295,21 @@ export class XApiEngagementTracker {
           last_update: new Date(),
         },
       });
+
+      // Log engagement metrics to HCS for audit trail
+      try {
+        await hcsEventPublisher.publishEngagementEvent(campaignId, {
+          tweetId: '', // Will be set by caller
+          metrics,
+          collectedAt: new Date(),
+        });
+      } catch (hcsError) {
+        logger.warn(
+          `Failed to log engagement metrics to HCS: ${
+            hcsError instanceof Error ? hcsError.message : String(hcsError)
+          }`
+        );
+      }
 
       logger.info(`Stored engagement metrics for campaign ${campaignId}`);
     } catch (error) {

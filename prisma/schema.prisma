@@ -338,3 +338,20 @@ enum campaignstatus {
   RewardsDistributed
   InternalError
 }
+
+model hcsTopics {
+  id            BigInt   @id @default(autoincrement())
+  topicId       String   @unique @db.VarChar(50)
+  name          String   @db.VarChar(100)
+  description   String   @db.VarChar(500)
+  messageTypes  Json
+  network       network
+  createdBy     String   @db.VarChar(50)
+  memo          String?  @db.VarChar(100)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([network])
+  @@index([name])
+}
