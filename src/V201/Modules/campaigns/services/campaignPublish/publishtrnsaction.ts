@@ -23,7 +23,7 @@ import {
 } from '@V201/modules/common';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../../eventPublisher';
 
 const handleSmartContractTransaction = async (
   card: campaign_twittercard,

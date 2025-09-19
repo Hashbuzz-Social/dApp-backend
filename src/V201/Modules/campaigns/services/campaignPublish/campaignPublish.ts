@@ -4,7 +4,7 @@ import {
 import { CampaignEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../../eventPublisher';
 import { isCampaignValidForMakeRunning } from './validation';
 import createPrismaClient from '@shared/prisma';
 
