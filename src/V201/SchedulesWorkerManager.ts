@@ -3,6 +3,7 @@ import { ScheduledEvent } from './AppEvents';
 import { TaskSchedulerJobType } from './schedulerQueue';
 import { parseRedisURL } from './Modules/common';
 import { getConfig } from '@appConfig';
+import logger from 'jet-logger';
 
 /**
  * WorkerManager handles the creation and shutdown of BullMQ workers for processing scheduled jobs.
@@ -25,45 +26,63 @@ class WorkerManager {
       jobType,
       async (job: Job<TaskSchedulerJobType<T>>) => {
         try {
-          console.log(`🔹 Processing job: ${job.name}`, job.data);
+          logger.info(`🔹 Processing job: ${job.name}`);
           await processor(job);
+          logger.info(`✅ Job completed: ${job.name}`);
         } catch (error: unknown) {
-          console.error(`❌ Failed to process job: ${job.name}`, error);
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          logger.err(`❌ Failed to process job: ${job.name} - ${errorMsg}`);
+          // Re-throw error to trigger BullMQ retry mechanism
+          throw error;
         }
       },
       {
         connection: {
           host: parseRedisURL(configs.db.redisServerURI).host,
           port: parseRedisURL(configs.db.redisServerURI).port,
+          maxRetriesPerRequest: 3, // Redis connection retry
         },
-        concurrency: 5, // Adjust concurrency based on load
+        concurrency: 3, // Process up to 3 jobs concurrently
+        // Graceful shutdown settings
+        removeOnComplete: {
+          age: 24 * 3600, // Remove completed jobs after 24 hours
+          count: 100, // Keep max 100 completed jobs
+        },
+        removeOnFail: {
+          age: 7 * 24 * 3600, // Keep failed jobs for 7 days for debugging
+          count: 500, // Keep max 500 failed jobs
+        },
       }
     );
 
     this.workers.set(jobType, worker);
+    logger.info(`🚀 BullMQ worker initialized for job type: ${jobType}`);
   }
 
   /**
    * Gracefully shuts down all active workers.
    */
   public static async shutdownWorkers(): Promise<void> {
-    console.log('⚠️  Gracefully shutting down workers...');
-    for (const [jobType, worker] of this.workers.entries()) {
+    logger.info('⚠️  Gracefully shutting down workers...');
+    for (const [, worker] of this.workers.entries()) {
       await worker.close();
     }
-    console.log('✅ Workers shut down.');
+    logger.info('✅ Workers shut down.');
   }
 }
 
 // Handle graceful shutdown on system signals
-process.on('SIGINT', async () => {
-  await WorkerManager.shutdownWorkers();
-  process.exit(0);
+process.on('SIGINT', () => {
+  void WorkerManager.shutdownWorkers().then(() => {
+    process.exit(0);
+  });
 });
 
-process.on('SIGTERM', async () => {
-  await WorkerManager.shutdownWorkers();
-  process.exit(0);
+process.on('SIGTERM', () => {
+  void WorkerManager.shutdownWorkers().then(() => {
+    process.exit(0);
+  });
 });
 
 export default WorkerManager;
