@@ -1,8 +1,8 @@
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
-import { CampaignEvents } from 'src/V201/AppEvents';
-import { publishToQueue } from 'src/V201/redisQueue';
+import { publishEvent } from '../../../eventPublisher';
+import { CampaignEvents } from '@V201/events/campaign';
+import { publishToQueue } from '../../../redisQueue';
 import twitterAPI from '@shared/twitterAPI';
 import { PrismaClient } from '@prisma/client';
 

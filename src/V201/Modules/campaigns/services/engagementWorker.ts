@@ -1,4 +1,4 @@
-import { consumeFromQueue } from 'src/V201/redisQueue';
+import { consumeFromQueue } from '../../../redisQueue';
 import XApiEngagementTracker from './xEngagementTracker';
 import logger from 'jet-logger';
 

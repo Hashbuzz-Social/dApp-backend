@@ -7,8 +7,8 @@ import { CampaignEvents, CampaignSheduledEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
-import { publishEvent } from 'src/V201/eventPublisher';
-import SchedulerQueue from 'src/V201/schedulerQueue';
+import { publishEvent } from '../../../../eventPublisher';
+import SchedulerQueue from '../../../../schedulerQueue';
 import XEngagementTracker from '../xEngagementTracker';
 import logger from 'jet-logger';
 

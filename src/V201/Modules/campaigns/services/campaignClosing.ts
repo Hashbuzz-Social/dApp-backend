@@ -1,7 +1,7 @@
 import createPrismaClient from '@shared/prisma';
-import { CampaignEvents } from 'src/V201/AppEvents';
+import { CampaignEvents } from '@V201/events/campaign';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../eventPublisher';
 import AutoRewardDistributor from './autoRewardDistributor';
 
 interface RewardRecalculationResult {

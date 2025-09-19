@@ -3,7 +3,7 @@ import createPrismaClient from '@shared/prisma';
 import { BalanceEvents } from '@V201/events/balances';
 import UserBalancesModel from '@V201/Modals/UserBalances';
 import UsersModel from '@V201/Modals/Users';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../eventPublisher';
 
 
 const validateCardData = (card: campaign_twittercard) => {

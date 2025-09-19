@@ -2,12 +2,12 @@ import { campaignstatus, Prisma } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import { convertToTinyHbar, rmKeyFrmData } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
-import { CampaignEvents } from 'src/V201/AppEvents';
+import { CampaignEvents } from '@V201/events/campaign';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { generateRandomString, safeParsedData } from '@V201/modules/common';
 import { DraftCampaignBody } from '@V201/types';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../eventPublisher';
 
 /**
  * Calculate the maximum activity reward rate based on equal distribution mechanism

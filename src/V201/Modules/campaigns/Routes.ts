@@ -5,7 +5,7 @@ import {
   tempStoreMediaOnDisk,
   validateDraftCampaignBody,
   validatePublishCampaignBody,
-} from 'src/V201/MiddleWare';
+} from '../../MiddleWare';
 import CampaignController from './Controller';
 import asyncHandler from '@shared/asyncHandler';
 

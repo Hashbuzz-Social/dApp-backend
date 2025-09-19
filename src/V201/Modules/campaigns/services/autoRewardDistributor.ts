@@ -1,7 +1,7 @@
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
-import { CampaignEvents } from 'src/V201/AppEvents';
+import { publishEvent } from '../../../eventPublisher';
+import { CampaignEvents } from '@V201/events/campaign';
 import XApiEngagementTracker from './xEngagementTracker';
 
 interface EngagementMetrics {
