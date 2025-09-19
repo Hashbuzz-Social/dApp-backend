@@ -122,7 +122,7 @@ seed.txt
 public/uploads/
 uploads/
 user-uploads/
-media/
+# media/
 *.jpg
 *.jpeg
 *.png
