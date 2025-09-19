@@ -4,7 +4,7 @@ import {
 import { CampaignEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import logger from 'jet-logger';
-import { publishEvent } from '../../../../eventPublisher';
+import { hcsEventPublisher } from '../../../../hcsEventPublisher';
 import { isCampaignValidForMakeRunning } from './validation';
 import createPrismaClient from '@shared/prisma';
 
@@ -32,7 +32,7 @@ export const startPublishingCampaign = async (
       throw new Error('Could not fetch campaign by tweet ID.');
     }
 
-    if(cardOwner.id !== userId) {
+    if (cardOwner.id !== userId) {
       throw new Error('User is not authorized to publish this campaign.');
     }
 
@@ -46,19 +46,41 @@ export const startPublishingCampaign = async (
     }
 
     logger.info('Campaign is valid for publishing');
-    // Emit event to perform SM transaction
-    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_CONTENT, {
-      cardOwner,
-      card,
-    });
+
+    // Initialize HCS publisher
+    await hcsEventPublisher.init();
+
+    // Emit event to perform SM transaction (with HCS audit trail)
+    const eventResult = await hcsEventPublisher.publishCampaignEvent(
+      CampaignEvents.CAMPAIGN_PUBLISH_CONTENT,
+      {
+        cardOwner,
+        card,
+      }
+    );
+
+    if (eventResult.hcsTransactionId) {
+      logger.info(
+        `Campaign publish event logged to HCS: ${eventResult.hcsTransactionId}`
+      );
+    }
   } catch (error) {
-    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-      campaignMeta: { campaignId, userId },
-      atStage: 'startPublishingCampaign',
-      message: error.message,
-      error,
-    });
-    logger.err('Error in startPublishingCampaign: ' + (error instanceof Error ? error.message : String(error)));
+    // Log error to HCS for audit trail
+    await hcsEventPublisher.init();
+    await hcsEventPublisher.publishCampaignEvent(
+      CampaignEvents.CAMPAIGN_PUBLISH_ERROR,
+      {
+        campaignMeta: { campaignId, userId },
+        atStage: 'startPublishingCampaign',
+        message: error.message,
+        error,
+      }
+    );
+
+    logger.err(
+      'Error in startPublishingCampaign: ' +
+        (error instanceof Error ? error.message : String(error))
+    );
     throw error;
   }
 };
