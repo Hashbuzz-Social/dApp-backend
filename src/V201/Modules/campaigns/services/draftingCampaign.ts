@@ -1,4 +1,4 @@
-import { campaignstatus, Prisma } from '@prisma/client';
+import { campaignstatus } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import { convertToTinyHbar, rmKeyFrmData } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
@@ -144,7 +144,13 @@ export const draftCampaign = async (
     ] = rewardValues;
 
     // Prepare the campaign data to be inserted into the database
-    const campaignData: Prisma.campaign_twittercardCreateInput = {
+    // Extract only the S3 keys from media objects (matching legacy behavior)
+    const mediaKeys: string[] =
+      media?.map((mediaItem: any) =>
+        typeof mediaItem === 'string' ? mediaItem : (mediaItem.key as string)
+      ) || [];
+
+    const campaignData = {
       name,
       tweet_text,
       comment_reward,
@@ -155,7 +161,7 @@ export const draftCampaign = async (
       card_status: campaignstatus.ApprovalPending,
       amount_spent: 0,
       amount_claimed: 0,
-      media,
+      media: mediaKeys, // Use extracted keys array
       approve: false,
       contract_id,
       type,

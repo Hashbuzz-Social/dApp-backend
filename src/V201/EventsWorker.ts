@@ -5,7 +5,6 @@ import {
   publshCampaignErrorHandler,
 } from '@V201/modules/campaigns';
 import createPrismaClient from '@shared/prisma';
-import type { PrismaClient } from '@prisma/client';
 import { EventPayloadMap } from '@V201/types';
 import Logger from 'jet-logger';
 import { BalanceEvents, CampaignEvents } from './AppEvents';
@@ -17,9 +16,11 @@ const processEvent = async (
   eventType: string,
   payload: any
 ) => {
-  Logger.info(`Processing event ${String(eventType)} - payload: ${safeStringifyData(
-    payload
-  )}`);
+  Logger.info(
+    `Processing event ${String(eventType)} - payload: ${safeStringifyData(
+      payload
+    )}`
+  );
 
   switch (eventType) {
     // handle event CAMPAIGN_PUBLISH_CONTENT event
@@ -94,28 +95,37 @@ const processEvent = async (
     default:
       break;
   }
-  const prisma = (await createPrismaClient()) as PrismaClient;
-  // delete the outbox record by id after successful processing using raw SQL
-  await prisma.$executeRaw`DELETE FROM event_out_box WHERE id = ${eventId}`;
+  const prisma = await createPrismaClient();
+  // delete the outbox record by id after successful processing
+  await prisma.eventOutBox.delete({
+    where: { id: BigInt(eventId) },
+  });
 };
 
 Logger.info('Starting event consumer...');
 
-consumeFromQueue('event-queue', (event) => {
-  // event may already be parsed by safeParsedData in redisQueue
-  const raw = typeof event === 'string' ? JSON.parse(event) : event;
-  if (!raw || !raw.eventId || !raw.eventType) {
-    Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
-    return;
-  }
+// Start the event consumer with proper async handling
+(async () => {
+  try {
+    await consumeFromQueue('event-queue', (event) => {
+      // event may already be parsed by safeParsedData in redisQueue
+      const raw = typeof event === 'string' ? JSON.parse(event) : event;
+      if (!raw || !raw.eventId || !raw.eventType) {
+        Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
+        return;
+      }
 
-  // spawn async handler so the queue callback stays synchronous/void
-  (async () => {
-    try {
-      const eventId = Number(raw.eventId);
-      await processEvent(eventId, String(raw.eventType), raw.payload);
-    } catch (err) {
-      Logger.err(`Error processing event: ${String(err)}`);
-    }
-  })();
-});
+      // spawn async handler so the queue callback stays synchronous/void
+      (async () => {
+        try {
+          const eventId = Number(raw.eventId);
+          await processEvent(eventId, String(raw.eventType), raw.payload);
+        } catch (err) {
+          Logger.err(`Error processing event: ${String(err)}`);
+        }
+      })();
+    });
+  } catch (error) {
+    Logger.err(`Failed to start event consumer: ${String(error)}`);
+  }
+})();

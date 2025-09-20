@@ -3,6 +3,7 @@ import express from 'express';
 import {
   storeMediaToS3,
   tempStoreMediaOnDisk,
+  multerErrorHandler,
   validateDraftCampaignBody,
   validatePublishCampaignBody,
 } from '../../MiddleWare';
@@ -26,6 +27,7 @@ const campaignRouter = express.Router();
 campaignRouter.post(
   '/draft',
   tempStoreMediaOnDisk,
+  multerErrorHandler, // Handle Multer errors with user-friendly messages
   validateDraftCampaignBody,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(storeMediaToS3),

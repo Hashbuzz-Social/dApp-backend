@@ -11,6 +11,9 @@ import server from './server';
 import { AccountId } from '@hashgraph/sdk';
 import './V201/SchedulesJobHandlers';
 
+// Initialize V201 Events Worker for processing queued events
+import './V201/EventsWorker';
+
 let redisClient: RedisClient;
 /**
  * Test Prisma connection
