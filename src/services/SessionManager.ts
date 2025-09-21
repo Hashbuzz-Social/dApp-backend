@@ -31,8 +31,10 @@ class SessionManager {
     this.redisclinet = new RedisClient(redisServerURI);
     // Set secure cookie for production OR when running on HTTPS (like dev server)
     const isProduction = process.env.NODE_ENV === 'production';
-    const isHttpsEnv = Boolean(process.env.BACKEND_URL?.includes('https://') || 
-                              process.env.API_URL?.includes('https://'));
+    const isHttpsEnv = Boolean(
+      process.env.BACKEND_URL?.includes('https://') ||
+        process.env.API_URL?.includes('https://')
+    );
     this.secureCookie = isProduction || (process.env.NODE_ENV !== 'development' && isHttpsEnv);
   }
 
@@ -62,7 +64,7 @@ class SessionManager {
         return;
       }
 
-      let deviceId = await this.handleDeviceId(req, res);
+      const deviceId = await this.handleDeviceId(req, res);
       if (!deviceId) {
         return res.error('Device ID not found', BAD_REQUEST);
       }
@@ -93,13 +95,13 @@ class SessionManager {
 
       // Enhanced cookie configuration for cross-domain support
       const cookieConfig = await getConfig();
-      
+
       // Set session data to ensure session is created and saved
       (req.session as any).userId = user.id.toString();
       (req.session as any).accountId = accountId;
       (req.session as any).deviceId = deviceId;
       (req.session as any).authenticated = true;
-      
+
       // Force session save to ensure Set-Cookie header is sent
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
@@ -110,28 +112,31 @@ class SessionManager {
           }
         });
       });
-      
+
       // SECURITY: Strict cookie configuration based on environment and trusted origins
       const origin = req.get('origin') || req.get('referer') || '';
       const host = req.get('host');
       const isProduction = process.env.NODE_ENV === 'production';
-      
+
       // ENHANCED: Detect if this IS the dev server itself (not just a client)
-      const isRunningOnDevServer = host?.includes('testnet-dev-api.hashbuzz.social') || 
-                                  process.env.SERVER_ENV === 'development' ||
-                                  process.env.SERVER_ENV === 'staging';
-      
+      const isRunningOnDevServer =
+        host?.includes('testnet-dev-api.hashbuzz.social') ||
+        process.env.SERVER_ENV === 'development' ||
+        process.env.SERVER_ENV === 'staging';
+
       // Define trusted origins for cross-origin cookie sharing
       const trustedCrossOrigins = [
         'https://testnet-dev-api.hashbuzz.social',
         'https://dev.hashbuzz.social',
         'https://www.hashbuzz.social',
-        'https://hashbuzz.social'
+        'https://hashbuzz.social',
       ];
-      
+
       // SECURITY: Only allow sameSite=none for explicitly trusted origins
-      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
-      
+      const isTrustedCrossOrigin = trustedCrossOrigins.some((trusted) =>
+        origin.includes(trusted)
+      );
+
       // DEBUG: Log cookie configuration decision
       console.log('=== COOKIE CONFIG DEBUG ===');
       console.log(`Request Host: ${host || 'undefined'}`);
@@ -141,7 +146,7 @@ class SessionManager {
       console.log(`isProduction: ${String(isProduction)}`);
       console.log(`isRunningOnDevServer: ${String(isRunningOnDevServer)}`);
       console.log(`isTrustedCrossOrigin: ${String(isTrustedCrossOrigin)}`);
-      
+
       // SECURITY: Determine cookie security based on environment and origin
       let cookieSettings;
       if (isProduction && !isRunningOnDevServer) {
@@ -151,7 +156,10 @@ class SessionManager {
           sameSite: isTrustedCrossOrigin ? 'none' : 'strict',
           domain: isTrustedCrossOrigin ? '.hashbuzz.social' : undefined,
         };
-        console.log('COOKIE CONFIG: Production mode - secure=true, sameSite=' + cookieSettings.sameSite);
+        console.log(
+          'COOKIE CONFIG: Production mode - secure=true, sameSite=' +
+            cookieSettings.sameSite
+        );
       } else if (isTrustedCrossOrigin || isRunningOnDevServer) {
         // DEVELOPMENT/DEV SERVER: Trusted dev servers get cross-origin support
         cookieSettings = {
@@ -159,7 +167,9 @@ class SessionManager {
           sameSite: 'none',
           domain: '.hashbuzz.social',
         };
-        console.log('COOKIE CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none, domain=.hashbuzz.social');
+        console.log(
+          'COOKIE CONFIG: Dev server/trusted origin mode - secure=true, sameSite=none, domain=.hashbuzz.social'
+        );
       } else {
         // DEVELOPMENT: Localhost and other origins get standard settings
         cookieSettings = {
@@ -167,11 +177,13 @@ class SessionManager {
           sameSite: 'lax',
           domain: undefined,
         };
-        console.log('COOKIE CONFIG: Localhost mode - secure=false, sameSite=lax, domain=undefined');
+        console.log(
+          'COOKIE CONFIG: Localhost mode - secure=false, sameSite=lax, domain=undefined'
+        );
       }
-      
+
       console.log('=== END COOKIE CONFIG DEBUG ===');
-      
+
       // Access token cookie - with strict security controls
       res.cookie('access_token', token, {
         httpOnly: true,
@@ -336,21 +348,23 @@ class SessionManager {
   async handleDeviceId(req: Request, res: Response) {
     const deviceId = req.deviceId;
     const config = await getConfig();
-    
+
     if (deviceId) {
       // SECURITY: Use same trusted origin logic as access tokens
       const origin = req.get('origin') || req.get('referer') || '';
       const isProduction = process.env.NODE_ENV === 'production';
-      
+
       const trustedCrossOrigins = [
         'https://testnet-dev-api.hashbuzz.social',
         'https://dev.hashbuzz.social',
         'https://www.hashbuzz.social',
-        'https://hashbuzz.social'
+        'https://hashbuzz.social',
       ];
-      
-      const isTrustedCrossOrigin = trustedCrossOrigins.some(trusted => origin.includes(trusted));
-      
+
+      const isTrustedCrossOrigin = trustedCrossOrigins.some((trusted) =>
+        origin.includes(trusted)
+      );
+
       // SECURITY: Determine cookie security based on environment and origin
       let cookieSettings;
       if (isProduction) {
@@ -372,7 +386,7 @@ class SessionManager {
           domain: undefined,
         };
       }
-      
+
       res.cookie(
         'device_id',
         d_decrypt(deviceId, config.encryptions.encryptionKey),
@@ -524,9 +538,7 @@ class SessionManager {
       }
 
       if (!deviceId) {
-        return res
-          .status(BAD_REQUEST)
-          .json({ message: 'Device ID required' });
+        return res.status(BAD_REQUEST).json({ message: 'Device ID required' });
       }
 
       const prisma = await createPrismaClient();
@@ -552,9 +564,7 @@ class SessionManager {
 
       // Check if session has expired
       if (session.expires_at && new Date() > session.expires_at) {
-        return res
-          .status(UNAUTHORIZED)
-          .json({ message: 'Session expired' });
+        return res.status(UNAUTHORIZED).json({ message: 'Session expired' });
       }
 
       const { token: newToken, kid: newkid } =
@@ -562,7 +572,7 @@ class SessionManager {
           session.user_user.hedera_wallet_id,
           session.user_id.toString()
         )) || {};
-      
+
       if (!newToken || !newkid) {
         throw new ErrorWithCode(
           'Token generation failed',
@@ -576,7 +586,9 @@ class SessionManager {
 
       // Enhanced cookie configuration for refresh token endpoint
       const refreshConfig = await getConfig();
-      const isDevServer = refreshConfig.app.xCallBackHost?.includes('testnet-dev-api.hashbuzz.social');
+      const isDevServer = refreshConfig.app.xCallBackHost?.includes(
+        'testnet-dev-api.hashbuzz.social'
+      );
       const isDevelopment = process.env.NODE_ENV === 'development';
 
       // Set new access token cookie with enhanced cross-domain settings
@@ -589,9 +601,14 @@ class SessionManager {
         domain: isDevServer ? '.hashbuzz.social' : undefined,
       });
 
-      return res
-        .status(OK)
-        .json({ message: 'Token refreshed successfully', ast: newToken });
+      // Calculate the actual expiry timestamp for the token (15 minutes from now)
+      const tokenExpiresAt = Date.now() + 15 * 60 * 1000;
+
+      return res.status(OK).json({
+        message: 'Token refreshed successfully',
+        ast: newToken,
+        expiresAt: tokenExpiresAt,
+      });
     } catch (err) {
       next(err);
     }
@@ -618,16 +635,40 @@ class SessionManager {
         );
       }
 
-      const { user_user, device_id } = session;
+      // Get user data with proper include to ensure we have user_user relation
+      const prisma = await createPrismaClient();
+      const sessionWithUser = await prisma.user_sessions.findFirst({
+        where: {
+          user_id: userId,
+          device_id: deviceId,
+        },
+        include: {
+          user_user: {
+            select: {
+              hedera_wallet_id: true,
+              personal_twitter_handle: true,
+            },
+          },
+        },
+      });
+
+      if (!sessionWithUser || !sessionWithUser.user_user) {
+        return res.unauthorized(
+          'No active session found. Please intitate authentication.'
+        );
+      }
 
       const isExistingUser = await userService.findUserByWalletId(
-        user_user.hedera_wallet_id as string
+        sessionWithUser.user_user.hedera_wallet_id
       );
 
       return res.status(OK).json({
         status: 'active',
-        device_id: d_decrypt(device_id, config.encryptions.encryptionKey),
-        wallet_id: user_user.hedera_wallet_id,
+        device_id: d_decrypt(
+          sessionWithUser.device_id,
+          config.encryptions.encryptionKey
+        ),
+        wallet_id: sessionWithUser.user_user.hedera_wallet_id,
         isAuthenticated: !!isExistingUser,
         connectedXAccount: isExistingUser?.personal_twitter_handle,
       });
@@ -642,7 +683,9 @@ class SessionManager {
     if (this.redisclinet.client) {
       const session = await this.redisclinet.read(sessionKey);
       if (session) {
-        return JSON.parse(session);
+        return JSON.parse(session) as Awaited<
+          ReturnType<typeof prisma.user_sessions.findFirst>
+        >;
       } else {
         const session = await prisma.user_sessions.findFirst({
           where: {

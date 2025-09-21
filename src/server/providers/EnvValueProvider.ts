@@ -16,8 +16,8 @@ export class EnvValueProvider {
             return value;
         }
         if (defaultValue !== undefined) {
-            this.log?.info(`Using default value for environment variable "${this.variableName}".`);
-            return defaultValue;
+          // this.log?.info(`Using default value for environment variable "${this.variableName}".`);
+          return defaultValue;
         }
         this.log?.err(`Environment variable "${this.variableName}" is not set. Returning empty string.`);
         return '';

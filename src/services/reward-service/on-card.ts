@@ -40,11 +40,12 @@ const _calculateTotalRewardForAnUser = async (
     const ids: bigint[] = [];
 
     const engagements = await prisma.campaign_tweetengagements.findMany({
-        where: {
-            user_id: engagedUserID,
-            payment_status: "UNPAID",
-            tweet_id: cardID,
-        },
+      where: {
+        user_id: engagedUserID,
+        payment_status: 'UNPAID',
+        tweet_id: cardID,
+        is_valid_timing: true, // CRITICAL: Only include engagements with valid timing
+      },
     });
 
     for (let i = 0; i < engagements.length; i++) {

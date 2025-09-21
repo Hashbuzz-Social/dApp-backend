@@ -1,16 +1,21 @@
 import { DraftCampaignBody, PubishCampaignBody } from '@V201/types';
 import { Request, Response } from 'express';
-import { draftCampaign, startPublishingCampaign } from './services';
+import { convertBigIntToString } from '../../../utils/bigintSerializer';
+import { draftCampaign } from './services';
+import SmartCampaignPublishService from './services/campaignPublish/smartCampaignPublishService';
 
 class CampaignController {
+  private smartPublishService: SmartCampaignPublishService;
+
+  constructor() {
+    this.smartPublishService = new SmartCampaignPublishService();
+  }
+
   // Method to create a new campaign
-  async draftCampaign(
-    req: Request<{}, {}, DraftCampaignBody>,
-    res: Response
-  ): Promise<void> {
+  async draftCampaign(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.currentUser?.id; // Assuming user ID is available in the request object
-      const campaignBody = req.body;
+      const userId = req.currentUser?.id;
+      const campaignBody = req.body as DraftCampaignBody;
 
       if (!userId) {
         throw new Error('User ID not found');
@@ -24,26 +29,127 @@ class CampaignController {
     }
   }
 
-  // Method to start publishing Campaign
+  // Method to start publishing Campaign with smart retry logic
   async startPublishingCampaign(
-    req: Request<{}, {}, PubishCampaignBody, {}>,
+    req: Request,
     res: Response
-  ): Promise<void> {
-    const userId = req.currentUser?.id; // Assuming user ID is available in the request object
-    const campaignId = req.body.campaignId;
+  ): Promise<Response | void> {
+    const userId = req.currentUser?.id;
+    const body = req.body as PubishCampaignBody;
+    const campaignId = Number(body.campaignId);
 
     if (!userId) {
       throw new Error('User ID not found');
     }
-    await startPublishingCampaign(campaignId, userId);
 
-    return res.accepted(
-      {
+    try {
+      // Use smart publish service that handles retries and state validation
+      const publishResult =
+        await this.smartPublishService.publishOrResumeCampaign(
+          campaignId,
+          userId
+        );
+
+      if (!publishResult.success) {
+        // Return specific error information
+        const errorResponse = {
+          success: false,
+          message: publishResult.message,
+          stateInfo: publishResult.stateInfo,
+          action: publishResult.action,
+          details: {
+            campaignId,
+            currentState: publishResult.stateInfo?.currentState,
+            canRetry: publishResult.stateInfo?.canRetry,
+            nextAction: publishResult.stateInfo?.nextAction,
+          },
+        };
+        // Use utility to safely handle any BigInt values
+        return res.status(400).json(convertBigIntToString(errorResponse));
+      }
+
+      // Success response with detailed information
+      const responseMessage =
+        publishResult.action === 'already_running'
+          ? 'Campaign is already published and running'
+          : publishResult.action === 'resumed'
+          ? 'Campaign publishing resumed successfully'
+          : 'Campaign publishing started successfully';
+
+      return res.accepted(
+        convertBigIntToString({
+          campaignId,
+          userId: userId.toString(), // Convert BigInt to string
+          action: publishResult.action,
+          currentState: publishResult.stateInfo?.currentState,
+          message: publishResult.message,
+        }),
+        responseMessage
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      const errorResponse = {
+        success: false,
+        message: `Failed to publish campaign: ${errorMessage}`,
+        action: 'error',
+        details: {
+          campaignId,
+          userId: userId.toString(), // Convert BigInt to string
+          error: errorMessage,
+        },
+      };
+      return res.status(500).json(convertBigIntToString(errorResponse));
+    }
+  }
+
+  // Method to get campaign state information for debugging
+  async getCampaignState(
+    req: Request,
+    res: Response
+  ): Promise<Response | void> {
+    const userId = req.currentUser?.id;
+    const campaignId = parseInt(req.params.campaignId);
+
+    if (!userId) {
+      throw new Error('User ID not found');
+    }
+
+    if (!campaignId || isNaN(campaignId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid campaign ID',
+      });
+    }
+
+    try {
+      const stateInfo = await this.smartPublishService.getCampaignStateInfo(
         campaignId,
-        userId,
-      },
-      'Campaign is being published'
-    );
+        userId
+      );
+
+      return res.json({
+        success: true,
+        stateInfo,
+        details: {
+          campaignId,
+          currentState: stateInfo.currentState,
+          canRetry: stateInfo.canRetry,
+          nextAction: stateInfo.nextAction,
+          errorMessage: stateInfo.errorMessage,
+          resumeFromStep: stateInfo.resumeFromStep,
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      return res.status(500).json({
+        success: false,
+        message: `Failed to get campaign state: ${errorMessage}`,
+      });
+    }
   }
 }
 

@@ -29,6 +29,23 @@ export type CampaignCloseJobPayload = {
   tweetId: string;
 };
 
+export type CampaignExpiryJobPayload = {
+  userId: number | bigint;
+  cardId: number | bigint;
+  type: CampaignTypes;
+  createdAt: Date;
+  expiryAt: Date;
+};
+
+export type V201EngagementDataCollectionPayload = {
+  userId: number | bigint;
+  cardId: number | bigint;
+  type: CampaignTypes;
+  createdAt: Date;
+  collectionAttempts: number;
+  maxAttempts: number;
+};
+
 export type CampaignClosedPayload = {
   campaignId: number | bigint;
   userId: number | bigint;
