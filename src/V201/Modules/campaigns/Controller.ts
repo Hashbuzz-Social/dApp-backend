@@ -1,5 +1,6 @@
 import { DraftCampaignBody, PubishCampaignBody } from '@V201/types';
 import { Request, Response } from 'express';
+import { convertBigIntToString } from '../../../utils/bigintSerializer';
 import { draftCampaign } from './services';
 import SmartCampaignPublishService from './services/campaignPublish/smartCampaignPublishService';
 
@@ -51,7 +52,7 @@ class CampaignController {
 
       if (!publishResult.success) {
         // Return specific error information
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           message: publishResult.message,
           stateInfo: publishResult.stateInfo,
@@ -62,7 +63,9 @@ class CampaignController {
             canRetry: publishResult.stateInfo?.canRetry,
             nextAction: publishResult.stateInfo?.nextAction,
           },
-        });
+        };
+        // Use utility to safely handle any BigInt values
+        return res.status(400).json(convertBigIntToString(errorResponse));
       }
 
       // Success response with detailed information
@@ -74,29 +77,30 @@ class CampaignController {
           : 'Campaign publishing started successfully';
 
       return res.accepted(
-        {
+        convertBigIntToString({
           campaignId,
-          userId,
+          userId: userId.toString(), // Convert BigInt to string
           action: publishResult.action,
           currentState: publishResult.stateInfo?.currentState,
           message: publishResult.message,
-        },
+        }),
         responseMessage
       );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      return res.status(500).json({
+      const errorResponse = {
         success: false,
         message: `Failed to publish campaign: ${errorMessage}`,
         action: 'error',
         details: {
           campaignId,
-          userId,
+          userId: userId.toString(), // Convert BigInt to string
           error: errorMessage,
         },
-      });
+      };
+      return res.status(500).json(convertBigIntToString(errorResponse));
     }
   }
 

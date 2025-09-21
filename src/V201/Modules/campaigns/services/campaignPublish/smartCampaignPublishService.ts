@@ -41,17 +41,45 @@ export class SmartCampaignPublishService {
         userId
       );
 
+      logger.info(
+        `Campaign ${campaignId} state analysis: ${validation.stateInfo.currentState}`
+      );
+
+      if (validation.stateInfo.errorMessage) {
+        logger.err(
+          `Campaign ${campaignId} error: ${validation.stateInfo.errorMessage}`
+        );
+      }
+
       if (!validation.canProceed) {
+        logger.err(
+          `Campaign ${campaignId} cannot proceed: ${validation.validationMessage}`
+        );
+        logger.info(
+          `Campaign ${campaignId} - State: ${validation.stateInfo.currentState}, ` +
+            `CanRetry: ${String(validation.stateInfo.canRetry)}, ` +
+            `NextAction: ${validation.stateInfo.nextAction}`
+        );
+
+        if (
+          validation.stateInfo.campaignLogs &&
+          validation.stateInfo.campaignLogs.length > 0
+        ) {
+          logger.info(
+            `Campaign ${campaignId} including ${validation.stateInfo.campaignLogs.length} log entries in response`
+          );
+        }
+
         return {
           success: false,
           message: validation.validationMessage,
           stateInfo: validation.stateInfo,
-          action: 'error'
+          action: 'error',
         };
       }
 
       const { stateInfo } = validation;
-      const { currentState, campaign } = stateInfo;
+      const { currentState } = stateInfo;
 
       // Handle different states
       switch (currentState) {
