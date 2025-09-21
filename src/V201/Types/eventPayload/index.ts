@@ -5,6 +5,7 @@ import {
   CampaignDraftPayLoad,
   CampaignCloseJobPayload,
   CampaignExpiryJobPayload,
+  V201EngagementDataCollectionPayload,
   CampaignClosedPayload,
   CampaignBudgetRefundPayload,
   CampaignRateUpdatedPayload,
@@ -38,8 +39,8 @@ export type EventPayloadMap = {
   [CampaignEvents.CAMPAIGN_PUBLISH_ERROR]: CampaignPublishErrorPayLoad;
 };
 
-
 export type SheduleJobPayloadMap = {
   [CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION]: CampaignCloseJobPayload;
   [CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION]: CampaignExpiryJobPayload;
+  [CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION]: V201EngagementDataCollectionPayload;
 };

@@ -6,6 +6,7 @@ import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
 import { V201CampaignClosingService } from './Modules/campaigns/services/V201CampaignClosingService';
 import { V201CampaignExpiryService } from './Modules/campaigns/services/V201CampaignExpiryService';
+import V201EngagementDataCollectionService from './Modules/campaigns/services/V201EngagementDataCollectionService';
 
 // Define the processor function for V201 campaign closing
 const processCloseCampaignJob = async (
@@ -87,11 +88,15 @@ const processExpiryCampaignJob = async (
 
       if (result.success) {
         logger.info(
-          `[V201] Campaign ${String(jobData.cardId)} expired successfully using V201 service`
+          `[V201] Campaign ${String(
+            jobData.cardId
+          )} expired successfully using V201 service`
         );
       } else {
         logger.err(
-          `[V201] Campaign ${String(jobData.cardId)} expiry failed: ${result.message}`
+          `[V201] Campaign ${String(jobData.cardId)} expiry failed: ${
+            result.message
+          }`
         );
       }
     } else {
@@ -109,7 +114,52 @@ const processExpiryCampaignJob = async (
   }
 };
 
-// Register worker for campaign close and expiry operations
+// Define the processor function for V201 engagement data collection
+const processEngagementDataCollectionJob = async (
+  job: Job<
+    TaskSchedulerJobType<CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION>
+  >
+) => {
+  try {
+    logger.info(
+      `[V201] Processing engagement data collection job: ${JSON.stringify(
+        job.data
+      )}`
+    );
+    const jobData = job.data.data;
+
+    if (jobData?.cardId && jobData?.userId) {
+      // Use V201EngagementDataCollectionService to process the job
+      const engagementService = new V201EngagementDataCollectionService();
+      await engagementService.processEngagementDataCollection({
+        userId: jobData.userId,
+        cardId: jobData.cardId,
+        type: jobData.type,
+        createdAt: jobData.createdAt,
+        expiryAt: new Date(), // Not used in this payload type
+        collectionAttempts: jobData.collectionAttempts,
+        maxAttempts: jobData.maxAttempts,
+      });
+
+      logger.info(
+        `[V201] Engagement data collection completed for campaign ${jobData.cardId}`
+      );
+    } else {
+      throw new Error(
+        'Invalid job data for engagement data collection - cardId and userId are required'
+      );
+    }
+  } catch (error) {
+    logger.err(
+      `[V201] Error processing engagement data collection job: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    throw error; // Re-throw to mark job as failed
+  }
+};
+
+// Register worker for campaign close, expiry, and engagement data collection operations
 const registerScheduleJobWorkers = async () => {
   await WorkerManager.initializeWorker(
     CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
@@ -121,8 +171,13 @@ const registerScheduleJobWorkers = async () => {
     processExpiryCampaignJob
   );
 
+  await WorkerManager.initializeWorker(
+    CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+    processEngagementDataCollectionJob
+  );
+
   logger.info(
-    '[V201] Campaign closing and expiry workers registered with V201 services (node-schedule free!)'
+    '[V201] Campaign closing, expiry, and engagement data collection workers registered with V201 services (node-schedule free!)'
   );
 };
 
