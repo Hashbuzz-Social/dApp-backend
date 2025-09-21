@@ -104,10 +104,15 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
     throw new Error('Unsupported card type for smart contract transaction');
   }
 
+  logger.info(`data received for event ${JSON.stringify({ card, cardOwner })}`);
+
   const { contract_id, campaign_budget } = card;
   const { hedera_wallet_id } = cardOwner;
 
   if (!contract_id || !campaign_budget || !hedera_wallet_id) {
+    logger.err(
+      'Location01: Missing required data for smart contract transaction'
+    );
     throw new Error('Missing required data for smart contract transaction');
   }
 
