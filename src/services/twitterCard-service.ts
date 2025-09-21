@@ -129,16 +129,21 @@ interface PublishTweetParams {
 }
 
 const publishTweetORThread = async (params: PublishTweetParams) => {
-  const { cardOwner, tweetText, isThread, parentTweetId, media } = params;
+  const { tweetText, isThread, parentTweetId, media } = params;
   const config = await getConfig();
+
+  const prisma = await createPrismaClient();
+  const cardOwner = await prisma.user_user.findUnique({
+    where: { id: params.cardOwner.id },
+  });
 
   if (tweetText.length > 280) {
     throw new Error('Long tweet text. Max allowed is 280 char long.');
   }
 
   if (
-    cardOwner.business_twitter_access_token &&
-    cardOwner.business_twitter_access_token_secret
+    cardOwner?.business_twitter_access_token &&
+    cardOwner?.business_twitter_access_token_secret
   ) {
     const userTwitter = await twitterAPI.tweeterApiForUser({
       accessToken: decrypt(
