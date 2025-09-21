@@ -148,6 +148,7 @@ async function safeV201CampaignLifecycleAudit(): Promise<SafeAuditResult[]> {
       const timingValidation = await prisma.campaign_tweetengagements.groupBy({
         by: ['is_valid_timing'],
         _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
         take: 10000, // Limit to prevent memory issues
       });
 
@@ -185,7 +186,8 @@ async function safeV201CampaignLifecycleAudit(): Promise<SafeAuditResult[]> {
             status: e.payment_status,
             age:
               Math.round(
-                (Date.now() - e.updated_at.getTime()) / (1000 * 60 * 60)
+                (Date.now() - (e.updated_at?.getTime() || Date.now())) /
+                  (1000 * 60 * 60)
               ) + 'h',
           })),
         },
@@ -331,7 +333,7 @@ async function safeV201CampaignLifecycleAudit(): Promise<SafeAuditResult[]> {
       // Check recent campaigns that went through the new lifecycle
       const recentCampaigns = await prisma.campaign_twittercard.findMany({
         where: {
-          updated_at: {
+          campaign_start_time: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
           },
         },
@@ -340,9 +342,9 @@ async function safeV201CampaignLifecycleAudit(): Promise<SafeAuditResult[]> {
           name: true,
           card_status: true,
           campaign_close_time: true,
-          updated_at: true,
+          campaign_start_time: true,
         },
-        orderBy: { updated_at: 'desc' },
+        orderBy: { campaign_start_time: 'desc' },
         take: 10,
       });
 
@@ -355,7 +357,8 @@ async function safeV201CampaignLifecycleAudit(): Promise<SafeAuditResult[]> {
             name: c.name,
             status: c.card_status,
             hasCLoseTime: !!c.campaign_close_time,
-            lastUpdated: c.updated_at.toISOString().split('T')[0],
+            lastUpdated:
+              c.campaign_start_time?.toISOString().split('T')[0] || 'N/A',
           })),
           note:
             recentCampaigns.length === 0
