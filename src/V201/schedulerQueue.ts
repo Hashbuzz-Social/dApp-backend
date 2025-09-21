@@ -87,6 +87,11 @@ class SchedulerQueue {
       delay,
       ...options,
     });
+    console.log(
+      `[SchedulerQueue] Job added: type=${jobType}, event=${
+        jobData.eventName
+      }, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms`
+    );
   }
 }
 
