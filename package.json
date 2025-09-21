@@ -24,7 +24,15 @@
     "db:pull": "npx prisma db pull && npx prisma generate",
     "db:push": "npx prisma db push && npx prisma generate",
     "env-config": "node env.config.js",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:v201:safe": "./scripts/safe-v201-test.sh full --test-db",
+    "test:v201:audit": "./scripts/safe-v201-test.sh audit",
+    "test:v201:bdd": "./scripts/safe-v201-test.sh test --test-db",
+    "test:v201:backup": "./scripts/safe-v201-test.sh backup",
+    "test:v201:restore": "./scripts/safe-v201-test.sh restore",
+    "test:v201:analyze": "./scripts/safe-v201-test.sh analyze-db",
+    "db:backup": "./scripts/safe-v201-test.sh backup production-backup",
+    "db:analyze": "./scripts/safe-v201-test.sh analyze-db"
   },
   "nodemonConfig": {
     "watch": [
