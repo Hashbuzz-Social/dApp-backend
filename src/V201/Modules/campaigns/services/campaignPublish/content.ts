@@ -17,18 +17,41 @@ export const publshCampaignContentHandler = async ({
   card,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]): Promise<void> => {
   const prisma = await createPrismaClient();
-  const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
-  if (card.contract_id) {
-    await updateCampaignInMemoryStatus(card.contract_id, 'firstTweetOut', true);
+
+  // Fetch fresh data from database
+  const freshCard = await prisma.campaign_twittercard.findUnique({
+    where: { id: card.id },
+  });
+  const freshCardOwner = await prisma.user_user.findUnique({
+    where: { id: cardOwner.id },
+  });
+
+  if (!freshCard) {
+    throw new Error('Campaign card not found');
+  }
+  if (!freshCardOwner) {
+    throw new Error('Card owner not found');
+  }
+
+  const tweetId = await tweetService.publistFirstTweet(
+    freshCard,
+    freshCardOwner
+  );
+  if (freshCard.contract_id) {
+    await updateCampaignInMemoryStatus(
+      freshCard.contract_id,
+      'firstTweetOut',
+      true
+    );
   }
   const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
-    card.id,
+    freshCard.id,
     {
       tweet_id: tweetId,
     }
   );
   publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION, {
-    cardOwner,
+    cardOwner: freshCardOwner,
     card: updatedCard,
   });
 };
@@ -37,26 +60,42 @@ export const publishCampaignSecondContent = async ({
   card,
   cardOwner,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT]): Promise<void> => {
-  if (!card.tweet_id) {
+  const prisma = await createPrismaClient();
+
+  // Fetch fresh data from database
+  const freshCard = await prisma.campaign_twittercard.findUnique({
+    where: { id: card.id },
+  });
+  const freshCardOwner = await prisma.user_user.findUnique({
+    where: { id: cardOwner.id },
+  });
+
+  if (!freshCard) {
+    throw new Error('Campaign card not found');
+  }
+  if (!freshCardOwner) {
+    throw new Error('Card owner not found');
+  }
+
+  if (!freshCard.tweet_id) {
     throw new Error('First tweet not published');
   }
   const currentTime = new Date();
   const configs = await getConfig();
-  const prisma = await createPrismaClient();
 
   const campaignDurationInMin = configs.app.defaultCampaignDuration;
 
   // publish second tweet
   const lastTweetThreadId = await tweetService.publishSecondThread(
-    card,
-    cardOwner,
-    card.tweet_id
+    freshCard,
+    freshCardOwner,
+    freshCard.tweet_id
   );
 
   // update campaign status
-  if (card.contract_id) {
+  if (freshCard.contract_id) {
     await updateCampaignInMemoryStatus(
-      card.contract_id,
+      freshCard.contract_id,
       'secondTweetOut',
       true
     );
@@ -69,7 +108,7 @@ export const publishCampaignSecondContent = async ({
 
   // update campaign status in db
   const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
-    card.id,
+    freshCard.id,
     {
       card_status: campaignstatus.CampaignRunning,
       last_thread_tweet_id: lastTweetThreadId,
@@ -85,7 +124,7 @@ export const publishCampaignSecondContent = async ({
     eventName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
     data: {
       cardId: updatedCard.id,
-      userId: cardOwner.id,
+      userId: freshCardOwner.id,
       type: updatedCard.type as CampaignTypes,
       createdAt: currentTime,
       tweetId: updatedCard.tweet_id || '',
