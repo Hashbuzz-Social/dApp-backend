@@ -41,4 +41,11 @@ campaignRouter.post(
   asyncHandler(CampaignController.startPublishingCampaign.bind(CampaignController))
 );
 
+// Route to get campaign state information for debugging/diagnostics
+campaignRouter.get(
+  '/:campaignId/state',
+  asyncHandler(userInfo.getCurrentUserInfo),
+  asyncHandler(CampaignController.getCampaignState.bind(CampaignController))
+);
+
 export default campaignRouter;

@@ -10,6 +10,7 @@ import Logger from 'jet-logger';
 import { BalanceEvents, CampaignEvents } from './AppEvents';
 import { safeStringifyData } from './Modules/common';
 import { consumeFromQueue } from './redisQueue';
+import { WebSocketNotificationService } from './services/websocket/WebSocketNotificationService';
 
 const processEvent = async (
   eventId: number,
@@ -75,7 +76,32 @@ const processEvent = async (
           balanceUpdatePayload
         )}`
       );
-      //  send sse event to the client regard the balance update
+
+      // Send WebSocket notification for balance update
+      try {
+        const userBalance = balanceUpdatePayload.userBalance;
+        await WebSocketNotificationService.notifyBalanceUpdate(
+          String(balanceUpdatePayload.userId),
+          {
+            balanceType: 'TOKEN',
+            tokenId: balanceUpdatePayload.tokenId || undefined,
+            tokenSymbol: balanceUpdatePayload.tokenId
+              ? balanceUpdatePayload.tokenId.substring(0, 8) + '...'
+              : 'TOKEN',
+            oldBalance: '0', // Previous balance not available in current payload
+            newBalance: String(userBalance.entity_balance || 0),
+            changeAmount: String(userBalance.entity_balance || 0),
+            changeReason: 'OTHER', // Cannot determine reason from current payload
+            relatedCampaignId: undefined, // Not available in current payload
+            transactionId: undefined, // Not available in current payload
+          }
+        );
+      } catch (error) {
+        Logger.err(
+          'Failed to send fungible balance WebSocket notification: ' +
+            String(error)
+        );
+      }
       break;
     }
 
@@ -88,7 +114,28 @@ const processEvent = async (
         )}`
       );
 
-      //  send sse event to the client regard the balance update
+      // Send WebSocket notification for HBAR balance update
+      try {
+        await WebSocketNotificationService.notifyBalanceUpdate(
+          String(hbarBalanceUpdatePayload.userId),
+          {
+            balanceType: 'HBAR',
+            tokenSymbol: 'HBAR',
+            oldBalance: '0', // Previous balance not available in current payload
+            newBalance: String(hbarBalanceUpdatePayload.availableBalance || 0),
+            changeAmount: String(
+              hbarBalanceUpdatePayload.availableBalance || 0
+            ),
+            changeReason: 'OTHER', // Cannot determine reason from current payload
+            relatedCampaignId: undefined, // Not available in current payload
+            transactionId: undefined, // Not available in current payload
+          }
+        );
+      } catch (error) {
+        Logger.err(
+          'Failed to send HBAR balance WebSocket notification: ' + String(error)
+        );
+      }
       break;
     }
 
