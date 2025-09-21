@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import logger from 'jet-logger';
 import { V201CampaignClosingService } from '../../Modules/campaigns/services/V201CampaignClosingService';
-import { V201EngagementDataCollectionService } from '../../Modules/campaigns/services/V201EngagementDataCollectionService';
+import V201EngagementDataCollectionService from '../../Modules/campaigns/services/V201EngagementDataCollectionService';
 import { V201CampaignExpiryService } from '../../Modules/campaigns/services/V201CampaignExpiryService';
 import { performAutoRewardingForEligibleUser } from '../../../services/reward-service/on-card';
 
@@ -18,17 +18,31 @@ import { performAutoRewardingForEligibleUser } from '../../../services/reward-se
 
 interface TestCampaign {
   id: bigint;
-  tweet_id: string;
-  name: string;
+  name: string | null;
+  contract_id: string | null;
+  decimals: any; // Decimal from Prisma
   owner_id: bigint;
-  campaign_close_time: Date;
-  campaign_start_time: Date;
-  like_reward: number;
-  retweet_reward: number;
-  quote_reward: number;
-  type: string;
-  contract_id: string;
-  campaign_budget: number;
+  tweet_id: string | null;
+  tweet_text: string | null;
+  retweet_reward: number | null;
+  like_reward: number | null;
+  quote_reward: number | null;
+  comment_reward: number | null;
+  media: string[];
+  amount_claimed: number | null;
+  amount_spent: number;
+  campaign_budget: number | null;
+  campaign_expiry: Date | null;
+  last_reply_checkedAt: Date | null;
+  last_thread_tweet_id: string | null;
+  type: string | null;
+  fungible_token_id: string | null;
+  approve: boolean | null;
+  isRejected: boolean | null;
+  campaign_start_time: Date | null;
+  campaign_close_time: Date | null;
+  is_added_to_queue: boolean | null;
+  card_status: any; // campaignstatus enum
 }
 
 interface TestUser {
