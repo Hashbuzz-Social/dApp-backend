@@ -42,4 +42,4 @@ export type EventPayloadMap = {
 export type SheduleJobPayloadMap = {
   [CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION]: CampaignCloseJobPayload;
   [CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION]: CampaignExpiryJobPayload;
-}
+};

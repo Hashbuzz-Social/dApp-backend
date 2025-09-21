@@ -179,15 +179,19 @@ export class V201CampaignExpiryService {
             });
 
             if (balanceRecord && Number(balanceRecord.entity_balance) !== campaignerBalances) {
-              logger.warn(`[V201] Campaigner balance diff found for campaign ${campaign.id}`);
-              
+              logger.warn(
+                `[V201] Campaigner balance diff found for campaign ${campaign.id}`
+              );
+
               // Update the balance record in DB
               await prisma.user_balances.update({
                 where: { id: balanceRecord.id },
-                data: { entity_balance: campaignerBalances }
+                data: { entity_balance: campaignerBalances },
               });
-              
-              logger.info(`[V201] Updated fungible balance for campaign owner ${owner.id}`);
+
+              logger.info(
+                `[V201] Updated fungible balance for campaign owner ${owner.id}`
+              );
             } else {
               logger.info(`[V201] No change in balance, no update needed for campaign ${campaign.id}`);
             }
@@ -219,14 +223,21 @@ export class V201CampaignExpiryService {
     type: 'HBAR' | 'FUNGIBLE'
   ): Promise<void> {
     try {
-      logger.info(`[V201] Publishing expiry announcement tweet for ${type} campaign ${campaign.id}`);
+      logger.info(
+        `[V201] Publishing expiry announcement tweet for ${type} campaign ${campaign.id}`
+      );
 
-      const tweetText = await this.generateExpiryAnnouncementText(campaign, type);
-      
+      const tweetText = await this.generateExpiryAnnouncementText(
+        campaign,
+        type
+      );
+
       // Safely handle parent tweet ID
       const parentTweetId = campaign.last_thread_tweet_id;
       if (!parentTweetId) {
-        throw new Error('Parent tweet ID is required for publishing expiry announcement');
+        throw new Error(
+          'Parent tweet ID is required for publishing expiry announcement'
+        );
       }
 
       const tweetResult = await twitterCardService.publishTweetORThread({
@@ -236,11 +247,14 @@ export class V201CampaignExpiryService {
         parentTweetId,
       });
 
-      logger.info(`[V201] Published expiry announcement tweet for campaign ${campaign.id}`);
-      
+      logger.info(
+        `[V201] Published expiry announcement tweet for campaign ${campaign.id}`
+      );
+
       // Update campaign with the final tweet ID (tweet result might be string or object)
       const prisma = await this.initializePrisma();
-      const lastTweetId = typeof tweetResult === 'string' ? tweetResult : parentTweetId;
+      const lastTweetId =
+        typeof tweetResult === 'string' ? tweetResult : parentTweetId;
       await new CampaignTwitterCardModel(prisma).updateCampaign(campaign.id, {
         last_thread_tweet_id: lastTweetId,
       });
@@ -270,7 +284,7 @@ export class V201CampaignExpiryService {
         const tokenData = await prisma.whiteListedTokens.findUnique({
           where: { token_id: campaign.fungible_token_id }
         });
-        
+
         if (tokenData) {
           tokenSymbol = tokenData.token_symbol || 'TOKEN';
           decimals = Number(tokenData.decimals) || 8;
@@ -288,7 +302,7 @@ export class V201CampaignExpiryService {
   private async updateCampaignToExpired(campaign: campaign_twittercard): Promise<void> {
     try {
       const prisma = await this.initializePrisma();
-      
+
       await new CampaignTwitterCardModel(prisma).updateCampaign(campaign.id, {
         card_status: campaignstatus.RewardsDistributed,
       });
@@ -324,15 +338,15 @@ export class V201CampaignExpiryService {
    */
   private async getCampaignOwner(userId: string): Promise<user_user | null> {
     logger.info(`[V201] Fetching campaign owner ${userId}`);
-    
+
     // Ensure prisma is initialized
     const prisma = await this.initializePrisma();
-    
+
     return await prisma.user_user.findUnique({
       where: { id: BigInt(userId) },
       include: {
         user_balances: true,
-      }
+      },
     });
   }
 
@@ -343,7 +357,7 @@ export class V201CampaignExpiryService {
     try {
       // Ensure prisma is initialized
       const prisma = await this.initializePrisma();
-      
+
       // Update campaign status to error
       await new CampaignTwitterCardModel(prisma).updateCampaign(campaign.id, {
         card_status: campaignstatus.InternalError,
@@ -371,7 +385,7 @@ export class V201CampaignExpiryService {
   async findCampaignsNeedingExpiry(): Promise<campaign_twittercard[]> {
     try {
       const prisma = await this.initializePrisma();
-      
+
       const campaigns = await prisma.campaign_twittercard.findMany({
         where: {
           card_status: campaignstatus.RewardDistributionInProgress,
