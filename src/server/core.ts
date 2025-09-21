@@ -45,8 +45,10 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
   };
 
   app.use(cors(corsOptions));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+
+  // Configure express middleware with proper size limits for media uploads
+  app.use(express.json({ limit: '10mb' })); // Increase JSON payload limit for media data
+  app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increase URL-encoded payload limit
   app.use(cookieParser());
 
   // Session
@@ -77,7 +79,24 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
     );
   };
 
+  // Error handlers for payload size and other common issues
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    // Handle payload too large error
+    if (
+      err instanceof Error &&
+      err.message.includes('request entity too large')
+    ) {
+      logger.err(`Payload too large: ${req.originalUrl} - ${req.method}`);
+      res.status(413).json({
+        error: 'Payload too large',
+        message:
+          'The uploaded file or request body is too large. Maximum allowed size is 10MB.',
+        endpoint: req.originalUrl,
+      });
+      return;
+    }
+
+    // Handle CSRF token errors
     if (
       isCsrfError(err) &&
       (err as { code?: string }).code === 'EBADCSRFTOKEN'
@@ -189,11 +208,9 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
     }
     const e = err as Error;
     logger.err('Internal Server Error: ' + e.message);
-    res
-      .status(500)
-      .json({
-        error: { message: 'Internal Server Error', description: e.message },
-      });
+    res.status(500).json({
+      error: { message: 'Internal Server Error', description: e.message },
+    });
   });
 };
 

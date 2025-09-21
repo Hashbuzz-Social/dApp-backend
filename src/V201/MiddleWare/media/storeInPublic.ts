@@ -12,10 +12,18 @@ interface UploadOptions {
 
 //src/V201/MiddleWare/media/storeInPublic.ts
 const defaultOptions: UploadOptions = {
-    destination: path.join(__dirname, '..', '..', '..', '..','public', 'uploads'),
-    maxFileSize: 2 * 1024 * 1024, // 2 MB
-    allowedMimeTypes: ['image/'],
-    maxFiles: 2,
+  destination: path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'public',
+    'uploads'
+  ),
+  maxFileSize: 10 * 1024 * 1024, // 10 MB - increased from 2 MB for better UX
+  allowedMimeTypes: ['image/'],
+  maxFiles: 2,
 };
 
 const createUploader = (options: UploadOptions = {}) => {
