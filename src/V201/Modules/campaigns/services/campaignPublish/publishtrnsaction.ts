@@ -207,6 +207,21 @@ export const handleCampaignPublishTransaction = async ({
   card,
   cardOwner,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION]): Promise<void> => {
+  const prisma = await createPrismaClient();
+  card = (await prisma.campaign_twittercard.findUnique({
+    where: { id: card.id },
+  })) as campaign_twittercard;
+  cardOwner = (await prisma.user_user.findUnique({
+    where: { id: cardOwner.id },
+  })) as user_user;
+
+  if (!card) {
+    throw new Error('Campaign card not found');
+  }
+  if (!cardOwner) {
+    throw new Error('Card owner not found');
+  }
+
   try {
     if (card.type === 'HBAR') {
       return publshCampaignSMTransactionHandlerHBAR(card, cardOwner);
