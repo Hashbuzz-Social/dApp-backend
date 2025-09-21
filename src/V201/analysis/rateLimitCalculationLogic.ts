@@ -276,7 +276,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
   // Daily campaign launch capacity
   daily_launch_capacity: {
     description: "How many NEW campaigns can be started per day",
-    
+
     scenario_1_conservative: {
       concurrent_limit: 30,
       average_campaign_duration_hours: 24, // 1 day campaigns
@@ -284,7 +284,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
       max_new_campaigns_per_day: 30, // 30 slots × 1 turnover = 30 new campaigns/day
       total_campaigns_per_day: 30
     },
-    
+
     scenario_2_short_campaigns: {
       concurrent_limit: 30,
       average_campaign_duration_hours: 12, // 12-hour campaigns
@@ -292,7 +292,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
       max_new_campaigns_per_day: 60, // 30 slots × 2 turnovers = 60 new campaigns/day
       total_campaigns_per_day: 60
     },
-    
+
     scenario_3_micro_campaigns: {
       concurrent_limit: 30,
       average_campaign_duration_hours: 6, // 6-hour campaigns
@@ -300,7 +300,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
       max_new_campaigns_per_day: 120, // 30 slots × 4 turnovers = 120 new campaigns/day
       total_campaigns_per_day: 120
     },
-    
+
     scenario_4_aggressive_scaling: {
       concurrent_limit: 120, // Using 80% of theoretical max
       average_campaign_duration_hours: 24, // 1 day campaigns
@@ -309,7 +309,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
       total_campaigns_per_day: 120,
       warning: "Requires careful rate limit monitoring"
     },
-    
+
     scenario_5_maximum_theoretical: {
       concurrent_limit: 150, // Absolute theoretical maximum
       average_campaign_duration_hours: 24,
@@ -323,7 +323,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
   // Daily API call consumption analysis
   daily_api_consumption: {
     api_calls_per_campaign_per_day: 192, // 5760 monthly calls / 30 days = 192 daily calls
-    
+
     by_scenario: {
       conservative_30_concurrent: {
         concurrent_campaigns: 30,
@@ -331,7 +331,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
         new_campaigns_launched: 30,
         rate_utilization: "6.67% of daily capacity"
       },
-      
+
       short_campaigns_60_daily: {
         concurrent_campaigns: 30, // Still limited by concurrent capacity
         daily_api_calls: 5760, // Same concurrent load
@@ -339,7 +339,7 @@ const DAILY_CAMPAIGN_CAPACITY = {
         total_campaign_throughput: 60,
         rate_utilization: "6.67% of daily capacity"
       },
-      
+
       micro_campaigns_120_daily: {
         concurrent_campaigns: 30,
         daily_api_calls: 5760,
@@ -347,14 +347,14 @@ const DAILY_CAMPAIGN_CAPACITY = {
         total_campaign_throughput: 120,
         rate_utilization: "6.67% of daily capacity"
       },
-      
+
       aggressive_120_concurrent: {
         concurrent_campaigns: 120,
         daily_api_calls: 23040, // 120 × 192 = 23,040 calls/day
         new_campaigns_launched: 120,
         rate_utilization: "26.67% of daily capacity"
       },
-      
+
       maximum_150_concurrent: {
         concurrent_campaigns: 150,
         daily_api_calls: 28800, // 150 × 192 = 28,800 calls/day
@@ -368,21 +368,21 @@ const DAILY_CAMPAIGN_CAPACITY = {
   // Staggered launch strategy for high volume
   staggered_launch_strategy: {
     description: "Spread campaign launches throughout the day to avoid API bursts",
-    
+
     for_60_campaigns_per_day: {
       launch_frequency: "1 campaign every 24 minutes", // 1440 min / 60 campaigns
       peak_concurrent: 30,
       api_burst_risk: "LOW - Well distributed",
       implementation: "Schedule launches every 24 minutes"
     },
-    
+
     for_120_campaigns_per_day: {
       launch_frequency: "1 campaign every 12 minutes", // 1440 min / 120 campaigns
       peak_concurrent: 30, // If 6-hour campaigns
       api_burst_risk: "LOW-MEDIUM - Frequent but manageable",
       implementation: "Schedule launches every 12 minutes"
     },
-    
+
     for_150_campaigns_per_day: {
       launch_frequency: "1 campaign every 9.6 minutes", // 1440 min / 150 campaigns
       peak_concurrent: 150, // If 24-hour campaigns
@@ -394,21 +394,21 @@ const DAILY_CAMPAIGN_CAPACITY = {
   // Peak hour considerations
   peak_hour_analysis: {
     description: "Account for higher engagement and API usage during peak hours",
-    
+
     typical_peak_hours: {
       morning_peak: "8-10 AM (campaign launches)",
       lunch_peak: "12-1 PM (engagement spikes)",
       evening_peak: "6-9 PM (highest engagement)",
       weekend_peaks: "10 AM - 8 PM (sustained high activity)"
     },
-    
+
     peak_hour_adjustments: {
       reduce_concurrent_capacity_by: "20-30% during peak hours",
       safe_peak_concurrent: 20, // Instead of 30
       safe_peak_daily_launches: 80, // Instead of 120
       reasoning: "Higher engagement = more API calls per campaign"
     },
-    
+
     off_peak_optimization: {
       increase_concurrent_capacity_by: "10-20% during off-peak",
       off_peak_concurrent: 35, // Instead of 30
@@ -427,16 +427,16 @@ const DAILY_CAMPAIGN_CAPACITY = {
       reliability: "99.9% uptime expected",
       scalability: "Can handle 4x growth before optimization needed"
     },
-    
+
     balanced_recommendation: {
       max_concurrent_campaigns: 30,
       max_daily_new_campaigns: 120,
       average_campaign_duration: "6-24 hours",
-      api_utilization: "10-15% of rate limits", 
+      api_utilization: "10-15% of rate limits",
       reliability: "99.5% uptime expected",
       scalability: "Room for 3x growth"
     },
-    
+
     aggressive_recommendation: {
       max_concurrent_campaigns: 50,
       max_daily_new_campaigns: 200, // With 6-hour average campaigns
