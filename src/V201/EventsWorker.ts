@@ -170,20 +170,34 @@ process.on('unhandledRejection', (reason) => {
   gracefulShutdown();
 });
 
-// Periodic stats logging
+// Periodic stats logging with intelligent retry logic
 setInterval(() => {
   (async () => {
     try {
       const stats = await EnhancedEventSystem.getEventStats();
-      Logger.info(`Event Stats - Pending: ${stats.pending}, Dead Letter: ${stats.deadLetter}`);
+      Logger.info(
+        `Event Stats - Pending: ${stats.pending}, Dead Letter: ${stats.deadLetter}`
+      );
 
-      // Auto-reprocess dead letter events if there aren't too many
-      if (stats.deadLetter > 0 && stats.deadLetter <= 5) {
-        const reprocessed = await EnhancedEventSystem.reprocessDeadLetterEvents(3);
+      // DISABLE AUTO-REPROCESSING OF DEAD LETTER EVENTS TO PREVENT INFINITE LOOPS
+      // Auto-reprocessing is disabled to prevent API quota exhaustion
+      // Dead letter events should be manually reviewed and reprocessed
+      if (stats.deadLetter > 0) {
+        Logger.warn(
+          `${stats.deadLetter} dead letter events require manual review. Auto-reprocessing is disabled.`
+        );
+      }
+
+      // Only reprocess if there are very few dead letter events and enough time has passed
+      // This prevents hammering failed services
+      /*
+      if (stats.deadLetter > 0 && stats.deadLetter <= 2) {
+        const reprocessed = await EnhancedEventSystem.reprocessDeadLetterEvents(1);
         if (reprocessed > 0) {
           Logger.info(`Auto-reprocessed ${reprocessed} dead letter events`);
         }
       }
+      */
     } catch (error) {
       Logger.err(`Error getting event stats: ${error instanceof Error ? error.message : String(error)}`);
     }

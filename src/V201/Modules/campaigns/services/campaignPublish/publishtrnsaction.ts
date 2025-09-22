@@ -6,7 +6,7 @@ import {
   Prisma,
   user_user,
 } from '@prisma/client';
-import { addFungibleAndNFTCampaign } from '@services/contract-service';
+import { provideActiveContract } from '@services/contract-service';
 import { allocateBalanceToCampaign } from '@services/transaction-service';
 import createPrismaClient from '@shared/prisma';
 import { CampaignEvents } from '@V201/events/campaign';
@@ -24,6 +24,7 @@ import {
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../../eventPublisher';
+import ContractCampaignLifecycle from '@services/ContractCampaignLifecycle';
 
 const handleSmartContractTransaction = async (
   card: campaign_twittercard,
@@ -49,10 +50,10 @@ const handleSmartContractTransaction = async (
     ).createTransaction({
       transaction_data: safeParsedData({
         ...transactionDetails,
-        status: transactionDetails.status.toString(),
+        status: String(transactionDetails?.status || 'unknown'),
       }),
       transaction_id: transactionDetails.transactionId,
-      status: transactionDetails.status.toString(),
+      status: String(transactionDetails?.status || 'unknown'),
       amount: Number(card.campaign_budget),
       transaction_type: 'campaign_top_up',
       network: apConfig.network.network as network,
@@ -62,7 +63,9 @@ const handleSmartContractTransaction = async (
     const logableCampaignData: Omit<Prisma.CampaignLogCreateInput, 'campaign'> =
       {
         status: campaignstatus.CampaignRunning,
-        message: `Campaign balance ${card.campaign_budget ?? 0} is added to the SM Contract`,
+        message: `Campaign balance ${
+          card.campaign_budget ?? 0
+        } is added to the SM Contract`,
         data: safeParsedData({
           transaction_id: transactionDetails.transactionId,
           status: transactionDetails.status,
@@ -80,7 +83,7 @@ const handleSmartContractTransaction = async (
     });
 
     updateCampaignInMemoryStatus(
-      card.contract_id!,
+      card.contract_id || '',
       'transactionLogsCreated',
       true
     );
@@ -91,7 +94,12 @@ const handleSmartContractTransaction = async (
       message: error.message,
       error,
     });
-    logger.err('Error in handleSmartContractTransaction:' + (error instanceof Error ? error.stack || error.message : JSON.stringify(error)));
+    logger.err(
+      'Error in handleSmartContractTransaction:' +
+        (error instanceof Error
+          ? error.stack || error.message
+          : JSON.stringify(error))
+    );
     throw error;
   }
 };
@@ -177,12 +185,23 @@ export const publshCampaignSMTransactionHandlerFungible = async (
   }
 
   return handleSmartContractTransaction(card, cardOwner, async () => {
-    const transactionDetails = await addFungibleAndNFTCampaign(
-      fungible_token_id,
-      campaign_budget,
-      hedera_wallet_id,
-      contract_id
+    // Get contract details
+    const contractDetails = await provideActiveContract();
+
+    if (!contractDetails?.contract_id) {
+      throw new Error('No active contract found');
+    }
+
+    const campaignLifecycleService = new ContractCampaignLifecycle(
+      contractDetails.contract_id
     );
+    const transactionDetails =
+      await campaignLifecycleService.addFungibleCampaign(
+        fungible_token_id,
+        contract_id,
+        hedera_wallet_id,
+        campaign_budget
+      );
 
     if (!transactionDetails) {
       throw new Error('Failed to add campaign to contract');
@@ -239,7 +258,11 @@ export const handleCampaignPublishTransaction = async ({
       message: error.message,
       error,
     });
-    logger.err('Error in HandleCampaignPublishTransaction:', error);
+    logger.err(
+      `Error in HandleCampaignPublishTransaction: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     throw error;
   }
 };

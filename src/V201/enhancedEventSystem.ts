@@ -110,7 +110,22 @@ export class EnhancedEventSystem {
     } catch (error) {
       logger.err(`Error processing event ${eventType} (ID: ${eventId}): ${error instanceof Error ? error.message : String(error)}`);
 
-      // Handle retry logic
+      // Check if this is a Twitter rate limit error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (this.isTwitterRateLimitError(errorMessage)) {
+        logger.warn(`Twitter rate limit detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`);
+        await this.moveToDeadLetter(eventId, eventType, payload, error as Error);
+        return false;
+      }
+
+      // Check if this is a smart contract failure
+      if (this.isSmartContractError(errorMessage)) {
+        logger.warn(`Smart contract error detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`);
+        await this.moveToDeadLetter(eventId, eventType, payload, error as Error);
+        return false;
+      }
+
+      // Handle retry logic for other errors
       const shouldRetry = await this.handleEventFailure(
         eventId,
         eventType,
@@ -128,6 +143,25 @@ export class EnhancedEventSystem {
 
       return false;
     }
+  }
+
+  /**
+   * Detect if error is a Twitter rate limit error
+   */
+  private static isTwitterRateLimitError(errorMessage: string): boolean {
+    return errorMessage.includes('TWITTER_RATE_LIMITED') ||
+           errorMessage.includes('429') ||
+           errorMessage.includes('Rate limit exceeded') ||
+           errorMessage.includes('Too Many Requests');
+  }
+
+  /**
+   * Detect if error is a smart contract error
+   */
+  private static isSmartContractError(errorMessage: string): boolean {
+    return errorMessage.includes('Failed to add campaign to contract') ||
+           errorMessage.includes('Contract ID is undefined') ||
+           errorMessage.includes('Failed to update contract state');
   }
 
   /**
