@@ -3,6 +3,7 @@ import { SheduleJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
 import { ScheduledEvent } from './AppEvents';
 import { getConfig } from '@appConfig';
+import { AppConfig } from 'src/@types/AppConfig';
 
 /**
  * Defines the structure of a task scheduler job.
@@ -18,11 +19,13 @@ export interface TaskSchedulerJobType<T extends ScheduledEvent> {
  */
 class SchedulerQueue {
   private static instance: SchedulerQueue;
-  private configs: any;
+  private configs: AppConfig | null = null;
   private queues: Map<string, Queue> = new Map();
   private queueSchedulers: Map<string, JobScheduler> = new Map();
 
-  private constructor() {}
+  private constructor() {
+    // Private constructor for singleton pattern
+  }
 
   /**
    * Gets a singleton instance of the scheduler queue.
@@ -50,24 +53,32 @@ class SchedulerQueue {
     if (!this.queues.has(jobType)) {
       if (!this.configs) await this.initializeConfigs();
 
+      const redisConfig = parseRedisURL(
+        String(this.configs?.db?.redisServerURI || '')
+      );
+
       const queue = new Queue(jobType, {
         connection: {
-          host: parseRedisURL(this.configs.db.redisServerURI).host,
-          port: parseRedisURL(this.configs.db.redisServerURI).port,
+          host: String(redisConfig?.host || 'localhost'),
+          port: Number(redisConfig?.port || 6379),
         },
       });
 
       const scheduler = new JobScheduler(jobType, {
         connection: {
-          host: parseRedisURL(this.configs.db.redisServerURI).host,
-          port: parseRedisURL(this.configs.db.redisServerURI).port,
+          host: String(redisConfig?.host || 'localhost'),
+          port: Number(redisConfig?.port || 6379),
         },
       });
 
       this.queues.set(jobType, queue);
       this.queueSchedulers.set(jobType, scheduler);
     }
-    return this.queues.get(jobType)!;
+    const queue = this.queues.get(jobType);
+    if (!queue) {
+      throw new Error(`Queue not found for job type: ${jobType}`);
+    }
+    return queue;
   }
 
   /**
@@ -85,13 +96,17 @@ class SchedulerQueue {
     const delay = jobData.executeAt.getTime() - Date.now();
     await queue.add(jobData.eventName, safeParsedData(jobData), {
       delay,
+      // Prevent infinite retries at the job level
+      attempts: 3, // Maximum 3 attempts
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5000, // Start with 5 second delay
+      },
+      removeOnComplete: 50, // Keep 50 successful jobs
+      removeOnFail: 100, // Keep 100 failed jobs for debugging
       ...options,
     });
-    console.log(
-      `[SchedulerQueue] Job added: type=${jobType}, event=${
-        jobData.eventName
-      }, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms`
-    );
+    // Job added successfully - could add logging here with proper logger if needed
   }
 }
 
