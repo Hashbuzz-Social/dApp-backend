@@ -15,14 +15,13 @@ interface EngagementMetrics {
   uniqueEngagers: number;
 }
 
-interface EngagementData {
-  userId: string;
-  username: string;
-  engagementType: 'like' | 'retweet' | 'quote' | 'comment';
-  engagementId: string;
-  timestamp: Date;
-  tweetId: string;
-  campaignId: bigint;
+interface EngagementRecord {
+  tweet_id: bigint;
+  user_id: string;
+  engagement_type: 'like' | 'retweet' | 'quote' | 'comment';
+  updated_at: Date;
+  payment_status: 'UNPAID' | 'PAID' | 'SUSPENDED';
+  is_valid_timing?: boolean;
 }
 
 interface CampaignTrackingJob {
@@ -62,7 +61,9 @@ export class XApiEngagementTracker {
   ): Promise<void> {
     try {
       const startTime = new Date();
-      const endTime = new Date(startTime.getTime() + (durationHours * 60 * 60 * 1000));
+      const endTime = new Date(
+        startTime.getTime() + durationHours * 60 * 60 * 1000
+      );
 
       // Create tracking job for Redis queue
       const trackingJob: CampaignTrackingJob = {
@@ -80,7 +81,9 @@ export class XApiEngagementTracker {
 
       // Schedule periodic collection jobs (every 30 minutes to respect rate limits)
       const collectionInterval = 30 * 60 * 1000; // 30 minutes
-      const totalCollections = Math.ceil((durationHours * 60 * 60 * 1000) / collectionInterval);
+      const totalCollections = Math.ceil(
+        (durationHours * 60 * 60 * 1000) / collectionInterval
+      );
 
       for (let i = 0; i < totalCollections; i++) {
         const delayMs = i * collectionInterval;
@@ -104,16 +107,21 @@ export class XApiEngagementTracker {
       };
       await publishToQueue('engagement_collection', finalJob);
 
-      logger.info(`Started engagement tracking for campaign ${campaignId} with ${totalCollections} collection jobs`);
+      logger.info(
+        `Started engagement tracking for campaign ${campaignId} with ${totalCollections} collection jobs`
+      );
 
       // Publish tracking started event
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_CONTENT, {
         cardOwner: { id: userId } as any,
         card: { id: campaignId, tweet_id: tweetId } as any,
       });
-
     } catch (error) {
-      logger.err(`Error starting campaign tracking: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error starting campaign tracking: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       throw error;
     }
   }
@@ -121,7 +129,10 @@ export class XApiEngagementTracker {
   /**
    * Initialize campaign engagement tracking in database
    */
-  private async initializeCampaignEngagement(campaignId: bigint, tweetId: string): Promise<void> {
+  private async initializeCampaignEngagement(
+    campaignId: bigint,
+    _tweetId: string // eslint-disable-line @typescript-eslint/no-unused-vars
+  ): Promise<void> {
     try {
       // Create or update campaign tweet stats record
       await this.prisma.campaign_tweetstats.upsert({
@@ -141,7 +152,11 @@ export class XApiEngagementTracker {
 
       logger.info(`Initialized engagement tracking for campaign ${campaignId}`);
     } catch (error) {
-      logger.err(`Error initializing campaign engagement: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error initializing campaign engagement: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       // If table doesn't exist, that's okay - we'll handle it gracefully
     }
   }
@@ -149,9 +164,14 @@ export class XApiEngagementTracker {
   /**
    * Collect engagement data from X API using existing Twitter API integration
    */
-  async collectEngagementData(campaignId: bigint, tweetId: string): Promise<EngagementMetrics> {
+  async collectEngagementData(
+    campaignId: bigint,
+    tweetId: string
+  ): Promise<EngagementMetrics> {
     try {
-      logger.info(`Collecting engagement data for campaign ${campaignId}, tweet ${tweetId}`);
+      logger.info(
+        `Collecting engagement data for campaign ${campaignId}, tweet ${tweetId}`
+      );
 
       // Get campaign owner to access their Twitter credentials
       const campaign = await this.prisma.campaign_twittercard.findUnique({
@@ -174,16 +194,20 @@ export class XApiEngagementTracker {
       const user = campaign.user_user;
 
       // Check if user has Twitter credentials
-      if (!user.business_twitter_access_token || !user.business_twitter_access_token_secret) {
-        logger.warn(`User ${user.id} does not have Twitter credentials, using mock data`);
-        return this.generateMockMetrics();
+      if (
+        !user.business_twitter_access_token ||
+        !user.business_twitter_access_token_secret
+      ) {
+        const errorMessage = `User ${user.id} does not have Twitter credentials - cannot collect engagement data`;
+        logger.err(errorMessage);
+        throw new Error(errorMessage);
       }
 
       // Collect engagement data using existing Twitter API functions with error handling
-      let likesData: any[] = [];
-      let retweetsData: any[] = [];
-      let quotesData: any[] = [];
-      let repliesData: any[] = [];
+      let likesData: unknown[] = [];
+      let retweetsData: unknown[] = [];
+      let quotesData: unknown[] = [];
+      let repliesData: unknown[] = [];
 
       try {
         const results = await Promise.allSettled([
@@ -193,30 +217,42 @@ export class XApiEngagementTracker {
         ]);
 
         likesData = results[0].status === 'fulfilled' ? results[0].value : [];
-        retweetsData = results[1].status === 'fulfilled' ? results[1].value : [];
+        retweetsData =
+          results[1].status === 'fulfilled' ? results[1].value : [];
         quotesData = results[2].status === 'fulfilled' ? results[2].value : [];
 
         // Log any API failures
         results.forEach((result, index) => {
           if (result.status === 'rejected') {
             const apiNames = ['likes', 'retweets', 'quotes'];
-            logger.warn(`Failed to collect ${apiNames[index]} for tweet ${tweetId}: ${result.reason}`);
+            logger.warn(
+              `Failed to collect ${
+                apiNames[index]
+              } for tweet ${tweetId}: ${String(result.reason)}`
+            );
           }
         });
-
       } catch (error) {
-        logger.warn(`Error collecting basic engagement data: ${error instanceof Error ? error.message : String(error)}`);
+        logger.warn(
+          `Error collecting basic engagement data: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
       }
 
       // Get replies/comments separately with error handling
       try {
         repliesData = await twitterAPI.getAllReplies(
           tweetId,
-          user.business_twitter_access_token ,
+          user.business_twitter_access_token,
           user.business_twitter_access_token_secret
         );
       } catch (error) {
-        logger.warn(`Failed to collect replies for tweet ${tweetId}: ${error instanceof Error ? error.message : String(error)}`);
+        logger.warn(
+          `Failed to collect replies for tweet ${tweetId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
         repliesData = [];
       }
 
@@ -230,59 +266,72 @@ export class XApiEngagementTracker {
         uniqueEngagers: 0,
       };
 
-      // Calculate unique engagers by combining all user IDs
+      // Calculate unique engagers by combining all user IDs with type safety
       const allEngagers = new Set<string>();
 
-      likesData.forEach(user => allEngagers.add(user.id));
-      retweetsData.forEach(user => allEngagers.add(user.id));
-      quotesData.forEach(user => allEngagers.add(user.id));
-      repliesData.forEach(user => allEngagers.add(user.id));
+      // Helper function to safely extract user ID from API response
+      const extractUserId = (user: unknown): string | null => {
+        if (user && typeof user === 'object' && 'id' in user) {
+          return String((user as { id: unknown }).id);
+        }
+        return null;
+      };
+
+      likesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) allEngagers.add(userId);
+      });
+      retweetsData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) allEngagers.add(userId);
+      });
+      quotesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) allEngagers.add(userId);
+      });
+      repliesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) allEngagers.add(userId);
+      });
 
       metrics.uniqueEngagers = allEngagers.size;
-      metrics.totalEngagements = metrics.likes + metrics.retweets + metrics.quotes + metrics.comments;
+      metrics.totalEngagements =
+        metrics.likes + metrics.retweets + metrics.quotes + metrics.comments;
 
       // Store collected data and individual engagement records
       await this.storeEngagementMetrics(campaignId, metrics);
-      await this.storeIndividualEngagements(campaignId, tweetId, likesData, retweetsData, quotesData, repliesData);
+      await this.storeIndividualEngagements(
+        campaignId,
+        tweetId,
+        likesData,
+        retweetsData,
+        quotesData,
+        repliesData
+      );
 
-      logger.info(`Collected real engagement data for campaign ${campaignId}: ${JSON.stringify(metrics)}`);
+      logger.info(
+        `Collected real engagement data for campaign ${campaignId}: ${JSON.stringify(
+          metrics
+        )}`
+      );
       return metrics;
-
     } catch (error) {
-      logger.err(`Error collecting engagement data from X API: ${error instanceof Error ? error.message : String(error)}`);
-
-      // Fallback to mock data if API fails
-      logger.info(`Falling back to mock data for campaign ${campaignId}`);
-      const mockMetrics = this.generateMockMetrics();
-      await this.storeEngagementMetrics(campaignId, mockMetrics);
-      return mockMetrics;
+      logger.err(
+        `Error collecting engagement data from X API: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      throw error; // Don't fallback to mock data in V201
     }
-  }
-
-  /**
-   * Generate mock metrics as fallback when API is unavailable
-   */
-  private generateMockMetrics(): EngagementMetrics {
-    const mockMetrics: EngagementMetrics = {
-      likes: Math.floor(Math.random() * 100) + 10,
-      retweets: Math.floor(Math.random() * 50) + 5,
-      quotes: Math.floor(Math.random() * 25) + 2,
-      comments: Math.floor(Math.random() * 30) + 3,
-      totalEngagements: 0,
-      uniqueEngagers: 0,
-    };
-
-    // Calculate totals (assuming 80% unique engagement rate)
-    mockMetrics.totalEngagements = mockMetrics.likes + mockMetrics.retweets + mockMetrics.quotes + mockMetrics.comments;
-    mockMetrics.uniqueEngagers = Math.floor(mockMetrics.totalEngagements * 0.8);
-
-    return mockMetrics;
   }
 
   /**
    * Store engagement metrics in database using campaign_tweetstats table
    */
-  private async storeEngagementMetrics(campaignId: bigint, metrics: EngagementMetrics): Promise<void> {
+  private async storeEngagementMetrics(
+    campaignId: bigint,
+    metrics: EngagementMetrics
+  ): Promise<void> {
     try {
       await this.prisma.campaign_tweetstats.update({
         where: { twitter_card_id: campaignId },
@@ -297,7 +346,11 @@ export class XApiEngagementTracker {
 
       logger.info(`Stored engagement metrics for campaign ${campaignId}`);
     } catch (error) {
-      logger.err(`Error storing engagement metrics: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error storing engagement metrics: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       // Gracefully handle if table doesn't exist
     }
   }
@@ -308,79 +361,137 @@ export class XApiEngagementTracker {
    */
   private async storeIndividualEngagements(
     campaignId: bigint,
-    tweetId: string,
-    likesData: any[],
-    retweetsData: any[],
-    quotesData: any[],
-    repliesData: any[]
+    _tweetId: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+    likesData: unknown[],
+    retweetsData: unknown[],
+    quotesData: unknown[],
+    repliesData: unknown[]
   ): Promise<void> {
     try {
-      const engagementRecords: any[] = [];
+      const engagementRecords: EngagementRecord[] = [];
+
+      // Helper function to safely extract user ID from API response
+      const extractUserId = (user: unknown): string | null => {
+        if (user && typeof user === 'object' && 'id' in user) {
+          return String((user as { id: unknown }).id);
+        }
+        return null;
+      };
 
       // Process likes
-      likesData.forEach(user => {
-        engagementRecords.push({
-          tweet_id: campaignId,
-          user_id: String(user.id), // Twitter user ID as string
-          engagement_type: 'like',
-          updated_at: new Date(),
-          payment_status: 'UNPAID',
-        });
+      likesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) {
+          engagementRecords.push({
+            tweet_id: campaignId,
+            user_id: userId,
+            engagement_type: 'like',
+            updated_at: new Date(),
+            payment_status: 'UNPAID',
+            is_valid_timing: true,
+          });
+        }
       });
 
       // Process retweets
-      retweetsData.forEach(user => {
-        engagementRecords.push({
-          tweet_id: campaignId,
-          user_id: String(user.id),
-          engagement_type: 'retweet',
-          updated_at: new Date(),
-          payment_status: 'UNPAID',
-        });
+      retweetsData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) {
+          engagementRecords.push({
+            tweet_id: campaignId,
+            user_id: userId,
+            engagement_type: 'retweet',
+            updated_at: new Date(),
+            payment_status: 'UNPAID',
+            is_valid_timing: true,
+          });
+        }
       });
 
       // Process quotes
-      quotesData.forEach(user => {
-        engagementRecords.push({
-          tweet_id: campaignId,
-          user_id: String(user.id),
-          engagement_type: 'quote',
-          updated_at: new Date(),
-          payment_status: 'UNPAID',
-        });
+      quotesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) {
+          engagementRecords.push({
+            tweet_id: campaignId,
+            user_id: userId,
+            engagement_type: 'quote',
+            updated_at: new Date(),
+            payment_status: 'UNPAID',
+            is_valid_timing: true,
+          });
+        }
       });
 
       // Process comments/replies
-      repliesData.forEach(user => {
-        engagementRecords.push({
-          tweet_id: campaignId,
-          user_id: String(user.id),
-          engagement_type: 'comment',
-          updated_at: new Date(),
-          payment_status: 'UNPAID',
-        });
+      repliesData.forEach((user) => {
+        const userId = extractUserId(user);
+        if (userId) {
+          engagementRecords.push({
+            tweet_id: campaignId,
+            user_id: userId,
+            engagement_type: 'comment',
+            updated_at: new Date(),
+            payment_status: 'UNPAID',
+            is_valid_timing: true,
+          });
+        }
       });
 
-      // Store all engagement records, avoiding duplicates by user_id + tweet_id + engagement_type
+      // Store all engagement records with proper database structure
       for (const record of engagementRecords) {
-        await this.prisma.campaign_tweetengagements.upsert({
-          where: {
-            id: 0, // This will never match, so it will always create
-          },
-          update: record,
-          create: record,
-        });
+        // Check if record already exists to avoid duplicates
+        const existingRecord =
+          await this.prisma.campaign_tweetengagements.findFirst({
+            where: {
+              tweet_id: record.tweet_id,
+              user_id: record.user_id,
+              engagement_type: record.engagement_type,
+            },
+          });
+
+        if (!existingRecord) {
+          // Only create if record doesn't exist
+          await this.prisma.campaign_tweetengagements.create({
+            data: {
+              tweet_id: record.tweet_id,
+              user_id: record.user_id,
+              engagement_type: record.engagement_type,
+              updated_at: record.updated_at,
+              payment_status: record.payment_status,
+              is_valid_timing: record.is_valid_timing,
+            },
+          });
+        } else {
+          // Update the existing record if needed
+          await this.prisma.campaign_tweetengagements.update({
+            where: { id: existingRecord.id },
+            data: {
+              updated_at: record.updated_at,
+              is_valid_timing: record.is_valid_timing,
+            },
+          });
+        }
       }
 
-      logger.info(`Stored ${engagementRecords.length} individual engagement records for campaign ${campaignId}`);
+      logger.info(
+        `Stored ${engagementRecords.length} individual engagement records for campaign ${campaignId}`
+      );
     } catch (error) {
-      logger.err(`Error storing individual engagements: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error storing individual engagements: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       // Don't fail the whole process if this fails
     }
-  }  /**
+  }
+  /**
    * Get current campaign metrics from database
    */
-  async getCampaignMetrics(campaignId: bigint): Promise<EngagementMetrics | null> {
+  async getCampaignMetrics(
+    campaignId: bigint
+  ): Promise<EngagementMetrics | null> {
     try {
       const stats = await this.prisma.campaign_tweetstats.findUnique({
         where: { twitter_card_id: campaignId },
@@ -391,8 +502,26 @@ export class XApiEngagementTracker {
       }
 
       // Calculate total engagements and unique engagers from the stats
-      const totalEngagements = (stats.like_count || 0) + (stats.retweet_count || 0) +
-                              (stats.quote_count || 0) + (stats.reply_count || 0);
+      const totalEngagements =
+        (stats.like_count || 0) +
+        (stats.retweet_count || 0) +
+        (stats.quote_count || 0) +
+        (stats.reply_count || 0);
+
+      // Get actual unique engagers count from engagement records
+      const uniqueEngagers =
+        await this.prisma.campaign_tweetengagements.findMany({
+          where: {
+            tweet_id: campaignId,
+            payment_status: 'UNPAID',
+          },
+          select: {
+            user_id: true,
+          },
+          distinct: ['user_id'],
+        });
+
+      const uniqueEngagersCount = uniqueEngagers.length;
 
       return {
         likes: stats.like_count || 0,
@@ -400,10 +529,14 @@ export class XApiEngagementTracker {
         quotes: stats.quote_count || 0,
         comments: stats.reply_count || 0,
         totalEngagements,
-        uniqueEngagers: Math.floor(totalEngagements * 0.8), // Estimate unique engagers as 80% of total
+        uniqueEngagers: uniqueEngagersCount,
       };
     } catch (error) {
-      logger.err(`Error getting campaign metrics: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error getting campaign metrics: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return null;
     }
   }
@@ -411,7 +544,9 @@ export class XApiEngagementTracker {
   /**
    * Process engagement collection job from queue
    */
-  async processEngagementCollection(jobData: CampaignTrackingJob): Promise<void> {
+  async processEngagementCollection(
+    jobData: CampaignTrackingJob
+  ): Promise<void> {
     try {
       const campaignId = BigInt(jobData.campaignId);
 
@@ -420,29 +555,45 @@ export class XApiEngagementTracker {
       const endTime = new Date(jobData.endTime);
 
       if (currentTime > endTime && jobData.collectionType !== 'final') {
-        logger.info(`Skipping expired collection job for campaign ${campaignId}`);
+        logger.info(
+          `Skipping expired collection job for campaign ${campaignId}`
+        );
         return;
       }
 
       // Collect current engagement data
-      const metrics = await this.collectEngagementData(campaignId, jobData.tweetId);
+      const metrics = await this.collectEngagementData(
+        campaignId,
+        jobData.tweetId
+      );
 
       // If this is the final collection, trigger campaign closing
       if (jobData.collectionType === 'final') {
-        logger.info(`Final collection for campaign ${campaignId}, triggering close`);
+        logger.info(
+          `Final collection for campaign ${campaignId}, triggering close`
+        );
         await this.triggerCampaignClosing(campaignId, metrics);
       }
 
-      logger.info(`Processed ${jobData.collectionType} engagement collection for campaign ${campaignId}`);
+      logger.info(
+        `Processed ${jobData.collectionType} engagement collection for campaign ${campaignId}`
+      );
     } catch (error) {
-      logger.err(`Error processing engagement collection: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error processing engagement collection: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
   /**
    * Trigger campaign closing with collected metrics
    */
-  private async triggerCampaignClosing(campaignId: bigint, metrics: EngagementMetrics): Promise<void> {
+  private async triggerCampaignClosing(
+    campaignId: bigint,
+    metrics: EngagementMetrics
+  ): Promise<void> {
     try {
       logger.info(`Triggering campaign closing for campaign ${campaignId}`);
 
@@ -471,21 +622,31 @@ export class XApiEngagementTracker {
         await processCampaignClosing(closingData, BigInt(campaign.owner_id));
         logger.info(`Triggered campaign closing for campaign ${campaignId}`);
       }
-
     } catch (error) {
-      logger.err(`Error triggering campaign closing: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error triggering campaign closing: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
-  }  /**
+  }
+  /**
    * Stop tracking for a campaign
    */
-  async stopCampaignTracking(campaignId: bigint): Promise<EngagementMetrics | null> {
+  async stopCampaignTracking(
+    campaignId: bigint
+  ): Promise<EngagementMetrics | null> {
     try {
       const finalMetrics = await this.getCampaignMetrics(campaignId);
 
       logger.info(`Stopped tracking for campaign ${campaignId}`);
       return finalMetrics;
     } catch (error) {
-      logger.err(`Error stopping campaign tracking: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error stopping campaign tracking: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return null;
     }
   }
