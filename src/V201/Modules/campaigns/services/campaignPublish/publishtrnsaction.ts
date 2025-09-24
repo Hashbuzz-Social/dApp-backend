@@ -25,6 +25,7 @@ import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../../eventPublisher';
 import ContractCampaignLifecycle from '@services/ContractCampaignLifecycle';
+import JSONBigInt from 'json-bigint';
 
 const handleSmartContractTransaction = async (
   card: campaign_twittercard,
@@ -98,7 +99,7 @@ const handleSmartContractTransaction = async (
       'Error in handleSmartContractTransaction:' +
         (error instanceof Error
           ? error.stack || error.message
-          : JSON.stringify(error))
+          : JSONBigInt.stringify(error))
     );
     throw error;
   }
@@ -112,7 +113,9 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
     throw new Error('Unsupported card type for smart contract transaction');
   }
 
-  logger.info(`data received for event ${JSON.stringify({ card, cardOwner })}`);
+  logger.info(
+    `data received for event ${JSONBigInt.stringify({ card, cardOwner })}`
+  );
 
   const { contract_id, campaign_budget } = card;
   const { hedera_wallet_id } = cardOwner;
@@ -156,8 +159,14 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
     } else {
       return {
         contract_id,
-        transactionId: 'transactionId' in contractStateUpdateResult ? (contractStateUpdateResult as any).transactionId : undefined,
-        receipt: 'receipt' in contractStateUpdateResult ? (contractStateUpdateResult as any).receipt : undefined,
+        transactionId:
+          'transactionId' in contractStateUpdateResult
+            ? (contractStateUpdateResult as any).transactionId
+            : undefined,
+        receipt:
+          'receipt' in contractStateUpdateResult
+            ? (contractStateUpdateResult as any).receipt
+            : undefined,
         status: undefined,
       };
     }

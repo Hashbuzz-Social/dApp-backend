@@ -10,6 +10,7 @@ import { BalanceEvents, CampaignEvents } from './AppEvents';
 import { safeStringifyData } from './Modules/common';
 import { consumeFromQueue } from './redisQueue';
 import { EnhancedEventSystem } from './enhancedEventSystem';
+import JSONBigInt from 'json-bigint';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -24,7 +25,11 @@ const processEvent = async (
     eventType,
     payload,
     async (eventType: string, payload: any) => {
-      Logger.info(`Processing event ${String(eventType)} - payload: ${safeStringifyData(payload)}`);
+      Logger.info(
+        `Processing event ${String(eventType)} - payload: ${safeStringifyData(
+          payload
+        )}`
+      );
 
       switch (eventType) {
         // handle event CAMPAIGN_PUBLISH_CONTENT event
@@ -112,33 +117,45 @@ let isShuttingDown = false;
 const startEventConsumer = () => {
   const abortController = new AbortController();
 
-  consumeFromQueue('event-queue', (event) => {
-    if (isShuttingDown) {
-      Logger.info('Shutting down, skipping event processing');
-      return;
-    }
-
-    // event may already be parsed by safeParsedData in redisQueue
-    const raw = typeof event === 'string' ? JSON.parse(event) : event;
-    if (!raw || !raw.eventId || !raw.eventType) {
-      Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
-      return;
-    }
-
-    // spawn async handler so the queue callback stays synchronous/void
-    (async () => {
-      try {
-        const eventId = Number(raw.eventId);
-        const success = await processEvent(eventId, String(raw.eventType), raw.payload);
-
-        if (success) {
-          Logger.info(`Successfully processed event ${String(raw.eventType)} (ID: ${eventId})`);
-        }
-      } catch (err) {
-        Logger.err(`Critical error processing event: ${String(err)}`);
+  consumeFromQueue(
+    'event-queue',
+    (event) => {
+      if (isShuttingDown) {
+        Logger.info('Shutting down, skipping event processing');
+        return;
       }
-    })();
-  }, { signal: abortController.signal });
+
+      // event may already be parsed by safeParsedData in redisQueue
+      const raw = typeof event === 'string' ? JSONBigInt.parse(event) : event;
+      if (!raw || !raw.eventId || !raw.eventType) {
+        Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
+        return;
+      }
+
+      // spawn async handler so the queue callback stays synchronous/void
+      (async () => {
+        try {
+          const eventId = Number(raw.eventId);
+          const success = await processEvent(
+            eventId,
+            String(raw.eventType),
+            raw.payload
+          );
+
+          if (success) {
+            Logger.info(
+              `Successfully processed event ${String(
+                raw.eventType
+              )} (ID: ${eventId})`
+            );
+          }
+        } catch (err) {
+          Logger.err(`Critical error processing event: ${String(err)}`);
+        }
+      })();
+    },
+    { signal: abortController.signal }
+  );
 
   return abortController;
 };

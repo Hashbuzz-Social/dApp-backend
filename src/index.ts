@@ -9,10 +9,10 @@ import server from './server';
 
 // Initialize BullMQ workers for scheduled jobs
 import { AccountId } from '@hashgraph/sdk';
-// import './V201/SchedulesJobHandlers';
+import './V201/SchedulesJobHandlers';
 
 // Initialize V201 Events Worker for processing queued events
-// import './V201/EventsWorker';
+import './V201/EventsWorker';
 
 let redisClient: RedisClient;
 /**
