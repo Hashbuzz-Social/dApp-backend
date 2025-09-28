@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 import { parseRedisURL } from '@V201/modules/common';
 import { getConfig } from '@appConfig';
-import { CampaignSheduledEvents } from '@V201/events/campaign';
+import { CampaignScheduledEvents } from '@V201/events/campaign';
 import createPrismaClient from '@shared/prisma';
 import { MonitoringModel } from '@V201/Modals/Monitoring';
 import logger from 'jet-logger';
@@ -63,27 +63,31 @@ class MonitoringService {
   async checkBullMQHealth(): Promise<BullMQHealthStatus> {
     try {
       const config = await getConfig();
-      const queue = new Queue(CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
-        connection: {
-          host: parseRedisURL(config.db.redisServerURI).host,
-          port: parseRedisURL(config.db.redisServerURI).port,
-        },
-      });
+      const queue = new Queue(
+        CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+        {
+          connection: {
+            host: parseRedisURL(config.db.redisServerURI).host,
+            port: parseRedisURL(config.db.redisServerURI).port,
+          },
+        }
+      );
 
-      const [waiting, active, completed, failed, delayed, isPaused] = await Promise.all([
-        queue.getWaiting(),
-        queue.getActive(),
-        queue.getCompleted(),
-        queue.getFailed(),
-        queue.getDelayed(),
-        queue.isPaused(),
-      ]);
+      const [waiting, active, completed, failed, delayed, isPaused] =
+        await Promise.all([
+          queue.getWaiting(),
+          queue.getActive(),
+          queue.getCompleted(),
+          queue.getFailed(),
+          queue.getDelayed(),
+          queue.isPaused(),
+        ]);
 
       await queue.close();
 
       return {
         isConnected: true,
-        queueName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+        queueName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
         waiting: waiting.length,
         active: active.length,
         completed: completed.length,
@@ -97,7 +101,7 @@ class MonitoringService {
 
       return {
         isConnected: false,
-        queueName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+        queueName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
         waiting: 0,
         active: 0,
         completed: 0,
@@ -163,9 +167,15 @@ class MonitoringService {
       const now = new Date();
 
       return stuckCampaigns.map((campaign) => {
-        const stuckDurationMs = now.getTime() - (campaign.campaign_expiry?.getTime() || now.getTime());
-        const stuckDurationHours = Math.floor(stuckDurationMs / (1000 * 60 * 60));
-        const stuckDurationMinutes = Math.floor((stuckDurationMs % (1000 * 60 * 60)) / (1000 * 60));
+        const stuckDurationMs =
+          now.getTime() -
+          (campaign.campaign_expiry?.getTime() || now.getTime());
+        const stuckDurationHours = Math.floor(
+          stuckDurationMs / (1000 * 60 * 60)
+        );
+        const stuckDurationMinutes = Math.floor(
+          (stuckDurationMs % (1000 * 60 * 60)) / (1000 * 60)
+        );
 
         return {
           id: campaign.id,
@@ -196,7 +206,7 @@ class MonitoringService {
       const localBalances = await monitoringModel.getTokenBalances();
       const uniqueTokens = new Map();
 
-      localBalances.forEach(balance => {
+      localBalances.forEach((balance) => {
         if (balance.whiteListedTokens) {
           uniqueTokens.set(balance.whiteListedTokens.token_id, {
             token_id: balance.whiteListedTokens.token_id,
@@ -209,11 +219,16 @@ class MonitoringService {
 
       const result: TokenSyncStatus = {
         localTokenCount: localTokens.length,
-        lastSyncTime: localTokens.length > 0 ?
-          localTokens.reduce<Date | undefined>((latest, token) =>
-            token.created_at && (!latest || token.created_at > latest) ? token.created_at : latest,
-            undefined
-          ) : undefined,
+        lastSyncTime:
+          localTokens.length > 0
+            ? localTokens.reduce<Date | undefined>(
+                (latest, token) =>
+                  token.created_at && (!latest || token.created_at > latest)
+                    ? token.created_at
+                    : latest,
+                undefined
+              )
+            : undefined,
         syncStatus: 'never_synced',
         missingInLocal: [],
         missingInNetwork: [],
@@ -225,27 +240,42 @@ class MonitoringService {
         const accountId = config.network.contractAddress;
 
         if (accountId) {
-          const NetworkHelpers = (await import('@shared/NetworkHelpers')).default;
+          const NetworkHelpers = (await import('@shared/NetworkHelpers'))
+            .default;
           const networkHelpers = new NetworkHelpers(config.app.mirrorNodeURL);
-          const accountData: any = await networkHelpers.getAccountDetails(accountId);
+          const accountData: any = await networkHelpers.getAccountDetails(
+            accountId
+          );
           const networkTokens: any[] = accountData.balance?.tokens || [];
 
           result.networkTokenCount = networkTokens.length;
 
-          const localTokenIds = localTokens.map(t => t.token_id);
-          const networkTokenIds: string[] = networkTokens.map((t: any) => String(t.token_id));
+          const localTokenIds = localTokens.map((t) => t.token_id);
+          const networkTokenIds: string[] = networkTokens.map((t: any) =>
+            String(t.token_id)
+          );
 
-          result.missingInLocal = networkTokenIds.filter((id: string) => !localTokenIds.includes(id));
-          result.missingInNetwork = localTokenIds.filter(id => !networkTokenIds.includes(id));
+          result.missingInLocal = networkTokenIds.filter(
+            (id: string) => !localTokenIds.includes(id)
+          );
+          result.missingInNetwork = localTokenIds.filter(
+            (id) => !networkTokenIds.includes(id)
+          );
 
-          if (result.missingInLocal.length === 0 && result.missingInNetwork.length === 0) {
+          if (
+            result.missingInLocal.length === 0 &&
+            result.missingInNetwork.length === 0
+          ) {
             result.syncStatus = 'synced';
           } else {
             result.syncStatus = 'out_of_sync';
           }
         }
       } catch (networkError) {
-        result.error = networkError instanceof Error ? networkError.message : String(networkError);
+        result.error =
+          networkError instanceof Error
+            ? networkError.message
+            : String(networkError);
         result.syncStatus = 'error';
       }
 

@@ -3,7 +3,7 @@ import logger from 'jet-logger';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import XEngagementTracker from './xEngagementTracker';
 // import { updateCampaignInMemoryStatus } from './campaignStatusInMemoryUpdater';
-import { CampaignSheduledEvents } from '../../../AppEvents';
+import { CampaignScheduledEvents } from '../../../AppEvents';
 import SchedulerQueue from '../../../schedulerQueue';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 
@@ -385,9 +385,9 @@ class V201EngagementDataCollectionService {
       const nextExecuteAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
 
       await scheduler.addJob(
-        CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+        CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
         {
-          eventName: CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+          eventName: CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
           executeAt: nextExecuteAt,
           data: {
             userId: campaign.owner_id,
@@ -462,9 +462,9 @@ class V201EngagementDataCollectionService {
       const executeAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
       await scheduler.addJob(
-        CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+        CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
         {
-          eventName: CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+          eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
           executeAt: executeAt,
           data: {
             userId: campaign.owner_id,

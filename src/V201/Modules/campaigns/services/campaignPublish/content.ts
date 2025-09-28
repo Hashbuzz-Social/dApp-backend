@@ -3,7 +3,7 @@ import { campaignstatus } from '@prisma/client';
 import tweetService from '@services/twitterCard-service';
 import { addMinutesToTime } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
-import { CampaignEvents, CampaignSheduledEvents } from '@V201/events/campaign';
+import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
@@ -81,8 +81,8 @@ export const publishCampaignSecondContent = async ({
   // Schedule Closing Event for the campaign with retry policies
   const scheduler = await SchedulerQueue.getInstance();
 
-  await scheduler.addJob(CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
-    eventName: CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+  await scheduler.addJob(CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
+    eventName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
     data: {
       cardId: updatedCard.id,
       userId: cardOwner.id,

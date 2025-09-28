@@ -3,6 +3,7 @@ import { SheduleJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
 import { ScheduledEvent } from './AppEvents';
 import { getConfig } from '@appConfig';
+import { AppConfig } from 'src/@types/AppConfig';
 
 /**
  * Defines the structure of a task scheduler job.
@@ -18,11 +19,11 @@ export interface TaskSchedulerJobType<T extends ScheduledEvent> {
  */
 class SchedulerQueue {
   private static instance: SchedulerQueue;
-  private configs: any;
+  private configs: AppConfig | null = null;
   private queues: Map<string, Queue> = new Map();
   private queueSchedulers: Map<string, JobScheduler> = new Map();
 
-  private constructor() {}
+  // private constructor removed as it was empty and unnecessary
 
   /**
    * Gets a singleton instance of the scheduler queue.
@@ -52,22 +53,26 @@ class SchedulerQueue {
 
       const queue = new Queue(jobType, {
         connection: {
-          host: parseRedisURL(this.configs.db.redisServerURI).host,
-          port: parseRedisURL(this.configs.db.redisServerURI).port,
+          host: parseRedisURL(this.configs?.db?.redisServerURI ?? '').host,
+          port: parseRedisURL(this.configs?.db?.redisServerURI ?? '').port,
         },
       });
 
       const scheduler = new JobScheduler(jobType, {
         connection: {
-          host: parseRedisURL(this.configs.db.redisServerURI).host,
-          port: parseRedisURL(this.configs.db.redisServerURI).port,
+          host: parseRedisURL(this.configs?.db?.redisServerURI ?? '').host,
+          port: parseRedisURL(this.configs?.db?.redisServerURI ?? '').port,
         },
       });
 
       this.queues.set(jobType, queue);
       this.queueSchedulers.set(jobType, scheduler);
     }
-    return this.queues.get(jobType)!;
+    const queue = this.queues.get(jobType);
+    if (!queue) {
+      throw new Error(`Queue for jobType "${jobType}" not found.`);
+    }
+    return queue;
   }
 
   /**
@@ -87,11 +92,7 @@ class SchedulerQueue {
       delay,
       ...options,
     });
-    console.log(
-      `[SchedulerQueue] Job added: type=${jobType}, event=${
-        jobData.eventName
-      }, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms`
-    );
+    // Job added: type=${jobType}, event=${jobData.eventName}, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms
   }
 }
 

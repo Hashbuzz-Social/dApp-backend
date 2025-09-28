@@ -3,6 +3,7 @@ import logger from 'jet-logger';
 import { publishEvent } from '../../../eventPublisher';
 import { CampaignEvents } from '@V201/events/campaign';
 import XApiEngagementTracker from './xEngagementTracker';
+import { PrismaClient } from '@prisma/client';
 
 interface EngagementMetrics {
   likes: number;
@@ -37,7 +38,7 @@ interface CampaignRewardSummary {
  * Service for automatic reward calculation and distribution based on engagement data
  */
 export class AutoRewardDistributor {
-  private prisma: any;
+  private prisma: PrismaClient | null = null;
   private tracker: XApiEngagementTracker;
 
   constructor() {
@@ -52,12 +53,14 @@ export class AutoRewardDistributor {
   /**
    * Calculate and distribute rewards for a completed campaign
    */
-  async processRewardDistribution(campaignId: bigint): Promise<CampaignRewardSummary> {
+  async processRewardDistribution(
+    campaignId: bigint
+  ): Promise<CampaignRewardSummary> {
     try {
       logger.info(`Starting reward distribution for campaign ${campaignId}`);
 
       // Get campaign details
-      const campaign = await this.prisma.campaign_twittercard.findUnique({
+      const campaign = await this.prisma?.campaign_twittercard.findUnique({
         where: { id: campaignId },
         include: {
           user_user: true, // Campaign owner
@@ -71,7 +74,9 @@ export class AutoRewardDistributor {
       // Get final engagement metrics
       const metrics = await this.tracker.getCampaignMetrics(campaignId);
       if (!metrics) {
-        throw new Error(`No engagement metrics found for campaign ${campaignId}`);
+        throw new Error(
+          `No engagement metrics found for campaign ${campaignId}`
+        );
       }
 
       // Calculate rewards based on the equal distribution mechanism
@@ -101,15 +106,25 @@ export class AutoRewardDistributor {
         campaignId,
         userId: BigInt(campaign.owner_id),
         actualEngagers: metrics.uniqueEngagers,
-        expectedEngagers: Math.ceil(Number(campaign.campaign_budget) / ((rewardRates.comment_reward || 1) * 4)),
+        expectedEngagers: Math.ceil(
+          Number(campaign.campaign_budget) /
+            ((rewardRates.comment_reward || 1) * 4)
+        ),
         closedAt: new Date(),
       });
 
-      logger.info(`Completed reward distribution for campaign ${campaignId}: ${JSON.stringify(distributionSummary)}`);
+      logger.info(
+        `Completed reward distribution for campaign ${campaignId}: ${JSON.stringify(
+          distributionSummary
+        )}`
+      );
       return distributionSummary;
-
     } catch (error) {
-      logger.err(`Error processing reward distribution: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error processing reward distribution: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
 
       // Publish error event
       publishEvent(CampaignEvents.CAMPAIGN_CLOSING_ERROR, {
@@ -127,7 +142,10 @@ export class AutoRewardDistributor {
    * Get eligible engagers based on engagement data
    * In production, this would fetch actual user data from X API responses
    */
-  private getEligibleEngagers(campaignId: bigint, metrics: EngagementMetrics): RewardDistributionData[] {
+  private getEligibleEngagers(
+    campaignId: bigint,
+    metrics: EngagementMetrics
+  ): RewardDistributionData[] {
     const eligibleEngagers: RewardDistributionData[] = [];
 
     // Mock eligible engagers - in production this would be from actual X API data
@@ -135,8 +153,18 @@ export class AutoRewardDistributor {
     const mockUserIds = this.generateMockUserIds(metrics.uniqueEngagers);
 
     // Distribute engagers across different engagement types
-    const engagementTypes: Array<'like' | 'retweet' | 'quote' | 'comment'> = ['like', 'retweet', 'quote', 'comment'];
-    const engagementCounts = [metrics.likes, metrics.retweets, metrics.quotes, metrics.comments];
+    const engagementTypes: Array<'like' | 'retweet' | 'quote' | 'comment'> = [
+      'like',
+      'retweet',
+      'quote',
+      'comment',
+    ];
+    const engagementCounts = [
+      metrics.likes,
+      metrics.retweets,
+      metrics.quotes,
+      metrics.comments,
+    ];
 
     engagementTypes.forEach((type, index) => {
       const count = engagementCounts[index];
@@ -197,22 +225,26 @@ export class AutoRewardDistributor {
         case 'like':
           rewardAmount = rewardRates.like_reward;
           distributionSummary.distributionBreakdown.likes.count++;
-          distributionSummary.distributionBreakdown.likes.totalReward += rewardAmount;
+          distributionSummary.distributionBreakdown.likes.totalReward +=
+            rewardAmount;
           break;
         case 'retweet':
           rewardAmount = rewardRates.retweet_reward;
           distributionSummary.distributionBreakdown.retweets.count++;
-          distributionSummary.distributionBreakdown.retweets.totalReward += rewardAmount;
+          distributionSummary.distributionBreakdown.retweets.totalReward +=
+            rewardAmount;
           break;
         case 'quote':
           rewardAmount = rewardRates.quote_reward;
           distributionSummary.distributionBreakdown.quotes.count++;
-          distributionSummary.distributionBreakdown.quotes.totalReward += rewardAmount;
+          distributionSummary.distributionBreakdown.quotes.totalReward +=
+            rewardAmount;
           break;
         case 'comment':
           rewardAmount = rewardRates.comment_reward;
           distributionSummary.distributionBreakdown.comments.count++;
-          distributionSummary.distributionBreakdown.comments.totalReward += rewardAmount;
+          distributionSummary.distributionBreakdown.comments.totalReward +=
+            rewardAmount;
           break;
       }
 
@@ -240,7 +272,9 @@ export class AutoRewardDistributor {
     // Process token transfers (mock implementation)
     await this.processTokenTransfers(rewardTransactions);
 
-    logger.info(`Distributed rewards to ${distributionSummary.totalUniqueRecipients} unique users`);
+    logger.info(
+      `Distributed rewards to ${distributionSummary.totalUniqueRecipients} unique users`
+    );
     return distributionSummary;
   }
 
@@ -251,40 +285,19 @@ export class AutoRewardDistributor {
     try {
       // In production, this would use a proper reward_transactions table
       for (const transaction of transactions) {
-        logger.info(`Storing reward transaction: ${JSON.stringify(transaction)}`);
+        logger.info(
+          `Storing reward transaction: ${JSON.stringify(transaction)}`
+        );
         // await this.prisma.reward_transactions.create({ data: transaction });
       }
 
       logger.info(`Stored ${transactions.length} reward transactions`);
     } catch (error) {
-      logger.err(`Error storing reward transactions: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Process token transfers (integration with blockchain/wallet system)
-   */
-  private async processTokenTransfers(transactions: any[]): Promise<void> {
-    try {
-      for (const transaction of transactions) {
-        // Mock token transfer - in production this would integrate with:
-        // - Hedera smart contracts
-        // - Wallet services
-        // - Token distribution mechanisms
-
-        logger.info(`Processing token transfer for user ${transaction.user_id}: ${transaction.reward_amount} tokens`);
-
-        // Simulate processing delay
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Update transaction status
-        transaction.transaction_status = 'completed';
-        transaction.processed_at = new Date();
-      }
-
-      logger.info(`Processed ${transactions.length} token transfers`);
-    } catch (error) {
-      logger.err(`Error processing token transfers: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error storing reward transactions: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -296,10 +309,10 @@ export class AutoRewardDistributor {
     summary: CampaignRewardSummary
   ): Promise<void> {
     try {
-      await this.prisma.campaign_twittercard.update({
+      await this.prisma?.campaign_twittercard.update({
         where: { id: campaignId },
         data: {
-          card_status: 'Completed',
+          card_status: 'RewardsDistributed',
           amount_spent: summary.totalRewardsDistributed,
           // In production, add reward distribution fields to schema
           // rewards_distributed: summary.totalRewardsDistributed,
@@ -309,33 +322,11 @@ export class AutoRewardDistributor {
 
       logger.info(`Updated campaign ${campaignId} reward status`);
     } catch (error) {
-      logger.err(`Error updating campaign reward status: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Get reward distribution summary for a campaign
-   */
-  async getRewardSummary(campaignId: bigint): Promise<CampaignRewardSummary | null> {
-    try {
-      // In production, this would query the reward_transactions table
-      logger.info(`Getting reward summary for campaign ${campaignId}`);
-
-      // Mock summary - replace with actual database query
-      return {
-        campaignId,
-        totalRewardsDistributed: 0,
-        totalUniqueRecipients: 0,
-        distributionBreakdown: {
-          likes: { count: 0, totalReward: 0 },
-          retweets: { count: 0, totalReward: 0 },
-          quotes: { count: 0, totalReward: 0 },
-          comments: { count: 0, totalReward: 0 },
-        },
-      };
-    } catch (error) {
-      logger.err(`Error getting reward summary: ${error instanceof Error ? error.message : String(error)}`);
-      return null;
+      logger.err(
+        `Error updating campaign reward status: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 }
