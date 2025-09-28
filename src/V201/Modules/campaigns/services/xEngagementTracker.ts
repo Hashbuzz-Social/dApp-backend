@@ -601,7 +601,9 @@ export class XApiEngagementTracker {
       logger.info(`Triggering campaign closing for campaign ${campaignId}`);
 
       // Import and use campaign closing service
-      const { processCampaignClosing } = await import('./campaignClosing');
+      const { processCampaignClosing } = await import(
+        './campaignClose/campaignClosing'
+      );
 
       const closingData = {
         campaignId: Number(campaignId),

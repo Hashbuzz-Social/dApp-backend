@@ -23,9 +23,7 @@ class SchedulerQueue {
   private queues: Map<string, Queue> = new Map();
   private queueSchedulers: Map<string, JobScheduler> = new Map();
 
-  private constructor() {
-    // Private constructor for singleton pattern
-  }
+  // private constructor removed as it was empty and unnecessary
 
   /**
    * Gets a singleton instance of the scheduler queue.
@@ -59,15 +57,15 @@ class SchedulerQueue {
 
       const queue = new Queue(jobType, {
         connection: {
-          host: String(redisConfig?.host || 'localhost'),
-          port: Number(redisConfig?.port || 6379),
+          host: parseRedisURL(this.configs?.db?.redisServerURI ?? '').host,
+          port: parseRedisURL(this.configs?.db?.redisServerURI ?? '').port,
         },
       });
 
       const scheduler = new JobScheduler(jobType, {
         connection: {
-          host: String(redisConfig?.host || 'localhost'),
-          port: Number(redisConfig?.port || 6379),
+          host: parseRedisURL(this.configs?.db?.redisServerURI ?? '').host,
+          port: parseRedisURL(this.configs?.db?.redisServerURI ?? '').port,
         },
       });
 
@@ -76,7 +74,7 @@ class SchedulerQueue {
     }
     const queue = this.queues.get(jobType);
     if (!queue) {
-      throw new Error(`Queue not found for job type: ${jobType}`);
+      throw new Error(`Queue for jobType "${jobType}" not found.`);
     }
     return queue;
   }
@@ -106,7 +104,7 @@ class SchedulerQueue {
       removeOnFail: 100, // Keep 100 failed jobs for debugging
       ...options,
     });
-    // Job added successfully - could add logging here with proper logger if needed
+    // Job added: type=${jobType}, event=${jobData.eventName}, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms
   }
 }
 

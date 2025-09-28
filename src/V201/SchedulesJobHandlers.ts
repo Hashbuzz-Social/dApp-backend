@@ -1,5 +1,5 @@
 import WorkerManager from './SchedulesWorkerManager';
-import { CampaignSheduledEvents } from './AppEvents';
+import { CampaignScheduledEvents } from './AppEvents';
 import { Job } from 'bullmq';
 import { TaskSchedulerJobType } from './schedulerQueue';
 import createPrismaClient from '@shared/prisma';
@@ -11,7 +11,7 @@ import V201EngagementDataCollectionService from './Modules/campaigns/services/V2
 // Define the processor function for V201 campaign closing
 const processCloseCampaignJob = async (
   job: Job<
-    TaskSchedulerJobType<CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION>
+    TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION>
   >
 ) => {
   try {
@@ -62,7 +62,7 @@ const processCloseCampaignJob = async (
 // Define the processor function for V201 campaign expiry
 const processExpiryCampaignJob = async (
   job: Job<
-    TaskSchedulerJobType<CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
+    TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
   >
 ) => {
   try {
@@ -117,7 +117,7 @@ const processExpiryCampaignJob = async (
 // Define the processor function for V201 engagement data collection
 const processEngagementDataCollectionJob = async (
   job: Job<
-    TaskSchedulerJobType<CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION>
+    TaskSchedulerJobType<CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION>
   >
 ) => {
   try {
@@ -162,17 +162,17 @@ const processEngagementDataCollectionJob = async (
 // Register worker for campaign close, expiry, and engagement data collection operations
 const registerScheduleJobWorkers = async () => {
   await WorkerManager.initializeWorker(
-    CampaignSheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+    CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
     processCloseCampaignJob
   );
 
   await WorkerManager.initializeWorker(
-    CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+    CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
     processExpiryCampaignJob
   );
 
   await WorkerManager.initializeWorker(
-    CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+    CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
     processEngagementDataCollectionJob
   );
 

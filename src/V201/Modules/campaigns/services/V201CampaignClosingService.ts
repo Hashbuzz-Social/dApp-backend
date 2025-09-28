@@ -10,7 +10,7 @@ import { closeCampaignSMTransaction } from '@services/transaction-service';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import SchedulerQueue from '../../../schedulerQueue';
-import { CampaignSheduledEvents } from '../../../AppEvents';
+import { CampaignScheduledEvents } from '../../../AppEvents';
 import { CampaignTypes } from '../../../Types/campaign';
 import XEngagementTracker from './xEngagementTracker';
 
@@ -392,9 +392,9 @@ export class V201CampaignClosingService {
 
       // Schedule reward expiry job using BullMQ
       await scheduler.addJob(
-        CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+        CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
         {
-          eventName: CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+          eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
           data: {
             cardId: campaign.id,
             userId: campaign.owner_id,
@@ -559,9 +559,9 @@ export class V201CampaignClosingService {
       const executeAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
       await scheduler.addJob(
-        CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+        CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
         {
-          eventName: CampaignSheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
+          eventName: CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
           executeAt: executeAt,
           data: {
             userId: campaign.owner_id,

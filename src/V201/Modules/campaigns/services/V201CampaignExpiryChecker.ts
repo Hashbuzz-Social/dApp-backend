@@ -3,7 +3,7 @@ import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
 import { V201CampaignExpiryService } from './V201CampaignExpiryService';
 import SchedulerQueue from '../../../schedulerQueue';
-import { CampaignSheduledEvents } from '../../../AppEvents';
+import { CampaignScheduledEvents } from '../../../AppEvents';
 import { CampaignTypes } from '../../../Types/campaign';
 
 /**
@@ -41,17 +41,20 @@ export class V201CampaignExpiryChecker {
         try {
           logger.info(`[V201] Scheduling immediate expiry for campaign ${campaign.id}`);
 
-          await scheduler.addJob(CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION, {
-            eventName: CampaignSheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
-            data: {
-              cardId: campaign.id,
-              userId: campaign.owner_id,
-              type: campaign.type as CampaignTypes,
-              createdAt: new Date(),
-              expiryAt: new Date(campaign.campaign_expiry || new Date()),
-            },
-            executeAt: new Date(), // Execute immediately since it's already expired
-          });
+          await scheduler.addJob(
+            CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+            {
+              eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+              data: {
+                cardId: campaign.id,
+                userId: campaign.owner_id,
+                type: campaign.type as CampaignTypes,
+                createdAt: new Date(),
+                expiryAt: new Date(campaign.campaign_expiry || new Date()),
+              },
+              executeAt: new Date(), // Execute immediately since it's already expired
+            }
+          );
 
           logger.info(`[V201] Scheduled expiry job for campaign ${campaign.id}`);
         } catch (error) {

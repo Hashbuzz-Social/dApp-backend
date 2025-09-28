@@ -1,23 +1,29 @@
+import { PrismaClient } from '@prisma/client';
 import {
   campaign_twittercard,
   campaignstatus as CampaignStatus,
   user_user,
+  campaign_tweetstats,
+  whiteListedTokens,
 } from '@prisma/client';
 import { decrypt } from '@shared/encryption';
-import {
-  addMinutesToTime,
-  convertTinyHbarToHbar,
-  formattedDateTime,
-} from '@shared/helper';
-import createPrismaClient from '@shared/prisma';
-import twitterAPI from '@shared/twitterAPI';
+import { convertTinyHbarToHbar, formattedDateTime } from '@shared/helper';
+import twitterAPI, {
+  TwitterAPIError,
+  TwitterValidationError,
+  QuoteSearchOptions,
+  ReplySearchOptions,
+  TimestampFilter,
+} from '@shared/twitterAPI';
 import moment from 'moment';
-import { TweetV2PostTweetResult } from 'twitter-api-v2';
+import { TweetV2PostTweetResult, UserV2 } from 'twitter-api-v2';
 import logger from 'jet-logger';
-import { provideActiveContract } from './contract-service';
 import { getConfig } from '@appConfig';
 import { MediaService } from './media-service';
 
+/**
+ * Type definitions for better type safety
+ */
 export interface TwitterStats {
   like_count?: number;
   retweet_count?: number;
@@ -32,95 +38,14 @@ export interface RewardCatalog {
   reply_reward: number;
 }
 
-export const allActiveTwitterCard = async () => {
-  // console.info("allActiveTwitterCard::start");
-  const prisma = await createPrismaClient();
-  const allActiveCards = await prisma.campaign_twittercard.findMany({
-    where: {
-      card_status: CampaignStatus.CampaignRunning,
-    },
-  });
-  return allActiveCards;
-};
+export interface TweetEngagement {
+  id: string;
+  author_id?: string;
+  created_at?: string;
+  text?: string;
+}
 
-const twitterCardStats = async (cardId: bigint) => {
-  // console.info("twitterCardStatus::Start");
-  const prisma = await createPrismaClient();
-  const cardStatus = await prisma.campaign_tweetstats.findUnique({
-    where: {
-      twitter_card_id: cardId,
-    },
-  });
-  return cardStatus;
-};
-
-const updateTwitterCardStats = async (
-  body: TwitterStats,
-  cardId: bigint | number
-) => {
-  const { like_count, quote_count, reply_count, retweet_count } = body;
-
-  const prisma = await createPrismaClient();
-  const update = await prisma.campaign_tweetstats.upsert({
-    where: { twitter_card_id: cardId },
-    update: {
-      like_count: like_count,
-      quote_count: quote_count,
-      reply_count: reply_count,
-      retweet_count: retweet_count,
-      last_update: new Date().toISOString(),
-    },
-    create: {
-      like_count: like_count,
-      quote_count: quote_count,
-      reply_count: reply_count,
-      retweet_count: retweet_count,
-      twitter_card_id: cardId,
-      last_update: new Date().toISOString(),
-    },
-  });
-  return update.id;
-};
-
-const addNewCardStats = async (body: TwitterStats, cardId: bigint | number) => {
-  // console.info("addNewCardStats::start::withData", JSON.stringify(body));
-
-  const data: any = {};
-  if (body.like_count) data['like_count'] = body.like_count;
-  if (body.quote_count) data['quote_count'] = body.quote_count;
-  if (body.retweet_count) data['retweet_count'] = body.retweet_count;
-
-  const prisma = await createPrismaClient();
-  const addNewStats = prisma.campaign_tweetstats.create({
-    data: {
-      ...data,
-      twitter_card_id: cardId,
-      last_update: new Date().toISOString(),
-    },
-  });
-
-  return addNewStats;
-};
-
-const updateTotalSpentAmount = async (
-  id: number | bigint,
-  amount_spent: number
-) => {
-  const prisma = await createPrismaClient();
-  const updateTotalSpentBudget = await prisma.campaign_twittercard.update({
-    where: { id },
-    data: {
-      amount_spent,
-    },
-  });
-  return updateTotalSpentBudget;
-};
-
-/**
- * @description putlish a tweet and thread
- */
-
-interface PublishTweetParams {
+export interface PublishTweetParams {
   cardOwner: user_user;
   tweetText: string;
   isThread?: boolean;
@@ -128,428 +53,811 @@ interface PublishTweetParams {
   media?: string[];
 }
 
-const publishTweetORThread = async (params: PublishTweetParams) => {
-  const { tweetText, isThread, parentTweetId, media } = params;
-  const config = await getConfig();
+export interface CampaignWithOwner extends campaign_twittercard {
+  user_user: {
+    business_twitter_handle: string | null;
+    personal_twitter_handle: string | null;
+    available_budget: number | null;
+    hedera_wallet_id: string | null;
+  } | null;
+}
 
-  const prisma = await createPrismaClient();
-  const cardOwner = await prisma.user_user.findUnique({
-    where: { id: params.cardOwner.id },
-  });
+export interface TokenInfo {
+  token_id: string;
+  token_symbol: string | null;
+  token_name: string | null;
+}
 
-  if (tweetText.length > 280) {
-    throw new Error('Long tweet text. Max allowed is 280 char long.');
+export type CampaignType = 'HBAR' | 'FUNGIBLE';
+
+export interface TwitterApiError {
+  code?: number;
+  status?: number;
+  message?: string;
+  data?: {
+    status?: number;
+    detail?: string;
+  };
+}
+
+/**
+ * Custom error class for Twitter service errors
+ */
+export class TwitterServiceError extends Error {
+  public readonly code: string;
+  public readonly statusCode?: number;
+
+  constructor(code: string, message: string, statusCode?: number) {
+    super(message);
+    this.name = 'TwitterServiceError';
+    this.code = code;
+    this.statusCode = statusCode;
   }
 
-  if (
-    cardOwner?.business_twitter_access_token &&
-    cardOwner?.business_twitter_access_token_secret
-  ) {
-    const userTwitter = await twitterAPI.tweeterApiForUser({
-      accessToken: decrypt(
-        cardOwner.business_twitter_access_token,
-        config.encryptions.encryptionKey
-      ),
-      accessSecret: decrypt(
-        cardOwner?.business_twitter_access_token_secret,
-        config.encryptions.encryptionKey
-      ),
-    });
-
-    let card: TweetV2PostTweetResult;
-    let mediaIds: string[] = [];
-
-    if (media && media.length > 0) {
-      const mediaService = new MediaService();
-      await mediaService.initialize();
-
-      mediaIds = await Promise.all(
-        media.map(async (mediKey) => {
-          const mediFile = await mediaService.readFromS3(mediKey);
-          const mediaId = await userTwitter.v1.uploadMedia(mediFile.buffer, {
-            mimeType: mediFile.mimetype,
-          });
-          return mediaId;
-        })
+  static fromTwitterError(error: TwitterApiError): TwitterServiceError {
+    if (
+      error.code === 401 ||
+      error.status === 401 ||
+      (error.data && error.data.status === 401)
+    ) {
+      return new TwitterServiceError(
+        'TWITTER_AUTH_EXPIRED',
+        'Your 𝕏 account authentication has expired. Please reconnect your business 𝕏 account to continue publishing campaigns.',
+        401
       );
     }
+    if (error.code === 403 || error.status === 403) {
+      return new TwitterServiceError(
+        'TWITTER_FORBIDDEN',
+        'Your 𝕏 account does not have permission to perform this action. Please check your account permissions.',
+        403
+      );
+    }
+    if (error.code === 429 || error.status === 429) {
+      return new TwitterServiceError(
+        'TWITTER_RATE_LIMITED',
+        '𝕏 API rate limit exceeded. Please wait a few minutes before trying again.',
+        429
+      );
+    }
+    if (
+      error.message &&
+      typeof error.message === 'string' &&
+      error.message.includes('duplicate')
+    ) {
+      return new TwitterServiceError(
+        'TWITTER_DUPLICATE',
+        'This tweet content has already been posted. Please modify your campaign text.',
+        400
+      );
+    }
+    return new TwitterServiceError(
+      'TWITTER_UNKNOWN',
+      error.message && typeof error.message === 'string'
+        ? error.message
+        : 'Unknown Twitter API error',
+      error.status || error.code || 500
+    );
+  }
+}
 
-    const rwClient = userTwitter.readWrite;
+/**
+ * Input validation utilities
+ */
+class ValidationUtils {
+  static validateTweetText(text: string | null): asserts text is string {
+    if (!text || typeof text !== 'string') {
+      throw new Error('Tweet text is required and must be a string');
+    }
+    if (text.length > 280) {
+      throw new Error('Tweet text must be 280 characters or less');
+    }
+  }
+
+  static validateTwitterCredentials(user: user_user): void {
+    if (
+      !user.business_twitter_access_token ||
+      !user.business_twitter_access_token_secret
+    ) {
+      throw new TwitterServiceError(
+        'MISSING_CREDENTIALS',
+        'User does not have Twitter credentials configured',
+        400
+      );
+    }
+  }
+
+  static validateCampaignId(id: bigint | number): void {
+    if (!id || (typeof id !== 'bigint' && typeof id !== 'number')) {
+      throw new Error('Valid campaign ID is required');
+    }
+  }
+}
+
+/**
+ * Twitter utilities for common operations
+ */
+class TwitterUtils {
+  static formatRewards(reward: number, factor: number): string {
+    return (reward / factor).toFixed(2);
+  }
+
+  static buildRewardText(
+    campaignType: CampaignType,
+    formattedDate: string,
+    campaignDuration: number,
+    rewards: RewardCatalog,
+    tokenSymbol?: string,
+    decimals?: number
+  ): string {
+    const baseText =
+      `Promo initiated on ${formattedDate}. ` +
+      `Interact with the primary tweet for the next ${campaignDuration} min to earn rewards`;
+
+    if (campaignType === 'HBAR') {
+      return (
+        `${baseText} in HBAR: ` +
+        `like ${convertTinyHbarToHbar(rewards.like_reward).toFixed(2)}, ` +
+        `repost ${convertTinyHbarToHbar(rewards.retweet_reward).toFixed(2)}, ` +
+        `quote ${convertTinyHbarToHbar(rewards.quote_reward).toFixed(2)}, ` +
+        `reply ${convertTinyHbarToHbar(rewards.reply_reward).toFixed(2)}.`
+      );
+    } else {
+      const factor = 10 ** Number(decimals);
+      return (
+        `${baseText} in ${tokenSymbol || 'TOKEN'}: ` +
+        `like ${this.formatRewards(rewards.like_reward, factor)}, ` +
+        `repost ${this.formatRewards(rewards.retweet_reward, factor)}, ` +
+        `quote ${this.formatRewards(rewards.quote_reward, factor)}, ` +
+        `reply ${this.formatRewards(rewards.reply_reward, factor)}.`
+      );
+    }
+  }
+}
+
+/**
+ * Main Twitter Card Service class with dependency injection
+ */
+export class TwitterCardService {
+  private readonly prisma: PrismaClient;
+  private readonly mediaService: MediaService;
+
+  constructor(prisma: PrismaClient, mediaService?: MediaService) {
+    this.prisma = prisma;
+    this.mediaService = mediaService || new MediaService();
+  }
+
+  /**
+   * Get all active Twitter cards
+   */
+  async getAllActiveCards(): Promise<campaign_twittercard[]> {
     try {
+      return await this.prisma.campaign_twittercard.findMany({
+        where: {
+          card_status: CampaignStatus.CampaignRunning,
+        },
+      });
+    } catch (error) {
+      logger.err(
+        `Error fetching active cards: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      throw new Error('Failed to fetch active campaigns');
+    }
+  }
+
+  /**
+   * Get Twitter card statistics
+   */
+  async getCardStats(
+    cardId: bigint | number
+  ): Promise<campaign_tweetstats | null> {
+    ValidationUtils.validateCampaignId(cardId);
+
+    try {
+      return await this.prisma.campaign_tweetstats.findUnique({
+        where: {
+          twitter_card_id: cardId,
+        },
+      });
+    } catch (error) {
+      logger.err(`Error fetching card stats for ${cardId}: ${error}`);
+      throw new Error(`Failed to fetch statistics for campaign ${cardId}`);
+    }
+  }
+
+  /**
+   * Update Twitter card statistics
+   */
+  async updateCardStats(
+    stats: TwitterStats,
+    cardId: bigint | number
+  ): Promise<bigint> {
+    ValidationUtils.validateCampaignId(cardId);
+
+    const { like_count, quote_count, reply_count, retweet_count } = stats;
+
+    try {
+      const result = await this.prisma.campaign_tweetstats.upsert({
+        where: { twitter_card_id: cardId },
+        update: {
+          like_count: like_count ?? 0,
+          quote_count: quote_count ?? 0,
+          reply_count: reply_count ?? 0,
+          retweet_count: retweet_count ?? 0,
+          last_update: new Date(),
+        },
+        create: {
+          like_count: like_count ?? 0,
+          quote_count: quote_count ?? 0,
+          reply_count: reply_count ?? 0,
+          retweet_count: retweet_count ?? 0,
+          twitter_card_id: cardId,
+          last_update: new Date(),
+        },
+      });
+      return result.id;
+    } catch (error) {
+      logger.err(`Error updating card stats for ${cardId}: ${error}`);
+      throw new Error(`Failed to update statistics for campaign ${cardId}`);
+    }
+  }
+
+  /**
+   * Update total spent amount for a campaign
+   */
+  async updateTotalSpentAmount(
+    id: number | bigint,
+    amountSpent: number
+  ): Promise<campaign_twittercard> {
+    ValidationUtils.validateCampaignId(id);
+
+    try {
+      return await this.prisma.campaign_twittercard.update({
+        where: { id },
+        data: {
+          amount_spent: amountSpent,
+        },
+      });
+    } catch (error) {
+      logger.err(`Error updating spent amount for campaign ${id}: ${error}`);
+      throw new Error(`Failed to update spent amount for campaign ${id}`);
+    }
+  }
+
+  /**
+   * Publish a tweet or thread with improved error handling
+   */
+  async publishTweetOrThread(params: PublishTweetParams): Promise<string> {
+    const { cardOwner, tweetText, isThread, parentTweetId, media } = params;
+
+    ValidationUtils.validateTweetText(tweetText);
+    ValidationUtils.validateTwitterCredentials(cardOwner);
+
+    try {
+      const config = await getConfig();
+      const userTwitter = await twitterAPI.tweeterApiForUser({
+        accessToken: decrypt(
+          cardOwner.business_twitter_access_token as string,
+          config.encryptions.encryptionKey
+        ),
+        accessSecret: decrypt(
+          cardOwner.business_twitter_access_token_secret as string,
+          config.encryptions.encryptionKey
+        ),
+      });
+
+      let mediaIds: string[] = [];
+
+      if (media && media.length > 0) {
+        await this.mediaService.initialize();
+        mediaIds = await Promise.all(
+          media.map(async (mediaKey) => {
+            const mediaFile = await this.mediaService.readFromS3(mediaKey);
+            return await userTwitter.v1.uploadMedia(mediaFile.buffer, {
+              mimeType: mediaFile.mimetype,
+            });
+          })
+        );
+      }
+
+      const rwClient = userTwitter.readWrite;
+      let result: TweetV2PostTweetResult;
+
       if (isThread && parentTweetId) {
-        card = await rwClient.v2.reply(tweetText, parentTweetId);
+        result = await rwClient.v2.reply(tweetText, parentTweetId);
       } else if (mediaIds.length > 0) {
-        card = await rwClient.v2.tweet(tweetText, {
+        result = await rwClient.v2.tweet(tweetText, {
           media: { media_ids: mediaIds },
         });
       } else {
-        card = await rwClient.v2.tweet(tweetText);
+        result = await rwClient.v2.tweet(tweetText);
       }
-      return card.data.id;
-    } catch (error: any) {
-      // Handle specific Twitter API errors
-      if (
-        error.code === 401 ||
-        error.status === 401 ||
-        (error.data && error.data.status === 401)
-      ) {
-        const authExpiredMsg =
-          'TWITTER_AUTH_EXPIRED: Your 𝕏 account authentication has expired. ' +
-          'Please reconnect your business 𝕏 account to continue publishing campaigns.';
-        throw new Error(authExpiredMsg);
-      } else if (error.code === 403 || error.status === 403) {
-        const forbiddenMsg =
-          'TWITTER_FORBIDDEN: Your 𝕏 account does not have permission to perform ' +
-          'this action. Please check your account permissions.';
-        throw new Error(forbiddenMsg);
-      } else if (error.code === 429 || error.status === 429) {
-        const rateLimitMsg =
-          'TWITTER_RATE_LIMITED: 𝕏 API rate limit exceeded. ' +
-          'Please wait a few minutes before trying again.';
-        throw new Error(rateLimitMsg);
-      } else if (
-        error.message &&
-        typeof error.message === 'string' &&
-        error.message.includes('duplicate')
-      ) {
-        const duplicateMsg =
-          'TWITTER_DUPLICATE: This tweet content has already been posted. ' +
-          'Please modify your campaign text.';
-        throw new Error(duplicateMsg);
-      } else {
-        // Log the full error for debugging
-        logger.err(
-          `Twitter API Error: ${JSON.stringify({
-            code: error.code,
-            status: error.status,
-            message: error.message,
-          })}`
-        );
-        const errorMsg: string =
-          error.message && typeof error.message === 'string'
-            ? error.message
-            : 'Unknown Twitter API error';
-        throw new Error(`Failed to publish tweet: ${errorMsg}`);
-      }
+
+      return result.data.id;
+    } catch (error) {
+      logger.err(
+        `Twitter API Error: ${JSON.stringify({
+          code: (error as TwitterApiError).code,
+          status: (error as TwitterApiError).status,
+          message: (error as TwitterApiError).message,
+        })}`
+      );
+
+      throw TwitterServiceError.fromTwitterError(error as TwitterApiError);
     }
   }
-  throw new Error('User does not have sufficient records.');
-};
 
-/**
- * @description publish first tweet
- * @returns string first tweet id to make threds
- */
+  /**
+   * Publish the first tweet of a campaign
+   */
+  async publishFirstTweet(
+    card: campaign_twittercard,
+    cardOwner: user_user
+  ): Promise<string> {
+    if (!card.tweet_text) {
+      throw new Error('Tweet text is missing from campaign');
+    }
 
-const publistFirstTweet = async (
-  card: campaign_twittercard,
-  cardOwner: user_user
-) => {
-  const tweetText = `${card.tweet_text}`;
-  if (tweetText) {
-    const tweetId = publishTweetORThread({
-      tweetText,
+    return await this.publishTweetOrThread({
+      tweetText: card.tweet_text,
       cardOwner,
-      media: card.media,
+      media: card.media || [],
     });
-    return tweetId;
-  }
-};
-
-/**
- * @description Publish second tweet
- * @returns id secod thred tweet id;
- */
-
-const publishSecondThread = async (
-  card: campaign_twittercard,
-  cardOwner: user_user,
-  parentTweetId: string
-): Promise<string> => {
-  const {
-    type: cardType,
-    tweet_text,
-    like_reward,
-    quote_reward,
-    retweet_reward,
-    comment_reward,
-    fungible_token_id,
-    decimals,
-  } = card;
-
-  const formattedDate = formattedDateTime(moment().toISOString());
-  const configs = await getConfig();
-  const campaignDurationInMin = configs.app.defaultCampaignDuration;
-
-  if (!tweet_text) throw new Error('Tweet text is missing.');
-  if (!like_reward || !quote_reward || !retweet_reward || !comment_reward) {
-    throw new Error('One or more reward values are missing.');
   }
 
-  const formatRewards = (reward: number, factor: number) =>
-    (reward / factor).toFixed(2);
+  /**
+   * Publish the second thread tweet with campaign details
+   */
+  async publishSecondThread(
+    card: campaign_twittercard,
+    cardOwner: user_user,
+    parentTweetId: string
+  ): Promise<string> {
+    ValidationUtils.validateTweetText(card.tweet_text);
 
-  let tweetText: string;
+    if (
+      !card.like_reward ||
+      !card.quote_reward ||
+      !card.retweet_reward ||
+      !card.comment_reward
+    ) {
+      throw new Error('One or more reward values are missing');
+    }
 
-  if (cardType === 'HBAR') {
-    tweetText = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(
-      like_reward
-    ).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(
-      2
-    )}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
-      2
-    )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.`;
-  } else {
-    const prisma = await createPrismaClient();
-    const token = await prisma.whiteListedTokens.findUnique({
-      where: { token_id: String(fungible_token_id) },
-    });
-    if (!token) throw new Error('Token not found.');
+    const config = await getConfig();
+    const campaignDurationInMin = config.app.defaultCampaignDuration;
+    const formattedDate = formattedDateTime(moment().toISOString());
 
-    const tokenSymbol = token.token_symbol ?? '';
-    const factor = 10 ** Number(decimals);
+    const rewards: RewardCatalog = {
+      like_reward: card.like_reward,
+      quote_reward: card.quote_reward,
+      retweet_reward: card.retweet_reward,
+      reply_reward: card.comment_reward,
+    };
 
-    tweetText = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${tokenSymbol}: like ${formatRewards(
-      like_reward,
-      factor
-    )}, repost ${formatRewards(retweet_reward, factor)}, quote ${formatRewards(
-      quote_reward,
-      factor
-    )}, reply ${formatRewards(comment_reward, factor)}.`;
-  }
+    let tweetText: string;
 
-  try {
-    const tweetId = await publishTweetORThread({
+    if (card.type === 'HBAR') {
+      tweetText = TwitterUtils.buildRewardText(
+        'HBAR',
+        formattedDate,
+        campaignDurationInMin,
+        rewards
+      );
+    } else {
+      const token = await this.getTokenInfo(String(card.fungible_token_id));
+      if (!token) {
+        throw new Error('Token not found');
+      }
+
+      tweetText = TwitterUtils.buildRewardText(
+        'FUNGIBLE',
+        formattedDate,
+        campaignDurationInMin,
+        rewards,
+        token.token_symbol || '',
+        card.decimals ? Number(card.decimals) : 0
+      );
+    }
+
+    return await this.publishTweetOrThread({
       tweetText,
       cardOwner,
       isThread: true,
       parentTweetId,
     });
-
-    return tweetId;
-  } catch (error) {
-    throw new Error(`Failed to publish tweet or thread: ${error.message}`);
   }
-};
 
-/**
- * @deprecated
- *@description Create twitter tweet if the card is in pending state and then update the status.
- */
-
-const publishTwitter = async (cardId: number | bigint) => {
-  const prisma = await createPrismaClient();
-  const configs = await getConfig();
-  const campaignDurationInMin = configs.app.defaultCampaignDuration;
-
-  const [contractDetails, cardDetails] = await Promise.all([
-    await provideActiveContract(),
-    await prisma.campaign_twittercard.findUnique({
-      where: { id: cardId },
-      include: {
-        user_user: {
-          select: {
-            twitter_access_token: true,
-            twitter_access_token_secret: true,
-            business_twitter_access_token: true,
-            business_twitter_access_token_secret: true,
+  /**
+   * Get campaigns by status with owner information
+   */
+  async getCampaignsByStatus(
+    status: CampaignStatus
+  ): Promise<CampaignWithOwner[]> {
+    try {
+      return await this.prisma.campaign_twittercard.findMany({
+        where: {
+          card_status: status,
+        },
+        include: {
+          user_user: {
+            select: {
+              business_twitter_handle: true,
+              personal_twitter_handle: true,
+              available_budget: true,
+              hedera_wallet_id: true,
+            },
           },
         },
-      },
-    }),
-  ]);
-
-  const {
-    id,
-    tweet_text,
-    user_user,
-    like_reward,
-    quote_reward,
-    retweet_reward,
-    comment_reward,
-    type,
-    media,
-    fungible_token_id,
-    decimals,
-  } = cardDetails!;
-  const contract_id = contractDetails?.contract_id;
-  if (
-    tweet_text &&
-    user_user?.business_twitter_access_token &&
-    user_user?.business_twitter_access_token_secret &&
-    user_user?.twitter_access_token &&
-    user_user?.twitter_access_token_secret &&
-    contract_id &&
-    like_reward &&
-    quote_reward &&
-    comment_reward &&
-    retweet_reward
-  ) {
-    let threat1;
-    if (media[0]) {
-      threat1 = `${tweet_text} ${media[0]}`;
-    } else {
-      threat1 = `${tweet_text}`;
+        orderBy: {
+          id: 'desc',
+        },
+      });
+    } catch (error) {
+      logger.err(`Error fetching campaigns by status ${status}: ${error}`);
+      throw new Error(`Failed to fetch campaigns with status ${status}`);
     }
+  }
 
-    const token = await prisma.whiteListedTokens.findUnique({
-      where: { token_id: String(fungible_token_id) },
-    });
-    //@ignore es-lint
-    const currentDate = new Date();
-    const formattedDate = formattedDateTime(currentDate.toISOString());
+  /**
+   * Get pending approval campaigns
+   */
+  async getPendingApprovalCampaigns(): Promise<campaign_twittercard[]> {
+    try {
+      return await this.prisma.campaign_twittercard.findMany({
+        where: {
+          approve: false,
+          isRejected: null,
+        },
+      });
+    } catch (error) {
+      logger.err(`Error fetching pending campaigns: ${error}`);
+      throw new Error('Failed to fetch pending approval campaigns');
+    }
+  }
 
-    const threat2Hbar = `Promo initiated on ${formattedDate}. Interact with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in HBAR: like ${convertTinyHbarToHbar(
-      like_reward
-    ).toFixed(2)}, repost ${convertTinyHbarToHbar(retweet_reward).toFixed(
-      2
-    )}, quote ${convertTinyHbarToHbar(quote_reward).toFixed(
-      2
-    )}, reply ${convertTinyHbarToHbar(comment_reward).toFixed(2)}.`;
+  /**
+   * Update campaign approval status
+   */
+  async updateApprovalStatus(
+    id: number,
+    approved: boolean
+  ): Promise<campaign_twittercard | null> {
+    try {
+      const campaign = await this.prisma.campaign_twittercard.findUnique({
+        where: { id },
+      });
 
-    const threat2Fungible = `Promo initiated on ${formattedDate}. IInteract with the primary tweet for the next ${campaignDurationInMin} min to earn rewards in ${
-      token?.token_symbol ?? ''
-    }: like ${(like_reward / 10 ** Number(decimals)).toFixed(2)}, repost ${(
-      retweet_reward /
-      10 ** Number(decimals)
-    ).toFixed(2)}, quote ${(quote_reward / 10 ** Number(decimals)).toFixed(
-      2
-    )}, reply ${(comment_reward / 10 ** Number(decimals)).toFixed(2)}.`;
+      if (
+        !campaign ||
+        campaign.card_status !== CampaignStatus.ApprovalPending
+      ) {
+        return null;
+      }
 
-    const userTwitter = await twitterAPI.tweeterApiForUser({
-      accessToken: decrypt(
-        user_user?.business_twitter_access_token,
-        configs.encryptions.encryptionKey
-      ),
-      accessSecret: decrypt(
-        user_user?.business_twitter_access_token_secret,
-        configs.encryptions.encryptionKey
-      ),
-    });
+      const updateData = approved
+        ? {
+            approve: true,
+            isRejected: false,
+            card_status: CampaignStatus.CampaignApproved,
+          }
+        : {
+            isRejected: true,
+            card_status: CampaignStatus.CampaignDeclined,
+          };
+
+      return await this.prisma.campaign_twittercard.update({
+        where: { id },
+        data: updateData,
+      });
+    } catch (error) {
+      logger.err(`Error updating approval status for campaign ${id}: ${error}`);
+      throw new Error(`Failed to update approval status for campaign ${id}`);
+    }
+  }
+
+  /**
+   * Get token information
+   */
+  private async getTokenInfo(
+    tokenId: string
+  ): Promise<whiteListedTokens | null> {
+    try {
+      return await this.prisma.whiteListedTokens.findUnique({
+        where: { token_id: tokenId },
+      });
+    } catch (error) {
+      logger.err(`Error fetching token info for ${tokenId}: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get engagement data with proper typing
+   */
+  async getEngagementData(
+    tweetId: string,
+    user: user_user,
+    untilTimestamp?: string | Date
+  ): Promise<{
+    quotes: TweetEngagement[];
+    replies: TweetEngagement[];
+    likes: UserV2[];
+    retweets: UserV2[];
+  }> {
+    ValidationUtils.validateTwitterCredentials(user);
 
     try {
-      const rwClient = userTwitter.readWrite;
+      const [quotes, replies, likes, retweets] = await Promise.all([
+        this.getQuotesWithinTimestamp(tweetId, user, untilTimestamp),
+        this.getRepliesWithinTimestamp(tweetId, user, untilTimestamp),
+        this.getAllLikes(tweetId, user),
+        this.getAllRetweets(tweetId, user),
+      ]);
 
-      const card = await rwClient.v2.tweet(threat1);
+      return { quotes, replies, likes, retweets };
+    } catch (error) {
+      logger.err(
+        `Error fetching engagement data for tweet ${tweetId}: ${error}`
+      );
+      throw new Error(`Failed to fetch engagement data for tweet ${tweetId}`);
+    }
+  }
 
-      let reply;
-      if (type === 'HBAR') {
-        reply = await rwClient.v2.reply(threat2Hbar, card.data.id);
-      } else if (type === 'FUNGIBLE') {
-        reply = await rwClient.v2.reply(threat2Fungible, card.data.id);
+  /**
+   * Get quotes within timestamp with proper typing
+   */
+  private async getQuotesWithinTimestamp(
+    tweetId: string,
+    user: user_user,
+    untilTimestamp?: string | Date
+  ): Promise<TweetEngagement[]> {
+    try {
+      const options: QuoteSearchOptions = {
+        maxResults: 100,
+        userFields: ['username', 'public_metrics'],
+        expansions: ['author_id'],
+      };
+
+      if (untilTimestamp) {
+        options.endTime = untilTimestamp;
       }
-      const tweetId = card.data.id;
-      const lastThreadTweetId = reply?.data.id;
 
-      //Add TweetId to the DB
-      await prisma.campaign_twittercard.update({
-        where: { id },
-        data: {
-          tweet_id: tweetId,
-          last_thread_tweet_id: lastThreadTweetId,
-          card_status: CampaignStatus.CampaignRunning,
-          campaign_start_time: currentDate.toISOString(),
-          campaign_close_time: addMinutesToTime(
-            currentDate.toISOString(),
-            campaignDurationInMin ?? 15
-          ),
-        },
-      });
-      return tweetId;
-    } catch (err) {
-      console.log(err);
-      throw Error('Something wrong with tweet text.');
-    }
-  } else {
-    throw Error("User's brand handle not found");
-  }
-};
+      return await twitterAPI.getAllUsersWhoQuotedOnTweetId(
+        tweetId,
+        user,
+        options
+      );
+    } catch (error) {
+      if (error instanceof TwitterAPIError) {
+        logger.warn(`Twitter API error fetching quotes: ${error.message}`);
+        // Fallback to basic API call without timestamp filtering
+        const quotes = await twitterAPI.getAllUsersWhoQuotedOnTweetId(
+          tweetId,
+          user
+        );
 
-const getAllTwitterCardByStatus = async (status: CampaignStatus) => {
-  const prisma = await createPrismaClient();
-  const data = await prisma.campaign_twittercard.findMany({
-    where: {
-      card_status: status,
-    },
-    include: {
-      user_user: {
-        select: {
-          business_twitter_handle: true,
-          personal_twitter_handle: true,
-          available_budget: true,
-          hedera_wallet_id: true,
-        },
-      },
-    },
-    orderBy: {
-      id: 'desc',
-    },
-  });
+        if (!untilTimestamp) return quotes;
 
-  return data;
-};
-
-const getAllTwitterCardPendingCards = async () => {
-  const prisma = await createPrismaClient();
-  const data = await prisma.campaign_twittercard.findMany({
-    where: {
-      approve: false,
-      isRejected: null,
-    },
-  });
-
-  return data;
-};
-
-const updateStatus = async (id: number, status: boolean) => {
-  const prisma = await createPrismaClient();
-  const data = await prisma.campaign_twittercard.findUnique({
-    where: {
-      id,
-    },
-  });
-
-  if (data?.card_status === CampaignStatus.ApprovalPending) {
-    if (status === true) {
-      const data = await prisma.campaign_twittercard.update({
-        where: {
-          id,
-        },
-        data: {
-          approve: true,
-          isRejected: false,
-          card_status: CampaignStatus.CampaignApproved,
-        },
-      });
-
-      return data;
-    } else if (status === false) {
-      const data = await prisma.campaign_twittercard.update({
-        where: {
-          id,
-        },
-        data: {
-          isRejected: true,
-          card_status: CampaignStatus.CampaignDeclined,
-        },
-      });
-
-      return data;
+        const until = new Date(untilTimestamp);
+        return quotes.filter(
+          (quote: TweetEngagement) =>
+            quote.created_at && new Date(quote.created_at) <= until
+        );
+      }
+      throw error;
     }
   }
+
+  /**
+   * Get replies within timestamp with proper typing
+   */
+  private async getRepliesWithinTimestamp(
+    tweetId: string,
+    user: user_user,
+    untilTimestamp?: string | Date
+  ): Promise<TweetEngagement[]> {
+    try {
+      ValidationUtils.validateTwitterCredentials(user);
+
+      const options: ReplySearchOptions = {
+        maxResults: 100,
+        userFields: ['username', 'public_metrics'],
+        tweetFields: ['created_at', 'author_id', 'text', 'conversation_id'],
+        expansions: ['author_id'],
+      };
+
+      if (untilTimestamp) {
+        options.endTime = untilTimestamp;
+      }
+
+      return await twitterAPI.getAllReplies(
+        tweetId,
+        user.business_twitter_access_token as string,
+        user.business_twitter_access_token_secret as string,
+        options
+      );
+    } catch (error) {
+      if (error instanceof TwitterAPIError) {
+        logger.warn(`Twitter API error fetching replies: ${error.message}`);
+        // Fallback to basic API call without timestamp filtering
+        const replies = await twitterAPI.getAllReplies(
+          tweetId,
+          user.business_twitter_access_token as string,
+          user.business_twitter_access_token_secret as string
+        );
+
+        if (!untilTimestamp) return replies;
+
+        const until = new Date(untilTimestamp);
+        return replies.filter(
+          (reply: TweetEngagement) =>
+            reply.created_at && new Date(reply.created_at) <= until
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get all users who liked a tweet
+   */
+  private async getAllLikes(
+    tweetId: string,
+    user: user_user
+  ): Promise<UserV2[]> {
+    try {
+      ValidationUtils.validateTwitterCredentials(user);
+      return await twitterAPI.getAllUsersWhoLikedOnTweetId(tweetId, user);
+    } catch (error) {
+      if (error instanceof TwitterValidationError) {
+        throw new TwitterServiceError(
+          'INVALID_CREDENTIALS',
+          'Invalid Twitter credentials for likes fetching',
+          401
+        );
+      }
+      if (error instanceof TwitterAPIError) {
+        logger.warn(`Twitter API error fetching likes: ${error.message}`);
+        return []; // Return empty array as fallback
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get all users who retweeted a tweet
+   */
+  private async getAllRetweets(
+    tweetId: string,
+    user: user_user
+  ): Promise<UserV2[]> {
+    try {
+      ValidationUtils.validateTwitterCredentials(user);
+      return await twitterAPI.getAllRetweetOfTweetId(tweetId, user);
+    } catch (error) {
+      if (error instanceof TwitterValidationError) {
+        throw new TwitterServiceError(
+          'INVALID_CREDENTIALS',
+          'Invalid Twitter credentials for retweets fetching',
+          401
+        );
+      }
+      if (error instanceof TwitterAPIError) {
+        logger.warn(`Twitter API error fetching retweets: ${error.message}`);
+        return []; // Return empty array as fallback
+      }
+      throw error;
+    }
+  }
+}
+
+/**
+ * Factory function to create service instance with dependency injection
+ */
+export const createTwitterCardService = async (
+  prisma?: PrismaClient
+): Promise<TwitterCardService> => {
+  const { default: createPrismaClient } = await import('@shared/prisma');
+  const prismaClient = prisma || (await createPrismaClient());
+  return new TwitterCardService(prismaClient);
 };
 
-export default {
-  allActiveTwitterCard,
-  twitterCardStats,
-  updateTwitterCardStats,
-  addNewCardStats,
-  updateTotalSpentAmount,
-  publishTwitter,
-  getAllTwitterCardByStatus,
-  getAllTwitterCardPendingCards,
-  updateStatus,
-  publistFirstTweet,
-  publishSecondThread,
-  publishTweetORThread,
-} as const;
+// Export legacy functions for backward compatibility
+export const legacyExports = {
+  allActiveTwitterCard: async () => {
+    const service = await createTwitterCardService();
+    return service.getAllActiveCards();
+  },
+
+  twitterCardStats: async (cardId: bigint) => {
+    const service = await createTwitterCardService();
+    return service.getCardStats(cardId);
+  },
+
+  updateTwitterCardStats: async (
+    body: TwitterStats,
+    cardId: bigint | number
+  ) => {
+    const service = await createTwitterCardService();
+    return service.updateCardStats(body, cardId);
+  },
+
+  updateTotalSpentAmount: async (id: number | bigint, amount_spent: number) => {
+    const service = await createTwitterCardService();
+    return service.updateTotalSpentAmount(id, amount_spent);
+  },
+
+  publishTweetORThread: async (params: PublishTweetParams) => {
+    const service = await createTwitterCardService();
+    return service.publishTweetOrThread(params);
+  },
+
+  publistFirstTweet: async (
+    card: campaign_twittercard,
+    cardOwner: user_user
+  ) => {
+    const service = await createTwitterCardService();
+    return service.publishFirstTweet(card, cardOwner);
+  },
+
+  publishSecondThread: async (
+    card: campaign_twittercard,
+    cardOwner: user_user,
+    parentTweetId: string
+  ) => {
+    const service = await createTwitterCardService();
+    return service.publishSecondThread(card, cardOwner, parentTweetId);
+  },
+
+  getAllTwitterCardByStatus: async (status: CampaignStatus) => {
+    const service = await createTwitterCardService();
+    return service.getCampaignsByStatus(status);
+  },
+
+  getAllTwitterCardPendingCards: async () => {
+    const service = await createTwitterCardService();
+    return service.getPendingApprovalCampaigns();
+  },
+
+  updateStatus: async (id: number, status: boolean) => {
+    const service = await createTwitterCardService();
+    return service.updateApprovalStatus(id, status);
+  },
+
+  getQuotesWithinTimestamp: async (
+    tweetId: string,
+    user: user_user,
+    untilTimestamp?: string | Date
+  ) => {
+    const service = await createTwitterCardService();
+    const data = await service.getEngagementData(tweetId, user, untilTimestamp);
+    return data.quotes;
+  },
+
+  getRepliesWithinTimestamp: async (
+    tweetId: string,
+    user: user_user,
+    untilTimestamp?: string | Date
+  ) => {
+    const service = await createTwitterCardService();
+    const data = await service.getEngagementData(tweetId, user, untilTimestamp);
+    return data.replies;
+  },
+
+  getAllLikes: async (tweetId: string, user: user_user) => {
+    const service = await createTwitterCardService();
+    const data = await service.getEngagementData(tweetId, user);
+    return data.likes;
+  },
+
+  getAllRetweets: async (tweetId: string, user: user_user) => {
+    const service = await createTwitterCardService();
+    const data = await service.getEngagementData(tweetId, user);
+    return data.retweets;
+  },
+};
+
+export default legacyExports;

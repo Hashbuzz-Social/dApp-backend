@@ -57,7 +57,7 @@ interface CampaignRewardRates {
  */
 export class AutoRewardDistributor {
   private prisma: PrismaClient | null = null;
-  private tracker: XApiEngagementTracker | null = null;
+  private tracker: XApiEngagementTracker;
 
   constructor() {
     this.initializePrisma();
@@ -169,13 +169,40 @@ export class AutoRewardDistributor {
   /**
    * Get eligible engagers based on actual engagement data from database
    */
-  private async getEligibleEngagers(
+  private getEligibleEngagers(
     campaignId: bigint,
-    _metrics: EngagementMetrics // eslint-disable-line @typescript-eslint/no-unused-vars
-  ): Promise<RewardDistributionData[]> {
-    try {
-      if (!this.prisma) {
-        await this.initializePrisma();
+    metrics: EngagementMetrics
+  ): RewardDistributionData[] {
+    const eligibleEngagers: RewardDistributionData[] = [];
+
+    // Mock eligible engagers - in production this would be from actual X API data
+    // For now, generate mock data based on metrics
+    const mockUserIds = this.generateMockUserIds(metrics.uniqueEngagers);
+
+    // Distribute engagers across different engagement types
+    const engagementTypes: Array<'like' | 'retweet' | 'quote' | 'comment'> = [
+      'like',
+      'retweet',
+      'quote',
+      'comment',
+    ];
+    const engagementCounts = [
+      metrics.likes,
+      metrics.retweets,
+      metrics.quotes,
+      metrics.comments,
+    ];
+
+    engagementTypes.forEach((type, index) => {
+      const count = engagementCounts[index];
+      for (let i = 0; i < count; i++) {
+        const userId = mockUserIds[i % mockUserIds.length];
+        eligibleEngagers.push({
+          campaignId,
+          userId,
+          engagementType: type,
+          rewardAmount: 0, // Will be calculated based on campaign rates
+        });
       }
 
       // Fetch actual engagement records from database
@@ -321,8 +348,12 @@ export class AutoRewardDistributor {
     transactions: RewardTransaction[]
   ): Promise<void> {
     try {
-      if (!this.prisma) {
-        await this.initializePrisma();
+      // In production, this would use a proper reward_transactions table
+      for (const transaction of transactions) {
+        logger.info(
+          `Storing reward transaction: ${JSON.stringify(transaction)}`
+        );
+        // await this.prisma.reward_transactions.create({ data: transaction });
       }
 
       if (!this.prisma) {
@@ -373,142 +404,7 @@ export class AutoRewardDistributor {
       );
     } catch (error) {
       logger.err(
-        `Error storing reward transactions in database: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-      throw new Error('Failed to store reward transactions');
-    }
-  }
-
-  /**
-   * Process token transfers using blockchain/wallet system
-   */
-  private async processTokenTransfers(
-    transactions: RewardTransaction[]
-  ): Promise<void> {
-    try {
-      // Use the existing reward service to handle token distribution
-      const { performAutoRewardingForEligibleUser } = await import(
-        '@services/reward-service/on-card'
-      );
-
-      // Group transactions by campaign for efficient processing
-      const transactionsByCampaign = new Map<bigint, RewardTransaction[]>();
-
-      for (const transaction of transactions) {
-        const campaignTransactions =
-          transactionsByCampaign.get(transaction.campaign_id) || [];
-        campaignTransactions.push(transaction);
-        transactionsByCampaign.set(
-          transaction.campaign_id,
-          campaignTransactions
-        );
-      }
-
-      // Process each campaign's reward distribution
-      for (const [campaignId, campaignTransactions] of transactionsByCampaign) {
-        try {
-          logger.info(
-            `Processing token transfers for campaign ${campaignId} (${campaignTransactions.length} transactions)`
-          );
-
-          // Use existing reward service - this handles the actual blockchain transactions
-          await performAutoRewardingForEligibleUser(campaignId);
-
-          // Mark all transactions for this campaign as completed
-          for (const transaction of campaignTransactions) {
-            transaction.transaction_status = 'completed';
-            transaction.processed_at = new Date();
-          }
-
-          logger.info(
-            `Successfully processed ${campaignTransactions.length} token transfers for campaign ${campaignId}`
-          );
-        } catch (campaignError) {
-          // Mark all transactions for this campaign as failed
-          for (const transaction of campaignTransactions) {
-            transaction.transaction_status = 'failed';
-            transaction.processed_at = new Date();
-          }
-
-          logger.err(
-            `Failed to process token transfers for campaign ${campaignId}: ${
-              campaignError instanceof Error
-                ? campaignError.message
-                : String(campaignError)
-            }`
-          );
-        }
-      }
-
-      // Update transaction statuses in database
-      await this.updateTransactionStatuses(transactions);
-
-      const successfulTransfers = transactions.filter(
-        (t) => t.transaction_status === 'completed'
-      ).length;
-      const failedTransfers = transactions.filter(
-        (t) => t.transaction_status === 'failed'
-      ).length;
-
-      logger.info(
-        `Token transfer processing complete: ${successfulTransfers} successful, ${failedTransfers} failed`
-      );
-    } catch (error) {
-      logger.err(
-        `Error processing token transfers: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-      throw new Error('Failed to process token transfers');
-    }
-  }
-
-  /**
-   * Update transaction statuses in database after processing
-   */
-  private async updateTransactionStatuses(
-    transactions: RewardTransaction[]
-  ): Promise<void> {
-    try {
-      if (!this.prisma) {
-        await this.initializePrisma();
-      }
-
-      if (!this.prisma) {
-        throw new Error('Failed to initialize Prisma client');
-      }
-
-      for (const transaction of transactions) {
-        await this.prisma.transactions.updateMany({
-          where: {
-            transaction_id: `reward_${transaction.campaign_id}_${
-              transaction.user_id
-            }_${transaction.created_at.getTime()}`,
-          },
-          data: {
-            status: transaction.transaction_status,
-            transaction_data: {
-              campaign_id: Number(transaction.campaign_id),
-              user_id: transaction.user_id,
-              engagement_type: transaction.engagement_type,
-              reward_amount: transaction.reward_amount,
-              transaction_status: transaction.transaction_status,
-              created_at: transaction.created_at,
-              processed_at: transaction.processed_at,
-              transaction_hash: transaction.transaction_hash,
-            },
-          },
-        });
-      }
-
-      logger.info(
-        `Updated ${transactions.length} transaction statuses in database`
-      );
-    } catch (error) {
-      logger.err(
-        `Error updating transaction statuses: ${
+        `Error storing reward transactions: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
@@ -523,10 +419,6 @@ export class AutoRewardDistributor {
     summary: CampaignRewardSummary
   ): Promise<void> {
     try {
-      if (!this.prisma) {
-        await this.initializePrisma();
-      }
-
       await this.prisma?.campaign_twittercard.update({
         where: { id: campaignId },
         data: {
@@ -545,105 +437,6 @@ export class AutoRewardDistributor {
           error instanceof Error ? error.message : String(error)
         }`
       );
-    }
-  }
-
-  /**
-   * Get reward distribution summary for a campaign from database
-   */
-  async getRewardSummary(
-    campaignId: bigint
-  ): Promise<CampaignRewardSummary | null> {
-    try {
-      if (!this.prisma) {
-        await this.initializePrisma();
-      }
-
-      if (!this.prisma) {
-        throw new Error('Failed to initialize Prisma client');
-      }
-
-      logger.info(`Getting reward summary for campaign ${campaignId}`);
-
-      // Query actual reward transactions from database
-      const rewardTransactions = await this.prisma.transactions.findMany({
-        where: {
-          transaction_type: 'reward',
-          transaction_data: {
-            path: ['campaign_id'],
-            equals: Number(campaignId),
-          },
-        },
-        select: {
-          amount: true,
-          status: true,
-          transaction_data: true,
-        },
-      });
-
-      if (rewardTransactions.length === 0) {
-        logger.warn(`No reward transactions found for campaign ${campaignId}`);
-        return null;
-      }
-
-      // Calculate summary from actual data
-      let totalRewardsDistributed = 0;
-      const uniqueRecipients = new Set<string>();
-      const distributionBreakdown = {
-        likes: { count: 0, totalReward: 0 },
-        retweets: { count: 0, totalReward: 0 },
-        quotes: { count: 0, totalReward: 0 },
-        comments: { count: 0, totalReward: 0 },
-      };
-
-      for (const transaction of rewardTransactions) {
-        if (transaction.status === 'completed') {
-          totalRewardsDistributed += transaction.amount;
-
-          const data = transaction.transaction_data as {
-            user_id?: string;
-            engagement_type?: string;
-            [key: string]: unknown;
-          };
-          if (data?.user_id) {
-            uniqueRecipients.add(String(data.user_id));
-          }
-
-          // Count by engagement type
-          if (data?.engagement_type) {
-            const engagementType = data.engagement_type;
-            if (engagementType in distributionBreakdown) {
-              distributionBreakdown[
-                engagementType as keyof typeof distributionBreakdown
-              ].count++;
-              distributionBreakdown[
-                engagementType as keyof typeof distributionBreakdown
-              ].totalReward += transaction.amount;
-            }
-          }
-        }
-      }
-
-      const summary: CampaignRewardSummary = {
-        campaignId,
-        totalRewardsDistributed,
-        totalUniqueRecipients: uniqueRecipients.size,
-        distributionBreakdown,
-      };
-
-      logger.info(
-        `Retrieved reward summary for campaign ${campaignId}: ${JSON.stringify(
-          summary
-        )}`
-      );
-      return summary;
-    } catch (error) {
-      logger.err(
-        `Error getting reward summary: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-      return null;
     }
   }
 }

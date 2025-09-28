@@ -75,6 +75,7 @@ const processEvent = async (
           break;
         }
 
+
         // User Balance updates
         case BalanceEvents.CAMPAIGNER_FUNGIBLE_BALANCE_UPDATE: {
           const balanceUpdatePayload =
