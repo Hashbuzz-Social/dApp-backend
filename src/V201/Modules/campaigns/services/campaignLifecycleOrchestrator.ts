@@ -1,5 +1,7 @@
 import XEngagementTracker from './xEngagementTracker';
 import logger from 'jet-logger';
+import createPrismaClient from '@shared/prisma';
+import { PrismaClient } from '@prisma/client';
 
 interface CampaignStatusInfo {
   campaignId: bigint;
@@ -23,10 +25,20 @@ interface CampaignStatusInfo {
  * - This service just provides status and metrics information
  */
 export class CampaignLifecycleOrchestrator {
-  private engagementTracker: XEngagementTracker;
+  private engagementTracker: XEngagementTracker | null = null;
+  private prisma: PrismaClient | null = null;
 
   constructor() {
-    this.engagementTracker = new XEngagementTracker();
+    // Async initialization will happen on first use
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.prisma) {
+      this.prisma = await createPrismaClient();
+    }
+    if (!this.engagementTracker) {
+      this.engagementTracker = new XEngagementTracker(this.prisma);
+    }
   }
 
   /**
@@ -36,7 +48,11 @@ export class CampaignLifecycleOrchestrator {
     try {
       logger.info(`Getting status for campaign ${campaignId}`);
 
-      const metrics = await this.engagementTracker.getCampaignMetrics(campaignId);
+      await this.ensureInitialized();
+      await this.ensureInitialized();
+      const metrics = await this.engagementTracker?.getCampaignMetrics(
+        campaignId
+      );
 
       if (!metrics) {
         return {
@@ -52,7 +68,11 @@ export class CampaignLifecycleOrchestrator {
         lastUpdated: new Date(),
       };
     } catch (error) {
-      logger.err(`Error getting campaign status: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error getting campaign status: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return {
         campaignId,
         status: 'not_found',
@@ -65,9 +85,14 @@ export class CampaignLifecycleOrchestrator {
    */
   async getCampaignMetrics(campaignId: bigint) {
     try {
-      return await this.engagementTracker.getCampaignMetrics(campaignId);
+      await this.ensureInitialized();
+      return await this.engagementTracker?.getCampaignMetrics(campaignId);
     } catch (error) {
-      logger.err(`Error getting campaign metrics: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error getting campaign metrics: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return null;
     }
   }

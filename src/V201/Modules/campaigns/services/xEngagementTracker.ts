@@ -1,7 +1,4 @@
-import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
-import { publishEvent } from '../../../eventPublisher';
-import { CampaignEvents } from '@V201/events/campaign';
 import { publishToQueue } from '../../../redisQueue';
 import twitterAPI from '@shared/twitterAPI';
 import { PrismaClient } from '@prisma/client';
@@ -39,15 +36,11 @@ interface CampaignTrackingJob {
  * Integrates with existing Redis queue system
  */
 export class XApiEngagementTracker {
-  private prisma!: PrismaClient;
+  private prisma: PrismaClient;
   private apiBaseUrl = 'https://api.twitter.com/2';
 
-  constructor() {
-    this.initializePrisma();
-  }
-
-  private async initializePrisma() {
-    this.prisma = await createPrismaClient();
+  constructor(prisma: PrismaClient) {
+    this.prisma = prisma;
   }
 
   /**
@@ -111,10 +104,20 @@ export class XApiEngagementTracker {
         `Started engagement tracking for campaign ${campaignId} with ${totalCollections} collection jobs`
       );
 
-      // Publish tracking started event
-      publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_CONTENT, {
-        cardOwner: { id: userId } as any,
-        card: { id: campaignId, tweet_id: tweetId } as any,
+      // Add to campaign log in database: tracking started
+      await this.prisma.campaignLog.create({
+        data: {
+          campaign_id: campaignId,
+          status: 'tracking_started',
+          message: `Engagement tracking started for tweet ${tweetId} for ${durationHours} hours.`,
+          timestamp: new Date(),
+          data: {
+            tweetId,
+            durationHours,
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+          },
+        },
       });
     } catch (error) {
       logger.err(

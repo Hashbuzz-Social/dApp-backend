@@ -1,11 +1,15 @@
-import { PrismaClient, campaign_twittercard, campaignstatus } from '@prisma/client';
-import logger from 'jet-logger';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
-import XEngagementTracker from './xEngagementTracker';
-// import { updateCampaignInMemoryStatus } from './campaignStatusInMemoryUpdater';
+import { updateCampaignInMemoryStatus } from '@V201/modules/common';
+import {
+  PrismaClient,
+  campaign_twittercard,
+  campaignstatus,
+} from '@prisma/client';
+import createPrismaClient from '@shared/prisma';
+import logger from 'jet-logger';
 import { CampaignSheduledEvents } from '../../../AppEvents';
 import SchedulerQueue from '../../../schedulerQueue';
-import { updateCampaignInMemoryStatus } from '@V201/modules/common';
+import XEngagementTracker from './xEngagementTracker';
 
 /**
  * V201 Engagement Data Collection Service
@@ -21,7 +25,7 @@ class V201EngagementDataCollectionService {
    */
   private async initializePrisma(): Promise<PrismaClient> {
     if (!this.prismaClient) {
-      this.prismaClient = new PrismaClient();
+      this.prismaClient = await createPrismaClient();
     }
     return this.prismaClient;
   }
@@ -175,7 +179,8 @@ class V201EngagementDataCollectionService {
         `[V201EngagementCollection] Starting engagement data collection for campaign ${campaign.id}`
       );
 
-      const engagementTracker = new XEngagementTracker();
+      const prisma = await this.initializePrisma();
+      const engagementTracker = new XEngagementTracker(prisma);
 
       // Collect raw engagement data
       const result = await engagementTracker.collectEngagementData(
@@ -223,7 +228,6 @@ class V201EngagementDataCollectionService {
 
     const prisma = await this.initializePrisma();
     const closeTime = new Date(campaign.campaign_close_time);
-    const currentTime = new Date();
     const suspiciousThresholdMs = 30 * 60 * 1000; // 30 minutes after close
 
     try {
@@ -301,7 +305,8 @@ class V201EngagementDataCollectionService {
   ): Promise<boolean> {
     try {
       // Get current engagement metrics from the tracker
-      const engagementTracker = new XEngagementTracker();
+      const prisma = await this.initializePrisma();
+      const engagementTracker = new XEngagementTracker(prisma);
       const metrics = await engagementTracker.getCampaignMetrics(campaign.id);
 
       if (!metrics) {

@@ -21,17 +21,24 @@ import XEngagementTracker from './xEngagementTracker';
  */
 export class V201CampaignClosingService {
   private prisma: PrismaClient | null = null;
-  private engagementTracker: XEngagementTracker;
+  private engagementTracker: XEngagementTracker | null = null;
 
   constructor() {
-    this.engagementTracker = new XEngagementTracker();
+    // Async initialization will happen on first use
   }
 
   private async initializePrisma(): Promise<PrismaClient> {
     if (!this.prisma) {
       this.prisma = await createPrismaClient();
+      this.engagementTracker = new XEngagementTracker(this.prisma);
     }
     return this.prisma;
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.prisma || !this.engagementTracker) {
+      await this.initializePrisma();
+    }
   }
 
   /**
@@ -223,14 +230,16 @@ export class V201CampaignClosingService {
       }
 
       // Use V201 engagement tracker to collect latest engagement data
-      const engagementData = await this.engagementTracker.collectEngagementData(
-        campaign.id,
-        campaign.tweet_id
-      );
+      await this.ensureInitialized();
+      const engagementData =
+        await this.engagementTracker?.collectEngagementData(
+          campaign.id,
+          campaign.tweet_id
+        );
 
       // Update campaign_tweetengagements table for reward calculation
       // Based on Prisma schema: campaign_tweetengagements uses tweet_id (BigInt) to reference campaign.id
-      if (this.prisma) {
+      if (this.prisma && engagementData) {
         await this.prisma.campaign_tweetstats.upsert({
           where: {
             twitter_card_id: campaign.id,

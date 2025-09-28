@@ -134,7 +134,7 @@ export const publishCampaignSecondContent = async ({
 
   // Start engagement tracking for the published campaign
   try {
-    const engagementTracker = new XEngagementTracker();
+    const engagementTracker = new XEngagementTracker(prisma);
     const durationHours = campaignDurationInMin / 60; // Convert minutes to hours
 
     if (updatedCard.tweet_id) {

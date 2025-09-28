@@ -1,6 +1,8 @@
 import { consumeFromQueue } from '../../../redisQueue';
 import XApiEngagementTracker from './xEngagementTracker';
 import logger from 'jet-logger';
+import createPrismaClient from '@shared/prisma';
+import { PrismaClient } from '@prisma/client';
 
 interface EngagementCollectionJob {
   campaignId: string;
@@ -18,11 +20,23 @@ interface EngagementCollectionJob {
  * Worker service to process engagement collection jobs from Redis queue
  */
 class EngagementCollectionWorker {
-  private tracker: XApiEngagementTracker;
+  private tracker: XApiEngagementTracker | null = null;
+  private prisma: PrismaClient | null = null;
   private isRunning = false;
 
   constructor() {
-    this.tracker = new XApiEngagementTracker();
+    this.initializePrisma();
+  }
+
+  private async initializePrisma(): Promise<void> {
+    this.prisma = await createPrismaClient();
+    this.tracker = new XApiEngagementTracker(this.prisma);
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.tracker || !this.prisma) {
+      await this.initializePrisma();
+    }
   }
 
   /**
@@ -40,7 +54,9 @@ class EngagementCollectionWorker {
     // Process engagement collection queue
     await consumeFromQueue(
       'engagement_collection',
-      this.processJob.bind(this),
+      (jobData: any) => {
+        void this.processJob(jobData);
+      },
       { signal: this.createAbortSignal() }
     );
   }
@@ -58,11 +74,12 @@ class EngagementCollectionWorker {
    */
   private async processJob(jobData: any): Promise<void> {
     try {
-      const job: EngagementCollectionJob = typeof jobData === 'string'
-        ? JSON.parse(jobData)
-        : jobData;
+      const job: EngagementCollectionJob =
+        typeof jobData === 'string' ? JSON.parse(jobData) : jobData;
 
-      logger.info(`Processing engagement collection job ${job.jobId} for campaign ${job.campaignId}`);
+      logger.info(
+        `Processing engagement collection job ${job.jobId} for campaign ${job.campaignId}`
+      );
 
       // Check if job should be processed now
       const scheduledTime = new Date(job.scheduledFor);
@@ -78,7 +95,8 @@ class EngagementCollectionWorker {
       }
 
       // Process the job
-      await this.tracker.processEngagementCollection({
+      await this.ensureInitialized();
+      await this.tracker?.processEngagementCollection({
         campaignId: job.campaignId,
         tweetId: job.tweetId,
         userId: job.userId,
@@ -89,9 +107,12 @@ class EngagementCollectionWorker {
       });
 
       logger.info(`Completed engagement collection job ${job.jobId}`);
-
     } catch (error) {
-      logger.err(`Error processing engagement collection job: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error processing engagement collection job: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 

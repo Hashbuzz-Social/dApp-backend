@@ -526,7 +526,8 @@ export class V201CampaignExpiryService {
     campaign: campaign_twittercard
   ): Promise<void> {
     try {
-      const engagementTracker = new XEngagementTracker();
+      const prisma = await this.initializePrisma();
+      const engagementTracker = new XEngagementTracker(prisma);
       const metrics = await engagementTracker.getCampaignMetrics(campaign.id);
 
       if (!metrics) {
@@ -537,7 +538,6 @@ export class V201CampaignExpiryService {
       }
 
       // Check if we have recent engagement data (within last 3 hours)
-      const prisma = await this.initializePrisma();
       const tweetStats = await prisma.campaign_tweetstats.findUnique({
         where: { twitter_card_id: campaign.id },
         select: { last_update: true },

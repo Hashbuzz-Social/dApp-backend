@@ -57,15 +57,21 @@ interface CampaignRewardRates {
  */
 export class AutoRewardDistributor {
   private prisma: PrismaClient | null = null;
-  private tracker: XApiEngagementTracker;
+  private tracker: XApiEngagementTracker | null = null;
 
   constructor() {
     this.initializePrisma();
-    this.tracker = new XApiEngagementTracker();
   }
 
   private async initializePrisma() {
     this.prisma = await createPrismaClient();
+    this.tracker = new XApiEngagementTracker(this.prisma);
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.tracker || !this.prisma) {
+      await this.initializePrisma();
+    }
   }
 
   /**
@@ -90,7 +96,8 @@ export class AutoRewardDistributor {
       }
 
       // Get final engagement metrics
-      const metrics = await this.tracker.getCampaignMetrics(campaignId);
+      await this.ensureInitialized();
+      const metrics = await this.tracker?.getCampaignMetrics(campaignId);
       if (!metrics) {
         throw new Error(
           `No engagement metrics found for campaign ${campaignId}`
