@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import logger from 'jet-logger';
-import { V201CampaignClosingService } from '../../Modules/campaigns/services/V201CampaignClosingService';
+import { V201CampaignClosingService } from '../../Modules/campaigns/services/campaignClose/CampaignClosingService';
 import V201EngagementDataCollectionService from '../../Modules/campaigns/services/V201EngagementDataCollectionService';
 import { V201CampaignExpiryService } from '../../Modules/campaigns/services/V201CampaignExpiryService';
 import { performAutoRewardingForEligibleUser } from '../../../services/reward-service/on-card';

@@ -75,6 +75,11 @@ interface UserTokens {
   twitter_access_token_secret: string | null;
 }
 
+export interface UserBizXCredentials {
+  business_twitter_access_token: string;
+  business_twitter_access_token_secret: string;
+}
+
 /**
  * Custom error classes for Twitter API operations
  */
@@ -265,15 +270,15 @@ function normalizeTimestamp(timestamp?: string | Date): string | undefined {
  */
 export async function getAllUsersWhoLikedOnTweetId(
   tweetId: string,
-  user: user_user
+  userCred: UserBizXCredentials
 ): Promise<UserV2[]> {
   try {
     validateTweetId(tweetId);
 
     const configs = await getConfig();
     const twitterClient = createTwitterClientWithTokens(
-      user.business_twitter_access_token as string,
-      user.business_twitter_access_token_secret as string,
+      userCred.business_twitter_access_token,
+      userCred.business_twitter_access_token_secret,
       configs
     );
 
@@ -310,12 +315,12 @@ export async function getAllUsersWhoLikedOnTweetId(
  */
 export async function getAllRetweetOfTweetId(
   tweetId: string,
-  user: user_user
+  userCred: UserBizXCredentials
 ): Promise<UserV2[]> {
   const configs = await getConfig();
   const twitterClient = createTwitterClientWithTokens(
-    user.business_twitter_access_token as string,
-    user.business_twitter_access_token_secret as string,
+    userCred.business_twitter_access_token,
+    userCred.business_twitter_access_token_secret,
     configs
   );
   const users: UserV2[] = [];
@@ -338,7 +343,7 @@ export async function getAllRetweetOfTweetId(
  */
 export async function getAllUsersWhoQuotedOnTweetId(
   tweetId: string,
-  user: user_user,
+  user: UserBizXCredentials,
   options?: QuoteSearchOptions
 ): Promise<TweetV2[]> {
   try {
@@ -347,8 +352,8 @@ export async function getAllUsersWhoQuotedOnTweetId(
 
     const configs = await getConfig();
     const twitterClient = createTwitterClientWithTokens(
-      user.business_twitter_access_token as string,
-      user.business_twitter_access_token_secret as string,
+      user.business_twitter_access_token,
+      user.business_twitter_access_token_secret,
       configs
     );
 
@@ -410,10 +415,36 @@ export async function getEngagementOnCard(
   user: user_user,
   options?: QuoteSearchOptions
 ): Promise<EngagementResult> {
+  if (
+    !user.business_twitter_access_token ||
+    !user.business_twitter_access_token_secret
+  ) {
+    throw new TwitterTokenError(
+      'Business Twitter access tokens are not available for the user',
+      'business'
+    );
+  }
+
   const [likes, retweets, quotes] = await Promise.all([
-    getAllUsersWhoLikedOnTweetId(tweetId, user),
-    getAllRetweetOfTweetId(tweetId, user),
-    getAllUsersWhoQuotedOnTweetId(tweetId, user, options),
+    getAllUsersWhoLikedOnTweetId(tweetId, {
+      business_twitter_access_token: user.business_twitter_access_token,
+      business_twitter_access_token_secret:
+        user.business_twitter_access_token_secret,
+    }),
+    getAllRetweetOfTweetId(tweetId, {
+      business_twitter_access_token: user.business_twitter_access_token,
+      business_twitter_access_token_secret:
+        user.business_twitter_access_token_secret,
+    }),
+    getAllUsersWhoQuotedOnTweetId(
+      tweetId,
+      {
+        business_twitter_access_token: user.business_twitter_access_token,
+        business_twitter_access_token_secret:
+          user.business_twitter_access_token_secret,
+      },
+      options
+    ),
   ]);
   return { likes, retweets, quotes };
 }

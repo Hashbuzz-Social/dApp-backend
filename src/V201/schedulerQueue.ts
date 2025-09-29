@@ -1,5 +1,5 @@
 import { parseRedisURL, safeParsedData } from '@V201/modules/common';
-import { SheduleJobPayloadMap } from '@V201/types';
+import { ScheduledJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
 import { ScheduledEvent } from './AppEvents';
 import { getConfig } from '@appConfig';
@@ -10,7 +10,7 @@ import { AppConfig } from 'src/@types/AppConfig';
  */
 export interface TaskSchedulerJobType<T extends ScheduledEvent> {
   eventName: T;
-  data: SheduleJobPayloadMap[T];
+  data: ScheduledJobPayloadMap[T];
   executeAt: Date;
 }
 

@@ -1,184 +1,144 @@
-import WorkerManager from './SchedulesWorkerManager';
-import { CampaignScheduledEvents } from './AppEvents';
-import { Job } from 'bullmq';
-import { TaskSchedulerJobType } from './schedulerQueue';
+import { PrismaClient } from '@prisma/client';
 import createPrismaClient from '@shared/prisma';
+import { Job } from 'bullmq';
 import logger from 'jet-logger';
-import { V201CampaignClosingService } from './Modules/campaigns/services/V201CampaignClosingService';
+import { CampaignScheduledEvents } from './AppEvents';
+import { CampaignClosingService } from './Modules/campaigns/services/campaignClose/CampaignClosingService';
 import { V201CampaignExpiryService } from './Modules/campaigns/services/V201CampaignExpiryService';
-import V201EngagementDataCollectionService from './Modules/campaigns/services/V201EngagementDataCollectionService';
+import { TaskSchedulerJobType } from './schedulerQueue';
+import WorkerManager from './SchedulesWorkerManager';
+import { processQuoteAndReplyCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
 
-// Define the processor function for V201 campaign closing
-const processCloseCampaignJob = async (
-  job: Job<
-    TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION>
-  >
-) => {
-  try {
-    logger.info(
-      `[V201] Processing campaign close job: ${JSON.stringify(job.data)}`
-    );
-    const jobData = job.data.data;
+/**
+ * Class to handle scheduled job operations for V201 campaigns
+ */
+export class V201SchedulesJobHandler {
+  private prisma: PrismaClient | null = null;
 
-    if (jobData?.cardId) {
-      // Get the campaign card from database
-      const prisma = await createPrismaClient();
-      const campaign = await prisma.campaign_twittercard.findUnique({
-        where: { id: Number(jobData.cardId) },
-      });
-
-      if (!campaign) {
-        throw new Error(`Campaign card ${jobData.cardId} not found`);
-      }
-
-      // Use V201-specific campaign closing service (NO legacy dependencies!)
-      const v201ClosingService = new V201CampaignClosingService();
-      const result = await v201ClosingService.closeCampaign(campaign);
-
-      if (result.success) {
-        logger.info(
-          `[V201] Campaign ${jobData.cardId} closed successfully using V201 service`
-        );
-      } else {
-        logger.err(
-          `[V201] Campaign ${jobData.cardId} closing failed: ${result.message}`
-        );
-      }
-    } else {
-      throw new Error(
-        'Invalid job data for campaign closing - cardId is required'
-      );
-    }
-  } catch (error) {
-    logger.err(
-      `[V201] Error processing campaign close job: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    throw error; // Re-throw to mark job as failed
+  constructor() {
+    this.initializeServices();
   }
-};
 
-// Define the processor function for V201 campaign expiry
-const processExpiryCampaignJob = async (
-  job: Job<
-    TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
-  >
-) => {
-  try {
-    logger.info(
-      `[V201] Processing campaign expiry job: ${JSON.stringify(job.data)}`
-    );
-    const jobData = job.data.data;
-
-    if (jobData?.cardId) {
-      // Get the campaign card from database
-      const prisma = await createPrismaClient();
-      const campaign = await prisma.campaign_twittercard.findUnique({
-        where: { id: Number(jobData.cardId) },
-      });
-
-      if (!campaign) {
-        throw new Error(`Campaign card ${String(jobData.cardId)} not found`);
-      }
-
-      // Use V201-specific campaign expiry service (NO legacy dependencies!)
-      const v201ExpiryService = new V201CampaignExpiryService();
-      const result = await v201ExpiryService.expireCampaign(campaign);
-
-      if (result.success) {
-        logger.info(
-          `[V201] Campaign ${String(
-            jobData.cardId
-          )} expired successfully using V201 service`
-        );
-      } else {
-        logger.err(
-          `[V201] Campaign ${String(jobData.cardId)} expiry failed: ${
-            result.message
-          }`
-        );
-      }
-    } else {
-      throw new Error(
-        'Invalid job data for campaign expiry - cardId is required'
-      );
+  /**
+   * Initialize required services
+   */
+  private async initializeServices(): Promise<void> {
+    if (!this.prisma) {
+      this.prisma = await createPrismaClient();
     }
-  } catch (error) {
-    logger.err(
-      `[V201] Error processing campaign expiry job: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    throw error; // Re-throw to mark job as failed
   }
-};
 
-// Define the processor function for V201 engagement data collection
-const processEngagementDataCollectionJob = async (
-  job: Job<
-    TaskSchedulerJobType<CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION>
-  >
-) => {
-  try {
-    logger.info(
-      `[V201] Processing engagement data collection job: ${JSON.stringify(
-        job.data
-      )}`
-    );
+  /**
+   * Private method for processing campaign close jobs
+   */
+  private async processCloseCampaignJob(
+    job: Job<
+      TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION>
+    >
+  ): Promise<void> {
     const jobData = job.data.data;
-
-    if (jobData?.cardId && jobData?.userId) {
-      // Use V201EngagementDataCollectionService to process the job
-      const engagementService = new V201EngagementDataCollectionService();
-      await engagementService.processEngagementDataCollection({
-        userId: jobData.userId,
-        cardId: jobData.cardId,
-        type: jobData.type,
-        createdAt: jobData.createdAt,
-        expiryAt: new Date(), // Not used in this payload type
-        collectionAttempts: jobData.collectionAttempts,
-        maxAttempts: jobData.maxAttempts,
-      });
-
-      logger.info(
-        `[V201] Engagement data collection completed for campaign ${jobData.cardId}`
-      );
-    } else {
-      throw new Error(
-        'Invalid job data for engagement data collection - cardId and userId are required'
-      );
-    }
-  } catch (error) {
-    logger.err(
-      `[V201] Error processing engagement data collection job: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    throw error; // Re-throw to mark job as failed
+    if (!jobData?.cardId) throw new Error('cardId required');
+    await this.initializeServices();
+    if (!this.prisma) throw new Error('Prisma client not initialized');
+    const campaign = await this.prisma.campaign_twittercard.findUnique({
+      where: { id: Number(jobData.cardId) },
+    });
+    if (!campaign) throw new Error(`Campaign card ${jobData.cardId} not found`);
+    const v201ClosingService = new CampaignClosingService();
+    const result = await v201ClosingService.closeCampaign(campaign);
+    if (!result.success)
+      throw new Error(result.message || 'Campaign closing failed');
   }
-};
 
-// Register worker for campaign close, expiry, and engagement data collection operations
-const registerScheduleJobWorkers = async () => {
-  await WorkerManager.initializeWorker(
-    CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
-    processCloseCampaignJob
-  );
+  /**
+   * Private method for processing campaign expiry jobs
+   */
+  private async processExpiryCampaignJob(
+    job: Job<
+      TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
+    >
+  ): Promise<void> {
+    const jobData = job.data.data;
+    if (!jobData?.cardId) throw new Error('cardId required');
+    await this.initializeServices();
+    if (!this.prisma) throw new Error('Prisma client not initialized');
+    const campaign = await this.prisma.campaign_twittercard.findUnique({
+      where: { id: Number(jobData.cardId) },
+    });
+    if (!campaign) throw new Error(`Campaign card ${jobData.cardId} not found`);
+    const v201ExpiryService = new V201CampaignExpiryService();
+    const result = await v201ExpiryService.expireCampaign(campaign);
+    if (!result.success)
+      throw new Error(result.message || 'Campaign expiry failed');
+  }
 
-  await WorkerManager.initializeWorker(
-    CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
-    processExpiryCampaignJob
-  );
+  private async processLikeAndRetweetCollectionJob(
+    job: Job<
+      TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY>
+    >
+  ): Promise<void> {
+    const jobData = job.data.data;
+    if (!jobData?.campaignId) throw new Error('campaignId required');
+    await processQuoteAndReplyCollection(job.data);
+  }
 
-  await WorkerManager.initializeWorker(
-    CampaignScheduledEvents.V201_ENGAGEMENT_DATA_COLLECTION,
-    processEngagementDataCollectionJob
-  );
+  /**
+   * Register all job workers
+   */
+  async registerScheduleJobWorkers(): Promise<void> {
+    await WorkerManager.initializeWorker(
+      CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+      async (job) => {
+        try {
+          await this.processCloseCampaignJob(job);
+        } catch (error) {
+          logger.err(
+            `[V201] CAMPAIGN_CLOSE_OPERATION failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+          throw error;
+        }
+      }
+    );
 
-  logger.info(
-    '[V201] Campaign closing, expiry, and engagement data collection workers registered with V201 services (node-schedule free!)'
-  );
-};
+    await WorkerManager.initializeWorker(
+      CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+      async (job) => {
+        try {
+          await this.processExpiryCampaignJob(job);
+        } catch (error) {
+          logger.err(
+            `[V201] CAMPAIGN_EXPIRATION_OPERATION failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+          throw error;
+        }
+      }
+    );
 
-registerScheduleJobWorkers();
+    await WorkerManager.initializeWorker(
+      CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,
+      async (job) => {
+        try {
+          await this.processLikeAndRetweetCollectionJob(job);
+        } catch (error) {
+          logger.err(
+            `[V201] CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+          throw error;
+        }
+      }
+    );
+    logger.info('[V201] Campaign workers registered');
+  }
+}
+
+// Create instance and register workers
+const v201JobHandler = new V201SchedulesJobHandler();
+v201JobHandler.registerScheduleJobWorkers();
+
+export default v201JobHandler;

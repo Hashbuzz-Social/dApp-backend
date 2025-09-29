@@ -1,6 +1,5 @@
 import { PrismaClient, Prisma, campaignstatus } from '@prisma/client';
-
-
+import logger from 'src/config/logger';
 
 class CampaignTwitterCardModel {
   private prisma: PrismaClient;
@@ -40,7 +39,10 @@ class CampaignTwitterCardModel {
     }
   }
 
-  async updateCampaign(id: bigint, data: Prisma.campaign_twittercardUpdateInput) {
+  async updateCampaign(
+    id: bigint,
+    data: Prisma.campaign_twittercardUpdateInput
+  ) {
     try {
       return await this.prisma.campaign_twittercard.update({
         where: { id },
@@ -111,7 +113,13 @@ class CampaignTwitterCardModel {
     }
   }
 
-  async getCampaignsWithUserData(cardId: number | bigint) {
+  async getCampaignsWithUserData(
+    cardId: number | bigint
+  ): Promise<Prisma.campaign_twittercardGetPayload<{
+    include: {
+      user_user: true;
+    };
+  }> | null> {
     try {
       return await this.prisma.campaign_twittercard.findUnique({
         where: {
@@ -122,12 +130,12 @@ class CampaignTwitterCardModel {
         },
       });
     } catch (error) {
-      console.error('Error fetching campaigns with user data:', error);
+      logger.err('Error fetching campaigns with user data:' + error);
       throw new Error('Could not fetch campaigns with user data.');
     }
   }
 
-  async getCampaignsWithOwnerData(cardId: bigint|number) {
+  async getCampaignsWithOwnerData(cardId: bigint | number) {
     try {
       return await this.prisma.campaign_twittercard.findUnique({
         where: { id: cardId },

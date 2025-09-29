@@ -11,6 +11,7 @@ import { safeStringifyData } from './Modules/common';
 import { consumeFromQueue } from './redisQueue';
 import { EnhancedEventSystem } from './enhancedEventSystem';
 import JSONBigInt from 'json-bigint';
+import { processLikeAndRetweetCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -63,6 +64,19 @@ const processEvent = async (
           break;
         }
 
+        // handle events related to campaign close
+
+        case CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET: {
+          const collectEngagementPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET];
+          Logger.info(
+            `Collecting engagement like and retweet for campaign ID: ${collectEngagementPayload.campaignId}`
+          );
+          // Call the function to collect engagement like and retweet
+          await processLikeAndRetweetCollection(collectEngagementPayload);
+          break;
+        }
+
         case CampaignEvents.CAMPAIGN_DRAFT_SUCCESS: {
           const draftPayload =
             payload as EventPayloadMap[CampaignEvents.CAMPAIGN_DRAFT_SUCCESS];
@@ -74,7 +88,6 @@ const processEvent = async (
           );
           break;
         }
-
 
         // User Balance updates
         case BalanceEvents.CAMPAIGNER_FUNGIBLE_BALANCE_UPDATE: {
@@ -217,7 +230,11 @@ setInterval(() => {
       }
       */
     } catch (error) {
-      Logger.err(`Error getting event stats: ${error instanceof Error ? error.message : String(error)}`);
+      Logger.err(
+        `Error getting event stats: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   })();
 }, 30000); // Every 30 seconds
