@@ -1,1 +1,1 @@
-export * from './xEngamentCollectionHelpers';
+export * from './XEngagementCollectionHelpers';
