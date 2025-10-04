@@ -12,6 +12,7 @@ import { consumeFromQueue } from './redisQueue';
 import { EnhancedEventSystem } from './enhancedEventSystem';
 import JSONBigInt from 'json-bigint';
 import { processLikeAndRetweetCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
+import { onCloseReCalculateRewardsRates } from './Modules/campaigns/services/campaignClose/OnCloseReCalculateRewardRates';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -74,6 +75,17 @@ const processEvent = async (
           );
           // Call the function to collect engagement like and retweet
           await processLikeAndRetweetCollection(collectEngagementPayload);
+          break;
+        }
+
+        case CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES: {
+          const recalculateRewardsRatesPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES];
+          Logger.info(
+            `Recalculating rewards rates for campaign ID: ${recalculateRewardsRatesPayload.campaignId}`
+          );
+          // Call the function to recalculate rewards rates
+          await onCloseReCalculateRewardsRates(recalculateRewardsRatesPayload);
           break;
         }
 

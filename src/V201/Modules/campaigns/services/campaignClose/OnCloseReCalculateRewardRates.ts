@@ -1,34 +1,102 @@
-import { Campaign, Engagement } from '../../models';
-import { updateCampaignRewardRates } from '../../repositories/campaignRepository';
+import createPrismaClient from '@shared/prisma';
+import { CampaignEvents } from '@V201/events/campaign';
+import CampaignTweetEngagementsModel from '@V201/Modals/CampaignTweetEngagements';
+import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
+import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
+import { CampaignTypes, EventPayloadMap } from '@V201/types';
+import {
+  calculateMaxActivityReward,
+  getRewardsValues,
+} from '../draftingCampaign';
+import { publishEvent } from 'src/V201/eventPublisher';
 
 /**
- * @fileoverview This service handles the recalculation of reward rates for a campaign when it is closed.
- * It is triggered by the CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES event.
- * The service fetches the latest engagement metrics and recalculates the reward rates accordingly.
- * Finally, it updates the campaign record in the database with the new reward rates.
+ * Recalculates and updates reward rates for a campaign when it is closed.
+ * Uses latest engagement metrics to distribute rewards among unique engagers.
  */
-
-/**
- * Recalculates reward rates for a campaign based on the number of engagers.
- * @param campaignId - The ID of the campaign to recalculate rewards for.
- */
-export async function recalculateRewardRatesOnClose(
-  campaignId: string
+export async function onCloseReCalculateRewardsRates(
+  params: EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES]
 ): Promise<void> {
+  const { campaignId } = params;
+  if (!campaignId) throw new Error('Invalid campaign ID');
+
+  const prismaClient = await createPrismaClient();
+  const campaignModal = new CampaignTwitterCardModel(prismaClient);
+
   // Fetch campaign and its engagements
-  const campaign = await Campaign.findById(campaignId);
+  const campaign = await campaignModal.getCampaignsWithUserData(campaignId);
   if (!campaign) throw new Error('Campaign not found');
 
-  const engagements: Engagement[] = await Engagement.find({ campaignId });
+  const engagementsModal = new CampaignTweetEngagementsModel(prismaClient);
+  const engagements = await engagementsModal.getEngagementsByCampaign(
+    campaignId as bigint,
+    {
+      payment_status: 'UNPAID',
+    }
+  );
 
   // Calculate number of unique engagers
-  const uniqueEngagers = new Set(engagements.map((e) => e.userId));
+  const uniqueEngagers = new Set(engagements.map((e) => e.user_id));
   const engagerCount = uniqueEngagers.size;
 
-  // Example logic: Distribute totalRewardPool equally among engagers
-  const totalRewardPool = campaign.totalRewardPool || 0;
-  const rewardRate = engagerCount > 0 ? totalRewardPool / engagerCount : 0;
+  // Calculate reward rate based on unique engagers and campaign budget
+  const rewardRate = calculateMaxActivityReward(
+    engagerCount,
+    Number(campaign.campaign_budget)
+  );
 
-  // Update campaign with new reward rate
-  await updateCampaignRewardRates(campaignId, rewardRate);
+  let tokenData;
+  if (campaign.fungible_token_id) {
+    tokenData = await new WhiteListedTokensModel(
+      prismaClient
+    ).getTokenDataByAddress(campaign.fungible_token_id.toString());
+  }
+
+  if (!campaign.type) {
+    throw new Error('Campaign type is missing or invalid');
+  }
+  const campaignType = campaign.type as CampaignTypes;
+
+  // Calculate individual reward values for each engagement type
+  const rewardValues = await Promise.all([
+    getRewardsValues(
+      rewardRate,
+      campaignType,
+      campaign.fungible_token_id ?? undefined,
+      tokenData?.decimals?.toNumber()
+    ), // comment_reward
+    getRewardsValues(
+      rewardRate,
+      campaignType,
+      campaign.fungible_token_id ?? undefined,
+      tokenData?.decimals?.toNumber()
+    ), // retweet_reward
+    getRewardsValues(
+      rewardRate,
+      campaignType,
+      campaign.fungible_token_id ?? undefined,
+      tokenData?.decimals?.toNumber()
+    ), // like_reward
+    getRewardsValues(
+      rewardRate,
+      campaignType,
+      campaign.fungible_token_id ?? undefined,
+      tokenData?.decimals?.toNumber()
+    ), // quote_reward
+  ]);
+
+  const [comment_reward, retweet_reward, like_reward, quote_reward] =
+    rewardValues;
+
+  // Update campaign with recalculated reward rates
+  await campaignModal.updateCampaign(campaignId as bigint, {
+    comment_reward,
+    retweet_reward,
+    like_reward,
+    quote_reward,
+  });
+
+  publishEvent(CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS, {
+    campaignId,
+  });
 }

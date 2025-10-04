@@ -34,6 +34,11 @@ export type EventPayloadMap = {
   [CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES]: {
     campaignId: number | bigint;
   };
+
+  [CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS]: {
+    campaignId: number | bigint;
+  };
+
   [CampaignEvents.CAMPAIGN_CLOSING_ERROR]: CampaignClosingErrorPayload;
 
   [BalanceEvents.CAMPAIGNER_HABR_BALANCE_UPDATE]: CampaignerHbarBalUpdatePayload;
