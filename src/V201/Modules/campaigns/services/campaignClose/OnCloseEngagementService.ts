@@ -72,6 +72,7 @@ export const processLikeAndRetweetCollection = async (
       throw new Error('User does not have valid Twitter tokens');
     }
 
+
     const { likes, retweets } = await collectLikesAndRetweets(
       campaignWithUser.tweet_id,
       {
@@ -85,7 +86,7 @@ export const processLikeAndRetweetCollection = async (
 
     // Save likes in parallel
     const likeEngagements = likes.map((like) => ({
-      user_id: like.username,
+      user_id: like.id,
       tweet_id: BigInt(campaignWithUser.id),
       engagement_type: 'like',
       engagement_timestamp: new Date(),

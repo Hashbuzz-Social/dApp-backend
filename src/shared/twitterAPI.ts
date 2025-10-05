@@ -366,7 +366,7 @@ export async function getAllUsersWhoLikedOnTweetId(
 
     const users: UserV2[] = [];
     const usersRequest = await twitterClient.readOnly.v2.tweetLikedBy(tweetId, {
-      'user.fields': ['username'],
+      'user.fields': ['username', 'id', 'name'],
       asPaginator: true,
     });
 
@@ -407,7 +407,7 @@ export async function getAllRetweetOfTweetId(
   );
   const users: UserV2[] = [];
   const retweets = await twitterClient.readOnly.v2.tweetRetweetedBy(tweetId, {
-    'user.fields': ['username'],
+    'user.fields': ['username', 'id', 'name'],
     asPaginator: true,
   });
   for await (const user of retweets) {
