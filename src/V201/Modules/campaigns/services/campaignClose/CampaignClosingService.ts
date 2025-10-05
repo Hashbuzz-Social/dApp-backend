@@ -8,7 +8,6 @@ import { closeFungibleAndNFTCampaign } from '@services/contract-service';
 import { closeCampaignSMTransaction } from '@services/transaction-service';
 import createPrismaClient from '@shared/prisma';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
-import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
 import { CampaignEvents } from '../../../../AppEvents';
@@ -172,11 +171,7 @@ export class CampaignClosingService {
       }
 
       if (campaign.contract_id) {
-        await updateCampaignInMemoryStatus(
-          campaign.contract_id,
-          `${type.toLowerCase()}SMTransaction`,
-          true
-        );
+        // Note: In-memory status update removed as requested
       }
 
       // Log successful smart contract closing
@@ -283,29 +278,7 @@ export class CampaignClosingService {
 
       // Update in-memory status if contract ID exists
       if (campaign.contract_id) {
-        await updateCampaignInMemoryStatus(
-          campaign.contract_id,
-          'closingError',
-          true
-        );
-
-        // Log memory status update
-        await this.campaignLogger.saveLog({
-          campaignId: campaign.id,
-          status: 'MEMORY_STATUS_UPDATED',
-          message: `In-memory status updated for contract ${campaign.contract_id}`,
-          level: CampaignLogLevel.INFO,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          data: {
-            level: CampaignLogLevel.INFO,
-            eventType: CampaignLogEventType.SYSTEM_EVENT,
-            metadata: {
-              contractId: campaign.contract_id,
-              statusKey: 'closingError',
-              statusValue: true,
-            },
-          },
-        });
+        // Note: In-memory status update removed as requested
       }
     } catch (error) {
       const nestedErrorMsg =
@@ -380,32 +353,7 @@ export class CampaignClosingService {
         },
       });
 
-      // Update in-memory status if contract ID exists
-      if (campaign.contract_id) {
-        await updateCampaignInMemoryStatus(
-          campaign.contract_id,
-          'closedAwaitingData',
-          true
-        );
-
-        // Log memory status update
-        await this.campaignLogger.saveLog({
-          campaignId: campaign.id,
-          status: 'MEMORY_STATUS_UPDATED',
-          message: `In-memory status updated for contract ${campaign.contract_id}`,
-          level: CampaignLogLevel.INFO,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          data: {
-            level: CampaignLogLevel.INFO,
-            eventType: CampaignLogEventType.SYSTEM_EVENT,
-            metadata: {
-              contractId: campaign.contract_id,
-              statusKey: 'closedAwaitingData',
-              statusValue: true,
-            },
-          },
-        });
-      }
+      // Note: In-memory status update removed as requested
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
 

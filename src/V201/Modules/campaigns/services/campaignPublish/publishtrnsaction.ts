@@ -17,10 +17,7 @@ import {
   updateFungibleBalanceOfCard,
   updateHabrBalanceOfCard,
 } from '@V201/modules/Balance';
-import {
-  safeParsedData,
-  updateCampaignInMemoryStatus,
-} from '@V201/modules/common';
+import { safeParsedData } from '@V201/modules/common';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../../eventPublisher';
@@ -83,11 +80,7 @@ const handleSmartContractTransaction = async (
       campaign: { connect: { id: card.id } },
     });
 
-    updateCampaignInMemoryStatus(
-      card.contract_id || '',
-      'transactionLogsCreated',
-      true
-    );
+    // Note: In-memory status update removed as requested
   } catch (error) {
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },

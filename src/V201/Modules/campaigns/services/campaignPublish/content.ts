@@ -5,7 +5,6 @@ import { addMinutesToTime } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
 import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
-import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import { publishEvent } from '../../../../eventPublisher';
 import SchedulerQueue from '../../../../schedulerQueue';
@@ -36,11 +35,7 @@ export const publshCampaignContentHandler = async ({
     freshCardOwner
   );
   if (freshCard.contract_id) {
-    await updateCampaignInMemoryStatus(
-      freshCard.contract_id,
-      'firstTweetOut',
-      true
-    );
+    // Note: In-memory status update removed as requested
   }
   const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
     freshCard.id,
@@ -92,11 +87,7 @@ export const publishCampaignSecondContent = async ({
 
   // update campaign status
   if (freshCard.contract_id) {
-    await updateCampaignInMemoryStatus(
-      freshCard.contract_id,
-      'secondTweetOut',
-      true
-    );
+    // Note: In-memory status update removed as requested
   }
 
   const campaignCloseTime = addMinutesToTime(

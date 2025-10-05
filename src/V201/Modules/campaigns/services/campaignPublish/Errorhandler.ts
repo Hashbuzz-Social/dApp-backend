@@ -5,7 +5,6 @@ import logger from 'jet-logger';
 import createPrismaClient from '@shared/prisma';
 import { campaignstatus } from '@prisma/client';
 import CampaignLogsModel from '@V201/Modals/CampaignLogs';
-import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 
 // handler error for the campaign publish
 export const publshCampaignErrorHandler = async ({
@@ -96,10 +95,6 @@ export const publshCampaignErrorHandler = async ({
       `Campaign ${campaign.id} marked as failed. User notification and refund required.`
     );
 
-    // Update in-memory status cache
-    updateCampaignInMemoryStatus(
-      campaign.id.toString(),
-      campaignstatus.InternalError
-    );
+    // Note: In-memory status update removed as requested
   }
 };
