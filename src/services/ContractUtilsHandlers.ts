@@ -10,6 +10,47 @@ const transactionMemo = {
     "addCampaigner": "ħbuzz_UV201_2",
 }
 
+// Smart contract error codes mapping
+const SMART_CONTRACT_ERRORS = {
+    "E001": "Invalid token address",
+    "E002": "Invalid campaign address",
+    "E003": "Campaigner not allowed",
+    "E004": "Campaign not closed",
+    "E005": "Token not whitelisted",
+    "E006": "Campaign already exists",
+    "E007": "Current balance is non-zero",
+    "E008": "Insufficient balance",
+    "E009": "Non-zero balance",
+    "E010": "Invalid expiry time",
+    "E011": "Total amount must be greater than zero",
+    "E012": "Mismatched input arrays",
+    "E013": "Total reward exceeds campaign balance",
+    "E014": "Campaign already closed",
+    "E015": "Token is not fungible",
+    "E016": "Invalid token type",
+    "E017": "Campaign expiry time not passed"
+};
+
+// Helper function to extract error code from contract error message
+function extractErrorCode(errorMessage: string): string | null {
+    // Look for error codes E001-E017 in the error message
+    const errorCodeMatch = errorMessage.match(/E0(0[1-9]|1[0-7])/);
+    return errorCodeMatch ? errorCodeMatch[0] : null;
+}
+
+// Enhanced error class for contract errors
+class ContractError extends Error {
+    public errorCode?: string;
+    public humanReadableMessage?: string;
+
+    constructor(message: string, errorCode?: string) {
+        super(message);
+        this.name = 'ContractError';
+        this.errorCode = errorCode;
+        this.humanReadableMessage = errorCode ? SMART_CONTRACT_ERRORS[errorCode as keyof typeof SMART_CONTRACT_ERRORS] : undefined;
+    }
+}
+
 class ContractUtils {
     private hederaContract: HederaContract;
 
@@ -22,11 +63,24 @@ class ContractUtils {
         const params = new ContractFunctionParameters()
             .addAddress(AccountId.fromString(tokenAddress).toSolidityAddress());
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("isTokenWhitelisted", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'isTokenWhitelisted',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded[0];
+        return Boolean(dataDecoded[0]);
     }
 
     // Method to associate a token
@@ -46,7 +100,20 @@ class ContractUtils {
     async getAllWhitelistedTokens(): Promise<string[]> {
         const params = new ContractFunctionParameters();
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getAllWhitelistedTokens", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'getAllWhitelistedTokens',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
@@ -69,45 +136,98 @@ class ContractUtils {
             .addAddress(AccountId.fromString(campaigner).toSolidityAddress())
             .addAddress(AccountId.fromString(tokenId).toSolidityAddress());
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleTokenBalance", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'getFungibleTokenBalance',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded[0];
+        return Number(dataDecoded[0]);
     }
 
     // Method to get HBAR balance
     async getHbarBalance(campaigner: string): Promise<number> {
         const params = new ContractFunctionParameters().addAddress(AccountId.fromString(campaigner).toSolidityAddress());
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getHbarBalance", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'getHbarBalance',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded[0];
+        return Number(dataDecoded[0]);
     }
 
     // Method to get campaign balance
     async getCampaignBalance(campaignAddress: string): Promise<number> {
         const params = new ContractFunctionParameters().addString(campaignAddress);
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getCampaignBalance", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'getCampaignBalance',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded[0];
+        return Number(dataDecoded[0]);
     }
     // Method to get fungible token campaign balance
     async getFungibleCampaignBalance(campaignAddress: string, tokenId: string): Promise<number> {
         const params = new ContractFunctionParameters().addString(campaignAddress).addAddress(AccountId.fromString(tokenId).toSolidityAddress());
 
-        const { dataDecoded } = await this.hederaContract.callContractReadOnly("getFungibleCampaignBalance", params);
+        const response = await this.hederaContract.callContractReadOnly(
+          'getFungibleCampaignBalance',
+          params
+        );
+
+        if ('error' in response) {
+          const errorCode = extractErrorCode(response.errorMessage);
+          throw new ContractError(
+            `Contract call failed: ${response.errorMessage}`,
+            errorCode || undefined
+          );
+        }
+
+        const { dataDecoded } = response;
         if (!dataDecoded) {
             throw new Error("dataDecoded is null");
         }
-        return dataDecoded[0];
+        return Number(dataDecoded[0]);
     }
 }
 
 export const utilsHandlerService = new ContractUtils();
+export { ContractError };
 export default ContractUtils;

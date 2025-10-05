@@ -5,12 +5,17 @@ import {
   handleReimbursement,
   handleTopUp,
 } from "@controller/Transactions";
-import { checkErrResponse, checkWalletFormat, validateEntityObject, validateTransactionIdString } from "@validator/userRoutes.validator";
-import { Router } from "express";
-import { body } from "express-validator";
+import asyncHandler from '@shared/asyncHandler';
+import {
+  checkErrResponse,
+  checkWalletFormat,
+  validateEntityObject,
+  validateTransactionIdString,
+} from '@validator/userRoutes.validator';
+import { Router } from 'express';
+import { body } from 'express-validator';
 
 const router = Router();
-
 
 /**
  * Create a top-up transaction.
@@ -27,10 +32,10 @@ const router = Router();
  * @handler handleCrateToupReq
  */
 router.post(
-  "/create-topup-transaction",
-  body("entity").custom(validateEntityObject),
+  '/create-topup-transaction',
+  body('entity').custom(validateEntityObject),
   checkErrResponse,
-  handleCrateToupReq
+  asyncHandler(handleCrateToupReq)
 );
 
 /**
@@ -46,7 +51,13 @@ router.post(
  * @validator checkErrResponse
  * @handler handleTopUp
  */
-router.post("/top-up", body("entity").custom(validateEntityObject), body("transactionId").custom(validateTransactionIdString), checkErrResponse, handleTopUp);
+router.post(
+  '/top-up',
+  body('entity').custom(validateEntityObject),
+  body('transactionId').custom(validateTransactionIdString),
+  checkErrResponse,
+  asyncHandler(handleTopUp)
+);
 
 /**
  * Add a campaigner.
@@ -68,7 +79,12 @@ router.post("/top-up", body("entity").custom(validateEntityObject), body("transa
  * @validator checkErrResponse
  * @handler handleGetActiveContract
  */
-router.post("/activeContractId", body("accountId").custom(checkWalletFormat), checkErrResponse, handleGetActiveContract);
+router.post(
+  '/activeContractId',
+  body('accountId').custom(checkWalletFormat),
+  checkErrResponse,
+  asyncHandler(handleGetActiveContract)
+);
 
 /**
  * Add funds to a campaign.
@@ -79,7 +95,12 @@ router.post("/activeContractId", body("accountId").custom(checkWalletFormat), ch
  * @validator checkErrResponse
  * @handler handleCampaignFundAllocation
  */
-router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, handleCampaignFundAllocation);
+router.post(
+  '/add-campaign',
+  body('campaignId').isNumeric(),
+  checkErrResponse,
+  asyncHandler(handleCampaignFundAllocation)
+);
 
 /**
  * Perform a reimbursement.
@@ -90,6 +111,11 @@ router.post("/add-campaign", body("campaignId").isNumeric(), checkErrResponse, h
  * @validator checkErrResponse
  * @handler handleReimbursement
  */
-router.post("/reimbursement", body("amount").isNumeric(), checkErrResponse, handleReimbursement);
+router.post(
+  '/reimbursement',
+  body('amount').isNumeric(),
+  checkErrResponse,
+  asyncHandler(handleReimbursement)
+);
 
 export default router;

@@ -369,6 +369,7 @@ export class TwitterCardService {
 
       return result.data.id;
     } catch (error) {
+      console.log('Error publishing tweet:', error);
       logger.err(
         `Twitter API Error: ${JSON.stringify({
           code: (error as TwitterApiError).code,

@@ -11,6 +11,7 @@ import TwitterApi, {
 import { decrypt } from './encryption';
 import createPrismaClient from './prisma';
 import { user_user } from '@prisma/client';
+import { AppConfig } from 'src/@types/AppConfig';
 
 // Twitter API settings
 TwitterApiV2Settings.debug = true;
@@ -161,32 +162,113 @@ function validateTimestampFilter(filter?: TimestampFilter): void {
 }
 
 /**
+ * Check if a token appears to be encrypted
+ * @param token - Token to check
+ * @returns true if token appears encrypted
+ */
+function isTokenEncrypted(token: string): boolean {
+  // OAuth tokens typically start with specific patterns and have specific lengths
+  // Personal access tokens usually start with alphanumeric and are longer
+  // Encrypted tokens would be base64 or hex encoded and look different
+
+  // Basic heuristic: OAuth access tokens are typically 50+ chars and alphanumeric with dashes/underscores
+  // If it looks like base64 or has encryption-like patterns, consider it encrypted
+  if (!token) return false;
+
+  // OAuth 1.0a tokens are typically alphanumeric with dashes and underscores
+  const oauthPattern = /^[a-zA-Z0-9_-]+$/;
+
+  // If it matches OAuth pattern and is reasonable length, likely not encrypted
+  if (oauthPattern.test(token) && token.length >= 20 && token.length <= 100) {
+    return false;
+  }
+
+  // If it has encryption-like characteristics (base64, hex, etc.), consider encrypted
+  return true;
+}
+
+/**
  * Create a Twitter client with tokens and configuration.
  * @param accessToken - Access token
  * @param accessSecret - Access secret
  * @param configs - App configuration
+ * @param isAlreadyDecrypted - Whether tokens are already decrypted
  * @returns TwitterApi instance
  */
 function createTwitterClientWithTokens(
   accessToken: string,
   accessSecret: string,
-  configs: any
+  configs: AppConfig,
+  isAlreadyDecrypted = false
 ): TwitterApi {
-  const decryptedAccessToken = decrypt(
-    accessToken,
-    configs.encryptions.encryptionKey as string
-  );
-  const decryptedAccessSecret = decrypt(
-    accessSecret,
-    configs.encryptions.encryptionKey as string
-  );
+  try {
+    // Validate input parameters
+    if (!accessToken || !accessSecret) {
+      throw new Error('Access token and secret are required');
+    }
 
-  return new TwitterApi({
-    appKey: configs.xApp.xAppAPIKey,
-    appSecret: configs.xApp.xAppAPISecret,
-    accessToken: decryptedAccessToken,
-    accessSecret: decryptedAccessSecret,
-  });
+    if (!configs?.encryptions?.encryptionKey && !isAlreadyDecrypted) {
+      throw new Error('Encryption key not found in configuration');
+    }
+
+    let decryptedAccessToken: string;
+    let decryptedAccessSecret: string;
+
+    if (isAlreadyDecrypted) {
+      decryptedAccessToken = accessToken;
+      decryptedAccessSecret = accessSecret;
+    } else {
+      try {
+        decryptedAccessToken = decrypt(
+          accessToken,
+          configs.encryptions.encryptionKey
+        );
+        decryptedAccessSecret = decrypt(
+          accessSecret,
+          configs.encryptions.encryptionKey
+        );
+      } catch (decryptError) {
+        logger.err('Decryption failed: ' + (decryptError as Error).message);
+        throw new Error(
+          `Token decryption failed: ${(decryptError as Error).message}`
+        );
+      }
+    }
+
+    // Validate decrypted tokens
+    if (!decryptedAccessToken || !decryptedAccessSecret) {
+      throw new Error('Decrypted tokens are empty');
+    }
+
+    // Validate token format - basic check for OAuth 1.0a tokens
+    if (decryptedAccessToken.length < 10 || decryptedAccessSecret.length < 10) {
+      throw new Error('Tokens appear to be invalid or malformed');
+    }
+
+    try {
+      return new TwitterApi({
+        appKey: configs.xApp.xAPIKey,
+        appSecret: configs.xApp.xAPISecret,
+        accessToken: decryptedAccessToken,
+        accessSecret: decryptedAccessSecret,
+      });
+    } catch (twitterApiError) {
+      logger.err(
+        'Failed to create TwitterApi instance: ' +
+          (twitterApiError as Error).message
+      );
+      throw new Error(
+        `TwitterApi initialization failed: ${
+          (twitterApiError as Error).message
+        }`
+      );
+    }
+  } catch (error) {
+    logger.err(
+      'Error creating Twitter client with tokens: ' + (error as Error).message
+    );
+    throw new TwitterTokenError('Failed to create Twitter client', 'personal');
+  }
 }
 
 /**
@@ -631,8 +713,52 @@ export async function tweeterApiForUser({
   accessToken: string;
   accessSecret: string;
 }): Promise<TwitterApi> {
-  const configs = await getConfig();
-  return createTwitterClientWithTokens(accessToken, accessSecret, configs);
+  try {
+    // Validate input parameters
+    if (!accessToken || !accessSecret) {
+      throw new TwitterTokenError(
+        'Access token and secret are required',
+        'personal'
+      );
+    }
+
+    const configs = await getConfig();
+
+    // Detect if tokens are encrypted and handle accordingly
+    const tokensAreEncrypted =
+      isTokenEncrypted(accessToken) || isTokenEncrypted(accessSecret);
+
+    try {
+      return createTwitterClientWithTokens(
+        accessToken,
+        accessSecret,
+        configs,
+        !tokensAreEncrypted
+      );
+    } catch (error) {
+      // If our detection was wrong, try the opposite approach
+      logger.warn(
+        `Token detection may have been incorrect, trying alternative approach. Error: ${
+          (error as Error).message
+        }`
+      );
+      return createTwitterClientWithTokens(
+        accessToken,
+        accessSecret,
+        configs,
+        tokensAreEncrypted
+      );
+    }
+  } catch (error) {
+    if (error instanceof TwitterAPIError) {
+      throw error;
+    }
+    logger.err('Error in tweeterApiForUser: ' + (error as Error).message);
+    throw new TwitterTokenError(
+      'Failed to create Twitter client for user',
+      'personal'
+    );
+  }
 }
 
 /**
@@ -698,6 +824,7 @@ export default {
   filterByTimestamp,
   normalizeTimestamp,
   createTwitterClientWithTokens,
+  isTokenEncrypted,
 
   // Error classes for proper error handling
   TwitterAPIError,

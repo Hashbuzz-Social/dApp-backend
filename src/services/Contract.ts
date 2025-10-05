@@ -1,3 +1,4 @@
+import { getConfig } from '@appConfig';
 import {
   AccountBalanceQuery,
   AccountId,
@@ -9,16 +10,16 @@ import {
   ContractId,
   ReceiptStatusError,
 } from '@hashgraph/sdk';
-import { eventList } from '../contractsV201';
-import { Interface, ethers } from 'ethers';
-import intiHederaService, { HederaClientConfig } from './hedera-service';
-import createPrismaClient from '@shared/prisma';
 import { network } from '@prisma/client';
-import { getConfig } from '@appConfig';
+import createPrismaClient from '@shared/prisma';
+import { Interface, ethers } from 'ethers';
+import logger from 'src/config/logger';
+import { eventList } from '../contractsV201';
+import intiHederaService, { HederaClientConfig } from './hedera-service';
 import MailerService from './mailer/mailerService';
 
 class HederaContract {
-  public contract_id: string | undefined;
+  public contract_id?: string;
   private abi: Interface;
 
   constructor(abi: ethers.InterfaceAbi, contract_id?: string) {
@@ -32,44 +33,46 @@ class HederaContract {
 
   private async initializeContract() {
     const contract = await this.provideActiveContract();
-    if (contract && contract.contract_id) {
+    if (contract?.contract_id) {
       this.contract_id = contract.contract_id;
     } else {
-      console.error('Failed to initialize contract: Invalid contract ID');
+      logger.err('Failed to initialize contract: Invalid contract ID');
     }
   }
 
-// Deploy method for deploying contracts with bytecode and constructor args
-async deploy(bytecode: string): Promise<ContractId | null> {
+  async deploy(bytecode: string): Promise<ContractId | null> {
     try {
-        const hederaService = await intiHederaService();
-        if (!(await this.isClientBalanceSufficient(hederaService))) {
-            throw new Error(
-                'Insufficient balance for transaction. Please top up your account.'
-            );
-        }
-        const createContract = new ContractCreateFlow()
-            .setGas(5000000)
-            .setBytecode(bytecode)
-            .setConstructorParameters(
-                new ContractFunctionParameters().addAddress(
-                    hederaService.operatorId.toSolidityAddress()
-                )
-            )
-            .setAdminKey(hederaService.operatorKey);
-
-        const createSubmit = await createContract.execute(
-            hederaService.hederaClient
+      const hederaService = await intiHederaService();
+      if (!(await this.isClientBalanceSufficient(hederaService))) {
+        throw new Error(
+          'Insufficient balance for transaction. Please top up your account.'
         );
-        const createRx = await createSubmit.getReceipt(hederaService.hederaClient);
-        const contractId = createRx.contractId;
-        console.log(' - The new contract ID is ' + contractId);
-        return contractId;
+      }
+
+      const createContract = new ContractCreateFlow()
+        .setGas(5_000_000)
+        .setBytecode(bytecode)
+        .setConstructorParameters(
+          new ContractFunctionParameters().addAddress(
+            hederaService.operatorId.toSolidityAddress()
+          )
+        )
+        .setAdminKey(hederaService.operatorKey);
+
+      const createSubmit = await createContract.execute(
+        hederaService.hederaClient
+      );
+      const createRx = await createSubmit.getReceipt(
+        hederaService.hederaClient
+      );
+      const contractId = createRx.contractId;
+      logger.info(' - The new contract ID is ' + contractId);
+      return contractId;
     } catch (error) {
-        console.error('Error deploying contract:', error);
-        return null;
+      logger.err('Error deploying contract:' + error);
+      return null;
     }
-}
+  }
 
   private async provideActiveContract() {
     try {
@@ -78,7 +81,6 @@ async deploy(bytecode: string): Promise<ContractId | null> {
       const availableContracts = await prisma.smartcontracts.findMany({
         where: {
           is_active: true,
-          //@ts-ignore
           network: appConfig.network.network ?? network.testnet,
         },
       });
@@ -87,73 +89,75 @@ async deploy(bytecode: string): Promise<ContractId | null> {
         const { contract_id, contractAddress, logicalContract_id } =
           availableContracts[0];
         return { contract_id, contractAddress, logicalContract_id };
-      } else {
-        console.info('No active contract found in records, Getting from env');
-        const contract_id_new = appConfig.network.contractAddress;
-        if (contract_id_new) {
-          const contractData = await prisma.smartcontracts.create({
-            data: {
-              contractAddress:
-                AccountId.fromString(contract_id_new).toSolidityAddress(),
-              contract_id: `${contract_id_new}`,
-              logicalContract_id: `${contract_id_new}`,
-              lcFileID: contract_id_new ?? '',
-              //@ts-ignore
-              network: appConfig.network.network,
-              is_active: true,
-              fileId: contract_id_new ?? '',
-              created_at: new Date().toISOString(),
-            },
-          });
-          return {
-            contract_id: contractData.contract_id,
-            contractAddress: contractData.contractAddress,
-            logicalContract_id: contractData.logicalContract_id,
-          };
-        }
+      }
+
+      logger.info('No active contract found in records, Getting from env');
+      const contract_id_new = appConfig.network.contractAddress;
+      if (contract_id_new) {
+        const contractData = await prisma.smartcontracts.create({
+          data: {
+            contractAddress:
+              AccountId.fromString(contract_id_new).toSolidityAddress(),
+            contract_id: `${contract_id_new}`,
+            logicalContract_id: `${contract_id_new}`,
+            lcFileID: contract_id_new ?? '',
+            network: appConfig.network.network,
+            is_active: true,
+            fileId: contract_id_new ?? '',
+            created_at: new Date().toISOString(),
+          },
+        });
+        return {
+          contract_id: contractData.contract_id,
+          contractAddress: contractData.contractAddress,
+          logicalContract_id: contractData.logicalContract_id,
+        };
       }
       return null;
     } catch (error) {
-      console.error('Error in provideActiveContract:', error);
+      logger.err('Error in provideActiveContract:' + error);
       return null;
     }
   }
 
-  // Contract Call Query Methods
   async callContractReadOnly(fnName: string, args: ContractFunctionParameters) {
     try {
-      if (!this.contract_id) {
-        throw new Error('Contract ID not found');
-      }
-
+      if (!this.contract_id) throw new Error('Contract ID not found');
       const hederaService = await intiHederaService();
       if (!(await this.isClientBalanceSufficient(hederaService))) {
         throw new Error(
           'Insufficient balance for transaction. Please top up your account.'
         );
       }
+
       const query = new ContractCallQuery()
         .setContractId(this.contract_id)
-        .setGas(30000) // Set an appropriate gas limit
+        .setGas(30_000)
         .setFunction(fnName, args);
 
       const response = await query.execute(hederaService.hederaClient);
       const resultAsBytes = response.asBytes();
 
+      // Decode result or error
+      const errorMessage = this.decodeErrorMessage(response);
+      if (errorMessage) {
+        logger.err(`Contract reverted: ${errorMessage}`);
+        return { error: true, errorMessage };
+      }
+
       const dataDecoded = this.decodeReturnData(fnName, response);
-      // const eventLogs = this.captureEventLogs(fnName, response);
-
       const data = { resultAsBytes, dataDecoded };
-
-      console.log(` - The Contract query result for **${fnName}** :: =>`, data);
-
+      logger.info(
+        ` - The Contract query result for **${fnName}** :: => ${JSON.stringify(
+          data
+        )}`
+      );
       return data;
     } catch (error) {
       if (error instanceof ReceiptStatusError) {
-        console.error('ReceiptStatusError:', error.message);
-        // Handle the specific error
+        logger.err('ReceiptStatusError:' + error.message);
       } else {
-        console.error('Unexpected error:', error.message);
+        logger.err('Unexpected error:' + error.message);
       }
       throw error;
     }
@@ -164,18 +168,17 @@ async deploy(bytecode: string): Promise<ContractId | null> {
     args: ContractFunctionParameters,
     memo = 'Hashbuzz contract transaction'
   ) {
-    if (!this.contract_id) {
-      throw new Error('Contract ID not found');
-    }
+    if (!this.contract_id) throw new Error('Contract ID not found');
     const hederaService = await intiHederaService();
     if (!(await this.isClientBalanceSufficient(hederaService))) {
       throw new Error(
         'Insufficient balance for transaction. Please top up your account.'
       );
     }
+
     const transaction = new ContractExecuteTransaction()
       .setContractId(this.contract_id)
-      .setGas(100000) // Set appropriate gas limit for state change
+      .setGas(100_000)
       .setFunction(functionName, args)
       .setTransactionMemo(memo);
 
@@ -186,18 +189,29 @@ async deploy(bytecode: string): Promise<ContractId | null> {
       const result = record.contractFunctionResult;
 
       if (result) {
+        // Try to decode error if reverted
+        const errorMessage = this.decodeErrorMessage(result);
+        if (errorMessage) {
+          logger.err(`Smart contract reverted: ${errorMessage}`);
+          return {
+            status: receipt.status,
+            error: true,
+            errorMessage,
+            transactionId: record.transactionId.toString(),
+          };
+        }
+
         const resultAsBytes = result.asBytes();
         const dataDecoded = this.decodeReturnData(functionName, result);
-        // const eventLogs = this.captureEventLogs(functionName, result);
-        const data = {
+        return {
           status: receipt.status,
           receipt,
           resultAsBytes,
           dataDecoded,
           transactionId: record.transactionId.toString(),
         };
-        return data;
       }
+
       return {
         status: receipt.status,
         transactionId: record.transactionId.toString(),
@@ -205,65 +219,69 @@ async deploy(bytecode: string): Promise<ContractId | null> {
       };
     } catch (error) {
       if (error instanceof ReceiptStatusError) {
-        console.error('ReceiptStatusError:', error.message);
-        // Handle the specific error
+        logger.err('ReceiptStatusError:' + error.message);
       } else {
-        console.error('Unexpected error:', error.message);
+        logger.err('Unexpected error:' + error.message);
       }
     }
   }
 
-  // Method to decode return data using ethers.js
-  // Method to decode return data using ethers.js ABI
   private decodeReturnData(methodName: string, result: ContractFunctionResult) {
     const method = this.abi.getFunction(methodName);
-    const data = result.asBytes();
     if (!method) {
-      console.error('Method not found in ABI');
+      logger.err('Method not found in ABI');
       return null;
     }
-    return this.abi.decodeFunctionResult(method, data);
+    try {
+      return this.abi.decodeFunctionResult(method, result.asBytes());
+    } catch (err) {
+      logger.err(`Failed to decode return data for ${methodName}:` + err);
+      return null;
+    }
   }
 
-  // Method to capture event logs using ethers.js ABI
+  private decodeErrorMessage(result: ContractFunctionResult): string | null {
+    try {
+      const bytes = Buffer.from(result.asBytes());
+      const hex = '0x' + bytes.toString('hex');
+      const errorSelector = '0x08c379a0'; // Error(string)
+
+      // Standard revert reason
+      if (hex.startsWith(errorSelector)) {
+        const data = '0x' + hex.slice(errorSelector.length);
+        const iface = new ethers.Interface(['function Error(string)']);
+        const decoded = iface.decodeFunctionData('Error', data);
+        return typeof decoded[0] === 'string' ? decoded[0] : String(decoded[0]);
+      }
+
+      // Try decoding as custom error (from ABI)
+      try {
+        return this.abi.parseError(hex)?.name ?? null;
+      } catch {
+        return null;
+      }
+    } catch (e) {
+      logger.err('Failed to decode error message:' + e);
+      return null;
+    }
+  }
+
   private captureEventLogs(methodName: string, result: ContractFunctionResult) {
     const events = eventList[methodName];
+    if (!events) return [];
 
-    if (events) {
-      const eventResult = result.logs.map((log) => {
-        let logStringHex = '0x'.concat(Buffer.from(log.data).toString('hex'));
-
-        let logTopics: any = [];
-        log.topics.forEach((topic) => {
-          logTopics.push('0x'.concat(Buffer.from(topic).toString('hex')));
-        });
-
-        const event = this.decodeEvent(
-          events[0],
-          logStringHex,
-          logTopics.slice(1)
-        );
-
-        return event;
-      });
-
-      console.log(
-        ` - The Contract event logs for **${methodName}** :: =>`,
-        eventResult
+    return result.logs.map((log) => {
+      const logStringHex = '0x' + Buffer.from(log.data).toString('hex');
+      const logTopics = log.topics.map(
+        (topic) => '0x' + Buffer.from(topic).toString('hex')
       );
-
-      return eventResult;
-    }
-    return [];
+      return this.decodeEvent(events[0], logStringHex, logTopics.slice(1));
+    });
   }
 
   decodeEvent(eventName: string, log: string, topics: any[]) {
     const event = this.abi.getEvent(eventName);
-    if (event) {
-      const decodedLog = this.abi.decodeEventLog(event, log, topics);
-      return decodedLog;
-    }
-    return [];
+    return event ? this.abi.decodeEventLog(event, log, topics) : [];
   }
 
   private async isClientBalanceSufficient(
@@ -272,18 +290,22 @@ async deploy(bytecode: string): Promise<ContractId | null> {
     const balance = await new AccountBalanceQuery()
       .setAccountId(hederaService.operatorId)
       .execute(hederaService.hederaClient);
-    const gasCost = 5 * 100_000_000; // 5 hbar in tinybars
-    const curentClinetBalance = balance.hbars.toTinybars();
-    const isSufficientBalance = curentClinetBalance >= gasCost;
 
-    if (!isSufficientBalance) {
-      console.error(
+    const gasCost = 5 * 100_000_000; // 5 hbar in tinybars
+    const currentBalance = balance.hbars.toTinybars();
+    const isSufficient = currentBalance >= gasCost;
+
+    if (!isSufficient) {
+      logger.err(
         'Insufficient balance for transaction. Please top up your account.'
       );
       const mailer = await MailerService.create();
-      await mailer.sendLowBalanceAlert(curentClinetBalance / 1_000_000_00 , hederaService.operatorId.toString()); // Convert tinybars to hbars
+      await mailer.sendLowBalanceAlert(
+        currentBalance / 100_000_000,
+        hederaService.operatorId.toString()
+      );
     }
-    return isSufficientBalance;
+    return isSufficient;
   }
 }
 
