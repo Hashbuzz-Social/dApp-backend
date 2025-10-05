@@ -45,8 +45,8 @@ export const makeCardRunning = async (
   res: Response,
   next: NextFunction
 ) => {
-  const campaignId = req.body.card_id as any as number;
-  const campaign_command = req.body.campaign_command as any as CampaignCommands;
+  const campaignId = req.body.card_id as number;
+  const campaign_command = req.body.campaign_command as CampaignCommands;
   try {
     if (campaign_command === CampaignCommands.StartCampaign) {
       // ?.. Call the method of running campaign of Campaign:Ifecycle memthod.
@@ -128,8 +128,8 @@ export const statusUpdateHandler = async (
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-
-        const tweetId = await twitterCardService.publishTwitter(campaignId);
+        let tweetId;
+        // const tweetId = await twitterCardService.publishTwitter(campaignId);
         if (tweetId) {
           const [SM_transaction, dbUserBalance] = await Promise.all([
             await allocateBalanceToCampaign(
@@ -177,7 +177,7 @@ export const statusUpdateHandler = async (
       const current_status_of_card =
         campaign_data?.card_status.toLocaleLowerCase();
       const campaignerId = campaign_data?.owner_id;
-      let amounts = campaign_data?.campaign_budget;
+      const amounts = campaign_data?.campaign_budget;
       const campaignerAccount = campaign_data?.user_user?.hedera_wallet_id;
 
       //!! if card is in the same status don't update this card. respond with BAD_REQUEST
@@ -222,8 +222,8 @@ export const statusUpdateHandler = async (
         //! Now 1. - Do smartcontrct transaction for balance update.
         //! 2. Decrement the balance from card owner main account in db_available_budget;
         //! 3. Update the card status as per the requirements.
-
-        const tweetId = await twitterCardService.publishTwitter(campaignId);
+        let tweetId;
+        // const tweetId = await twitterCardService.publishTwitter(campaignId);
         if (tweetId && entityData?.id) {
           const [SM_transaction, dbUserBalance] = await Promise.all([
             await addFungibleAndNFTCampaign(
@@ -256,10 +256,7 @@ export const statusUpdateHandler = async (
   }
 };
 
-export const handleCampaignGet = async (
-  req: Request,
-  res: Response
-) => {
+export const handleCampaignGet = async (req: Request, res: Response) => {
   const prisma = await createPrismaClient();
   const { page = 1, limit = 20 } = req.pagination || {};
   const skip = (page - 1) * limit;
@@ -277,7 +274,6 @@ export const handleCampaignGet = async (
     }),
   ]);
   return res.status(OK).json({
- 
     data: JSONBigInt.parse(JSONBigInt.stringify(campaigns)),
     pagination: {
       page,
@@ -308,7 +304,7 @@ export const handleAddNewCampaignNew = async (
       );
       req.body.media = uploadedFiles;
 
-      const campaign_data = req.body as any as createCampaignParams;
+      const campaign_data = req.body as createCampaignParams;
       const config = await getConfig();
       const createCampaign = await new CampaignLifeCycleBase(
         config.db.redisServerURI
@@ -504,16 +500,16 @@ export const rewardDetails = async (req: Request, res: Response) => {
   try {
     // Check if user is authenticated and has a hedera_wallet_id
     if (!req.currentUser) {
-      return res.status(401).json({ 
-        error: true, 
-        message: 'User not found' 
+      return res.status(401).json({
+        error: true,
+        message: 'User not found',
       });
     }
 
     if (!req.currentUser.hedera_wallet_id) {
-      return res.status(400).json({ 
-        error: true, 
-        message: 'Hedera wallet ID not found for user' 
+      return res.status(400).json({
+        error: true,
+        message: 'Hedera wallet ID not found for user',
       });
     }
 
@@ -523,10 +519,10 @@ export const rewardDetails = async (req: Request, res: Response) => {
       .json({ rewardDetails: JSONBigInt.parse(JSONBigInt.stringify(user)) });
   } catch (error) {
     console.error('Error in rewardDetails controller:', error);
-    return res.status(500).json({ 
-      error: true, 
+    return res.status(500).json({
+      error: true,
       message: 'Failed to fetch reward details',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };

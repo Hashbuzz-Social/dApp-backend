@@ -4,7 +4,6 @@ import { Job } from 'bullmq';
 import logger from 'jet-logger';
 import { CampaignScheduledEvents } from './AppEvents';
 import { CampaignClosingService } from './Modules/campaigns/services/campaignClose/CampaignClosingService';
-import { V201CampaignExpiryService } from './Modules/campaigns/services/V201CampaignExpiryService';
 import { TaskSchedulerJobType } from './schedulerQueue';
 import WorkerManager from './SchedulesWorkerManager';
 import { processQuoteAndReplyCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
@@ -53,24 +52,24 @@ export class V201SchedulesJobHandler {
   /**
    * Private method for processing campaign expiry jobs
    */
-  private async processExpiryCampaignJob(
-    job: Job<
-      TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
-    >
-  ): Promise<void> {
-    const jobData = job.data.data;
-    if (!jobData?.cardId) throw new Error('cardId required');
-    await this.initializeServices();
-    if (!this.prisma) throw new Error('Prisma client not initialized');
-    const campaign = await this.prisma.campaign_twittercard.findUnique({
-      where: { id: Number(jobData.cardId) },
-    });
-    if (!campaign) throw new Error(`Campaign card ${jobData.cardId} not found`);
-    const v201ExpiryService = new V201CampaignExpiryService();
-    const result = await v201ExpiryService.expireCampaign(campaign);
-    if (!result.success)
-      throw new Error(result.message || 'Campaign expiry failed');
-  }
+  // private async processExpiryCampaignJob(
+  //   job: Job<
+  //     TaskSchedulerJobType<CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION>
+  //   >
+  // ): Promise<void> {
+  //   const jobData = job.data.data;
+  //   if (!jobData?.cardId) throw new Error('cardId required');
+  //   await this.initializeServices();
+  //   if (!this.prisma) throw new Error('Prisma client not initialized');
+  //   const campaign = await this.prisma.campaign_twittercard.findUnique({
+  //     where: { id: Number(jobData.cardId) },
+  //   });
+  //   if (!campaign) throw new Error(`Campaign card ${jobData.cardId} not found`);
+  //   const v201ExpiryService = new V201CampaignExpiryService();
+  //   const result = await v201ExpiryService.expireCampaign(campaign);
+  //   if (!result.success)
+  //     throw new Error(result.message || 'Campaign expiry failed');
+  // }
 
   private async processLikeAndRetweetCollectionJob(
     job: Job<
@@ -102,21 +101,21 @@ export class V201SchedulesJobHandler {
       }
     );
 
-    await WorkerManager.initializeWorker(
-      CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
-      async (job) => {
-        try {
-          await this.processExpiryCampaignJob(job);
-        } catch (error) {
-          logger.err(
-            `[V201] CAMPAIGN_EXPIRATION_OPERATION failed: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          );
-          throw error;
-        }
-      }
-    );
+    // await WorkerManager.initializeWorker(
+    //   CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+    //   async (job) => {
+    //     try {
+    //       await this.processExpiryCampaignJob(job);
+    //     } catch (error) {
+    //       logger.err(
+    //         `[V201] CAMPAIGN_EXPIRATION_OPERATION failed: ${
+    //           error instanceof Error ? error.message : String(error)
+    //         }`
+    //       );
+    //       throw error;
+    //     }
+    //   }
+    // );
 
     await WorkerManager.initializeWorker(
       CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,

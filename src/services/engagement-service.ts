@@ -83,7 +83,11 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
         engagement_type: 'Reply',
         updated_at: new Date().toISOString(),
       }))
-      .filter((reply) => !existingUserIds.includes(reply.user_id));
+      .filter(
+        (reply) =>
+          typeof reply.user_id === 'string' &&
+          !existingUserIds.includes(reply.user_id)
+      );
 
     if (formattedArray.length > 0) {
       await prisma.campaign_tweetengagements.createMany({
@@ -123,11 +127,14 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
   try {
     const prisma = await createPrismaClient();
     const data = await getCampaignDetailsById(card);
-    if (data?.id && data?.tweet_id && data?.user_user) {
+    const user = await prisma.user_user.findUnique({
+      where: { id: data?.user_user.id },
+    });
+    if (data?.id && data?.tweet_id && user) {
       const details = data.tweet_id.toString();
       const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(
         details,
-        data.user_user
+        user
       );
 
       let isDone = false;

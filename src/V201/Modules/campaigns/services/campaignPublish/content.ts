@@ -9,8 +9,6 @@ import { updateCampaignInMemoryStatus } from '@V201/modules/common';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import { publishEvent } from '../../../../eventPublisher';
 import SchedulerQueue from '../../../../schedulerQueue';
-import XEngagementTracker from '../xEngagementTracker';
-import logger from 'jet-logger';
 
 export const publshCampaignContentHandler = async ({
   cardOwner,
@@ -131,34 +129,4 @@ export const publishCampaignSecondContent = async ({
     },
     executeAt: new Date(campaignCloseTime),
   });
-
-  // Start engagement tracking for the published campaign
-  try {
-    const engagementTracker = new XEngagementTracker(prisma);
-    const durationHours = campaignDurationInMin / 60; // Convert minutes to hours
-
-    if (updatedCard.tweet_id) {
-      await engagementTracker.startCampaignTracking(
-        updatedCard.id,
-        updatedCard.tweet_id,
-        BigInt(cardOwner.id),
-        durationHours
-      );
-
-      logger.info(`Started engagement tracking for campaign ${updatedCard.id}`);
-    } else {
-      logger.warn(
-        `No tweet_id found for campaign ${updatedCard.id}, skipping engagement tracking`
-      );
-    }
-  } catch (engagementError) {
-    const errorMsg =
-      engagementError instanceof Error
-        ? engagementError.message
-        : String(engagementError);
-    logger.err(
-      `Failed to start engagement tracking for campaign ${updatedCard.id}: ${errorMsg}`
-    );
-    // Don't fail the campaign publishing if engagement tracking fails
-  }
 };

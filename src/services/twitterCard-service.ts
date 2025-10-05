@@ -1,24 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import { getConfig } from '@appConfig';
 import {
+  campaign_tweetstats,
   campaign_twittercard,
   campaignstatus as CampaignStatus,
+  PrismaClient,
   user_user,
-  campaign_tweetstats,
   whiteListedTokens,
 } from '@prisma/client';
-import { decrypt } from '@shared/encryption';
 import { convertTinyHbarToHbar, formattedDateTime } from '@shared/helper';
 import twitterAPI, {
-  TwitterAPIError,
-  TwitterValidationError,
   QuoteSearchOptions,
   ReplySearchOptions,
-  TimestampFilter,
+  TwitterAPIError,
+  TwitterValidationError,
 } from '@shared/twitterAPI';
+import logger from 'jet-logger';
 import moment from 'moment';
 import { TweetV2PostTweetResult, UserV2 } from 'twitter-api-v2';
-import logger from 'jet-logger';
-import { getConfig } from '@appConfig';
 import { MediaService } from './media-service';
 
 /**
@@ -336,16 +334,10 @@ export class TwitterCardService {
     ValidationUtils.validateTwitterCredentials(cardOwner);
 
     try {
-      const config = await getConfig();
+      // const config = await getConfig();
       const userTwitter = await twitterAPI.tweeterApiForUser({
-        accessToken: decrypt(
-          cardOwner.business_twitter_access_token as string,
-          config.encryptions.encryptionKey
-        ),
-        accessSecret: decrypt(
-          cardOwner.business_twitter_access_token_secret as string,
-          config.encryptions.encryptionKey
-        ),
+        accessToken: cardOwner.business_twitter_access_token as string,
+        accessSecret: cardOwner.business_twitter_access_token_secret as string,
       });
 
       let mediaIds: string[] = [];
@@ -627,17 +619,24 @@ export class TwitterCardService {
 
       return await twitterAPI.getAllUsersWhoQuotedOnTweetId(
         tweetId,
-        user,
+        {
+          business_twitter_access_token:
+            user.business_twitter_access_token as string,
+          business_twitter_access_token_secret:
+            user.business_twitter_access_token_secret as string,
+        },
         options
       );
     } catch (error) {
       if (error instanceof TwitterAPIError) {
         logger.warn(`Twitter API error fetching quotes: ${error.message}`);
         // Fallback to basic API call without timestamp filtering
-        const quotes = await twitterAPI.getAllUsersWhoQuotedOnTweetId(
-          tweetId,
-          user
-        );
+        const quotes = await twitterAPI.getAllUsersWhoQuotedOnTweetId(tweetId, {
+          business_twitter_access_token:
+            user.business_twitter_access_token as string,
+          business_twitter_access_token_secret:
+            user.business_twitter_access_token_secret as string,
+        });
 
         if (!untilTimestamp) return quotes;
 
@@ -710,7 +709,12 @@ export class TwitterCardService {
   ): Promise<UserV2[]> {
     try {
       ValidationUtils.validateTwitterCredentials(user);
-      return await twitterAPI.getAllUsersWhoLikedOnTweetId(tweetId, user);
+      return await twitterAPI.getAllUsersWhoLikedOnTweetId(tweetId, {
+        business_twitter_access_token:
+          user.business_twitter_access_token as string,
+        business_twitter_access_token_secret:
+          user.business_twitter_access_token_secret as string,
+      });
     } catch (error) {
       if (error instanceof TwitterValidationError) {
         throw new TwitterServiceError(
@@ -736,7 +740,12 @@ export class TwitterCardService {
   ): Promise<UserV2[]> {
     try {
       ValidationUtils.validateTwitterCredentials(user);
-      return await twitterAPI.getAllRetweetOfTweetId(tweetId, user);
+      return await twitterAPI.getAllRetweetOfTweetId(tweetId, {
+        business_twitter_access_token:
+          user.business_twitter_access_token as string,
+        business_twitter_access_token_secret:
+          user.business_twitter_access_token_secret as string,
+      });
     } catch (error) {
       if (error instanceof TwitterValidationError) {
         throw new TwitterServiceError(

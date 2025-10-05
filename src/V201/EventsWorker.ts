@@ -13,6 +13,7 @@ import { EnhancedEventSystem } from './enhancedEventSystem';
 import JSONBigInt from 'json-bigint';
 import { processLikeAndRetweetCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
 import { onCloseReCalculateRewardsRates } from './Modules/campaigns/services/campaignClose/OnCloseReCalculateRewardRates';
+import { onCloseRewardServices } from './Modules/campaigns/services/campaignClose/onCloseAutoReward';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -86,6 +87,17 @@ const processEvent = async (
           );
           // Call the function to recalculate rewards rates
           await onCloseReCalculateRewardsRates(recalculateRewardsRatesPayload);
+          break;
+        }
+
+        case CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS: {
+          const distributeAutoRewardsPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS];
+          Logger.info(
+            `Distributing auto rewards for campaign ID: ${distributeAutoRewardsPayload.campaignId}`
+          );
+
+          await onCloseRewardServices(distributeAutoRewardsPayload);
           break;
         }
 
