@@ -93,7 +93,14 @@ class ContractUtils {
         if (!contractCallResponse) {
             throw new Error("contractCallResponse is undefined");
         }
-        return contractCallResponse.status;
+        if (contractCallResponse.error) {
+          throw new Error(
+            `Contract call failed: ${
+              contractCallResponse.errorMessage || 'Unknown error'
+            }`
+          );
+        }
+        return contractCallResponse.status as Status;
     }
 
     // Method to get all whitelisted tokens
@@ -127,7 +134,12 @@ class ContractUtils {
         if (!response) {
             throw new Error("response is undefined");
         }
-        return response.status;
+        if (response.error) {
+          throw new Error(
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`
+          );
+        }
+        return response.status as Status;
     }
 
     // Method to get fungible token balance

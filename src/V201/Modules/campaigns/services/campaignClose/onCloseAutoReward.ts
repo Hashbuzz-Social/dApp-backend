@@ -1,21 +1,13 @@
-import createPrismaClient from "@shared/prisma";
-import { CampaignEvents } from '../../../../AppEvents/campaign';
-import { EventPayloadMap } from '../../../../Types/eventPayload';
+import { Status } from '@hashgraph/sdk';
 import {
   PrismaClient,
   campaign_twittercard,
   payment_status,
 } from '@prisma/client';
-import logger from 'jet-logger';
-import CampaignTweetEngagementsModel from '../../../../Modals/CampaignTweetEngagements';
-import CampaignTwitterCardModel from '../../../../Modals/CampaignTwitterCard';
-import UsersModel from '../../../../Modals/Users';
-import {
-  CampaignLogEventHandler,
-  CampaignLogLevel,
-  CampaignLogEventType,
-} from '../campaignLogs';
 import { checkTokenAssociation } from '@shared/helper';
+import createPrismaClient from '@shared/prisma';
+import logger from 'jet-logger';
+import { incrementClaimAmount } from '../../../../../services/campaign-service';
 import {
   distributeTokenUsingSDK,
   provideActiveContract,
@@ -23,8 +15,16 @@ import {
 import ContractCampaignLifecycle from '../../../../../services/ContractCampaignLifecycle';
 import { transferAmountFromContractUsingSDK } from '../../../../../services/transaction-service';
 import userService from '../../../../../services/user-service';
-import { incrementClaimAmount } from '../../../../../services/campaign-service';
-import { Status } from '@hashgraph/sdk';
+import { CampaignEvents } from '../../../../AppEvents/campaign';
+import CampaignTweetEngagementsModel from '../../../../Modals/CampaignTweetEngagements';
+import CampaignTwitterCardModel from '../../../../Modals/CampaignTwitterCard';
+import UsersModel from '../../../../Modals/Users';
+import { EventPayloadMap } from '../../../../Types/eventPayload';
+import {
+  CampaignLogEventHandler,
+  CampaignLogEventType,
+  CampaignLogLevel,
+} from '../campaignLogs';
 
 interface RewardsObj {
   like_reward: number;
@@ -57,10 +57,17 @@ interface UserWithReward {
  */
 export class V201OnCloseAutoRewardService {
   private prisma: PrismaClient | null = null;
+  private ownsPrisma = false;
   private engagementModel: CampaignTweetEngagementsModel | null = null;
   private campaignModel: CampaignTwitterCardModel | null = null;
   private userModel: UsersModel | null = null;
   private campaignLogger: CampaignLogEventHandler | null = null;
+
+  constructor(prismaClient?: PrismaClient) {
+    if (prismaClient) {
+      this.prisma = prismaClient;
+    }
+  }
 
   /**
    * Initialize required services
@@ -68,9 +75,26 @@ export class V201OnCloseAutoRewardService {
   private async initializeServices(): Promise<void> {
     if (!this.prisma) {
       this.prisma = await createPrismaClient();
+      this.ownsPrisma = true;
+    }
+
+    if (!this.prisma) {
+      throw new Error('Failed to initialize Prisma client');
+    }
+
+    if (!this.engagementModel) {
       this.engagementModel = new CampaignTweetEngagementsModel(this.prisma);
+    }
+
+    if (!this.campaignModel) {
       this.campaignModel = new CampaignTwitterCardModel(this.prisma);
+    }
+
+    if (!this.userModel) {
       this.userModel = new UsersModel(this.prisma);
+    }
+
+    if (!this.campaignLogger) {
       this.campaignLogger = await CampaignLogEventHandler.create(this.prisma);
     }
   }
@@ -559,6 +583,28 @@ export class V201OnCloseAutoRewardService {
         usersRewarded: 0,
         errors: [errorMsg],
       };
+    } finally {
+      const shouldCleanupModels = this.ownsPrisma;
+
+      if (this.ownsPrisma && this.prisma) {
+        await this.prisma.$disconnect().catch((disconnectError) => {
+          logger.err(
+            `Failed to disconnect prisma after auto rewarding: ${String(
+              disconnectError
+            )}`
+          );
+        });
+
+        this.prisma = null;
+        this.ownsPrisma = false;
+      }
+
+      if (shouldCleanupModels) {
+        this.engagementModel = null;
+        this.campaignModel = null;
+        this.userModel = null;
+        this.campaignLogger = null;
+      }
     }
   }
 }

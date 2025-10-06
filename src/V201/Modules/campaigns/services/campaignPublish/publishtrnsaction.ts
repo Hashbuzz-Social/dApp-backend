@@ -139,15 +139,26 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
       typeof contractStateUpdateResult === 'object' &&
       'status' in contractStateUpdateResult &&
       contractStateUpdateResult.status &&
-      '_code' in contractStateUpdateResult.status &&
       'transactionId' in contractStateUpdateResult &&
       'receipt' in contractStateUpdateResult
     ) {
+      // Handle error case
+      if (
+        'error' in contractStateUpdateResult &&
+        contractStateUpdateResult.error
+      ) {
+        throw new Error(
+          `Contract call failed: ${
+            contractStateUpdateResult.errorMessage || 'Unknown contract error'
+          }`
+        );
+      }
+
       return {
         contract_id,
         transactionId: contractStateUpdateResult.transactionId,
         receipt: contractStateUpdateResult.receipt,
-        status: contractStateUpdateResult.status._code.toString(),
+        status: contractStateUpdateResult.status.toString(),
       };
     } else {
       return {

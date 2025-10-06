@@ -1,14 +1,16 @@
+import { getConfig } from '@appConfig';
 import createPrismaClient from '@shared/prisma';
-import { CampaignEvents } from '@V201/events/campaign';
+import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
 import CampaignTweetEngagementsModel from '@V201/Modals/CampaignTweetEngagements';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
+import { publishEvent } from 'src/V201/eventPublisher';
+import SchedulerQueue from 'src/V201/schedulerQueue';
 import {
   calculateMaxActivityReward,
   getRewardsValues,
 } from '../draftingCampaign';
-import { publishEvent } from 'src/V201/eventPublisher';
 
 /**
  * Recalculates and updates reward rates for a campaign when it is closed.
@@ -99,4 +101,27 @@ export async function onCloseReCalculateRewardsRates(
   publishEvent(CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS, {
     campaignId,
   });
+
+  // Schedule Closing Event for the campaign with retry policies
+  const scheduler = await SchedulerQueue.getInstance();
+  const config = await getConfig();
+
+  const currentTime = new Date();
+  const campaignExpiryTime =
+    currentTime.getTime() + config.app.defaultRewardClaimDuration * 60 * 1000;
+
+  await scheduler.addJob(
+    CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+    {
+      eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+      data: {
+        cardId: campaign.id,
+        userId: campaign.owner_id,
+        type: campaign.type as CampaignTypes,
+        createdAt: currentTime,
+        expiryAt: new Date(campaignExpiryTime),
+      },
+      executeAt: new Date(campaignExpiryTime),
+    }
+  );
 }

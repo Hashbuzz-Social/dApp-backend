@@ -188,6 +188,25 @@ class HederaContract {
       const record = await response.getRecord(hederaService.hederaClient);
       const result = record.contractFunctionResult;
 
+      // Check for contract revert status in receipt
+      if (receipt.status.toString() === 'CONTRACT_REVERT_EXECUTED') {
+        const errorMessage = result
+          ? this.decodeErrorMessage(result)
+          : 'Contract execution reverted';
+        logger.err(
+          `Contract reverted with status ${receipt.status.toString()}: ${
+            errorMessage || 'Contract execution reverted'
+          }`
+        );
+        return {
+          status: receipt.status,
+          error: true,
+          errorMessage: errorMessage || 'Contract execution reverted',
+          transactionId: record.transactionId.toString(),
+          receipt,
+        };
+      }
+
       if (result) {
         // Try to decode error if reverted
         const errorMessage = this.decodeErrorMessage(result);
@@ -198,6 +217,7 @@ class HederaContract {
             error: true,
             errorMessage,
             transactionId: record.transactionId.toString(),
+            receipt,
           };
         }
 
@@ -205,6 +225,7 @@ class HederaContract {
         const dataDecoded = this.decodeReturnData(functionName, result);
         return {
           status: receipt.status,
+          success: true,
           receipt,
           resultAsBytes,
           dataDecoded,
@@ -214,14 +235,42 @@ class HederaContract {
 
       return {
         status: receipt.status,
+        success: true,
         transactionId: record.transactionId.toString(),
         receipt,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       if (error instanceof ReceiptStatusError) {
-        logger.err('ReceiptStatusError:' + error.message);
+        logger.err(`ReceiptStatusError: ${errorMessage}`);
+
+        // Extract transaction ID if available
+        let transactionId = 'unknown';
+        try {
+          const match = errorMessage.match(/transaction (\S+)/);
+          if (match) {
+            transactionId = match[1];
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+
+        return {
+          error: true,
+          errorMessage: `Contract execution failed: ${errorMessage}`,
+          transactionId,
+          status: 'CONTRACT_REVERT_EXECUTED',
+        };
       } else {
-        logger.err('Unexpected error:' + error.message);
+        logger.err(`Unexpected contract error: ${errorMessage}`);
+        return {
+          error: true,
+          errorMessage: `Unexpected error during contract execution: ${errorMessage}`,
+          transactionId: 'unknown',
+          status: 'ERROR',
+        };
       }
     }
   }

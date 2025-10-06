@@ -1,7 +1,7 @@
 import { Status } from '@hashgraph/sdk';
 import { getCampaignDetailsById } from '@services/campaign-service';
 import { provideActiveContract } from '@services/contract-service';
-import { utilsHandlerService } from '@services/ContractUtilsHandlers';
+import ContractUtils from '@services/ContractUtilsHandlers';
 import initHederaService from '@services/hedera-service';
 import htsServices from '@services/hts-services';
 import {
@@ -73,6 +73,14 @@ export const handleTopUp = async (
 
     if (!Boolean(req.currentUser?.whitelistUser)) {
       // user is performing top-up for the first time so add user to contract
+      // const status = await utilsHandlerService.addCampaigner(accountId);
+      const contractDetails = await provideActiveContract();
+      if (!contractDetails?.contract_id) {
+        throw new ErrorWithCode('No active contract found', BAD_REQUEST);
+      }
+      const utilsHandlerService = new ContractUtils(
+        contractDetails.contract_id
+      );
       const status = await utilsHandlerService.addCampaigner(accountId);
 
       if (status !== Status.Success) {
@@ -109,14 +117,14 @@ export const handleTopUp = async (
 
     if (validate.validated) {
       await handleValidatedTransaction(
-      entity,
-      accountId,
-      address,
-      amounts,
-      userId,
-      validate,
-      tokenDetails
-    );
+        entity,
+        accountId,
+        address,
+        amounts,
+        userId,
+        validate,
+        tokenDetails
+      );
     }
   } catch (err) {
     await createOrUpdateTransactionRecord(
