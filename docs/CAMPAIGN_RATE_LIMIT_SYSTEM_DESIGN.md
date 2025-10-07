@@ -2,7 +2,7 @@
 
 ## Scope
 
-You run two promo types on X (Basic tier):
+We run two promo types on X (Basic tier):
 
 * **Quest**: 15 minutes. At end, fetch user IDs and comment content for replies and quotes.
 * **Awareness**: 60 minutes. At end, fetch user IDs for likes, reposts, replies, and quotes.
@@ -31,8 +31,7 @@ Treat each campaign that **finishes** in a 15-minute window as consuming:
 * **Quest**:
 
   * 1 Recent Search call for replies
-  * 1 Recent Search call for quotes
-  * **Total**: **2 Recent Search** calls (≥2 if pagination) ([docs.x.com][4])
+  * **Total**: **1 Recent Search** calls (≥1 if pagination) ([docs.x.com][4])
 
 * **Awareness**:
 
@@ -46,7 +45,7 @@ Treat each campaign that **finishes** in a 15-minute window as consuming:
 
 Let `Q` = Quest finishes in a window. Let `A` = Awareness finishes in a window.
 
-* **Recent Search budget**: `2·Q + 3·A ≤ 60`. ([docs.x.com][1])
+* **Recent Search budget**: `1·Q + 3·A ≤ 60`. ([docs.x.com][1])
 * **Liking Users budget**: `A ≤ 25`. ([docs.x.com][1])
 
 If you **choose** to call the list endpoints instead of Recent Search:
@@ -75,7 +74,7 @@ Returned posts count against the monthly cap. One Recent Search page can return 
 
   * Converts each finishing campaign into a **cost vector**:
 
-    * Quest → `{ recent: 2, likes: 0 }`
+    * Quest → `{ recent: 1, likes: 0 }`
     * Awareness → `{ recent: 3, likes: 1 }`
   * Admits jobs iff all pools and the cap budget can satisfy the vector.
   * Queues jobs that do not fit.
@@ -88,7 +87,7 @@ Returned posts count against the monthly cap. One Recent Search page can return 
 1. On campaign finish, compute cost vector.
 2. Peek pool remaining:
 
-   * `recent_remaining ≥ (2 or 3)` and `likes_remaining ≥ (0 or 1)`.
+   * `recent_remaining ≥ (1 or 3)` and `likes_remaining ≥ (0 or 1)`.
 3. Check **cap_remaining ≥ projected_posts** for the job.
 4. If all pass, schedule calls with jitter; else queue until reset.
 
@@ -99,7 +98,7 @@ type Pools = { recent: WindowPool; likes: WindowPool }
 type Cost = { recent: number; likes: number }
 
 function costOf(type: 'Quest'|'Awareness'): Cost {
-  return type === 'Quest' ? { recent: 2, likes: 0 } : { recent: 3, likes: 1 }
+  return type === 'Quest' ? { recent: 1, likes: 0 } : { recent: 3, likes: 1 }
 }
 
 function tryAdmit(job, pools: Pools, capRemaining: number): boolean {
@@ -121,7 +120,7 @@ function tryAdmit(job, pools: Pools, capRemaining: number): boolean {
 ```mermaid
 flowchart TD
   A[Promo ends] --> B{Type}
-  B -->|Quest| C[Cost = {recent:2, likes:0}]
+  B -->|Quest| C[Cost = {recent:1, likes:0}]
   B -->|Awareness| D[Cost = {recent:3, likes:1}]
   C --> E[Check pools:\nrecent ≥ need\nlikes ≥ need]
   D --> E
@@ -147,7 +146,7 @@ flowchart TD
 
 ## Concrete numbers you can enforce now (per app)
 
-* **Quest finishes per window**: `2·Q + 3·A ≤ 60` and `A ≤ 25`. With Quest-only, `Q ≤ 30`. With Awareness-only, `A ≤ 20` (Recent Search is binding). ([docs.x.com][1])
+* **Quest finishes per window**: `1·Q + 3·A ≤ 60` and `A ≤ 25`. With Quest-only, `Q ≤ 60`. With Awareness-only, `A ≤ 20` (Recent Search is binding). ([docs.x.com][1])
 * **Avoid** calling `/quote_tweets` and `/retweeted_by` in bulk on Basic. They are **5 requests / 15 min per app** and will bottleneck. Use Recent Search operators instead. ([docs.x.com][1])
 * **Likes**: one page per post in practice due to the **100-liker lifetime cap**. Still respect the **25 / 15 min per app** window when many Awareness promos end together. ([docs.x.com][7])
 
