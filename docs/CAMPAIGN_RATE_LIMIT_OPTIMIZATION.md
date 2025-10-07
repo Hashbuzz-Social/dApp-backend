@@ -2,10 +2,10 @@
 
 ## Scope
 
-You run two promo types on X (Basic tier):
+We run two promo types on X (Basic tier):
 
-* **Quest promo**: runs 15 minutes; you must fetch user IDs and comment content for replies and quotes right after it ends.
-* **Awareness promo**: runs 60 minutes; you must fetch user IDs for people who liked, reposted, replied, or quoted the promo right after it ends.
+* **Quest promo**: runs 15 minutes; we must fetch user IDs and comment content for replies right after it ends.
+* **Awareness promo**: runs 60 minutes; we must fetch user IDs for people who liked, reposted, replied, or quoted the promo right after it ends.
 
 This doc gives hard limits, safe concurrency math, and a simple self-throttling plan. All numbers and operators are from X’s official docs. Citations are at each claim.
 
@@ -38,13 +38,12 @@ To stay within Basic tier limits and still collect the right data:
 ### Quest promo (15 min)
 
 * **Replies content**: `GET /2/tweets/search/recent?q=in_reply_to_tweet_id:<ID>&max_results=100` (paginate if needed).
-* **Quotes content**: `GET /2/tweets/search/recent?q=quotes_of_tweet_id:<ID>&max_results=100` (paginate if needed).
-* **Calls per campaign at minimum**: **2 Recent Search calls** (one for replies, one for quotes). Each returns up to 100 Posts/page. ([X Developer Platform][7])
+* **Calls per campaign at minimum**: **1 Recent Search calls** (for replies). Returns up to 100 Posts/page. ([X Developer Platform][7])
 
 ### Awareness promo (60 min)
 
 * **Replies content**: Recent Search as above.
-* **Quotes content**: Recent Search as above.
+* **Quotes content**: `GET /2/tweets/search/recent?q=quotes_of_tweet_id:<ID>&max_results=100` (paginate if needed).
 * **Reposts**: Recent Search with `retweets_of_tweet_id:<ID>`.
 * **Likes (user IDs)**: `GET /2/tweets/{id}/liking_users?max_results=100` (capped to 100 unique likers per Post lifetime).
 * **Calls per campaign at minimum**: **3 Recent Search calls + 1 Liking Users call**. ([X Developer Platform][7])
@@ -68,26 +67,26 @@ Let:
 
 Minimum call budget per finished campaign:
 
-* Quest: **2** Recent Search calls.
+* Quest: **1** Recent Search calls.
 * Awareness: **3** Recent Search calls **+ 1** Liking Users call.
 
 **Constraints:**
 
-* Recent Search: `2·Q + 3·A ≤ 60`  (Basic tier app limit). ([X Developer Platform][2])
+* Recent Search: `1·Q + 3·A ≤ 60`  (Basic tier app limit). ([X Developer Platform][2])
 * Liking Users: `A ≤ 25`  (Basic tier app limit). ([X Developer Platform][2])
 
 **Max same-window finishes (single-type runs):**
 
-* **Quest-only**: `2·Q ≤ 60` ⇒ **Q_max = 30** campaigns per 15 min.
+* **Quest-only**: `1·Q ≤ 60` ⇒ **Q_max = 60** campaigns per 15 min.
 * **Awareness-only**: `3·A ≤ 60` and `A ≤ 25` ⇒ **A_max = 20** campaigns per 15 min (Recent Search is the tighter bound).
 
 **Per-day theoretical ceilings from rate limits (96 windows/day):**
 
-* **Quest**: `30 × 96 = 2,880` campaigns/day.
+* **Quest**: `60 × 96 = 5,760` campaigns/day.
 * **Awareness**: `20 × 96 = 1,920` campaigns/day.
   These ceilings assume each query fits in a single page and you do not hit the monthly Post cap. The moment pagination kicks in, both request counts and Post-cap consumption increase. ([X Developer Platform][6])
 
-**Mixed example:** `Q = 15` and `A = 10` ⇒ Recent Search calls = `2·15 + 3·10 = 60` (window full) and Liking Users calls = `10` (≤ 25). Valid.
+**Mixed example:** `Q = 15` and `A = 10` ⇒ Recent Search calls = `1·15 + 3·10 = 45` (window full) and Liking Users calls = `10` (≤ 25). Valid.
 
 ---
 
@@ -125,10 +124,9 @@ These are **cap-safe** planning numbers. If a promo explodes beyond 100 replies/
 ### Core rules
 
 1. **Evenly stagger promo end times** so that the number of promos *ending* in any 15-minute bin satisfies:
-   `2·Q + 3·A ≤ 60` and `A ≤ 25`. Track these counters centrally.
+   `1·Q + 3·A ≤ 60` and `A ≤ 25`. Track these counters centrally.
 2. **Always request with `max_results=100`** and **paginate only as needed** using `next_token`. Back-off as soon as `x-rate-limit-remaining` drops. ([X Developer Platform][6])
 3. **Respect the Liking Users realities**:
-
    * It returns at most 100 total likers per Post lifetime. One page usually suffices. ([X Developer Platform][3])
    * You still must respect its **25/15m** app limit when many Awareness promos end together. ([X Developer Platform][2])
 4. **Cap guardrail**: set a daily cap budget (e.g., 500 Posts/day ≈ 15k/30). If a bin’s estimated pages would exceed the remaining daily budget, defer low-priority promos to the next bin. ([X Developer Platform][1])
@@ -153,7 +151,7 @@ function drain() {
 
   // pull jobs in priority order without violating budgets
   for (job of queue) {
-    const recentNeed = (job.type === 'Quest') ? 2 : 3
+    const recentNeed = (job.type === 'Quest') ? 1 : 3
     const likeNeed   = (job.type === 'Quest') ? 0 : 1
 
     if (recentNeed <= recentBudget && likeNeed <= likeBudget) {
@@ -206,7 +204,7 @@ flowchart TD
   D --> E[Collect Likes via\nGET /liking_users]
   C --> F[Compute required calls]
   E --> F
-  F --> G{Fits window budgets?\n2·Q + 3·A ≤ 60 and A ≤ 25}
+  F --> G{Fits window budgets?\n1·Q + 3·A ≤ 60 and A ≤ 25}
   G -->|Yes| H[Execute with jitter\nand pagination]
   G -->|No| I[Defer to next 15-min window]
   H --> J[Write results\n& decrement Post-cap budget]
@@ -239,7 +237,7 @@ Tune these based on observed average pages per type.
 
 * [ ] Use Recent Search for replies/quotes/reposts; set `max_results=100`; paginate. ([X Developer Platform][6])
 * [ ] Use `GET /2/tweets/{id}/liking_users` for likes; expect ≤100 total likers. ([X Developer Platform][3])
-* [ ] Enforce `2·Q + 3·A ≤ 60` and `A ≤ 25` per 15-minute window. ([X Developer Platform][2])
+* [ ] Enforce `1·Q + 3·A ≤ 60` and `A ≤ 25` per 15-minute window. ([X Developer Platform][2])
 * [ ] Read and act on `x-rate-limit-*` headers, exponential backoff on 429. ([X Developer Platform][2])
 * [ ] Track monthly **Post cap** usage; cut off or defer when approaching 15,000. ([X Developer Platform][1])
 
