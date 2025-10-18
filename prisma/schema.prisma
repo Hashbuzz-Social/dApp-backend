@@ -102,6 +102,7 @@ model campaign_twittercard {
   card_status               campaignstatus
   question_options          String[]
   correct_answer            String?
+  campaign_type             campaign_type               @default(awareness)
   campaignLogs              CampaignLog[]
   campaign_media            campaign_media[]
   campaign_participation    campaign_participation[]
@@ -342,4 +343,9 @@ enum campaignstatus {
   RewardDistributionInProgress
   RewardsDistributed
   InternalError
+}
+
+enum campaign_type {
+  awareness
+  quest
 }
