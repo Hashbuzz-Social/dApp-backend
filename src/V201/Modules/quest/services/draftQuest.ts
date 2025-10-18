@@ -1,5 +1,6 @@
 import createPrismaClient from '@shared/prisma';
 import { campaignstatus } from '@prisma/client';
+import { generateRandomString } from '@V201/modules/common';
 
 export interface DraftQuestInput {
   userId: bigint;
@@ -81,6 +82,7 @@ export async function draftQuest(
       correct_answer: input.correct_answers || null,
       campaign_type: 'quest',
       approve: false,
+      contract_id: generateRandomString(20),
     },
   });
 
