@@ -28,6 +28,7 @@ const DraftCampaignSchema: Schema = getValidationRules<DraftCampaignBody>({
   },
   media: {
     in: ['body'],
+    optional: true,
     isArray: { errorMessage: 'Media must be an array' },
   },
   fungible_token_id: {

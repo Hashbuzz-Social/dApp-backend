@@ -28,17 +28,17 @@ const getAuthToken = (req: Request): string => {
     return token;
   }
   const cookieToken = req.cookies?.access_token;
-  if (cookieToken) {
+  if (cookieToken && typeof cookieToken === 'string') {
     req.token = cookieToken;
     return cookieToken;
   }
-  
+
   throw new UnauthorizeError(AuthError.AUTH_TOKEN_NOT_PRESENT);
 };
 
 const getHeadersData = async (req: Request) => {
   const config = await getConfig();
-  
+
   let deviceId =
     req.cookies.device_id ?? (req.headers['x-device-id'] as string);
   if (!deviceId)
@@ -84,7 +84,7 @@ const isHavingValidAst = async (
 
     const validSignature = signingService.verifyData(
       { ts, accountId },
-      hederaService.operatorPublicKey!,
+      hederaService.operatorPublicKey,
       base64ToUint8Array(signature)
     );
     if (!validSignature)

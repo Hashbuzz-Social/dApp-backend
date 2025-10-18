@@ -17,7 +17,6 @@ import { scheduleJob } from "node-schedule";
  */
 const manageTwitterCardStatus = async (): Promise<void> => {
   const allActiveCards = await twitterCardService.allActiveTwitterCard();
-  const activeCardIds = allActiveCards.map(card => card.tweet_id).filter(Boolean);
 
   if (!allActiveCards.length) {
     // Reduced frequency logging: only log this occasionally to avoid spam

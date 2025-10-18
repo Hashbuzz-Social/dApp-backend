@@ -10,6 +10,10 @@ import { BalanceEvents, CampaignEvents } from './AppEvents';
 import { safeStringifyData } from './Modules/common';
 import { consumeFromQueue } from './redisQueue';
 import { EnhancedEventSystem } from './enhancedEventSystem';
+import JSONBigInt from 'json-bigint';
+import { processLikeAndRetweetCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
+import { onCloseReCalculateRewardsRates } from './Modules/campaigns/services/campaignClose/OnCloseReCalculateRewardRates';
+import { onCloseRewardServices } from './Modules/campaigns/services/campaignClose/onCloseAutoReward';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -24,7 +28,11 @@ const processEvent = async (
     eventType,
     payload,
     async (eventType: string, payload: any) => {
-      Logger.info(`Processing event ${String(eventType)} - payload: ${safeStringifyData(payload)}`);
+      Logger.info(
+        `Processing event ${String(eventType)} - payload: ${safeStringifyData(
+          payload
+        )}`
+      );
 
       switch (eventType) {
         // handle event CAMPAIGN_PUBLISH_CONTENT event
@@ -55,6 +63,41 @@ const processEvent = async (
           const errorPayload =
             payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_ERROR];
           await publshCampaignErrorHandler(errorPayload);
+          break;
+        }
+
+        // handle events related to campaign close
+
+        case CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET: {
+          const collectEngagementPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET];
+          Logger.info(
+            `Collecting engagement like and retweet for campaign ID: ${collectEngagementPayload.campaignId}`
+          );
+          // Call the function to collect engagement like and retweet
+          await processLikeAndRetweetCollection(collectEngagementPayload);
+          break;
+        }
+
+        case CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES: {
+          const recalculateRewardsRatesPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES];
+          Logger.info(
+            `Recalculating rewards rates for campaign ID: ${recalculateRewardsRatesPayload.campaignId}`
+          );
+          // Call the function to recalculate rewards rates
+          await onCloseReCalculateRewardsRates(recalculateRewardsRatesPayload);
+          break;
+        }
+
+        case CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS: {
+          const distributeAutoRewardsPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS];
+          Logger.info(
+            `Distributing auto rewards for campaign ID: ${distributeAutoRewardsPayload.campaignId}`
+          );
+
+          await onCloseRewardServices(distributeAutoRewardsPayload);
           break;
         }
 
@@ -112,33 +155,45 @@ let isShuttingDown = false;
 const startEventConsumer = () => {
   const abortController = new AbortController();
 
-  consumeFromQueue('event-queue', (event) => {
-    if (isShuttingDown) {
-      Logger.info('Shutting down, skipping event processing');
-      return;
-    }
-
-    // event may already be parsed by safeParsedData in redisQueue
-    const raw = typeof event === 'string' ? JSON.parse(event) : event;
-    if (!raw || !raw.eventId || !raw.eventType) {
-      Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
-      return;
-    }
-
-    // spawn async handler so the queue callback stays synchronous/void
-    (async () => {
-      try {
-        const eventId = Number(raw.eventId);
-        const success = await processEvent(eventId, String(raw.eventType), raw.payload);
-
-        if (success) {
-          Logger.info(`Successfully processed event ${String(raw.eventType)} (ID: ${eventId})`);
-        }
-      } catch (err) {
-        Logger.err(`Critical error processing event: ${String(err)}`);
+  consumeFromQueue(
+    'event-queue',
+    (event) => {
+      if (isShuttingDown) {
+        Logger.info('Shutting down, skipping event processing');
+        return;
       }
-    })();
-  }, { signal: abortController.signal });
+
+      // event may already be parsed by safeParsedData in redisQueue
+      const raw = typeof event === 'string' ? JSONBigInt.parse(event) : event;
+      if (!raw || !raw.eventId || !raw.eventType) {
+        Logger.err(`Invalid event format: ${safeStringifyData(raw)}`);
+        return;
+      }
+
+      // spawn async handler so the queue callback stays synchronous/void
+      (async () => {
+        try {
+          const eventId = Number(raw.eventId);
+          const success = await processEvent(
+            eventId,
+            String(raw.eventType),
+            raw.payload
+          );
+
+          if (success) {
+            Logger.info(
+              `Successfully processed event ${String(
+                raw.eventType
+              )} (ID: ${eventId})`
+            );
+          }
+        } catch (err) {
+          Logger.err(`Critical error processing event: ${String(err)}`);
+        }
+      })();
+    },
+    { signal: abortController.signal }
+  );
 
   return abortController;
 };
@@ -170,22 +225,40 @@ process.on('unhandledRejection', (reason) => {
   gracefulShutdown();
 });
 
-// Periodic stats logging
+// Periodic stats logging with intelligent retry logic
 setInterval(() => {
   (async () => {
     try {
       const stats = await EnhancedEventSystem.getEventStats();
-      Logger.info(`Event Stats - Pending: ${stats.pending}, Dead Letter: ${stats.deadLetter}`);
+      Logger.info(
+        `Event Stats - Pending: ${stats.pending}, Dead Letter: ${stats.deadLetter}`
+      );
 
-      // Auto-reprocess dead letter events if there aren't too many
-      if (stats.deadLetter > 0 && stats.deadLetter <= 5) {
-        const reprocessed = await EnhancedEventSystem.reprocessDeadLetterEvents(3);
+      // DISABLE AUTO-REPROCESSING OF DEAD LETTER EVENTS TO PREVENT INFINITE LOOPS
+      // Auto-reprocessing is disabled to prevent API quota exhaustion
+      // Dead letter events should be manually reviewed and reprocessed
+      if (stats.deadLetter > 0) {
+        Logger.warn(
+          `${stats.deadLetter} dead letter events require manual review. Auto-reprocessing is disabled.`
+        );
+      }
+
+      // Only reprocess if there are very few dead letter events and enough time has passed
+      // This prevents hammering failed services
+      /*
+      if (stats.deadLetter > 0 && stats.deadLetter <= 2) {
+        const reprocessed = await EnhancedEventSystem.reprocessDeadLetterEvents(1);
         if (reprocessed > 0) {
           Logger.info(`Auto-reprocessed ${reprocessed} dead letter events`);
         }
       }
+      */
     } catch (error) {
-      Logger.err(`Error getting event stats: ${error instanceof Error ? error.message : String(error)}`);
+      Logger.err(
+        `Error getting event stats: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   })();
 }, 30000); // Every 30 seconds

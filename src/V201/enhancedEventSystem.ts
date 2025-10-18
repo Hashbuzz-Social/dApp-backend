@@ -31,6 +31,72 @@ export class EnhancedEventSystem {
   private static readonly MAX_RETRIES = 3;
   private static readonly RETRY_DELAY_MS = 5000;
 
+  // Circuit breaker state tracking
+  private static readonly circuitBreakerMap = new Map<
+    string,
+    {
+      failures: number;
+      lastFailure: number;
+      isOpen: boolean;
+    }
+  >();
+
+  /**
+   * Check if circuit breaker should prevent retry for this error pattern
+   */
+  private static isCircuitBreakerOpen(
+    eventType: string,
+    errorMessage: string
+  ): boolean {
+    const key = `${eventType}:${errorMessage.substring(0, 50)}`;
+    const circuitState = this.circuitBreakerMap.get(key);
+
+    if (!circuitState) return false;
+
+    const now = Date.now();
+    const resetTime = 30 * 60 * 1000; // 30 minutes
+
+    // Reset circuit breaker after timeout
+    if (circuitState.isOpen && now - circuitState.lastFailure > resetTime) {
+      circuitState.isOpen = false;
+      circuitState.failures = 0;
+      return false;
+    }
+
+    return circuitState.isOpen;
+  }
+
+  /**
+   * Update circuit breaker state on failure
+   */
+  private static updateCircuitBreaker(
+    eventType: string,
+    errorMessage: string
+  ): void {
+    const key = `${eventType}:${errorMessage.substring(0, 50)}`;
+    const circuitState = this.circuitBreakerMap.get(key) || {
+      failures: 0,
+      lastFailure: 0,
+      isOpen: false,
+    };
+
+    circuitState.failures++;
+    circuitState.lastFailure = Date.now();
+
+    // Open circuit breaker after 5 consecutive failures
+    if (circuitState.failures >= 5) {
+      circuitState.isOpen = true;
+      logger.warn(
+        `Circuit breaker opened for ${eventType} with error: ${errorMessage.substring(
+          0,
+          100
+        )}`
+      );
+    }
+
+    this.circuitBreakerMap.set(key, circuitState);
+  }
+
   /**
    * Enhanced event publishing with better error handling and status tracking
    */
@@ -56,13 +122,13 @@ export class EnhancedEventSystem {
               maxRetries: options?.maxRetries ?? this.MAX_RETRIES,
               priority: options?.priority ?? 'normal',
               delayMs: options?.delayMs ?? 0,
-              createdAt: new Date().toISOString()
-            }
+              createdAt: new Date().toISOString(),
+            },
           }),
           // Add status field (requires schema update)
           // status: EventStatus.PENDING,
           // retry_count: 0
-        }
+        },
       });
 
       // Emit to in-memory event bus for immediate subscribers
@@ -73,14 +139,17 @@ export class EnhancedEventSystem {
         eventType,
         payload,
         eventId: savedEvent.id,
-        priority: options?.priority ?? 'normal'
+        priority: options?.priority ?? 'normal',
       });
 
       logger.info(`Event published: ${eventType} (ID: ${savedEvent.id})`);
       return savedEvent.id;
-
     } catch (error) {
-      logger.err(`Failed to publish event ${eventType}: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Failed to publish event ${eventType}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return null;
     }
   }
@@ -104,13 +173,48 @@ export class EnhancedEventSystem {
       // Mark as completed and cleanup
       await this.completeEvent(eventId);
 
-      logger.info(`Event processed successfully: ${eventType} (ID: ${eventId})`);
+      logger.info(
+        `Event processed successfully: ${eventType} (ID: ${eventId})`
+      );
       return true;
-
     } catch (error) {
-      logger.err(`Error processing event ${eventType} (ID: ${eventId}): ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Error processing event ${eventType} (ID: ${eventId}): ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
 
-      // Handle retry logic
+      // Check if this is a Twitter rate limit error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (this.isTwitterRateLimitError(errorMessage)) {
+        logger.warn(
+          `Twitter rate limit detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`
+        );
+        await this.moveToDeadLetter(
+          eventId,
+          eventType,
+          payload,
+          error as Error
+        );
+        return false;
+      }
+
+      // Check if this is a smart contract failure
+      if (this.isSmartContractError(errorMessage)) {
+        logger.warn(
+          `Smart contract error detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`
+        );
+        await this.moveToDeadLetter(
+          eventId,
+          eventType,
+          payload,
+          error as Error
+        );
+        return false;
+      }
+
+      // Handle retry logic for other errors
       const shouldRetry = await this.handleEventFailure(
         eventId,
         eventType,
@@ -119,15 +223,38 @@ export class EnhancedEventSystem {
       );
 
       if (shouldRetry) {
-        logger.info(`Scheduling retry for event ${eventType} (ID: ${eventId})`);
-        // Schedule retry with exponential backoff
-        setTimeout(() => {
-          this.processEvent(eventId, eventType, payload, processorFn);
-        }, this.RETRY_DELAY_MS);
+        // NO LONGER SCHEDULING RECURSIVE RETRIES VIA TIMEOUT
+        // Instead, the event will be requeued through the proper event queue mechanism
+        logger.info(
+          `Event ${eventType} (ID: ${eventId}) will be retried via queue mechanism`
+        );
       }
 
       return false;
     }
+  }
+
+  /**
+   * Detect if error is a Twitter rate limit error
+   */
+  private static isTwitterRateLimitError(errorMessage: string): boolean {
+    return (
+      errorMessage.includes('TWITTER_RATE_LIMITED') ||
+      errorMessage.includes('429') ||
+      errorMessage.includes('Rate limit exceeded') ||
+      errorMessage.includes('Too Many Requests')
+    );
+  }
+
+  /**
+   * Detect if error is a smart contract error
+   */
+  private static isSmartContractError(errorMessage: string): boolean {
+    return (
+      errorMessage.includes('Failed to add campaign to contract') ||
+      errorMessage.includes('Contract ID is undefined') ||
+      errorMessage.includes('Failed to update contract state')
+    );
   }
 
   /**
@@ -143,7 +270,7 @@ export class EnhancedEventSystem {
 
     try {
       const event = await prisma.eventOutBox.findUnique({
-        where: { id: eventId }
+        where: { id: eventId },
       });
 
       if (!event) {
@@ -157,6 +284,25 @@ export class EnhancedEventSystem {
       const maxRetries = metadata.maxRetries || this.MAX_RETRIES;
 
       if (retryCount <= maxRetries) {
+        // Check circuit breaker before allowing retry
+        if (this.isCircuitBreakerOpen(eventType, error.message)) {
+          logger.warn(
+            `Circuit breaker is open for ${eventType}. Moving to dead letter without retry.`
+          );
+          await this.moveToDeadLetter(eventId, eventType, payload, error);
+          return false;
+        }
+
+        // Update circuit breaker state
+        this.updateCircuitBreaker(eventType, error.message);
+
+        // Calculate exponential backoff delay
+        const baseDelayMs = 5000; // 5 seconds
+        const delayMs = Math.min(
+          baseDelayMs * Math.pow(2, retryCount - 1), // Exponential backoff
+          300000 // Max 5 minutes
+        );
+
         // Update retry count and status
         await prisma.eventOutBox.update({
           where: { id: eventId },
@@ -167,11 +313,51 @@ export class EnhancedEventSystem {
                 ...metadata,
                 retryCount,
                 lastError: error.message,
-                lastRetryAt: new Date().toISOString()
-              }
-            })
-          }
+                lastRetryAt: new Date().toISOString(),
+                nextRetryAt: new Date(Date.now() + delayMs).toISOString(),
+              },
+            }),
+          },
         });
+
+        // Requeue the event with delay (instead of setTimeout recursion)
+        const { publishToQueue } = await import('./redisQueue');
+        setTimeout(() => {
+          (async () => {
+            try {
+              await publishToQueue('event-queue', {
+                eventType,
+                payload: {
+                  ...payload,
+                  _retryAttempt: retryCount,
+                },
+                eventId: Number(eventId),
+                priority: 'low', // Lower priority for retries
+              });
+              logger.info(
+                'Requeued event for retry - EventType: ' +
+                  eventType +
+                  ', ID: ' +
+                  eventId +
+                  ', Attempt: ' +
+                  retryCount +
+                  '/' +
+                  maxRetries +
+                  ', Delay: ' +
+                  delayMs +
+                  'ms'
+              );
+            } catch (requeueError) {
+              logger.err(
+                `Failed to requeue event ${String(eventId)}: ${
+                  requeueError instanceof Error
+                    ? requeueError.message
+                    : String(requeueError)
+                }`
+              );
+            }
+          })();
+        }, delayMs);
 
         return true; // Should retry
       } else {
@@ -180,7 +366,11 @@ export class EnhancedEventSystem {
         return false; // Don't retry
       }
     } catch (err) {
-      logger.err(`Failed to handle event failure for ${eventId}: ${err instanceof Error ? err.message : String(err)}`);
+      logger.err(
+        `Failed to handle event failure for ${eventId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
       return false;
     }
   }
@@ -206,18 +396,23 @@ export class EnhancedEventSystem {
             originalEventType: eventType,
             originalPayload: payload,
             error: error.message,
-            movedAt: new Date().toISOString()
-          })
-        }
+            movedAt: new Date().toISOString(),
+          }),
+        },
       });
 
-      logger.warn(`Event moved to dead letter queue: ${eventType} (ID: ${eventId})`);
+      logger.warn(
+        `Event moved to dead letter queue: ${eventType} (ID: ${eventId})`
+      );
 
       // Optionally notify administrators about dead letter events
       // await this.notifyDeadLetterEvent(eventId, eventType, error);
-
     } catch (err) {
-      logger.err(`Failed to move event ${eventId} to dead letter queue: ${err instanceof Error ? err.message : String(err)}`);
+      logger.err(
+        `Failed to move event ${eventId} to dead letter queue: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
     }
   }
 
@@ -229,10 +424,14 @@ export class EnhancedEventSystem {
 
     try {
       await prisma.eventOutBox.delete({
-        where: { id: eventId }
+        where: { id: eventId },
       });
     } catch (error) {
-      logger.err(`Failed to cleanup completed event ${eventId}: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Failed to cleanup completed event ${eventId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -253,28 +452,32 @@ export class EnhancedEventSystem {
           where: {
             NOT: {
               event_type: {
-                startsWith: 'DEAD_LETTER_'
-              }
-            }
-          }
+                startsWith: 'DEAD_LETTER_',
+              },
+            },
+          },
         }),
         prisma.eventOutBox.count({
           where: {
             event_type: {
-              startsWith: 'DEAD_LETTER_'
-            }
-          }
-        })
+              startsWith: 'DEAD_LETTER_',
+            },
+          },
+        }),
       ]);
 
       return {
         pending,
         completed: 0, // Would need additional tracking
-        failed: 0,    // Would need additional tracking
-        deadLetter
+        failed: 0, // Would need additional tracking
+        deadLetter,
       };
     } catch (error) {
-      logger.err(`Failed to get event stats: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Failed to get event stats: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return { pending: 0, completed: 0, failed: 0, deadLetter: 0 };
     }
   }
@@ -289,10 +492,10 @@ export class EnhancedEventSystem {
       const deadLetterEvents = await prisma.eventOutBox.findMany({
         where: {
           event_type: {
-            startsWith: 'DEAD_LETTER_'
-          }
+            startsWith: 'DEAD_LETTER_',
+          },
         },
-        take: limit
+        take: limit,
       });
 
       let reprocessedCount = 0;
@@ -313,20 +516,27 @@ export class EnhancedEventSystem {
           if (newEventId) {
             // Remove from dead letter queue
             await prisma.eventOutBox.delete({
-              where: { id: event.id }
+              where: { id: event.id },
             });
             reprocessedCount++;
           }
         } catch (err) {
-          logger.err(`Failed to reprocess dead letter event ${event.id}: ${err instanceof Error ? err.message : String(err)}`);
+          logger.err(
+            `Failed to reprocess dead letter event ${event.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
         }
       }
 
       logger.info(`Reprocessed ${reprocessedCount} dead letter events`);
       return reprocessedCount;
-
     } catch (error) {
-      logger.err(`Failed to reprocess dead letter events: ${error instanceof Error ? error.message : String(error)}`);
+      logger.err(
+        `Failed to reprocess dead letter events: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       return 0;
     }
   }

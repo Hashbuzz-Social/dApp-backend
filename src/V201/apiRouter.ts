@@ -1,6 +1,5 @@
 import { Router } from "express";
-import {campaignRouter} from "./Modules";
-import monitoringRoutes from './Modules/monitoring/routes/monitoringRoutes';
+import { campaignRouter, monitoringRoutes, questRouter } from './Modules';
 
 const router = Router();
 
@@ -9,5 +8,6 @@ router.use('/websocket', (_req, res) => res.status(204).send());
 
 router.use('/campaign', campaignRouter);
 router.use('/monitoring', monitoringRoutes);
+router.use('/quest', questRouter);
 
 export default router;

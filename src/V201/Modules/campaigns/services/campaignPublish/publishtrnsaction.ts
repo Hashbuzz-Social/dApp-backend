@@ -6,7 +6,7 @@ import {
   Prisma,
   user_user,
 } from '@prisma/client';
-import { addFungibleAndNFTCampaign } from '@services/contract-service';
+import { provideActiveContract } from '@services/contract-service';
 import { allocateBalanceToCampaign } from '@services/transaction-service';
 import createPrismaClient from '@shared/prisma';
 import { CampaignEvents } from '@V201/events/campaign';
@@ -17,13 +17,12 @@ import {
   updateFungibleBalanceOfCard,
   updateHabrBalanceOfCard,
 } from '@V201/modules/Balance';
-import {
-  safeParsedData,
-  updateCampaignInMemoryStatus,
-} from '@V201/modules/common';
+import { safeParsedData } from '@V201/modules/common';
 import { EventPayloadMap } from '@V201/types';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../../eventPublisher';
+import ContractCampaignLifecycle from '@services/ContractCampaignLifecycle';
+import JSONBigInt from 'json-bigint';
 
 const handleSmartContractTransaction = async (
   card: campaign_twittercard,
@@ -49,10 +48,10 @@ const handleSmartContractTransaction = async (
     ).createTransaction({
       transaction_data: safeParsedData({
         ...transactionDetails,
-        status: transactionDetails.status.toString(),
+        status: String(transactionDetails?.status || 'unknown'),
       }),
       transaction_id: transactionDetails.transactionId,
-      status: transactionDetails.status.toString(),
+      status: String(transactionDetails?.status || 'unknown'),
       amount: Number(card.campaign_budget),
       transaction_type: 'campaign_top_up',
       network: apConfig.network.network as network,
@@ -62,7 +61,9 @@ const handleSmartContractTransaction = async (
     const logableCampaignData: Omit<Prisma.CampaignLogCreateInput, 'campaign'> =
       {
         status: campaignstatus.CampaignRunning,
-        message: `Campaign balance ${card.campaign_budget ?? 0} is added to the SM Contract`,
+        message: `Campaign balance ${
+          card.campaign_budget ?? 0
+        } is added to the SM Contract`,
         data: safeParsedData({
           transaction_id: transactionDetails.transactionId,
           status: transactionDetails.status,
@@ -79,11 +80,7 @@ const handleSmartContractTransaction = async (
       campaign: { connect: { id: card.id } },
     });
 
-    updateCampaignInMemoryStatus(
-      card.contract_id!,
-      'transactionLogsCreated',
-      true
-    );
+    // Note: In-memory status update removed as requested
   } catch (error) {
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
@@ -91,7 +88,12 @@ const handleSmartContractTransaction = async (
       message: error.message,
       error,
     });
-    logger.err('Error in handleSmartContractTransaction:' + (error instanceof Error ? error.stack || error.message : JSON.stringify(error)));
+    logger.err(
+      'Error in handleSmartContractTransaction:' +
+        (error instanceof Error
+          ? error.stack || error.message
+          : JSONBigInt.stringify(error))
+    );
     throw error;
   }
 };
@@ -104,10 +106,17 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
     throw new Error('Unsupported card type for smart contract transaction');
   }
 
+  logger.info(
+    `data received for event ${JSONBigInt.stringify({ card, cardOwner })}`
+  );
+
   const { contract_id, campaign_budget } = card;
   const { hedera_wallet_id } = cardOwner;
 
   if (!contract_id || !campaign_budget || !hedera_wallet_id) {
+    logger.err(
+      'Location01: Missing required data for smart contract transaction'
+    );
     throw new Error('Missing required data for smart contract transaction');
   }
 
@@ -130,21 +139,38 @@ export const publshCampaignSMTransactionHandlerHBAR = async (
       typeof contractStateUpdateResult === 'object' &&
       'status' in contractStateUpdateResult &&
       contractStateUpdateResult.status &&
-      '_code' in contractStateUpdateResult.status &&
       'transactionId' in contractStateUpdateResult &&
       'receipt' in contractStateUpdateResult
     ) {
+      // Handle error case
+      if (
+        'error' in contractStateUpdateResult &&
+        contractStateUpdateResult.error
+      ) {
+        throw new Error(
+          `Contract call failed: ${
+            contractStateUpdateResult.errorMessage || 'Unknown contract error'
+          }`
+        );
+      }
+
       return {
         contract_id,
         transactionId: contractStateUpdateResult.transactionId,
         receipt: contractStateUpdateResult.receipt,
-        status: contractStateUpdateResult.status._code.toString(),
+        status: contractStateUpdateResult.status.toString(),
       };
     } else {
       return {
         contract_id,
-        transactionId: 'transactionId' in contractStateUpdateResult ? (contractStateUpdateResult as any).transactionId : undefined,
-        receipt: 'receipt' in contractStateUpdateResult ? (contractStateUpdateResult as any).receipt : undefined,
+        transactionId:
+          'transactionId' in contractStateUpdateResult
+            ? (contractStateUpdateResult as any).transactionId
+            : undefined,
+        receipt:
+          'receipt' in contractStateUpdateResult
+            ? (contractStateUpdateResult as any).receipt
+            : undefined,
         status: undefined,
       };
     }
@@ -172,12 +198,23 @@ export const publshCampaignSMTransactionHandlerFungible = async (
   }
 
   return handleSmartContractTransaction(card, cardOwner, async () => {
-    const transactionDetails = await addFungibleAndNFTCampaign(
-      fungible_token_id,
-      campaign_budget,
-      hedera_wallet_id,
-      contract_id
+    // Get contract details
+    const contractDetails = await provideActiveContract();
+
+    if (!contractDetails?.contract_id) {
+      throw new Error('No active contract found');
+    }
+
+    const campaignLifecycleService = new ContractCampaignLifecycle(
+      contractDetails.contract_id
     );
+    const transactionDetails =
+      await campaignLifecycleService.addFungibleCampaign(
+        fungible_token_id,
+        contract_id,
+        hedera_wallet_id,
+        campaign_budget
+      );
 
     if (!transactionDetails) {
       throw new Error('Failed to add campaign to contract');
@@ -202,6 +239,21 @@ export const handleCampaignPublishTransaction = async ({
   card,
   cardOwner,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION]): Promise<void> => {
+  const prisma = await createPrismaClient();
+  card = (await prisma.campaign_twittercard.findUnique({
+    where: { id: card.id },
+  })) as campaign_twittercard;
+  cardOwner = (await prisma.user_user.findUnique({
+    where: { id: cardOwner.id },
+  })) as user_user;
+
+  if (!card) {
+    throw new Error('Campaign card not found');
+  }
+  if (!cardOwner) {
+    throw new Error('Card owner not found');
+  }
+
   try {
     if (card.type === 'HBAR') {
       return publshCampaignSMTransactionHandlerHBAR(card, cardOwner);
@@ -219,7 +271,11 @@ export const handleCampaignPublishTransaction = async ({
       message: error.message,
       error,
     });
-    logger.err('Error in HandleCampaignPublishTransaction:', error);
+    logger.err(
+      `Error in HandleCampaignPublishTransaction: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     throw error;
   }
 };

@@ -17,7 +17,7 @@ import { publishEvent } from '../../../eventPublisher';
  * @param budget - Total campaign budget
  * @returns Maximum reward rate per activity
  */
-const calculateMaxActivityReward = (
+export const calculateMaxActivityReward = (
   expectedEngagers: number,
   budget: number
 ): number => {
@@ -38,7 +38,7 @@ const calculateMaxActivityReward = (
   return maxActivityRate;
 };
 
-const getRewardsValues = (
+export const getRewardsValues = (
   reward: number,
   type: CampaignTypes,
   tokenId?: string,

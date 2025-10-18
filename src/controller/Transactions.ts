@@ -1,21 +1,29 @@
-import { Status } from "@hashgraph/sdk";
-import { getCampaignDetailsById } from "@services/campaign-service";
-import { provideActiveContract } from "@services/contract-service";
-import { utilsHandlerService } from "@services/ContractUtilsHandlers";
-import initHederaService from "@services/hedera-service";
-import htsServices from "@services/hts-services";
-import { allocateBalanceToCampaign, createTopUpTransaction, reimbursementAmount, reimbursementFungible, updateBalanceToContract, updateFungibleAmountToContract, validateTransactionFormNetwork } from "@services/transaction-service";
-import userService from "@services/user-service";
-import { ErrorWithCode } from "@shared/errors";
-import { waitFor } from "@shared/helper";
-import createPrismaClient from "@shared/prisma";
-import prisma from "@shared/prisma";
-import { NextFunction, Request, Response } from "express";
-import statusCodes from "http-status-codes";
-import JSONBigInt from "json-bigint";
-import { CreateTranSactionEntity } from "src/@types/custom";
+import { Status } from '@hashgraph/sdk';
+import { getCampaignDetailsById } from '@services/campaign-service';
+import { provideActiveContract } from '@services/contract-service';
+import ContractUtils from '@services/ContractUtilsHandlers';
+import initHederaService from '@services/hedera-service';
+import htsServices from '@services/hts-services';
+import {
+  allocateBalanceToCampaign,
+  createTopUpTransaction,
+  reimbursementAmount,
+  reimbursementFungible,
+  updateBalanceToContract,
+  updateFungibleAmountToContract,
+  validateTransactionFormNetwork,
+} from '@services/transaction-service';
+import userService from '@services/user-service';
+import { ErrorWithCode } from '@shared/errors';
+import { waitFor } from '@shared/helper';
+import createPrismaClient from '@shared/prisma';
+import { NextFunction, Request, Response } from 'express';
+import statusCodes from 'http-status-codes';
+import JSONBigInt from 'json-bigint';
+import { CreateTranSactionEntity } from 'src/@types/custom';
 
-const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } = statusCodes;
+const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } =
+  statusCodes;
 
 /****
  *@description top-up handler
@@ -23,7 +31,11 @@ const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } = st
  * Step 2. Then get the entity type and validate with the transaction too.
  */
 
-export const handleTopUp = async (req: Request, res: Response, next: NextFunction) => {
+export const handleTopUp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const accountId = req.currentUser?.hedera_wallet_id;
   const userId = req.currentUser?.id;
   const entity: CreateTranSactionEntity = req.body.entity;
@@ -32,27 +44,50 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
   const transactionId: string = req.body.transactionId;
   const response: string = req.body.response;
 
-  if (!accountId || !amounts?.value || !amounts.fee || !amounts.total || !userId || !address) {
-    return res.status(BAD_REQUEST).json({ error: true, message: "Amounts are incorrect" });
+  if (
+    !accountId ||
+    !amounts?.value ||
+    !amounts.fee ||
+    !amounts.total ||
+    !userId ||
+    !address
+  ) {
+    return res
+      .status(BAD_REQUEST)
+      .json({ error: true, message: 'Amounts are incorrect' });
   }
 
   try {
     let tokenDetails;
 
-    if (entity.entityType === "fungible" && entity.entityId) {
-      tokenDetails = await htsServices.getEntityDetailsByTokenId(entity.entityId);
+    if (entity.entityType === 'fungible' && entity.entityId) {
+      tokenDetails = await htsServices.getEntityDetailsByTokenId(
+        entity.entityId
+      );
       if (!tokenDetails) {
-        return res.status(BAD_REQUEST).json({ error: true, message: "Wrong fungible token provided" });
+        return res
+          .status(BAD_REQUEST)
+          .json({ error: true, message: 'Wrong fungible token provided' });
       }
     }
 
     if (!Boolean(req.currentUser?.whitelistUser)) {
       // user is performing top-up for the first time so add user to contract
+      // const status = await utilsHandlerService.addCampaigner(accountId);
+      const contractDetails = await provideActiveContract();
+      if (!contractDetails?.contract_id) {
+        throw new ErrorWithCode('No active contract found', BAD_REQUEST);
+      }
+      const utilsHandlerService = new ContractUtils(
+        contractDetails.contract_id
+      );
       const status = await utilsHandlerService.addCampaigner(accountId);
 
       if (status !== Status.Success) {
-        throw new ErrorWithCode("Failed to add user to contract for HBAR", BAD_REQUEST);
-        // return res.status(BAD_REQUEST).json({ error: true, message: "Failed to add user to contract for HBAR" });
+        throw new ErrorWithCode(
+          'Failed to add user to contract for HBAR',
+          BAD_REQUEST
+        );
       }
 
       // update the user whitelist status
@@ -62,31 +97,76 @@ export const handleTopUp = async (req: Request, res: Response, next: NextFunctio
     // Respond user about acceptance for the transaction data
     res.status(ACCEPTED).json({
       success: true,
-      message: "Transaction validation in progress. Balance will be updated in a few seconds. Do not close the browser.",
+      message:
+        'Transaction validation in progress. Balance will be updated in a few seconds. Do not close the browser.',
     });
 
     await waitFor(10000);
 
-    const validate = await validateTransactionFormNetwork(transactionId, accountId);
+    const validate = await validateTransactionFormNetwork(
+      transactionId,
+      accountId
+    );
 
-    await createOrUpdateTransactionRecord(transactionId, response, amounts.total, validate.validated ? "validated" : validate.status);
+    await createOrUpdateTransactionRecord(
+      transactionId,
+      response,
+      amounts.total,
+      validate.validated ? 'validated' : validate.status
+    );
 
     if (validate.validated) {
-      await handleValidatedTransaction(entity, accountId, address, amounts, userId, validate, tokenDetails);
+      await handleValidatedTransaction(
+        entity,
+        accountId,
+        address,
+        amounts,
+        userId,
+        validate,
+        tokenDetails
+      );
     }
   } catch (err) {
-    await createOrUpdateTransactionRecord(transactionId, response, amounts.total, "unhandled");
-    console.error("Error while processing top-up request", err);
+    await createOrUpdateTransactionRecord(
+      transactionId,
+      response,
+      amounts.total,
+      'unhandled'
+    );
+    // Improved error logging
+    console.error('Error while processing top-up request:', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined,
+      transactionId,
+      userId,
+      accountId,
+      entity,
+      amounts,
+      address,
+      response,
+    });
+    // Optionally, you can send an error response to the client
+    if (!res.headersSent) {
+      res.status(BAD_REQUEST).json({
+        error: true,
+        message: 'Error while processing top-up request',
+        details: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 };
 
-
-export const createOrUpdateTransactionRecord = async (transactionId: string, response: string, amount: number, status: string) => {
+export const createOrUpdateTransactionRecord = async (
+  transactionId: string,
+  response: string,
+  amount: number,
+  status: string
+) => {
   const prisma = await createPrismaClient();
   const { network } = await initHederaService();
   const finddataByTransactionId = await prisma.transactions.findFirst({
     where: { transaction_id: transactionId },
-  })
+  });
   if (finddataByTransactionId) {
     // update the transaction record
     await prisma.transactions.update({
@@ -94,15 +174,15 @@ export const createOrUpdateTransactionRecord = async (transactionId: string, res
       data: {
         transaction_data: response,
         amount,
-        status
-      }
+        status,
+      },
     });
   } else {
     await prisma.transactions.create({
       data: {
         transaction_data: response,
         transaction_id: transactionId,
-        transaction_type: "topup",
+        transaction_type: 'topup',
         network: network,
         amount,
         status,
@@ -120,17 +200,25 @@ const handleValidatedTransaction = async (
   validate: any,
   tokenDetails: any
 ) => {
-  if (entity.entityType === "HBAR") {
+  if (entity.entityType === 'HBAR') {
     const balanceRecord = await updateBalanceToContract(address, amounts);
-    await userService.topUp(userId, Number(balanceRecord.userUpdatedBalance), "update");
+    await userService.topUp(
+      userId,
+      Number(balanceRecord.userUpdatedBalance),
+      'update'
+    );
   }
 
-  if (entity.entityType === "fungible" && validate.token_id && tokenDetails) {
+  if (entity.entityType === 'fungible' && validate.token_id && tokenDetails) {
     const decimal = Number(tokenDetails.decimals);
-    const amount = await updateFungibleAmountToContract(accountId, validate.amount, validate.token_id);
+    const amount = await updateFungibleAmountToContract(
+      accountId,
+      validate.amount,
+      validate.token_id
+    );
     await userService.updateTokenBalanceForUser({
       amount: Number(amount),
-      operation: "update",
+      operation: 'update',
       token_id: tokenDetails.id,
       decimal,
       user_id: userId,
@@ -138,60 +226,98 @@ const handleValidatedTransaction = async (
   }
 };
 
-
 /****
  *
  *@description Check active contract and return to the user.
  */
 
-export const handleGetActiveContract = async (req: Request, res: Response, next: NextFunction) => {
+export const handleGetActiveContract = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const activeContract = await provideActiveContract();
   return res.status(OK).json(activeContract);
-
 };
 
 /****
  *@description this function is handling crete topup transaction
  */
 
-export const handleCrateToupReq = async (req: Request, res: Response, next: NextFunction) => {
-
+export const handleCrateToupReq = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const entity: CreateTranSactionEntity = req.body.entity;
   const connectedAccountId = req.currentUser?.hedera_wallet_id;
 
   if (connectedAccountId) {
-    const transactionBytes = await createTopUpTransaction(entity, connectedAccountId);
+    const transactionBytes = await createTopUpTransaction(
+      entity,
+      connectedAccountId
+    );
     return res.status(CREATED).json(transactionBytes);
-  } else { next(new ErrorWithCode("Error while processing request", BAD_REQUEST)); }
+  } else {
+    next(new ErrorWithCode('Error while processing request', BAD_REQUEST));
+  }
 };
 
-export const handleCampaignFundAllocation = async (req: Request, res: Response, next: NextFunction) => {
-
+export const handleCampaignFundAllocation = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const campaignId: number = req.body.campaignId;
 
   //! get campaignById
   const campaignDetails = await getCampaignDetailsById(campaignId);
 
-  if (campaignDetails && campaignDetails.campaign_budget && campaignDetails.user_user?.hedera_wallet_id && campaignDetails.owner_id && campaignDetails?.contract_id) {
-    const amounts = Math.round(campaignDetails?.campaign_budget * Math.pow(10, 8));
+  if (
+    campaignDetails &&
+    campaignDetails.campaign_budget &&
+    campaignDetails.user_user?.hedera_wallet_id &&
+    campaignDetails.owner_id &&
+    campaignDetails?.contract_id
+  ) {
+    const amounts = Math.round(
+      campaignDetails?.campaign_budget * Math.pow(10, 8)
+    );
     const campaignerAccount = campaignDetails.user_user?.hedera_wallet_id;
     const campaignerId = campaignDetails.owner_id;
 
     //?  call the function to update the balances of the camp
-    const allocationResult = await allocateBalanceToCampaign(campaignDetails.id, amounts, campaignerAccount, campaignDetails.contract_id);
+    const allocationResult = await allocateBalanceToCampaign(
+      campaignDetails.id,
+      amounts,
+      campaignerAccount,
+      campaignDetails.contract_id
+    );
 
     if ('transactionId' in allocationResult && 'receipt' in allocationResult) {
-      await userService.topUp(campaignerId, amounts, "decrement");
-      return res.status(CREATED).json({ transactionId: allocationResult.transactionId, receipt: allocationResult.receipt });
+      await userService.topUp(campaignerId, amounts, 'decrement');
+      return res.status(CREATED).json({
+        transactionId: allocationResult.transactionId,
+        receipt: allocationResult.receipt,
+      });
     } else {
-      return res.status(BAD_REQUEST).json({ error: true, message: "Failed to allocate balance to campaign." });
+      return res.status(BAD_REQUEST).json({
+        error: true,
+        message: 'Failed to allocate balance to campaign.',
+      });
     }
   }
 
-  return res.status(NON_AUTHORITATIVE_INFORMATION).json({ error: true, message: "CampaignIs is not correct" })
+  return res
+    .status(NON_AUTHORITATIVE_INFORMATION)
+    .json({ error: true, message: 'CampaignIs is not correct' });
 };
 
-export const handleReimbursement = async (req: Request, res: Response, next: NextFunction) => {
+export const handleReimbursement = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // try {
   //   (async () => {
   const amount: number = req.body.amount;
@@ -199,11 +325,17 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
   const tokenId: string = req.body.token_id;
   const prisma = await createPrismaClient();
   if (!req.currentUser?.id || !req.currentUser?.hedera_wallet_id) {
-    return res.status(BAD_REQUEST).json({ error: true, message: "Sorry This request can't be completed." });
+    return res
+      .status(BAD_REQUEST)
+      .json({ error: true, message: "Sorry This request can't be completed." });
   }
 
-  if (type === "HBAR") {
-    if (!req.currentUser?.available_budget || (req.currentUser?.available_budget && req.currentUser?.available_budget < amount)) {
+  if (type === 'HBAR') {
+    if (
+      !req.currentUser?.available_budget ||
+      (req.currentUser?.available_budget &&
+        req.currentUser?.available_budget < amount)
+    ) {
       return res.status(BAD_REQUEST).json({
         error: true,
         message: "Insufficient available amount in user's account.",
@@ -214,13 +346,13 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
       userId: req.currentUser.id,
       amounts: amount,
       accountId: req.currentUser.hedera_wallet_id,
-      currentBalance: req.currentUser.available_budget
+      currentBalance: req.currentUser.available_budget,
     });
     return res.status(OK).json({
-      message: "Reimbursement Successfully",
+      message: 'Reimbursement Successfully',
       reimbursementTransaction,
     });
-  } else if (type === "FUNGIBLE") {
+  } else if (type === 'FUNGIBLE') {
     const tokenDetails = await prisma.whiteListedTokens.findUnique({
       where: { token_id: tokenId },
     });
@@ -230,7 +362,10 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
         where: { user_id: req.currentUser?.id, token_id: tokenDetails.id },
       });
 
-      if (!balRecord || (balRecord?.entity_balance && balRecord?.entity_balance < amount)) {
+      if (
+        !balRecord ||
+        (balRecord?.entity_balance && balRecord?.entity_balance < amount)
+      ) {
         return res.status(BAD_REQUEST).json({
           error: true,
           message: "Insufficient available amount in user's account.",
@@ -245,10 +380,12 @@ export const handleReimbursement = async (req: Request, res: Response, next: Nex
         decimals: tokenDetails.decimals,
         id: req.currentUser.id,
         idToken: tokenDetails.id,
-        currentBalance: balRecord.entity_balance
+        currentBalance: balRecord.entity_balance,
       });
-      return res.status(OK).json({ message: "Reimbursement Successfully", data: JSONBigInt.parse(JSONBigInt.stringify(reimbursementTransaction)) });
+      return res.status(OK).json({
+        message: 'Reimbursement Successfully',
+        data: JSONBigInt.parse(JSONBigInt.stringify(reimbursementTransaction)),
+      });
     }
   }
 };
-

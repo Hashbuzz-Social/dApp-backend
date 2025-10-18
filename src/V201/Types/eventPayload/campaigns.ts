@@ -46,6 +46,12 @@ export type V201EngagementDataCollectionPayload = {
   maxAttempts: number;
 };
 
+export type CollectEngagementLikeAndRetweetPayload = {
+  campaignId: number | bigint;
+  type: CampaignTypes;
+  createdAt: Date;
+};
+
 export type CampaignClosedPayload = {
   campaignId: number | bigint;
   userId: number | bigint;

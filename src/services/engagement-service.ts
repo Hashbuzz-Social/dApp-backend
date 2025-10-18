@@ -1,28 +1,31 @@
-import { payment_status } from "@prisma/client";
-import prisma from "@shared/prisma";
-import twitterAPI from "@shared/twitterAPI";
-import moment from "moment";
-import { getCampaignDetailsById } from "./campaign-service";
-import logger from "jet-logger";
-import createPrismaClient from "@shared/prisma";
+import { payment_status } from '@prisma/client';
+import twitterAPI from '@shared/twitterAPI';
+import moment from 'moment';
+import { getCampaignDetailsById } from './campaign-service';
+import logger from 'jet-logger';
+import createPrismaClient from '@shared/prisma';
 
-export type engagements = "Like" | "Retweet" | "Reply" | "Quote";
+export type engagements = 'Like' | 'Retweet' | 'Reply' | 'Quote';
 
-const getExistingRecordsIdsIfAny = async (id: bigint, engagement_type: engagements) => {
+const getExistingRecordsIdsIfAny = async (
+  id: bigint,
+  engagement_type: engagements
+) => {
   const prisma = await createPrismaClient();
   try {
-    const existingRecordsIfAny = await prisma.campaign_tweetengagements.findMany({
-      where: {
-        tweet_id: id,
-        engagement_type,
-      },
-      select: {
-        user_id: true,
-      },
-    });
+    const existingRecordsIfAny =
+      await prisma.campaign_tweetengagements.findMany({
+        where: {
+          tweet_id: id,
+          engagement_type,
+        },
+        select: {
+          user_id: true,
+        },
+      });
     return existingRecordsIfAny.map((d) => d.user_id);
   } catch (error) {
-    logger.err("Error fetching existing records: ", error);
+    logger.err('Error fetching existing records: ', error);
     throw error;
   }
 };
@@ -31,41 +34,60 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
   const prisma = await createPrismaClient();
   try {
     const data = await getCampaignDetailsById(id);
-    if (!data?.user_user?.business_twitter_access_token || !data?.user_user?.business_twitter_access_token_secret) {
-      logger.err("No twitter account is accessible.");
+    if (
+      !data?.user_user?.business_twitter_access_token ||
+      !data?.user_user?.business_twitter_access_token_secret
+    ) {
+      logger.err('No twitter account is accessible.');
       return false;
     }
 
-    const [allRepliesResult, allExistingReplyEngagementsResult] = await Promise.allSettled([
-      twitterAPI.getAllReplies(tweet_Id, data.user_user.business_twitter_access_token, data.user_user.business_twitter_access_token_secret),
-      prisma.campaign_tweetengagements.findMany({
-        where: {
-          tweet_id: id,
-          engagement_type: "Reply",
-        },
-        select: {
-          user_id: true,
-        },
-      }),
-    ]);
+    const [allRepliesResult, allExistingReplyEngagementsResult] =
+      await Promise.allSettled([
+        twitterAPI.getAllReplies(
+          tweet_Id,
+          data.user_user.business_twitter_access_token,
+          data.user_user.business_twitter_access_token_secret
+        ),
+        prisma.campaign_tweetengagements.findMany({
+          where: {
+            tweet_id: id,
+            engagement_type: 'Reply',
+          },
+          select: {
+            user_id: true,
+          },
+        }),
+      ]);
 
-    if (allRepliesResult.status !== "fulfilled" || allExistingReplyEngagementsResult.status !== "fulfilled") {
-      logger.err("Failed to fetch data from Twitter or database.");
+    if (
+      allRepliesResult.status !== 'fulfilled' ||
+      allExistingReplyEngagementsResult.status !== 'fulfilled'
+    ) {
+      logger.err('Failed to fetch data from Twitter or database.');
       return false;
     }
 
     const allReplies = allRepliesResult.value;
     const allExistingReplyEngagements = allExistingReplyEngagementsResult.value;
 
-    const newAllReplies = allReplies.filter(reply => reply.author_id !== data.user_user.personal_twitter_id);
-    const existingUserIds = allExistingReplyEngagements.map(d => d.user_id);
+    const newAllReplies = allReplies.filter(
+      (reply) => reply.author_id !== data.user_user.personal_twitter_id
+    );
+    const existingUserIds = allExistingReplyEngagements.map((d) => d.user_id);
 
-    let formattedArray = newAllReplies.map(reply => ({
-      user_id: reply.author_id,
-      tweet_id: id,
-      engagement_type: "Reply",
-      updated_at: new Date().toISOString(),
-    })).filter(reply => !existingUserIds.includes(reply.user_id));
+    const formattedArray = newAllReplies
+      .map((reply) => ({
+        user_id: reply.author_id,
+        tweet_id: id,
+        engagement_type: 'Reply',
+        updated_at: new Date().toISOString(),
+      }))
+      .filter(
+        (reply) =>
+          typeof reply.user_id === 'string' &&
+          !existingUserIds.includes(reply.user_id)
+      );
 
     if (formattedArray.length > 0) {
       await prisma.campaign_tweetengagements.createMany({
@@ -96,7 +118,7 @@ export const updateRepliesToDB = async (id: bigint, tweet_Id: string) => {
 
     return false;
   } catch (error) {
-    logger.err("Error updating replies to DB: ", error);
+    logger.err('Error updating replies to DB: ', error);
     throw error;
   }
 };
@@ -105,14 +127,22 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
   try {
     const prisma = await createPrismaClient();
     const data = await getCampaignDetailsById(card);
-    if (data?.id && data?.tweet_id && data?.user_user) {
+    const user = await prisma.user_user.findUnique({
+      where: { id: data?.user_user.id },
+    });
+    if (data?.id && data?.tweet_id && user) {
       const details = data.tweet_id.toString();
-      const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(details, data.user_user);
+      const { likes, retweets, quotes } = await twitterAPI.getEngagementOnCard(
+        details,
+        user
+      );
 
       let isDone = false;
 
       if (likes.length > 0) {
-        const newLikes = likes.filter(like => like.id !== data.user_user.personal_twitter_id);
+        const newLikes = likes.filter(
+          (like) => like.id !== data.user_user.personal_twitter_id
+        );
 
         await prisma.campaign_tweetstats.upsert({
           where: { twitter_card_id: data.id },
@@ -130,12 +160,17 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
         const likesForDB = newLikes.map((d) => ({
           user_id: d.id,
           tweet_id: data.id,
-          engagement_type: "Like",
+          engagement_type: 'Like',
           updated_at: moment().toISOString(),
         }));
 
-        const existingUserIds = await getExistingRecordsIdsIfAny(data.id, "Like");
-        const filterResult = likesForDB.filter(d => !existingUserIds.includes(d.user_id));
+        const existingUserIds = await getExistingRecordsIdsIfAny(
+          data.id,
+          'Like'
+        );
+        const filterResult = likesForDB.filter(
+          (d) => !existingUserIds.includes(d.user_id)
+        );
 
         if (filterResult.length > 0) {
           await prisma.campaign_tweetengagements.createMany({
@@ -146,7 +181,9 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
       }
 
       if (retweets.length > 0) {
-        const newRetweet = retweets.filter(retweet => retweet.id !== data.user_user.personal_twitter_id);
+        const newRetweet = retweets.filter(
+          (retweet) => retweet.id !== data.user_user.personal_twitter_id
+        );
 
         await prisma.campaign_tweetstats.upsert({
           where: { twitter_card_id: data.id },
@@ -164,12 +201,17 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
         const retweetsForDB = newRetweet.map((d) => ({
           user_id: d.id,
           tweet_id: data.id,
-          engagement_type: "Retweet",
+          engagement_type: 'Retweet',
           updated_at: moment().toISOString(),
         }));
 
-        const existingUserIds = await getExistingRecordsIdsIfAny(data.id, "Retweet");
-        const filterResult = retweetsForDB.filter(d => !existingUserIds.includes(d.user_id));
+        const existingUserIds = await getExistingRecordsIdsIfAny(
+          data.id,
+          'Retweet'
+        );
+        const filterResult = retweetsForDB.filter(
+          (d) => !existingUserIds.includes(d.user_id)
+        );
 
         if (filterResult.length > 0) {
           await prisma.campaign_tweetengagements.createMany({
@@ -181,7 +223,9 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
       }
 
       if (quotes.length > 0) {
-        const newQuotes = quotes.filter(quote => quote.id !== data.user_user.personal_twitter_id);
+        const newQuotes = quotes.filter(
+          (quote) => quote.id !== data.user_user.personal_twitter_id
+        );
 
         await prisma.campaign_tweetstats.upsert({
           where: { twitter_card_id: data.id },
@@ -199,12 +243,17 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
         const quotesForDB = newQuotes.map((d) => ({
           user_id: d.author_id,
           tweet_id: data.id,
-          engagement_type: "Quote",
+          engagement_type: 'Quote',
           updated_at: moment().toISOString(),
         }));
 
-        const existingUserIds = await getExistingRecordsIdsIfAny(data.id, "Quote");
-        const filterResult = quotesForDB.filter(d => !existingUserIds.includes(d.user_id!));
+        const existingUserIds = await getExistingRecordsIdsIfAny(
+          data.id,
+          'Quote'
+        );
+        const filterResult = quotesForDB.filter(
+          (d) => !existingUserIds.includes(d.user_id!)
+        );
 
         if (filterResult.length > 0) {
           await prisma.campaign_tweetengagements.createMany({
@@ -218,12 +267,15 @@ export const updateAllEngagementsForCard = async (card: number | bigint) => {
       return isDone;
     }
   } catch (error) {
-    logger.err("Error updating all engagements for card: ", error);
+    logger.err('Error updating all engagements for card: ', error);
     throw error;
   }
 };
 
-export const updatePaymentStatusToManyRecords = async (ids: number[] | bigint[], payment_status: payment_status) => {
+export const updatePaymentStatusToManyRecords = async (
+  ids: number[] | bigint[],
+  payment_status: payment_status
+) => {
   const prisma = await createPrismaClient();
   try {
     return await prisma.campaign_tweetengagements.updateMany({
@@ -237,7 +289,7 @@ export const updatePaymentStatusToManyRecords = async (ids: number[] | bigint[],
       },
     });
   } catch (error) {
-    logger.err("Error updating payment status: ", error);
+    logger.err('Error updating payment status: ', error);
     throw error;
   }
 };
