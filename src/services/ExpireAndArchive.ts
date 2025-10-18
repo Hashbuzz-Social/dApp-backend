@@ -249,11 +249,15 @@ class CampaignExpiryOperation extends CampaignLifeCycleBase {
         'Executing HBAR smart contract expiry transaction',
         async () => {
           const response = await habrSMExpiryCampaignCall(card, cardOwner);
-          if (response && 'dataDecoded' in response && response.dataDecoded) {
-            balances = Number(response.dataDecoded[0]);
-            logger.info(
-              `[${this.requestId}] Retrieved balance from contract: ${balances}`
-            );
+          if (response && 'result' in response && response.result) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const decodedResult = response.result as any;
+            if (Array.isArray(decodedResult) && decodedResult.length > 0) {
+              balances = Number(decodedResult[0]);
+              logger.info(
+                `[${this.requestId}] Retrieved balance from contract: ${balances}`
+              );
+            }
           }
           return response;
         },

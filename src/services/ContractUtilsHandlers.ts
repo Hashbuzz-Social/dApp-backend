@@ -69,9 +69,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }
@@ -100,7 +100,7 @@ class ContractUtils {
             }`
           );
         }
-        return contractCallResponse.status as Status;
+        return contractCallResponse.status as unknown as Status;
     }
 
     // Method to get all whitelisted tokens
@@ -113,9 +113,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }
@@ -135,11 +135,16 @@ class ContractUtils {
             throw new Error("response is undefined");
         }
         if (response.error) {
+          const errorCode = extractErrorCode(response.errorMessage || '');
+          // E006: Campaign already exists - treat as success (idempotent operation)
+          if (errorCode === 'E006') {
+            return Status.Success;
+          }
           throw new Error(
             `Contract call failed: ${response.errorMessage || 'Unknown error'}`
           );
         }
-        return response.status as Status;
+        return response.status as unknown as Status;
     }
 
     // Method to get fungible token balance
@@ -154,9 +159,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }
@@ -178,9 +183,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }
@@ -202,9 +207,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }
@@ -225,9 +230,9 @@ class ContractUtils {
         );
 
         if ('error' in response) {
-          const errorCode = extractErrorCode(response.errorMessage);
+          const errorCode = extractErrorCode(response.errorMessage || '');
           throw new ContractError(
-            `Contract call failed: ${response.errorMessage}`,
+            `Contract call failed: ${response.errorMessage || 'Unknown error'}`,
             errorCode || undefined
           );
         }

@@ -137,8 +137,12 @@ class ContractTransactions {
             throw new Error('Contract call returned undefined result');
           }
 
-          if ('dataDecoded' in result && result.dataDecoded) {
-            return Number(result.dataDecoded[0]);
+          if ('result' in result && result.result) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const decodedResult = result.result as any;
+            if (Array.isArray(decodedResult) && decodedResult.length > 0) {
+              return Number(decodedResult[0]);
+            }
           }
 
           throw new Error('Failed to decode contract response data');
@@ -171,8 +175,12 @@ class ContractTransactions {
             throw new Error('Contract call returned undefined result');
           }
 
-          if ('dataDecoded' in result && result.dataDecoded) {
-            return Number(result.dataDecoded[0]);
+          if ('result' in result && result.result) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const decodedResult = result.result as any;
+            if (Array.isArray(decodedResult) && decodedResult.length > 0) {
+              return Number(decodedResult[0]);
+            }
           }
 
           throw new Error('Failed to decode contract response data');
@@ -211,8 +219,12 @@ class ContractTransactions {
               throw new Error('Contract call returned undefined result');
             }
 
-            if ('dataDecoded' in result && result.dataDecoded) {
-              return Number(result.dataDecoded[0]);
+            if ('result' in result && result.result) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const decodedResult = result.result as any;
+              if (Array.isArray(decodedResult) && decodedResult.length > 0) {
+                return Number(decodedResult[0]);
+              }
             }
 
             throw new Error("Failed to decode contract response data");
