@@ -24,6 +24,8 @@ export async function publishQuest(
 ): Promise<PublishQuestResult> {
   const prisma = await createPrismaClient();
 
+  console.log('Starting publish process for quest ID:', input.questId);
+
   // Fetch quest campaign
   const quest = await prisma.campaign_twittercard.findUnique({
     where: { id: input.questId },
@@ -45,7 +47,10 @@ export async function publishQuest(
     );
   }
 
+  console.log('Publishing quest campaign:', quest.contract_id);
+
   if (!quest.contract_id) {
+    console.log('Generating new contract ID for quest campaign');
     await prisma.campaign_twittercard.update({
       where: { id: quest.id },
       data: {

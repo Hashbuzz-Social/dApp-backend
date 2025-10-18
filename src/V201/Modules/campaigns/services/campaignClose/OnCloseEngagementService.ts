@@ -1,4 +1,4 @@
-import { payment_status } from '@prisma/client';
+import { campaign_type, payment_status } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import createPrismaClient from '@shared/prisma';
 import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
@@ -71,7 +71,6 @@ export const processLikeAndRetweetCollection = async (
     ) {
       throw new Error('User does not have valid Twitter tokens');
     }
-
 
     const { likes, retweets } = await collectLikesAndRetweets(
       campaignWithUser.tweet_id,
@@ -296,9 +295,15 @@ export const processQuoteAndReplyCollection = async (
     logger.info(
       `[OnCloseEngagement] Completed quote and reply collection for campaign ${campaignId}`
     );
-    publishEvent(CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES, {
-      campaignId,
-    });
+    if (campaignWithUser.campaign_type === campaign_type.awareness) {
+      publishEvent(CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES, {
+        campaignId,
+      });
+    } else {
+      publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
+        campaignId,
+      });
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.err(

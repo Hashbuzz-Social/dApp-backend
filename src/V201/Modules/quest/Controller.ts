@@ -99,7 +99,7 @@ class QuestController {
     res: Response
   ): Promise<Response | void> {
     try {
-      const userId = res.locals.userId;
+      const userId = req.currentUser?.id;
       if (!userId) {
         return res.unauthorized('User authentication required');
       }

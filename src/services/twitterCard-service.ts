@@ -2,6 +2,7 @@ import { getConfig } from '@appConfig';
 import {
   campaign_tweetstats,
   campaign_twittercard,
+  campaign_type,
   campaignstatus as CampaignStatus,
   PrismaClient,
   user_user,
@@ -211,6 +212,15 @@ class TwitterUtils {
       );
     }
   }
+
+  static buildQuestLaunchTweet(
+    formattedDate: string,
+    campaignDuration: number,
+    campaignBudget: number,
+    symbol: string
+  ): string {
+    return `🚀 Quest launched on ${formattedDate}. Engage within ${campaignDuration} min -> ${campaignBudget} ${symbol} up for grabs!`;
+  }
 }
 
 /**
@@ -393,8 +403,22 @@ export class TwitterCardService {
       throw new Error('Tweet text is missing from campaign');
     }
 
+    let tweetText = '';
+
+    if (card.campaign_type === campaign_type.quest) {
+      const options =
+        Array.isArray(card.question_options) && card.question_options.length > 0
+          ? card.question_options
+              .map((opt, i) => `${i + 1}. ${String(opt)}`)
+              .join('\n')
+          : '';
+      tweetText = `${card.tweet_text}${options ? `\n\n${options}` : ''}`.trim();
+    } else {
+      tweetText = card.tweet_text;
+    }
+
     return await this.publishTweetOrThread({
-      tweetText: card.tweet_text,
+      tweetText,
       cardOwner,
       media: card.media || [],
     });
@@ -411,10 +435,11 @@ export class TwitterCardService {
     ValidationUtils.validateTweetText(card.tweet_text);
 
     if (
-      !card.like_reward ||
-      !card.quote_reward ||
-      !card.retweet_reward ||
-      !card.comment_reward
+      card.campaign_type === campaign_type.awareness &&
+      (!card.like_reward ||
+        !card.quote_reward ||
+        !card.retweet_reward ||
+        !card.comment_reward)
     ) {
       throw new Error('One or more reward values are missing');
     }
@@ -424,43 +449,77 @@ export class TwitterCardService {
     const formattedDate = formattedDateTime(moment().toISOString());
 
     const rewards: RewardCatalog = {
-      like_reward: card.like_reward,
-      quote_reward: card.quote_reward,
-      retweet_reward: card.retweet_reward,
-      reply_reward: card.comment_reward,
+      like_reward: Number(card.like_reward ?? 0),
+      quote_reward: Number(card.quote_reward ?? 0),
+      retweet_reward: Number(card.retweet_reward ?? 0),
+      reply_reward: Number(card.comment_reward ?? 0),
     };
 
     let tweetText: string;
 
-    if (card.type === 'HBAR') {
-      tweetText = TwitterUtils.buildRewardText(
-        'HBAR',
-        formattedDate,
-        campaignDurationInMin,
-        rewards
-      );
-    } else {
-      const token = await this.getTokenInfo(String(card.fungible_token_id));
-      if (!token) {
-        throw new Error('Token not found');
-      }
+    const isAwareness = card.campaign_type === campaign_type.awareness;
+    const isHbar = card.type === 'HBAR';
 
+    // Determine symbol and divisor for budget normalization
+    let symbol = 'HBAR';
+    let divisor = 1e8; // tiny HBAR -> HBAR divisor
+
+    if (!isHbar) {
+      const token = await this.getTokenInfo(String(card.fungible_token_id));
+      if (!token) throw new Error('Token not found');
+
+      const decimalsNum = card.decimals ? Number(card.decimals) : 0;
+      symbol = token.token_symbol || 'TOKEN';
+      divisor = 10 ** decimalsNum;
+    }
+
+    if (isAwareness) {
       tweetText = TwitterUtils.buildRewardText(
-        'FUNGIBLE',
+        isHbar ? 'HBAR' : 'FUNGIBLE',
         formattedDate,
         campaignDurationInMin,
         rewards,
-        token.token_symbol || '',
-        card.decimals ? Number(card.decimals) : 0
+        isHbar ? undefined : symbol,
+        !isHbar ? (card.decimals ? Number(card.decimals) : 0) : undefined
+      );
+    } else {
+      const normalizedBudget = (card.campaign_budget ?? 0) / divisor;
+      tweetText = TwitterUtils.buildQuestLaunchTweet(
+        formattedDate,
+        campaignDurationInMin,
+        normalizedBudget,
+        symbol
       );
     }
 
-    return await this.publishTweetOrThread({
-      tweetText,
-      cardOwner,
-      isThread: true,
-      parentTweetId,
-    });
+    if (card.campaign_type === campaign_type.awareness) {
+      return await this.publishTweetOrThread({
+        tweetText,
+        cardOwner,
+        isThread: true,
+        parentTweetId,
+      });
+    } else {
+      const nextThreadTweetId = await this.publishTweetOrThread({
+        tweetText,
+        cardOwner,
+        isThread: true,
+        parentTweetId,
+      });
+
+      const endMoment = moment().add(campaignDurationInMin, 'minutes');
+      const readableEndTime = formattedDateTime(endMoment.toISOString());
+
+      const minutesLabel = campaignDurationInMin === 1 ? 'minute' : 'minutes';
+      const nextQuestTimingThreadText = `🕒 Quest ends at ${readableEndTime} (in ${campaignDurationInMin} ${minutesLabel}). Rewards will be distributed over the next ${campaignDurationInMin} ${minutesLabel}.`;
+
+      return await this.publishTweetOrThread({
+        tweetText: nextQuestTimingThreadText,
+        cardOwner,
+        isThread: true,
+        parentTweetId: nextThreadTweetId,
+      });
+    }
   }
 
   /**
@@ -805,7 +864,7 @@ export const legacyExports = {
     return service.publishTweetOrThread(params);
   },
 
-  publistFirstTweet: async (
+  publishFirstTweet: async (
     card: campaign_twittercard,
     cardOwner: user_user
   ) => {

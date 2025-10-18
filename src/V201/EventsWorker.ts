@@ -1,7 +1,7 @@
 import {
   handleCampaignPublishTransaction,
   publishCampaignSecondContent,
-  publshCampaignContentHandler,
+  publishCampaignContentHandler,
   publshCampaignErrorHandler,
 } from '@V201/modules/campaigns';
 import type { EventPayloadMap } from '@V201/types';
@@ -39,7 +39,7 @@ const processEvent = async (
         case CampaignEvents.CAMPAIGN_PUBLISH_CONTENT: {
           const publishContentPayload =
             payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT];
-          await publshCampaignContentHandler(publishContentPayload);
+          await publishCampaignContentHandler(publishContentPayload);
           break;
         }
 

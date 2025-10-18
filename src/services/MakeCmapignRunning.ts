@@ -38,7 +38,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
       // Step 1: Publish first tweet
       try {
-        const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
+        const tweetId = await tweetService.publishFirstTweet(card, cardOwner);
         if (tweetId) this.tweetId = tweetId;
         await this.updateCampaignStatus(card.contract_id!, "firstTweetOut", true);
         logger.info(`Successfully published first tweet for card ID: ${card.id}`);
@@ -266,7 +266,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
 
       // Step 1: Publish first tweet
       try {
-        const tweetId = await tweetService.publistFirstTweet(card, cardOwner);
+        const tweetId = await tweetService.publishFirstTweet(card, cardOwner);
         if (tweetId) this.tweetId = tweetId;
         await this.updateCampaignStatus(card.contract_id!, "fungible.firstTweetOut", true);
         logger.info(`Successfully published first tweet for fungible card ID: ${card.id}`);
@@ -355,7 +355,7 @@ class MakeCampaignRunning extends CampaignLifeCycleBase {
   // Error handling method
   private async handleErrorWhileRunning(cardId: number | bigint, message: string, error: any) {
     logger.err(
-      `${message} for card ID: ${cardId} 
+      `${message} for card ID: ${cardId}
             Error::: ${error}`
     );
     await this.updateCampaignStatus(this.campaignCard?.contract_id!, undefined, false);
