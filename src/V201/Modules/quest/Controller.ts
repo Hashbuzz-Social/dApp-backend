@@ -44,6 +44,8 @@ class QuestController {
         type,
         fungible_token_id,
         media,
+        options,
+        correct_answers,
       } = req.body;
 
       const result = await draftQuest({
@@ -54,7 +56,9 @@ class QuestController {
         campaign_budget, // Already a number from validator
         type,
         fungible_token_id,
-        media,
+        media: media || [], // Provide empty array if undefined
+        options,
+        correct_answers,
       });
 
       logger.info(`Quest drafted: ${result.questId}`);

@@ -19,7 +19,9 @@ export interface DraftQuestBody {
   campaign_budget: number;
   type: 'HBAR' | 'FUNGIBLE';
   fungible_token_id?: string;
-  media: string[];
+  media?: string[];
+  options?: string[]; // Optional until database schema is updated
+  correct_answers?: string; // Optional until database schema is updated
 }
 
 export interface PublishQuestBody {
@@ -85,7 +87,8 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
     },
     isInt: {
       options: { min: 1, max: 1000000 },
-      errorMessage: 'Expected engaged users must be an integer between 1 and 1,000,000',
+      errorMessage:
+        'Expected engaged users must be an integer between 1 and 1,000,000',
     },
     toInt: true,
   },
@@ -116,7 +119,9 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
     custom: {
       options: (value, { req }) => {
         if (req.body.type === 'FUNGIBLE' && !value) {
-          throw new Error('Fungible token ID is required when type is FUNGIBLE');
+          throw new Error(
+            'Fungible token ID is required when type is FUNGIBLE'
+          );
         }
         if (value && typeof value !== 'string') {
           throw new Error('Fungible token ID must be a string');
@@ -130,6 +135,7 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
   },
   media: {
     in: ['body'],
+    optional: true,
     isArray: {
       errorMessage: 'Media must be an array',
     },
@@ -147,6 +153,70 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
             throw new Error(`Media item at index ${index} must be a string`);
           }
         });
+        return true;
+      },
+    },
+  },
+  options: {
+    in: ['body'],
+    optional: true, // Optional until database schema supports it
+    isArray: {
+      errorMessage: 'Options must be an array',
+    },
+    custom: {
+      options: (value) => {
+        // Skip validation if options not provided
+        if (!value) return true;
+
+        if (!Array.isArray(value)) {
+          throw new Error('Options must be an array');
+        }
+        if (value.length < 2) {
+          throw new Error('At least 2 options are required');
+        }
+        if (value.length > 10) {
+          throw new Error('Maximum 10 options allowed');
+        }
+        // Validate each option is a non-empty string
+        value.forEach((option, index) => {
+          if (typeof option !== 'string') {
+            throw new Error(`Option at index ${index} must be a string`);
+          }
+          if (option.trim().length === 0) {
+            throw new Error(`Option at index ${index} cannot be empty`);
+          }
+          if (option.length > 200) {
+            throw new Error(
+              `Option at index ${index} must be less than 200 characters`
+            );
+          }
+        });
+        return true;
+      },
+    },
+  },
+  correct_answers: {
+    in: ['body'],
+    optional: true, // Optional until database schema supports it
+    isString: {
+      errorMessage: 'Correct answers must be a string',
+    },
+    trim: true,
+    custom: {
+      options: (value, { req }) => {
+        // Skip validation if not provided
+        if (!value) return true;
+
+        if (typeof value !== 'string' || value.trim().length === 0) {
+          throw new Error('Correct answers must be a non-empty string');
+        }
+
+        // Validate correct answer exists in options
+        const options = req.body.options;
+        if (Array.isArray(options) && !options.includes(value.trim())) {
+          throw new Error('Correct answer must be one of the provided options');
+        }
+
         return true;
       },
     },

@@ -100,6 +100,8 @@ model campaign_twittercard {
   campaign_close_time       DateTime?                   @db.Timestamptz(6)
   is_added_to_queue         Boolean?                    @default(false)
   card_status               campaignstatus
+  question_options          String[]
+  correct_answer            String?
   campaignLogs              CampaignLog[]
   campaign_media            campaign_media[]
   campaign_participation    campaign_participation[]

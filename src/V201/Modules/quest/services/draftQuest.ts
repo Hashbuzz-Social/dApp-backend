@@ -10,6 +10,8 @@ export interface DraftQuestInput {
   type: 'HBAR' | 'FUNGIBLE';
   fungible_token_id?: string;
   media: string[];
+  options?: string[]; // Optional - database doesn't have schema for quest options yet
+  correct_answers?: string; // Optional - database doesn't have schema for quest answers yet
 }
 
 export interface DraftQuestResult {
@@ -21,7 +23,9 @@ export interface DraftQuestResult {
  * Draft a new quest campaign
  * @throws Error if validation fails or database operation fails
  */
-export async function draftQuest(input: DraftQuestInput): Promise<DraftQuestResult> {
+export async function draftQuest(
+  input: DraftQuestInput
+): Promise<DraftQuestResult> {
   const prisma = await createPrismaClient();
 
   // Validate required fields
@@ -57,6 +61,8 @@ export async function draftQuest(input: DraftQuestInput): Promise<DraftQuestResu
       fungible_token_id: input.fungible_token_id || null,
       media: input.media,
       amount_spent: 0,
+      question_options: input.options || [],
+      correct_answer: input.correct_answers || null,
     },
   });
 
