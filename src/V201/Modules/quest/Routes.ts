@@ -6,7 +6,31 @@ import {
     storeMediaToS3,
     tempStoreMediaOnDisk,
 } from '../../MiddleWare';
+import {
+  validateDraftQuestBody,
+  validatePublishQuestBody,
+  validateGradeQuestSubmissionsBody,
+  validateCloseQuestBody,
+  validateQuestIdParam,
+} from '../../MiddleWare/quest';
 import QuestController from './Controller';
+import { validationResult } from 'express-validator';
+import { Request, Response, NextFunction } from 'express';
+
+/**
+ * Middleware to handle validation errors
+ */
+const handleValidationErrors = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.badRequest('Validation failed', errors.array());
+  }
+  next();
+};
 
 /**
  * @swagger
@@ -30,6 +54,8 @@ questRouter.post(
   '/draft',
   tempStoreMediaOnDisk,
   multerErrorHandler,
+  validateDraftQuestBody,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(storeMediaToS3),
   asyncHandler(QuestController.draftQuestCampaign.bind(QuestController))
@@ -42,6 +68,8 @@ questRouter.post(
  */
 questRouter.post(
   '/publish',
+  validatePublishQuestBody,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(QuestController.publishQuestCampaign.bind(QuestController))
 );
@@ -53,6 +81,8 @@ questRouter.post(
  */
 questRouter.get(
   '/:questId/state',
+  validateQuestIdParam,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(QuestController.getQuestState.bind(QuestController))
 );
@@ -64,6 +94,8 @@ questRouter.get(
  */
 questRouter.get(
   '/:questId/submissions',
+  validateQuestIdParam,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(QuestController.getQuestSubmissions.bind(QuestController))
 );
@@ -75,6 +107,9 @@ questRouter.get(
  */
 questRouter.post(
   '/:questId/grade',
+  validateQuestIdParam,
+  validateGradeQuestSubmissionsBody,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(QuestController.gradeQuestSubmissions.bind(QuestController))
 );
@@ -86,6 +121,9 @@ questRouter.post(
  */
 questRouter.post(
   '/:questId/close',
+  validateQuestIdParam,
+  validateCloseQuestBody,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
   asyncHandler(QuestController.closeQuestCampaign.bind(QuestController))
 );
@@ -108,8 +146,10 @@ questRouter.get(
  */
 questRouter.get(
   '/:questId',
+  validateQuestIdParam,
+  handleValidationErrors,
   asyncHandler(userInfo.getCurrentUserInfo),
-  asyncHandler(QuestController.getAllQuestCampaigns.bind(QuestController))
+  asyncHandler(QuestController.getQuestCampaignById.bind(QuestController))
 );
 
 export default questRouter;

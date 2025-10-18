@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import logger from 'jet-logger';
 import { draftQuest, publishQuest, getQuest, getAllQuests } from './services';
+import {
+  DraftQuestBody,
+  PublishQuestBody,
+  GradeQuestSubmissionsBody,
+  CloseQuestBody,
+} from '../../MiddleWare/quest/validators';
 
 /**
  * Helper function to safely extract error message
@@ -20,7 +26,7 @@ const getErrorMessage = (error: unknown, defaultMessage: string): string => {
 
 class QuestController {
   async draftQuestCampaign(
-    req: Request,
+    req: Request<Record<string, never>, Record<string, never>, DraftQuestBody>,
     res: Response
   ): Promise<Response | void> {
     try {
@@ -29,6 +35,7 @@ class QuestController {
         return res.unauthorized('User authentication required');
       }
 
+      // Body is already validated and typed by express-validator
       const {
         name,
         tweet_text,
@@ -43,8 +50,8 @@ class QuestController {
         userId,
         name,
         tweet_text,
-        expected_engaged_users,
-        campaign_budget,
+        expected_engaged_users, // Already a number from validator
+        campaign_budget, // Already a number from validator
         type,
         fungible_token_id,
         media,
@@ -63,23 +70,24 @@ class QuestController {
   }
 
   async publishQuestCampaign(
-    req: Request,
+    req: Request<Record<string, never>, Record<string, never>, PublishQuestBody>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
-      const questIdNum = questId;
+      // Body is already validated and typed by express-validator
+      const { questId } = req.body;
+
       const result = await publishQuest({
-        questId: BigInt(questIdNum),
+        questId: BigInt(questId), // Already validated as BigInt-compatible string
         userId,
       });
-      logger.info(`Quest published: ${questIdNum}`);
+
+      logger.info(`Quest published: ${questId}`);
       return res.success(result, 'Quest published successfully');
     } catch (error: unknown) {
       logger.err(error);
@@ -88,15 +96,20 @@ class QuestController {
     }
   }
 
-  async getQuestState(req: Request, res: Response): Promise<Response | void> {
+  async getQuestState(
+    req: Request<{ questId: string }>,
+    res: Response
+  ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
+      // Param is already validated by express-validator
+      const { questId } = req.params;
+
+      // TODO: Implement quest state retrieval
       await Promise.resolve();
       return res.success({ questId }, 'Get quest state - to be implemented');
     } catch (error: unknown) {
@@ -107,17 +120,19 @@ class QuestController {
   }
 
   async getQuestSubmissions(
-    req: Request,
+    req: Request<{ questId: string }>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
+      // Param is already validated by express-validator
+      const { questId } = req.params;
+
+      // TODO: Implement quest submissions retrieval
       await Promise.resolve();
       return res.success(
         { questId },
@@ -131,20 +146,31 @@ class QuestController {
   }
 
   async gradeQuestSubmissions(
-    req: Request,
+    req: Request<{ questId: string }, Record<string, never>, GradeQuestSubmissionsBody>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
+      // Param and body are already validated by express-validator
+      const { questId } = req.params;
+      const { submissions } = req.body;
+
+      // Validate ownership and quest state
+      // TODO: Implement grading logic
+      logger.info(`Grading ${submissions.length} submissions for quest ${questId}`);
+
       await Promise.resolve();
       return res.success(
-        { questId },
+        {
+          questId,
+          processedCount: submissions.length,
+          approvedCount: submissions.filter(s => s.approved).length,
+          rejectedCount: submissions.filter(s => !s.approved).length,
+        },
         'Grade quest submissions - to be implemented'
       );
     } catch (error: unknown) {
@@ -155,20 +181,29 @@ class QuestController {
   }
 
   async closeQuestCampaign(
-    req: Request,
+    req: Request<{ questId: string }, Record<string, never>, CloseQuestBody>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
+      // Param and body are already validated by express-validator
+      const { questId } = req.params;
+      const { reason, refundRemaining } = req.body;
+
+      // TODO: Implement quest closing logic
+      logger.info(`Closing quest ${questId}. Reason: ${reason || 'Not provided'}. Refund: ${String(refundRemaining || false)}`);
+
       await Promise.resolve();
       return res.success(
-        { questId },
+        {
+          questId,
+          reason: reason || null,
+          refundRemaining: refundRemaining || false,
+        },
         'Close quest campaign - to be implemented'
       );
     } catch (error: unknown) {
@@ -179,24 +214,32 @@ class QuestController {
   }
 
   async getAllQuestCampaigns(
-    req: Request,
+    req: Request<Record<string, never>, Record<string, never>, Record<string, never>, { page?: string; limit?: string }>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      // Parse and validate query parameters
+      const page = parseInt(req.query.page || '1', 10);
+      const limit = parseInt(req.query.limit || '10', 10);
 
-      const result = await getAllQuests({ userId, page, limit });
+      // Validate parsed values
+      const validPage = !isNaN(page) && page > 0 ? page : 1;
+      const validLimit = !isNaN(limit) && limit > 0 && limit <= 100 ? limit : 10;
+
+      const result = await getAllQuests({
+        userId,
+        page: validPage,
+        limit: validLimit,
+      });
 
       return res.success(result, 'Quests retrieved successfully', {
-        page,
-        limit,
+        page: validPage,
+        limit: validLimit,
       });
     } catch (error: unknown) {
       logger.err(error);
@@ -206,18 +249,23 @@ class QuestController {
   }
 
   async getQuestCampaignById(
-    req: Request,
+    req: Request<{ questId: string }>,
     res: Response
   ): Promise<Response | void> {
     try {
       const userId = res.locals.userId;
-      const { questId } = req.params;
-
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
 
-      const result = await getQuest({ questId: BigInt(questId), userId });
+      // Param is already validated by express-validator
+      const { questId } = req.params;
+
+      const result = await getQuest({
+        questId: BigInt(questId), // Already validated as BigInt-compatible string
+        userId,
+      });
+
       return res.success(result, 'Quest retrieved successfully');
     } catch (error: unknown) {
       logger.err(error);
