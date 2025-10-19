@@ -255,6 +255,8 @@ export class QuestWinnerService {
         data: {
           quote_reward: rewardPerWinner,
           comment_reward: rewardPerWinner,
+          like_reward: rewardPerWinner,
+          retweet_reward: rewardPerWinner,
         },
       });
 
