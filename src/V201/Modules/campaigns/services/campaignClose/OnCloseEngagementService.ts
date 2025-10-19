@@ -198,6 +198,58 @@ export const processQuoteAndReplyCollection = async (
       `[OnCloseEngagement] Processing quote and reply collection for campaign ${campaignId}`
     );
 
+    // CRITICAL: Check if engagement collection already completed to prevent duplicate execution
+    const existingEngagements = await prisma.campaign_tweetengagements.count({
+      where: {
+        tweet_id: BigInt(campaignId),
+        engagement_type: {
+          in: ['quote', 'reply'],
+        },
+      },
+    });
+
+    if (existingEngagements > 0) {
+      logger.warn(
+        `[OnCloseEngagement] Quote/reply engagements already collected for campaign ${campaignId} ` +
+          `(${existingEngagements} records found). Skipping duplicate execution.`
+      );
+      await campaignLogger.saveLog({
+        campaignId: Number(campaignId),
+        status: 'ENGAGEMENT_COLLECTION_SKIPPED',
+        message: `Skipped duplicate engagement collection (${existingEngagements} existing records)`,
+        level: CampaignLogLevel.WARNING,
+        eventType: CampaignLogEventType.SYSTEM_EVENT,
+        data: {
+          level: CampaignLogLevel.WARNING,
+          eventType: CampaignLogEventType.SYSTEM_EVENT,
+          metadata: {
+            existingEngagements,
+            reason: 'Idempotency check - already processed',
+          },
+        },
+      });
+
+      // Still publish the next event to continue the flow
+      const campaignWithUser = await campaignCardModel.getCampaignsWithUserData(
+        campaignId
+      );
+      if (campaignWithUser) {
+        if (campaignWithUser.campaign_type === campaign_type.awareness) {
+          publishEvent(
+            CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES,
+            {
+              campaignId,
+            }
+          );
+        } else {
+          publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
+            campaignId,
+          });
+        }
+      }
+      return; // Exit early
+    }
+
     await campaignLogger.saveLog({
       campaignId: Number(campaignId),
       status: 'ENGAGEMENT_COLLECTION_STARTED',

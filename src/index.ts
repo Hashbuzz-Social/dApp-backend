@@ -51,13 +51,22 @@ async function testRedisConnection(client: RedisClient) {
  */
 async function gracefulShutdown() {
   logInfo('Shutting down gracefully...');
+
+  try {
+    // Disconnect Prisma client and close connection pool
+    const { disconnectPrisma } = await import('@shared/prisma');
+    await disconnectPrisma();
+    logInfo('Prisma disconnected and connection pool closed.');
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logError(`Error disconnecting Prisma: ${errorMsg}`);
+  }
+
   if (redisClient) {
-    const prisma = await createPrismaClient();
-    await prisma.$disconnect();
-    logInfo('Prisma disconnected.');
     await redisClient.client.quit();
     logInfo('Redis disconnected.');
   }
+
   process.exit(0);
 }
 
@@ -87,53 +96,11 @@ async function init() {
       `Admin addresses configured: ${globalThis.adminAddress.length} addresses`
     );
 
-    // One-time cleanup for legacy campaigns that might be stuck
-    try {
-      const { completeCampaignOperation } = await import(
-        '@services/campaign-service'
-      );
-      const prisma = await createPrismaClient();
-      const now = new Date();
-
-      const stuckCampaigns = await prisma.campaign_twittercard.findMany({
-        where: {
-          OR: [
-            {
-              card_status: 'CampaignRunning' as any,
-              campaign_close_time: { lt: now },
-            },
-            {
-              card_status: 'RewardDistributionInProgress' as any,
-              campaign_expiry: { lt: now },
-            },
-          ],
-        },
-      });
-
-      if (stuckCampaigns.length > 0) {
-        logInfo(
-          `Found ${stuckCampaigns.length} stuck campaigns, processing...`
-        );
-        for (const campaign of stuckCampaigns) {
-          try {
-            await completeCampaignOperation(campaign);
-            logInfo(`✅ Processed stuck campaign: ${campaign.id}`);
-          } catch (error) {
-            logError(`❌ Failed to process campaign ${campaign.id}`, error);
-          }
-        }
-      } else {
-        logInfo('No stuck campaigns found');
-      }
-    } catch (error) {
-      logError('Error during legacy campaign cleanup', error);
-    }
-
-    // DEPRECATED: Pre-start jobs disabled for maintenance. These were used for:
-    // - Setting up environment variables
-    // - Checking token availability
-    // - Scheduling cron jobs and expiry tasks
-    // await preStartJobs();
+    // NOTE: Stuck campaigns and edge cases are handled through the event-based monitoring system.
+    // Use the monitoring API endpoints:
+    // - GET /api/v201/monitoring/campaigns/stuck - View stuck campaigns
+    // - POST /api/v201/monitoring/campaigns/stuck/process - Process stuck campaigns
+    // This ensures all campaign operations go through the proper event flow with idempotency guarantees.
 
     await testPrismaConnection();
     await testRedisConnection(redisClient);

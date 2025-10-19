@@ -1,7 +1,5 @@
 // axios intentionally not used here; auth module handles GitHub checks
 import express from 'express';
-// Removed 'express-async-errors' - we use asyncHandler everywhere for better control
-import '../pre-start'; // Must be the first import
 import logger from '../config/logger'; // Use configured logger
 import { logRotationService } from '../services/LogRotationService';
 import { initializeLogRotation as setupLogRotation } from '../config/logConfig';
