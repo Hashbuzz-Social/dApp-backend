@@ -59,6 +59,8 @@ model campaign_tweetengagements {
   exprired_at          DateTime?            @db.Timestamptz(6)
   payment_status       payment_status       @default(UNPAID)
   is_valid_timing      Boolean?             @default(true)
+  is_bot_engagement    Boolean?             @default(false)
+  content              String?              @db.Text
   campaign_twittercard campaign_twittercard @relation(fields: [tweet_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -293,7 +295,7 @@ enum transactionType {
 enum payment_status {
   PAID
   UNPAID
-  SUSPENDED
+  SUSPENDED // Payment is suspended( in case of quest it will be wrong answer)
 }
 
 enum user_roles {

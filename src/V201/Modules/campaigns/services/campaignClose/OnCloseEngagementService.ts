@@ -6,8 +6,11 @@ import CampaignTweetEngagementsModel from '@V201/Modals/CampaignTweetEngagements
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import {
   collectLikesAndRetweets,
-  collectQuotesAndReplies,
+  collectQuotesAndRepliesWithUsers,
+  detectBotEngagement,
+  getBotDetectionSummary,
 } from '@V201/modules/engagements';
+import { TweetV2, UserV2 } from 'twitter-api-v2';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
 import SchedulerQueue, { TaskSchedulerJobType } from 'src/V201/schedulerQueue';
@@ -187,6 +190,7 @@ export const processQuoteAndReplyCollection = async (
   const engagementModel = new CampaignTweetEngagementsModel(prisma);
   const campaignLogger = await CampaignLogEventHandler.create(prisma);
   const campaignCardModel = new CampaignTwitterCardModel(prisma);
+
   try {
     if (!prisma || !engagementModel || !campaignLogger) {
       throw new Error('Services not properly initialized');
@@ -197,7 +201,6 @@ export const processQuoteAndReplyCollection = async (
       `[OnCloseEngagement] Processing quote and reply collection for campaign ${campaignId}`
     );
 
-    // Log start of engagement collection
     await campaignLogger.saveLog({
       campaignId: Number(campaignId),
       status: 'ENGAGEMENT_COLLECTION_STARTED',
@@ -213,7 +216,7 @@ export const processQuoteAndReplyCollection = async (
       },
     });
 
-    const campaignWithUser = await campaignCardModel?.getCampaignsWithUserData(
+    const campaignWithUser = await campaignCardModel.getCampaignsWithUserData(
       campaignId
     );
 
@@ -225,7 +228,6 @@ export const processQuoteAndReplyCollection = async (
       throw new Error(`Campaign ${campaignId} has no tweet_id`);
     }
 
-    // Get user tokens for API access
     const cardOwner = campaignWithUser.user_user;
     if (
       !cardOwner.business_twitter_access_token ||
@@ -234,60 +236,113 @@ export const processQuoteAndReplyCollection = async (
       throw new Error('User does not have valid Twitter tokens');
     }
 
-    // Collect replies using the available API method
-    const { quotes, replies } = await collectQuotesAndReplies(
+    const closeTime = campaignWithUser.campaign_close_time ?? new Date();
+    const { quotes, replies } = await collectQuotesAndRepliesWithUsers(
       campaignWithUser.tweet_id,
       {
         business_twitter_access_token: cardOwner.business_twitter_access_token,
         business_twitter_access_token_secret:
           cardOwner.business_twitter_access_token_secret,
       },
-      campaignWithUser.campaign_close_time ?? new Date()
+      closeTime
     );
 
-    const quoteEngagements = quotes.map((quote) => ({
-      user_id: String(quote.author_id),
-      tweet_id: BigInt(campaignWithUser.id),
-      engagement_type: 'quote',
-      engagement_timestamp: new Date(),
-      updated_at: new Date(),
-      payment_status: payment_status.UNPAID,
-      is_valid_timing: true,
-    }));
+    // counters
+    let botDetectedCount = 0;
+    let validEngagementCount = 0;
 
-    const replyEngagements = replies.map((reply) => ({
-      user_id: String(reply.author_id),
-      tweet_id: BigInt(campaignWithUser.id),
-      engagement_type: 'reply',
-      engagement_timestamp: new Date(),
-      updated_at: new Date(),
-      payment_status: payment_status.UNPAID,
-      is_valid_timing: true,
-    }));
+    const toEngagement = (
+      tweet: TweetV2,
+      usersMap: Map<string, UserV2>,
+      type: 'quote' | 'reply'
+    ) => {
+      const authorId = String(tweet.author_id ?? '');
+      const createdAt = tweet.created_at
+        ? new Date(String(tweet.created_at))
+        : new Date();
+      const isValidTiming = createdAt.getTime() <= closeTime.getTime();
+
+      let isBotEngagement = false;
+
+      const user = usersMap.get(authorId);
+      if (user) {
+        const botMetrics = detectBotEngagement(user);
+        isBotEngagement = !!botMetrics.isBotEngagement;
+        if (isBotEngagement) {
+          botDetectedCount++;
+          logger.info(
+            `[OnCloseEngagement] Bot detected in ${type}: ${getBotDetectionSummary(
+              botMetrics
+            )} - User: ${authorId}`
+          );
+        } else if (isValidTiming) {
+          // count valid only if it's not a bot and occurred before close time
+          validEngagementCount++;
+        }
+      }
+
+      if (!isValidTiming) {
+        logger.info(
+          `[OnCloseEngagement] Engagement after campaign close time for campaign ${
+            campaignWithUser.id
+          } - tweet ${String(
+            tweet.id ?? authorId
+          )} createdAt=${createdAt.toISOString()} closeTime=${closeTime.toISOString()}`
+        );
+      }
+
+      return {
+        user_id: authorId,
+        tweet_id: BigInt(campaignWithUser.id),
+        engagement_type: type,
+        engagement_timestamp: createdAt,
+        updated_at: new Date(),
+        payment_status: payment_status.UNPAID,
+        is_valid_timing: isValidTiming,
+        is_bot_engagement: isBotEngagement,
+        content: tweet.text || null, // Save the quoted/reply content
+      };
+    };
+
+    const quoteEngagements = (quotes.tweets || []).map((t) =>
+      toEngagement(t, quotes.users, 'quote')
+    );
+
+    const replyEngagements = (replies.tweets || []).map((t) =>
+      toEngagement(t, replies.users, 'reply')
+    );
 
     const allEngagements = [...quoteEngagements, ...replyEngagements];
 
     try {
-      await engagementModel.createManyEngagements(allEngagements);
-    } catch (error) {
+      if (allEngagements.length > 0) {
+        await engagementModel.createManyEngagements(allEngagements);
+      }
+    } catch (saveErr) {
       logger.err(
-        `Failed to save quote/reply engagements: ${(error as Error).message}`
+        `Failed to save quote/reply engagements: ${(saveErr as Error).message}`
       );
     }
 
-    // Log completion
+    const completionMsg =
+      `Completed quote and reply collection. ` +
+      `Quotes: ${quotes.tweets.length}, Replies: ${replies.tweets.length}, ` +
+      `Bots detected: ${botDetectedCount}, Valid: ${validEngagementCount}`;
+
     await campaignLogger.saveLog({
       campaignId: Number(campaignId),
       status: 'ENGAGEMENT_COLLECTION_COMPLETED',
-      message: `Completed quote and reply collection. Quotes: ${quotes.length}, Replies: ${replies.length}`,
+      message: completionMsg,
       level: CampaignLogLevel.SUCCESS,
       eventType: CampaignLogEventType.SYSTEM_EVENT,
       data: {
         level: CampaignLogLevel.SUCCESS,
         eventType: CampaignLogEventType.SYSTEM_EVENT,
         metadata: {
-          quotesCollected: quotes.length,
-          repliesCollected: replies.length,
+          quotesCollected: quotes.tweets.length,
+          repliesCollected: replies.tweets.length,
+          botDetectedCount,
+          validEngagementCount,
         },
       },
     });
@@ -295,6 +350,7 @@ export const processQuoteAndReplyCollection = async (
     logger.info(
       `[OnCloseEngagement] Completed quote and reply collection for campaign ${campaignId}`
     );
+
     if (campaignWithUser.campaign_type === campaign_type.awareness) {
       publishEvent(CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES, {
         campaignId,
