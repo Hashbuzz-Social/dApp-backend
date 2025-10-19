@@ -105,6 +105,42 @@ async function init() {
     await testPrismaConnection();
     await testRedisConnection(redisClient);
 
+    // ✅ Event Recovery: Recover orphaned events from previous server run
+    // This ensures no event loss when server restarts with pending events in Redis queue
+    try {
+      const { EventRecoveryService } = await import(
+        './V201/services/EventRecoveryService'
+      );
+      const recoveryResult = await EventRecoveryService.recoverPendingEvents();
+
+      if (recoveryResult.recovered > 0) {
+        logInfo(
+          `🔄 Event Recovery: Recovered ${recoveryResult.recovered} orphaned events ` +
+            `(${recoveryResult.failed} failed, ${recoveryResult.skipped} skipped)`
+        );
+      } else if (recoveryResult.total > 0) {
+        logInfo(
+          `⚠️  Event Recovery: Found ${recoveryResult.total} orphaned events ` +
+            `but none recovered (${recoveryResult.failed} failed, ${recoveryResult.skipped} skipped)`
+        );
+      }
+
+      // Schedule periodic cleanup of old events (every 6 hours)
+      setInterval(() => {
+        EventRecoveryService.cleanupOldEvents().catch((err) => {
+          logError('Event cleanup failed', err);
+        });
+      }, 6 * 60 * 60 * 1000);
+
+      logInfo('✅ Event recovery service initialized');
+    } catch (recoveryError) {
+      // Non-fatal: Log error but don't block server startup
+      logError(
+        'Event recovery service failed to initialize (non-fatal)',
+        recoveryError
+      );
+    }
+
     // DEPRECATED: After-start jobs disabled for maintenance. These were used for:
     // - Checking previous campaign close times
     // - Processing backlog campaigns

@@ -386,9 +386,12 @@ export class QuestWinnerService {
             rewardPerWinner
           )}, comment_reward: ${String(rewardPerWinner)})`
       );
-       publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
-         campaignId: questId,
-       });
+
+      // ✅ FIX: Publish next event in flow (not the same event - causes infinite loop)
+      publishEvent(CampaignEvents.CAMPAIGN_CLOSING_DISTRIBUTE_AUTO_REWARDS, {
+        campaignId: questId,
+      });
+
       // 8. Return summary result
       return {
         questId,
