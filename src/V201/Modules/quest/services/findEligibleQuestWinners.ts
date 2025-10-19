@@ -2,6 +2,8 @@ import createPrismaClient from '@shared/prisma';
 import { payment_status, PrismaClient } from '@prisma/client';
 import logger from 'jet-logger';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
+import { publishEvent } from 'src/V201/eventPublisher';
+import { CampaignEvents } from '@V201/events/campaign';
 
 /**
  * Result interface for eligible quest winners
@@ -382,7 +384,9 @@ export class QuestWinnerService {
             rewardPerWinner
           )}, comment_reward: ${String(rewardPerWinner)})`
       );
-
+       publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
+         campaignId: questId,
+       });
       // 8. Return summary result
       return {
         questId,
