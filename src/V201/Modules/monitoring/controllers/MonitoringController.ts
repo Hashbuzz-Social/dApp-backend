@@ -3,6 +3,7 @@ import MonitoringService, { TokenSyncStatus } from '../services/healthCheck';
 import { completeCampaignOperation } from '@services/campaign-service';
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
+import { convertBigIntToString } from '../../../../utils/bigintSerializer';
 
 /**
  * V201 Monitoring Controller
@@ -98,22 +99,24 @@ class MonitoringController {
     try {
       const stuckCampaigns = await MonitoringService.findStuckCampaigns();
 
-      res.status(200).json({
-        success: true,
-        data: {
-          count: stuckCampaigns.length,
-          campaigns: stuckCampaigns,
-          summary: {
-            overdue_close: stuckCampaigns.filter(
-              (c) => c.type === 'overdue_close'
-            ).length,
-            overdue_expiry: stuckCampaigns.filter(
-              (c) => c.type === 'overdue_expiry'
-            ).length,
+      res.status(200).json(
+        convertBigIntToString({
+          success: true,
+          data: {
+            count: stuckCampaigns.length,
+            campaigns: stuckCampaigns,
+            summary: {
+              overdue_close: stuckCampaigns.filter(
+                (c) => c.type === 'overdue_close'
+              ).length,
+              overdue_expiry: stuckCampaigns.filter(
+                (c) => c.type === 'overdue_expiry'
+              ).length,
+            },
           },
-        },
-        timestamp: new Date().toISOString(),
-      });
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.err(`Failed to get stuck campaigns: ${errorMsg}`);
@@ -144,12 +147,14 @@ class MonitoringController {
       const stuckCampaigns = await MonitoringService.findStuckCampaigns();
 
       if (stuckCampaigns.length === 0) {
-        return res.status(200).json({
-          success: true,
-          message: 'No stuck campaigns found',
-          data: { processed: 0, failed: 0 },
-          timestamp: new Date().toISOString(),
-        });
+        return res.status(200).json(
+          convertBigIntToString({
+            success: true,
+            message: 'No stuck campaigns found',
+            data: { processed: 0, failed: 0 },
+            timestamp: new Date().toISOString(),
+          })
+        );
       }
 
       const results = {
@@ -196,12 +201,14 @@ class MonitoringController {
         }
       }
 
-      res.status(200).json({
-        success: true,
-        message: `Processed ${results.processed} campaigns, ${results.failed} failed`,
-        data: results,
-        timestamp: new Date().toISOString(),
-      });
+      res.status(200).json(
+        convertBigIntToString({
+          success: true,
+          message: `Processed ${results.processed} campaigns, ${results.failed} failed`,
+          data: results,
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.err(`Failed to process stuck campaigns: ${errorMsg}`);
