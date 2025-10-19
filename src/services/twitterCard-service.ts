@@ -351,30 +351,88 @@ export class TwitterCardService {
       });
 
       let mediaIds: string[] = [];
+      const externalUrls: string[] = [];
 
       if (media && media.length > 0) {
-        await this.mediaService.initialize();
-        mediaIds = await Promise.all(
-          media.map(async (mediaKey) => {
-            const mediaFile = await this.mediaService.readFromS3(mediaKey);
-            return await userTwitter.v1.uploadMedia(mediaFile.buffer, {
-              mimeType: mediaFile.mimetype,
+        // Separate S3 media from external URLs (YouTube, etc.)
+        const s3Media: string[] = [];
+
+        media.forEach((mediaItem) => {
+          if (mediaItem.startsWith('upload')) {
+            // S3 uploaded files start with "upload"
+            s3Media.push(mediaItem);
+          } else if (
+            mediaItem.startsWith('http://') ||
+            mediaItem.startsWith('https://')
+          ) {
+            // External URLs (YouTube, Vimeo, etc.) - Twitter will embed them
+            externalUrls.push(mediaItem);
+          } else {
+            // Assume it's an S3 key if no protocol
+            s3Media.push(mediaItem);
+          }
+        });
+
+        // Upload S3 media to Twitter
+        if (s3Media.length > 0) {
+          try {
+            await this.mediaService.initialize();
+
+            const uploadPromises = s3Media.map(async (mediaKey) => {
+              try {
+                const mediaFile = await this.mediaService.readFromS3(mediaKey);
+                return await userTwitter.v1.uploadMedia(mediaFile.buffer, {
+                  mimeType: mediaFile.mimetype,
+                });
+              } catch (s3Error) {
+                logger.warn(
+                  `Failed to read/upload media from S3 (${mediaKey}): ${
+                    s3Error instanceof Error ? s3Error.message : String(s3Error)
+                  }`
+                );
+                // Return null for failed uploads, filter them out later
+                return null;
+              }
             });
-          })
-        );
+
+            const uploadResults = await Promise.all(uploadPromises);
+            mediaIds = uploadResults.filter((id): id is string => id !== null);
+
+            if (uploadResults.some((id) => id === null)) {
+              logger.warn(
+                'Some media failed to upload from S3. Proceeding with available media or text-only tweet.'
+              );
+            }
+          } catch (error) {
+            logger.err(
+              `Media service initialization or upload failed: ${
+                error instanceof Error ? error.message : String(error)
+              }. Posting tweet without images.`
+            );
+            mediaIds = [];
+          }
+        }
+      }
+
+      // Build final tweet text with external URLs appended
+      let finalTweetText = tweetText;
+      if (externalUrls.length > 0) {
+        // Add external URLs at the end for Twitter to embed them
+        finalTweetText = `${tweetText}\n\n${externalUrls.join('\n')}`.trim();
       }
 
       const rwClient = userTwitter.readWrite;
       let result: TweetV2PostTweetResult;
 
       if (isThread && parentTweetId) {
-        result = await rwClient.v2.reply(tweetText, parentTweetId);
+        result = await rwClient.v2.reply(finalTweetText, parentTweetId);
       } else if (mediaIds.length > 0) {
-        result = await rwClient.v2.tweet(tweetText, {
+        result = await rwClient.v2.tweet(finalTweetText, {
           media: { media_ids: mediaIds },
         });
       } else {
-        result = await rwClient.v2.tweet(tweetText);
+        // Post text-only tweet (including external URLs for embedding)
+        result = await rwClient.v2.tweet(finalTweetText);
       }
 
       return result.data.id;
@@ -492,34 +550,13 @@ export class TwitterCardService {
       );
     }
 
-    if (card.campaign_type === campaign_type.awareness) {
       return await this.publishTweetOrThread({
         tweetText,
         cardOwner,
         isThread: true,
         parentTweetId,
       });
-    } else {
-      const nextThreadTweetId = await this.publishTweetOrThread({
-        tweetText,
-        cardOwner,
-        isThread: true,
-        parentTweetId,
-      });
 
-      const endMoment = moment().add(campaignDurationInMin, 'minutes');
-      const readableEndTime = formattedDateTime(endMoment.toISOString());
-
-      const minutesLabel = campaignDurationInMin === 1 ? 'minute' : 'minutes';
-      const nextQuestTimingThreadText = `🕒 Quest ends at ${readableEndTime} (in ${campaignDurationInMin} ${minutesLabel}). Rewards will be distributed over the next ${campaignDurationInMin} ${minutesLabel}.`;
-
-      return await this.publishTweetOrThread({
-        tweetText: nextQuestTimingThreadText,
-        cardOwner,
-        isThread: true,
-        parentTweetId: nextThreadTweetId,
-      });
-    }
   }
 
   /**

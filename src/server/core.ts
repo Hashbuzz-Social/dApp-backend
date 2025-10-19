@@ -203,11 +203,19 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
   // Generic error handler (keep at end of core)
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     void next;
+
+    // Handle HTTP errors (like UnauthorizeError)
     if (isHttpError(err)) {
+      // Only log 500+ errors to reduce noise for expected auth failures
+      if (err.status >= 500) {
+        logger.err(`[${err.status}] ${req.method} ${req.path}: ${err.message}`);
+      }
       return res.status(err.status).json({ error: err.message });
     }
+
+    // Handle unexpected errors
     const e = err as Error;
-    logger.err('Internal Server Error: ' + e.message);
+    logger.err(`[500] ${req.method} ${req.path}: ${e.message}`);
     res.status(500).json({
       error: { message: 'Internal Server Error', description: e.message },
     });

@@ -157,11 +157,8 @@ export const processLikeAndRetweetCollection = async (
         executeAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes later
       },
       {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 60000, // 1 minute
-        },
+        attempts: 1, // NO RETRIES - engagement data collection should not retry to avoid duplicates
+        removeOnFail: true, // Remove failed jobs immediately
       }
     );
   } catch (error) {
@@ -244,7 +241,11 @@ export const processQuoteAndReplyCollection = async (
         business_twitter_access_token_secret:
           cardOwner.business_twitter_access_token_secret,
       },
-      closeTime
+      closeTime,
+      {
+        fetchQuotes: false,
+        fetchReplies: true,
+      }
     );
 
     // counters

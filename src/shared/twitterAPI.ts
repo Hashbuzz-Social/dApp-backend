@@ -461,12 +461,8 @@ export async function getAllUsersWhoQuotedOnTweetId(
         'author_id',
       ] as any,
       max_results: options?.maxResults || 100,
-      ...(options?.startTime && {
-        start_time: normalizeTimestamp(options.startTime),
-      }),
-      ...(options?.endTime && {
-        end_time: normalizeTimestamp(options.endTime),
-      }),
+      // NOTE: /quotes endpoint does NOT support start_time/end_time parameters
+      // Filtering is done client-side below
     } as any;
 
     const quotes = await twitterClient.readOnly.v2.quotes(
@@ -839,12 +835,8 @@ export async function getAllQuotesWithUsers(
         'author_id',
       ] as any,
       max_results: options?.maxResults || 100,
-      ...(options?.startTime && {
-        start_time: normalizeTimestamp(options.startTime),
-      }),
-      ...(options?.endTime && {
-        end_time: normalizeTimestamp(options.endTime),
-      }),
+      // NOTE: /quotes endpoint does NOT support start_time/end_time parameters
+      // Filtering is done client-side below
     } as any;
 
     const quotesResponse = await twitterClient.readOnly.v2.quotes(
@@ -865,7 +857,13 @@ export async function getAllQuotesWithUsers(
       }
     }
 
-    return { tweets, users };
+    // Apply client-side filtering if timestamp options provided (API doesn't support them natively)
+    let filteredTweets = tweets;
+    if (options?.startTime || options?.endTime) {
+      filteredTweets = filterByTimestamp(tweets, options);
+    }
+
+    return { tweets: filteredTweets, users };
   } catch (error) {
     if (error instanceof TwitterAPIError) {
       throw error;
