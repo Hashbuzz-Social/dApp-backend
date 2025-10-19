@@ -2,6 +2,7 @@ import { Status } from '@hashgraph/sdk';
 import {
   PrismaClient,
   campaign_twittercard,
+  campaign_type,
   payment_status,
 } from '@prisma/client';
 import { checkTokenAssociation, formattedDateTime } from '@shared/helper';
@@ -295,21 +296,31 @@ export class V201OnCloseAutoRewardService {
     const config = await getConfig();
     const claimDuration = config.app.defaultRewardClaimDuration;
 
-    if (cardType === 'HBAR') {
-      return (
-        `Promo ended on ${formattedDateTime(dateNow)}. ` +
-        `Rewards allocation for the next ${claimDuration} minutes. ` +
-        `New users: log into ${config.app.appURL}, ` +
-        `then link your Personal X account to receive your rewards.`
-      );
+    if (card.campaign_type === campaign_type.awareness) {
+      if (cardType === 'HBAR') {
+        return (
+          `Promo ended on ${formattedDateTime(dateNow)}. ` +
+          `Rewards allocation for the next ${claimDuration} minutes. ` +
+          `New users: log into ${config.app.appURL}, ` +
+          `then link your Personal X account to receive your rewards.`
+        );
+      } else {
+        return (
+          `Promo ended on ${formattedDateTime(dateNow)}. ` +
+          `Rewards allocation for the next ${claimDuration} minutes. ` +
+          `New users: log into ${config.app.appURL}, ` +
+          `link Personal X account and associate token with ID ` +
+          `${card.fungible_token_id ?? ''} to your wallet.`
+        );
+      }
     } else {
-      return (
-        `Promo ended on ${formattedDateTime(dateNow)}. ` +
-        `Rewards allocation for the next ${claimDuration} minutes. ` +
-        `New users: log into ${config.app.appURL}, ` +
-        `link Personal X account and associate token with ID ` +
-        `${card.fungible_token_id ?? ''} to your wallet.`
-      );
+      return `🕒 Quest closed at ${formattedDateTime(
+        dateNow
+      )}. Rewards being allocated over the next ${claimDuration} minutes. ${
+        card?.correct_answer
+          ? `**The correct answer is: ${card.correct_answer}**`
+          : ''
+      }`;
     }
   }
 
