@@ -105,6 +105,36 @@ async function init() {
     await testPrismaConnection();
     await testRedisConnection(redisClient);
 
+    // ✅ Token Sync: Synchronize whitelisted tokens from network
+    // This ensures local database matches smart contract and network state
+    try {
+      const { TokenSyncService } = await import(
+        './V201/services/TokenSyncService'
+      );
+      const syncResult = await TokenSyncService.syncWhitelistedTokens();
+
+      if (syncResult.synced) {
+        logInfo(
+          `✅ Token Sync: Complete - Local=${syncResult.localTokens}, ` +
+            `Network=${syncResult.networkTokens}, Contract=${syncResult.contractTokens} ` +
+            `(Added=${syncResult.tokensAdded}, Removed=${syncResult.tokensRemoved})`
+        );
+      } else {
+        logInfo(
+          `⚠️  Token Sync: Completed with errors - ` +
+            `Added=${syncResult.tokensAdded}, Removed=${syncResult.tokensRemoved}, ` +
+            `Errors=${syncResult.errors.length}`
+        );
+        syncResult.errors.forEach((err) => logError(`  - ${err}`));
+      }
+    } catch (syncError) {
+      // Non-fatal: Log error but don't block server startup
+      logError(
+        'Token sync service failed to initialize (non-fatal)',
+        syncError
+      );
+    }
+
     // ✅ Event Recovery: Recover orphaned events from previous server run
     // This ensures no event loss when server restarts with pending events in Redis queue
     try {
