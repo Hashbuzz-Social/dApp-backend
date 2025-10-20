@@ -565,7 +565,9 @@ export const handleTwitterCallbackAPI = async (req: Request, res: Response) => {
         logger.err(`[${requestId}] Fallback database update failed: ${fallbackErrorMsg}`);
         return res.status(500).json({
           success: false,
-          message: 'Database error occurred while saving account information',
+          message:
+            fallbackErrorMsg ??
+            'Database error occurred while saving account information',
           error_type: 'database_error',
         });
       }

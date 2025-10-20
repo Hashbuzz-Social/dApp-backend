@@ -1,4 +1,4 @@
-import { payment_status } from '@prisma/client';
+import { campaign_type, payment_status } from '@prisma/client';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 import createPrismaClient from '@shared/prisma';
 import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
@@ -6,8 +6,11 @@ import CampaignTweetEngagementsModel from '@V201/Modals/CampaignTweetEngagements
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import {
   collectLikesAndRetweets,
-  collectQuotesAndReplies,
+  collectQuotesAndRepliesWithUsers,
+  detectBotEngagement,
+  getBotDetectionSummary,
 } from '@V201/modules/engagements';
+import { TweetV2, UserV2 } from 'twitter-api-v2';
 import logger from 'jet-logger';
 import { publishEvent } from 'src/V201/eventPublisher';
 import SchedulerQueue, { TaskSchedulerJobType } from 'src/V201/schedulerQueue';
@@ -71,7 +74,6 @@ export const processLikeAndRetweetCollection = async (
     ) {
       throw new Error('User does not have valid Twitter tokens');
     }
-
 
     const { likes, retweets } = await collectLikesAndRetweets(
       campaignWithUser.tweet_id,
@@ -155,11 +157,8 @@ export const processLikeAndRetweetCollection = async (
         executeAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes later
       },
       {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 60000, // 1 minute
-        },
+        attempts: 1, // NO RETRIES - engagement data collection should not retry to avoid duplicates
+        removeOnFail: true, // Remove failed jobs immediately
       }
     );
   } catch (error) {
@@ -188,6 +187,7 @@ export const processQuoteAndReplyCollection = async (
   const engagementModel = new CampaignTweetEngagementsModel(prisma);
   const campaignLogger = await CampaignLogEventHandler.create(prisma);
   const campaignCardModel = new CampaignTwitterCardModel(prisma);
+
   try {
     if (!prisma || !engagementModel || !campaignLogger) {
       throw new Error('Services not properly initialized');
@@ -198,7 +198,58 @@ export const processQuoteAndReplyCollection = async (
       `[OnCloseEngagement] Processing quote and reply collection for campaign ${campaignId}`
     );
 
-    // Log start of engagement collection
+    // CRITICAL: Check if engagement collection already completed to prevent duplicate execution
+    const existingEngagements = await prisma.campaign_tweetengagements.count({
+      where: {
+        tweet_id: BigInt(campaignId),
+        engagement_type: {
+          in: ['quote', 'reply'],
+        },
+      },
+    });
+
+    if (existingEngagements > 0) {
+      logger.warn(
+        `[OnCloseEngagement] Quote/reply engagements already collected for campaign ${campaignId} ` +
+          `(${existingEngagements} records found). Skipping duplicate execution.`
+      );
+      await campaignLogger.saveLog({
+        campaignId: Number(campaignId),
+        status: 'ENGAGEMENT_COLLECTION_SKIPPED',
+        message: `Skipped duplicate engagement collection (${existingEngagements} existing records)`,
+        level: CampaignLogLevel.WARNING,
+        eventType: CampaignLogEventType.SYSTEM_EVENT,
+        data: {
+          level: CampaignLogLevel.WARNING,
+          eventType: CampaignLogEventType.SYSTEM_EVENT,
+          metadata: {
+            existingEngagements,
+            reason: 'Idempotency check - already processed',
+          },
+        },
+      });
+
+      // Still publish the next event to continue the flow
+      const campaignWithUser = await campaignCardModel.getCampaignsWithUserData(
+        campaignId
+      );
+      if (campaignWithUser) {
+        if (campaignWithUser.campaign_type === campaign_type.awareness) {
+          publishEvent(
+            CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES,
+            {
+              campaignId,
+            }
+          );
+        } else {
+          publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
+            campaignId,
+          });
+        }
+      }
+      return; // Exit early
+    }
+
     await campaignLogger.saveLog({
       campaignId: Number(campaignId),
       status: 'ENGAGEMENT_COLLECTION_STARTED',
@@ -214,7 +265,7 @@ export const processQuoteAndReplyCollection = async (
       },
     });
 
-    const campaignWithUser = await campaignCardModel?.getCampaignsWithUserData(
+    const campaignWithUser = await campaignCardModel.getCampaignsWithUserData(
       campaignId
     );
 
@@ -226,7 +277,6 @@ export const processQuoteAndReplyCollection = async (
       throw new Error(`Campaign ${campaignId} has no tweet_id`);
     }
 
-    // Get user tokens for API access
     const cardOwner = campaignWithUser.user_user;
     if (
       !cardOwner.business_twitter_access_token ||
@@ -235,60 +285,117 @@ export const processQuoteAndReplyCollection = async (
       throw new Error('User does not have valid Twitter tokens');
     }
 
-    // Collect replies using the available API method
-    const { quotes, replies } = await collectQuotesAndReplies(
+    const closeTime = campaignWithUser.campaign_close_time ?? new Date();
+    const { quotes, replies } = await collectQuotesAndRepliesWithUsers(
       campaignWithUser.tweet_id,
       {
         business_twitter_access_token: cardOwner.business_twitter_access_token,
         business_twitter_access_token_secret:
           cardOwner.business_twitter_access_token_secret,
       },
-      campaignWithUser.campaign_close_time ?? new Date()
+      closeTime,
+      {
+        fetchQuotes: false,
+        fetchReplies: true,
+      }
     );
 
-    const quoteEngagements = quotes.map((quote) => ({
-      user_id: String(quote.author_id),
-      tweet_id: BigInt(campaignWithUser.id),
-      engagement_type: 'quote',
-      engagement_timestamp: new Date(),
-      updated_at: new Date(),
-      payment_status: payment_status.UNPAID,
-      is_valid_timing: true,
-    }));
+    // counters
+    let botDetectedCount = 0;
+    let validEngagementCount = 0;
 
-    const replyEngagements = replies.map((reply) => ({
-      user_id: String(reply.author_id),
-      tweet_id: BigInt(campaignWithUser.id),
-      engagement_type: 'reply',
-      engagement_timestamp: new Date(),
-      updated_at: new Date(),
-      payment_status: payment_status.UNPAID,
-      is_valid_timing: true,
-    }));
+    const toEngagement = (
+      tweet: TweetV2,
+      usersMap: Map<string, UserV2>,
+      type: 'quote' | 'reply'
+    ) => {
+      const authorId = String(tweet.author_id ?? '');
+      const createdAt = tweet.created_at
+        ? new Date(String(tweet.created_at))
+        : new Date();
+      const isValidTiming = createdAt.getTime() <= closeTime.getTime();
+
+      let isBotEngagement = false;
+
+      const user = usersMap.get(authorId);
+      if (user) {
+        const botMetrics = detectBotEngagement(user);
+        isBotEngagement = !!botMetrics.isBotEngagement;
+        if (isBotEngagement) {
+          botDetectedCount++;
+          logger.info(
+            `[OnCloseEngagement] Bot detected in ${type}: ${getBotDetectionSummary(
+              botMetrics
+            )} - User: ${authorId}`
+          );
+        } else if (isValidTiming) {
+          // count valid only if it's not a bot and occurred before close time
+          validEngagementCount++;
+        }
+      }
+
+      if (!isValidTiming) {
+        logger.info(
+          `[OnCloseEngagement] Engagement after campaign close time for campaign ${
+            campaignWithUser.id
+          } - tweet ${String(
+            tweet.id ?? authorId
+          )} createdAt=${createdAt.toISOString()} closeTime=${closeTime.toISOString()}`
+        );
+      }
+
+      return {
+        user_id: authorId,
+        tweet_id: BigInt(campaignWithUser.id),
+        engagement_type: type,
+        engagement_timestamp: createdAt,
+        updated_at: new Date(),
+        payment_status: payment_status.UNPAID,
+        is_valid_timing: isValidTiming,
+        is_bot_engagement: isBotEngagement,
+        content: tweet.text || null, // Save the quoted/reply content
+      };
+    };
+
+    const quoteEngagements = (quotes.tweets || []).map((t) =>
+      toEngagement(t, quotes.users, 'quote')
+    );
+
+    const replyEngagements = (replies.tweets || []).map((t) =>
+      toEngagement(t, replies.users, 'reply')
+    );
 
     const allEngagements = [...quoteEngagements, ...replyEngagements];
 
     try {
-      await engagementModel.createManyEngagements(allEngagements);
-    } catch (error) {
+      if (allEngagements.length > 0) {
+        await engagementModel.createManyEngagements(allEngagements);
+      }
+    } catch (saveErr) {
       logger.err(
-        `Failed to save quote/reply engagements: ${(error as Error).message}`
+        `Failed to save quote/reply engagements: ${(saveErr as Error).message}`
       );
     }
 
-    // Log completion
+    const completionMsg =
+      `Completed quote and reply collection. ` +
+      `Quotes: ${quotes.tweets.length}, Replies: ${replies.tweets.length}, ` +
+      `Bots detected: ${botDetectedCount}, Valid: ${validEngagementCount}`;
+
     await campaignLogger.saveLog({
       campaignId: Number(campaignId),
       status: 'ENGAGEMENT_COLLECTION_COMPLETED',
-      message: `Completed quote and reply collection. Quotes: ${quotes.length}, Replies: ${replies.length}`,
+      message: completionMsg,
       level: CampaignLogLevel.SUCCESS,
       eventType: CampaignLogEventType.SYSTEM_EVENT,
       data: {
         level: CampaignLogLevel.SUCCESS,
         eventType: CampaignLogEventType.SYSTEM_EVENT,
         metadata: {
-          quotesCollected: quotes.length,
-          repliesCollected: replies.length,
+          quotesCollected: quotes.tweets.length,
+          repliesCollected: replies.tweets.length,
+          botDetectedCount,
+          validEngagementCount,
         },
       },
     });
@@ -296,9 +403,16 @@ export const processQuoteAndReplyCollection = async (
     logger.info(
       `[OnCloseEngagement] Completed quote and reply collection for campaign ${campaignId}`
     );
-    publishEvent(CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES, {
-      campaignId,
-    });
+
+    if (campaignWithUser.campaign_type === campaign_type.awareness) {
+      publishEvent(CampaignEvents.CAMPAIGN_CLOSING_RECALCULATE_REWARDS_RATES, {
+        campaignId,
+      });
+    } else {
+      publishEvent(CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS, {
+        campaignId,
+      });
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.err(

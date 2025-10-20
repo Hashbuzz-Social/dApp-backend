@@ -13,6 +13,8 @@ export interface CreateTweetEngagementData {
   exprired_at?: Date;
   payment_status?: payment_status;
   is_valid_timing?: boolean;
+  is_bot_engagement?: boolean;
+  content?: string | null;
 }
 
 /**
@@ -26,6 +28,8 @@ export interface UpdateTweetEngagementData {
   exprired_at?: Date;
   payment_status?: payment_status;
   is_valid_timing?: boolean;
+  is_bot_engagement?: boolean;
+  content?: string | null;
 }
 
 /**
@@ -37,6 +41,7 @@ export interface EngagementSearchFilters {
   engagement_type?: string;
   payment_status?: payment_status;
   is_valid_timing?: boolean;
+  is_bot_engagement?: boolean;
   startDate?: Date;
   endDate?: Date;
 }
@@ -58,7 +63,7 @@ class CampaignTweetEngagementsModel {
     data: CreateTweetEngagementData
   ): Promise<campaign_tweetengagements> {
     try {
-      const engagementData: Prisma.campaign_tweetengagementsCreateInput = {
+      const engagementData = {
         user_id: data.user_id,
         engagement_type: data.engagement_type,
         updated_at: data.updated_at || new Date(),
@@ -66,10 +71,12 @@ class CampaignTweetEngagementsModel {
         exprired_at: data.exprired_at,
         payment_status: data.payment_status || payment_status.UNPAID,
         is_valid_timing: data.is_valid_timing ?? true,
+        is_bot_engagement: data.is_bot_engagement ?? false,
+        content: data.content,
         campaign_twittercard: {
           connect: { id: data.tweet_id },
         },
-      };
+      } as Prisma.campaign_tweetengagementsCreateInput;
 
       const result = await this.prisma.campaign_tweetengagements.create({
         data: engagementData,
@@ -116,19 +123,20 @@ class CampaignTweetEngagementsModel {
       await this.prisma.$transaction(async (prisma) => {
         for (const data of dataArray) {
           try {
-            const engagementData: Prisma.campaign_tweetengagementsCreateInput =
-              {
-                user_id: data.user_id,
-                engagement_type: data.engagement_type,
-                updated_at: data.updated_at || new Date(),
-                engagement_timestamp: data.engagement_timestamp || new Date(),
-                exprired_at: data.exprired_at,
-                payment_status: data.payment_status || payment_status.UNPAID,
-                is_valid_timing: data.is_valid_timing ?? true,
-                campaign_twittercard: {
-                  connect: { id: data.tweet_id },
-                },
-              };
+            const engagementData = {
+              user_id: data.user_id,
+              engagement_type: data.engagement_type,
+              updated_at: data.updated_at || new Date(),
+              engagement_timestamp: data.engagement_timestamp || new Date(),
+              exprired_at: data.exprired_at,
+              payment_status: data.payment_status || payment_status.UNPAID,
+              is_valid_timing: data.is_valid_timing ?? true,
+              is_bot_engagement: data.is_bot_engagement ?? false,
+              content: data.content,
+              campaign_twittercard: {
+                connect: { id: data.tweet_id },
+              },
+            } as Prisma.campaign_tweetengagementsCreateInput;
 
             const result = await prisma.campaign_tweetengagements.create({
               data: engagementData,
@@ -199,6 +207,8 @@ class CampaignTweetEngagementsModel {
         exprired_at: data.exprired_at,
         payment_status: data.payment_status || payment_status.UNPAID,
         is_valid_timing: data.is_valid_timing ?? true,
+        is_bot_engagement: data.is_bot_engagement ?? false,
+        content: data.content,
       }));
 
       const result = await this.prisma.campaign_tweetengagements.createMany({
@@ -277,6 +287,9 @@ class CampaignTweetEngagementsModel {
             ...(filters.startDate && { gte: filters.startDate }),
             ...(filters.endDate && { lte: filters.endDate }),
           },
+        }),
+        ...(filters?.is_bot_engagement !== undefined && {
+          is_bot_engagement: filters.is_bot_engagement,
         }),
       };
 

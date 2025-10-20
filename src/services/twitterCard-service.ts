@@ -2,6 +2,7 @@ import { getConfig } from '@appConfig';
 import {
   campaign_tweetstats,
   campaign_twittercard,
+  campaign_type,
   campaignstatus as CampaignStatus,
   PrismaClient,
   user_user,
@@ -211,6 +212,15 @@ class TwitterUtils {
       );
     }
   }
+
+  static buildQuestLaunchTweet(
+    formattedDate: string,
+    campaignDuration: number,
+    campaignBudget: number,
+    symbol: string
+  ): string {
+    return `🚀 Quest launched on ${formattedDate}. Engage within ${campaignDuration} min -> ${campaignBudget} ${symbol} up for grabs!`;
+  }
 }
 
 /**
@@ -341,30 +351,88 @@ export class TwitterCardService {
       });
 
       let mediaIds: string[] = [];
+      const externalUrls: string[] = [];
 
       if (media && media.length > 0) {
-        await this.mediaService.initialize();
-        mediaIds = await Promise.all(
-          media.map(async (mediaKey) => {
-            const mediaFile = await this.mediaService.readFromS3(mediaKey);
-            return await userTwitter.v1.uploadMedia(mediaFile.buffer, {
-              mimeType: mediaFile.mimetype,
+        // Separate S3 media from external URLs (YouTube, etc.)
+        const s3Media: string[] = [];
+
+        media.forEach((mediaItem) => {
+          if (mediaItem.startsWith('upload')) {
+            // S3 uploaded files start with "upload"
+            s3Media.push(mediaItem);
+          } else if (
+            mediaItem.startsWith('http://') ||
+            mediaItem.startsWith('https://')
+          ) {
+            // External URLs (YouTube, Vimeo, etc.) - Twitter will embed them
+            externalUrls.push(mediaItem);
+          } else {
+            // Assume it's an S3 key if no protocol
+            s3Media.push(mediaItem);
+          }
+        });
+
+        // Upload S3 media to Twitter
+        if (s3Media.length > 0) {
+          try {
+            await this.mediaService.initialize();
+
+            const uploadPromises = s3Media.map(async (mediaKey) => {
+              try {
+                const mediaFile = await this.mediaService.readFromS3(mediaKey);
+                return await userTwitter.v1.uploadMedia(mediaFile.buffer, {
+                  mimeType: mediaFile.mimetype,
+                });
+              } catch (s3Error) {
+                logger.warn(
+                  `Failed to read/upload media from S3 (${mediaKey}): ${
+                    s3Error instanceof Error ? s3Error.message : String(s3Error)
+                  }`
+                );
+                // Return null for failed uploads, filter them out later
+                return null;
+              }
             });
-          })
-        );
+
+            const uploadResults = await Promise.all(uploadPromises);
+            mediaIds = uploadResults.filter((id): id is string => id !== null);
+
+            if (uploadResults.some((id) => id === null)) {
+              logger.warn(
+                'Some media failed to upload from S3. Proceeding with available media or text-only tweet.'
+              );
+            }
+          } catch (error) {
+            logger.err(
+              `Media service initialization or upload failed: ${
+                error instanceof Error ? error.message : String(error)
+              }. Posting tweet without images.`
+            );
+            mediaIds = [];
+          }
+        }
+      }
+
+      // Build final tweet text with external URLs appended
+      let finalTweetText = tweetText;
+      if (externalUrls.length > 0) {
+        // Add external URLs at the end for Twitter to embed them
+        finalTweetText = `${tweetText}\n\n${externalUrls.join('\n')}`.trim();
       }
 
       const rwClient = userTwitter.readWrite;
       let result: TweetV2PostTweetResult;
 
       if (isThread && parentTweetId) {
-        result = await rwClient.v2.reply(tweetText, parentTweetId);
+        result = await rwClient.v2.reply(finalTweetText, parentTweetId);
       } else if (mediaIds.length > 0) {
-        result = await rwClient.v2.tweet(tweetText, {
+        result = await rwClient.v2.tweet(finalTweetText, {
           media: { media_ids: mediaIds },
         });
       } else {
-        result = await rwClient.v2.tweet(tweetText);
+        // Post text-only tweet (including external URLs for embedding)
+        result = await rwClient.v2.tweet(finalTweetText);
       }
 
       return result.data.id;
@@ -393,8 +461,22 @@ export class TwitterCardService {
       throw new Error('Tweet text is missing from campaign');
     }
 
+    let tweetText = '';
+
+    if (card.campaign_type === campaign_type.quest) {
+      const options =
+        Array.isArray(card.question_options) && card.question_options.length > 0
+          ? card.question_options
+              .map((opt, i) => `${i + 1}. ${String(opt)}`)
+              .join('\n')
+          : '';
+      tweetText = `${card.tweet_text}${options ? `\n\n${options}` : ''}`.trim();
+    } else {
+      tweetText = card.tweet_text;
+    }
+
     return await this.publishTweetOrThread({
-      tweetText: card.tweet_text,
+      tweetText,
       cardOwner,
       media: card.media || [],
     });
@@ -411,10 +493,11 @@ export class TwitterCardService {
     ValidationUtils.validateTweetText(card.tweet_text);
 
     if (
-      !card.like_reward ||
-      !card.quote_reward ||
-      !card.retweet_reward ||
-      !card.comment_reward
+      card.campaign_type === campaign_type.awareness &&
+      (!card.like_reward ||
+        !card.quote_reward ||
+        !card.retweet_reward ||
+        !card.comment_reward)
     ) {
       throw new Error('One or more reward values are missing');
     }
@@ -424,43 +507,56 @@ export class TwitterCardService {
     const formattedDate = formattedDateTime(moment().toISOString());
 
     const rewards: RewardCatalog = {
-      like_reward: card.like_reward,
-      quote_reward: card.quote_reward,
-      retweet_reward: card.retweet_reward,
-      reply_reward: card.comment_reward,
+      like_reward: Number(card.like_reward ?? 0),
+      quote_reward: Number(card.quote_reward ?? 0),
+      retweet_reward: Number(card.retweet_reward ?? 0),
+      reply_reward: Number(card.comment_reward ?? 0),
     };
 
     let tweetText: string;
 
-    if (card.type === 'HBAR') {
-      tweetText = TwitterUtils.buildRewardText(
-        'HBAR',
-        formattedDate,
-        campaignDurationInMin,
-        rewards
-      );
-    } else {
-      const token = await this.getTokenInfo(String(card.fungible_token_id));
-      if (!token) {
-        throw new Error('Token not found');
-      }
+    const isAwareness = card.campaign_type === campaign_type.awareness;
+    const isHbar = card.type === 'HBAR';
 
+    // Determine symbol and divisor for budget normalization
+    let symbol = 'HBAR';
+    let divisor = 1e8; // tiny HBAR -> HBAR divisor
+
+    if (!isHbar) {
+      const token = await this.getTokenInfo(String(card.fungible_token_id));
+      if (!token) throw new Error('Token not found');
+
+      const decimalsNum = card.decimals ? Number(card.decimals) : 0;
+      symbol = token.token_symbol || 'TOKEN';
+      divisor = 10 ** decimalsNum;
+    }
+
+    if (isAwareness) {
       tweetText = TwitterUtils.buildRewardText(
-        'FUNGIBLE',
+        isHbar ? 'HBAR' : 'FUNGIBLE',
         formattedDate,
         campaignDurationInMin,
         rewards,
-        token.token_symbol || '',
-        card.decimals ? Number(card.decimals) : 0
+        isHbar ? undefined : symbol,
+        !isHbar ? (card.decimals ? Number(card.decimals) : 0) : undefined
+      );
+    } else {
+      const normalizedBudget = (card.campaign_budget ?? 0) / divisor;
+      tweetText = TwitterUtils.buildQuestLaunchTweet(
+        formattedDate,
+        campaignDurationInMin,
+        normalizedBudget,
+        symbol
       );
     }
 
-    return await this.publishTweetOrThread({
-      tweetText,
-      cardOwner,
-      isThread: true,
-      parentTweetId,
-    });
+      return await this.publishTweetOrThread({
+        tweetText,
+        cardOwner,
+        isThread: true,
+        parentTweetId,
+      });
+
   }
 
   /**
@@ -805,7 +901,7 @@ export const legacyExports = {
     return service.publishTweetOrThread(params);
   },
 
-  publistFirstTweet: async (
+  publishFirstTweet: async (
     card: campaign_twittercard,
     cardOwner: user_user
   ) => {

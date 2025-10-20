@@ -9,6 +9,12 @@ declare module 'express' {
     };
   }
 }
+
+// Extend globalThis to include custom properties
+declare global {
+  // eslint-disable-next-line no-var
+  var adminAddress: string[];
+}
 import "express";
 import { user_user } from "@prisma/client";
 

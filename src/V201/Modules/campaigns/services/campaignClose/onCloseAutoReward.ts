@@ -2,9 +2,10 @@ import { Status } from '@hashgraph/sdk';
 import {
   PrismaClient,
   campaign_twittercard,
+  campaign_type,
   payment_status,
 } from '@prisma/client';
-import { checkTokenAssociation } from '@shared/helper';
+import { checkTokenAssociation, formattedDateTime } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
 import { incrementClaimAmount } from '../../../../../services/campaign-service';
@@ -15,6 +16,8 @@ import {
 import ContractCampaignLifecycle from '../../../../../services/ContractCampaignLifecycle';
 import { transferAmountFromContractUsingSDK } from '../../../../../services/transaction-service';
 import userService from '../../../../../services/user-service';
+import twitterCardService from '../../../../../services/twitterCard-service';
+import { getConfig } from '@appConfig';
 import { CampaignEvents } from '../../../../AppEvents/campaign';
 import CampaignTweetEngagementsModel from '../../../../Modals/CampaignTweetEngagements';
 import CampaignTwitterCardModel from '../../../../Modals/CampaignTwitterCard';
@@ -51,6 +54,15 @@ interface UserWithReward {
   };
 }
 
+interface ExecutionStep {
+  step: string;
+  status: 'success' | 'failed' | 'skipped';
+  timestamp: Date;
+  message?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * V201 Auto Reward Service for Campaign Closing
  * Handles the automatic distribution of rewards to eligible users
@@ -62,11 +74,75 @@ export class V201OnCloseAutoRewardService {
   private campaignModel: CampaignTwitterCardModel | null = null;
   private userModel: UsersModel | null = null;
   private campaignLogger: CampaignLogEventHandler | null = null;
+  private executionSteps: ExecutionStep[] = [];
 
   constructor(prismaClient?: PrismaClient) {
     if (prismaClient) {
       this.prisma = prismaClient;
     }
+  }
+
+  /**
+   * Add execution step for tracking
+   */
+  private addStep(
+    step: string,
+    status: 'success' | 'failed' | 'skipped',
+    message?: string,
+    error?: string,
+    metadata?: Record<string, unknown>
+  ): void {
+    this.executionSteps.push({
+      step,
+      status,
+      timestamp: new Date(),
+      message,
+      error,
+      metadata,
+    });
+  }
+
+  /**
+   * Log execution summary
+   */
+  private async logExecutionSummary(campaignId: bigint): Promise<void> {
+    if (!this.campaignLogger) return;
+
+    const successCount = this.executionSteps.filter(
+      (s) => s.status === 'success'
+    ).length;
+    const failedCount = this.executionSteps.filter(
+      (s) => s.status === 'failed'
+    ).length;
+    const skippedCount = this.executionSteps.filter(
+      (s) => s.status === 'skipped'
+    ).length;
+
+    const finalStatus =
+      failedCount > 0 ? 'AUTO_REWARD_FAILED' : 'AUTO_REWARD_COMPLETED';
+    const level =
+      failedCount > 0 ? CampaignLogLevel.ERROR : CampaignLogLevel.SUCCESS;
+
+    await this.campaignLogger.saveLog({
+      campaignId: Number(campaignId),
+      status: finalStatus,
+      message: `Auto reward distribution completed - ${successCount} successful, ${failedCount} failed, ${skippedCount} skipped`,
+      level,
+      eventType: CampaignLogEventType.SYSTEM_EVENT,
+      data: {
+        level,
+        eventType: CampaignLogEventType.SYSTEM_EVENT,
+        metadata: {
+          executionHistory: this.executionSteps,
+          summary: {
+            totalSteps: this.executionSteps.length,
+            successful: successCount,
+            failed: failedCount,
+            skipped: skippedCount,
+          },
+        },
+      },
+    });
   }
 
   /**
@@ -140,25 +216,15 @@ export class V201OnCloseAutoRewardService {
       }
     );
 
+    // V201 uses lowercase engagement types ('like', 'retweet', 'quote', 'reply')
+    // Legacy on-card.ts uses PascalCase ('Like', 'Retweet', 'Quote', 'Reply')
     for (const engagement of engagements) {
       ids.push(engagement.id);
 
-      switch (engagement.engagement_type) {
-        case 'like':
-          total += like_reward;
-          break;
-        case 'retweet':
-          total += retweet_reward;
-          break;
-        case 'quote':
-          total += quote_reward;
-          break;
-        case 'reply':
-          total += comment_reward;
-          break;
-        default:
-          logger.warn(`Unknown engagement type: ${engagement.engagement_type}`);
-      }
+      if (engagement.engagement_type === 'like') total += like_reward;
+      if (engagement.engagement_type === 'retweet') total += retweet_reward;
+      if (engagement.engagement_type === 'quote') total += quote_reward;
+      if (engagement.engagement_type === 'reply') total += comment_reward;
     }
 
     return { total, ids };
@@ -220,6 +286,97 @@ export class V201OnCloseAutoRewardService {
   }
 
   /**
+   * Generate the reward announcement tweet text
+   */
+  private async getRewardAnnouncementTweetText(
+    cardType: string,
+    card: campaign_twittercard
+  ): Promise<string> {
+    const dateNow = new Date().toISOString();
+    const config = await getConfig();
+    const claimDuration = config.app.defaultRewardClaimDuration;
+
+    if (card.campaign_type === campaign_type.awareness) {
+      if (cardType === 'HBAR') {
+        return (
+          `Promo ended on ${formattedDateTime(dateNow)}. ` +
+          `Rewards allocation for the next ${claimDuration} minutes. ` +
+          `New users: log into ${config.app.appURL}, ` +
+          `then link your Personal X account to receive your rewards.`
+        );
+      } else {
+        return (
+          `Promo ended on ${formattedDateTime(dateNow)}. ` +
+          `Rewards allocation for the next ${claimDuration} minutes. ` +
+          `New users: log into ${config.app.appURL}, ` +
+          `link Personal X account and associate token with ID ` +
+          `${card.fungible_token_id ?? ''} to your wallet.`
+        );
+      }
+    } else {
+      return `🕒 Quest closed at ${formattedDateTime(
+        dateNow
+      )}. Rewards being allocated over the next ${claimDuration} minutes. ${
+        card?.correct_answer
+          ? `**The correct answer is: ${card.correct_answer}**`
+          : ''
+      }`;
+    }
+  }
+
+  /**
+   * Publish reward announcement tweet thread
+   */
+  private async publishRewardAnnouncementTweet(
+    card: campaign_twittercard,
+    cardType: string,
+    campaigner: {
+      business_twitter_access_token: string | null;
+      business_twitter_access_token_secret: string | null;
+    }
+  ): Promise<void> {
+    try {
+      const tweetText = await this.getRewardAnnouncementTweetText(
+        cardType,
+        card
+      );
+
+      logger.info(
+        `Tweet text for ${cardType} tweet string count: ${tweetText.length} And Content: ${tweetText}`
+      );
+
+      if (!card.last_thread_tweet_id) {
+        throw new Error(
+          'Campaign missing last_thread_tweet_id for tweet thread'
+        );
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await (twitterCardService.publishTweetORThread as any)({
+        cardOwner: {
+          business_twitter_access_token:
+            campaigner.business_twitter_access_token,
+          business_twitter_access_token_secret:
+            campaigner.business_twitter_access_token_secret,
+        },
+        isThread: true,
+        tweetText,
+        parentTweetId: card.last_thread_tweet_id,
+      });
+
+      logger.info(
+        `Successfully published reward announcement tweet thread for card ID: ${card.id}`
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.err(
+        `Failed to publish reward announcement tweet thread: ${errorMsg}`
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Adjust total reward in smart contract
    */
   private async adjustTotalReward(
@@ -244,16 +401,14 @@ export class V201OnCloseAutoRewardService {
         throw new Error('No active contract found');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const campaignLifecycleService = new ContractCampaignLifecycle(
         contractDetails.contract_id
-      ) as any;
+      );
 
       if (cardType === 'HBAR') {
         if (!card.contract_id) {
           throw new Error('Contract ID is required for HBAR campaigns');
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await campaignLifecycleService.adjustTotalReward({
           campaigner: campaigner.hedera_wallet_id,
           campaignAddress: card.contract_id,
@@ -263,7 +418,6 @@ export class V201OnCloseAutoRewardService {
         if (!card.contract_id) {
           throw new Error('Contract ID is required for FUNGIBLE campaigns');
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await campaignLifecycleService.adjustTotalFungibleReward({
           tokenId,
           campaigner: campaigner.hedera_wallet_id,
@@ -389,6 +543,9 @@ export class V201OnCloseAutoRewardService {
     usersRewarded: number;
     errors?: string[];
   }> {
+    // Reset execution steps for new reward distribution
+    this.executionSteps = [];
+
     await this.initializeServices();
 
     if (!this.prisma || !this.campaignLogger) {
@@ -396,21 +553,11 @@ export class V201OnCloseAutoRewardService {
     }
 
     try {
-      logger.info(`Starting auto reward process for campaign ${cardId}`);
-
-      // Log start of auto reward process
-      await this.campaignLogger.saveLog({
-        campaignId: Number(cardId),
-        status: 'AUTO_REWARD_STARTED',
-        message: 'Started automatic reward distribution process',
-        level: CampaignLogLevel.INFO,
-        eventType: CampaignLogEventType.SYSTEM_EVENT,
-        data: {
-          level: CampaignLogLevel.INFO,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          metadata: { campaignId: cardId },
-        },
-      });
+      this.addStep(
+        'initialization',
+        'success',
+        'Services initialized for auto reward'
+      );
 
       // Get all unique users who have unpaid engagements using engagement model
       if (!this.engagementModel) {
@@ -422,6 +569,7 @@ export class V201OnCloseAutoRewardService {
         {
           payment_status: payment_status.UNPAID,
           is_valid_timing: true,
+          is_bot_engagement: false,
         }
       );
 
@@ -434,8 +582,20 @@ export class V201OnCloseAutoRewardService {
         ),
       ];
 
+      this.addStep(
+        'fetch_engagements',
+        'success',
+        `Found ${engagements.length} engagements from ${engagedUsers.length} users`,
+        undefined,
+        {
+          totalEngagements: engagements.length,
+          uniqueUsers: engagedUsers.length,
+        }
+      );
+
       if (engagedUsers.length === 0) {
-        logger.warn(`No engaged users found for campaign ${cardId}`);
+        this.addStep('user_validation', 'skipped', 'No engaged users found');
+        await this.logExecutionSummary(cardId);
         return {
           success: true,
           totalDistributed: 0,
@@ -456,8 +616,24 @@ export class V201OnCloseAutoRewardService {
         Boolean(user.hedera_wallet_id)
       );
 
+      this.addStep(
+        'fetch_users',
+        'success',
+        `Found ${userWithWallet.length} users with wallets out of ${usersRecords.length} total users`,
+        undefined,
+        {
+          totalUsers: usersRecords.length,
+          usersWithWallets: userWithWallet.length,
+        }
+      );
+
       if (userWithWallet.length === 0) {
-        logger.warn(`No users with wallets found for campaign ${cardId}`);
+        this.addStep(
+          'wallet_validation',
+          'skipped',
+          'No users with wallets found'
+        );
+        await this.logExecutionSummary(cardId);
         return {
           success: true,
           totalDistributed: 0,
@@ -468,8 +644,15 @@ export class V201OnCloseAutoRewardService {
       // Get campaign details
       const cardDetails = await this.getCardDetails(cardId);
       if (!cardDetails) {
+        this.addStep(
+          'fetch_campaign',
+          'failed',
+          'Campaign card details not found'
+        );
         throw new Error('Campaign card details not found');
       }
+
+      this.addStep('fetch_campaign', 'success', 'Campaign details retrieved');
 
       const { user_user: campaigner, ...card } = cardDetails;
       const rewards = this.getRewardsFromCard(card);
@@ -502,16 +685,27 @@ export class V201OnCloseAutoRewardService {
         })
       );
 
+      this.addStep(
+        'calculate_rewards',
+        'success',
+        `Calculated total rewards for ${userWithWallet.length} users`,
+        undefined,
+        { totalDistributableReward, userCount: userWithWallet.length }
+      );
+
       if (totalDistributableReward <= 0) {
-        logger.warn(`No rewards to distribute for campaign ${cardId}`);
+        this.addStep(
+          'reward_validation',
+          'skipped',
+          'No rewards to distribute'
+        );
+        await this.logExecutionSummary(cardId);
         return {
           success: true,
           totalDistributed: 0,
           usersRewarded: 0,
         };
       }
-
-      logger.info(`Total reward distributable: ${totalDistributableReward}`);
 
       // Adjust total reward in smart contract
       await this.adjustTotalReward(
@@ -520,6 +714,14 @@ export class V201OnCloseAutoRewardService {
         card,
         tokenId,
         totalDistributableReward
+      );
+
+      this.addStep(
+        'adjust_contract_reward',
+        'success',
+        `Adjusted smart contract total reward to ${totalDistributableReward}`,
+        undefined,
+        { totalAmount: totalDistributableReward, cardType }
       );
 
       // Distribute rewards to users
@@ -531,31 +733,57 @@ export class V201OnCloseAutoRewardService {
         campaigner
       );
 
+      this.addStep(
+        'distribute_rewards',
+        'success',
+        `Distributed rewards to ${distributionResult.successful} users`,
+        undefined,
+        {
+          successful: distributionResult.successful,
+          failed: distributionResult.failed,
+          totalDistributed: totalDistributableReward,
+        }
+      );
+
       // Update campaign claim amount
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await (incrementClaimAmount as any)(cardId, totalDistributableReward);
+      await(incrementClaimAmount as any)(cardId, totalDistributableReward);
 
-      // Log completion
-      await this.campaignLogger.saveLog({
-        campaignId: Number(cardId),
-        status: 'AUTO_REWARD_COMPLETED',
-        message: `Auto reward distribution completed. Distributed: ${totalDistributableReward}, Users: ${distributionResult.successful}`,
-        level: CampaignLogLevel.SUCCESS,
-        eventType: CampaignLogEventType.SYSTEM_EVENT,
-        data: {
-          level: CampaignLogLevel.SUCCESS,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          metadata: {
-            totalDistributed: totalDistributableReward,
-            successfulUsers: distributionResult.successful,
-            failedUsers: distributionResult.failed,
-          },
-        },
-      });
-
-      logger.info(
-        `Auto reward process completed for campaign ${cardId}. Total distributed: ${totalDistributableReward}`
+      this.addStep(
+        'update_claim_amount',
+        'success',
+        `Updated campaign claim amount by ${totalDistributableReward}`,
+        undefined,
+        { claimAmountIncrement: totalDistributableReward }
       );
+
+      // Publish reward announcement tweet thread
+      try {
+        await this.publishRewardAnnouncementTweet(card, cardType, campaigner);
+
+        this.addStep(
+          'publish_announcement_tweet',
+          'success',
+          'Published reward announcement tweet thread',
+          undefined,
+          { cardType }
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.addStep(
+          'publish_announcement_tweet',
+          'failed',
+          'Failed to publish reward announcement tweet',
+          errorMsg
+        );
+        // Don't fail the entire process if tweet fails
+        logger.warn(
+          `Tweet announcement failed for campaign ${cardId}: ${errorMsg}`
+        );
+      }
+
+      // Log execution summary
+      await this.logExecutionSummary(cardId);
 
       return {
         success: true,
@@ -564,18 +792,16 @@ export class V201OnCloseAutoRewardService {
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.err(
-        `Error in auto reward process for campaign ${cardId}: ${errorMsg}`
+
+      this.addStep(
+        'auto_reward_process',
+        'failed',
+        'Auto reward process failed',
+        errorMsg
       );
 
-      // Log error
-      if (this.campaignLogger) {
-        await this.campaignLogger.logError(
-          Number(cardId),
-          error as Error,
-          'auto_reward_distribution'
-        );
-      }
+      // Log execution summary with error
+      await this.logExecutionSummary(cardId);
 
       return {
         success: false,

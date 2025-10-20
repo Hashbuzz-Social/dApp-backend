@@ -1,5 +1,6 @@
 import createPrismaClient from '@shared/prisma';
 import { campaignstatus } from '@prisma/client';
+import { generateRandomString } from '@V201/modules/common';
 
 export interface DraftQuestInput {
   userId: bigint;
@@ -49,6 +50,22 @@ export async function draftQuest(
     throw new Error('Fungible token ID is required for FUNGIBLE campaigns');
   }
 
+  if (input.type === 'FUNGIBLE' && !input.fungible_token_id) {
+    throw new Error('Fungible token ID is required for FUNGIBLE campaigns');
+  }
+
+  if (input.type === 'FUNGIBLE' && input.fungible_token_id) {
+    const tokenDetails = await prisma.whiteListedTokens.findUnique({
+      where: { token_id: input.fungible_token_id },
+    });
+    const decimals = Number(tokenDetails?.decimals);
+    if (decimals > 0) {
+      input.campaign_budget = input.campaign_budget * Math.pow(10, decimals);
+    }
+  } else {
+    input.campaign_budget = input.campaign_budget * 1e8;
+  }
+
   // Create quest campaign draft
   const quest = await prisma.campaign_twittercard.create({
     data: {
@@ -63,6 +80,9 @@ export async function draftQuest(
       amount_spent: 0,
       question_options: input.options || [],
       correct_answer: input.correct_answers || null,
+      campaign_type: 'quest',
+      approve: false,
+      contract_id: generateRandomString(20),
     },
   });
 

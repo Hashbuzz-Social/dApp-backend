@@ -10,9 +10,11 @@ import logger from 'jet-logger';
  */
 class WorkerManager {
   private static workers: Map<string, Worker> = new Map();
+  private static isInitialized = false;
 
   /**
    * Initializes a new worker to process jobs of a specific type.
+   * Prevents duplicate worker registration.
    * @param jobType The type of scheduled event.
    * @param processor The function to process the job.
    */
@@ -20,19 +22,39 @@ class WorkerManager {
     jobType: T,
     processor: (job: Job<TaskSchedulerJobType<T>>) => Promise<void>
   ): Promise<void> {
+    // Prevent duplicate worker registration
+    if (this.workers.has(jobType)) {
+      logger.warn(
+        `⚠️  Worker for ${jobType} already exists, skipping initialization`
+      );
+      return;
+    }
+
     const configs = await getConfig();
 
     const worker = new Worker<TaskSchedulerJobType<T>>(
       jobType,
       async (job: Job<TaskSchedulerJobType<T>>) => {
         try {
-          logger.info(`🔹 Processing job: ${job.name}`);
+          logger.info(
+            `🔹 [${jobType}] Processing job: ${job.name} (ID: ${
+              job.id || 'unknown'
+            })`
+          );
           await processor(job);
-          logger.info(`✅ Job completed: ${job.name}`);
+          logger.info(
+            `✅ [${jobType}] Job completed: ${job.name} (ID: ${
+              job.id || 'unknown'
+            })`
+          );
         } catch (error: unknown) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
-          logger.err(`❌ Failed to process job: ${job.name} - ${errorMsg}`);
+          logger.err(
+            `❌ [${jobType}] Failed to process job: ${job.name} (ID: ${
+              job.id || 'unknown'
+            }) - ${errorMsg}`
+          );
           // Re-throw error to trigger BullMQ retry mechanism
           throw error;
         }
@@ -43,7 +65,10 @@ class WorkerManager {
           port: parseRedisURL(configs.db.redisServerURI).port,
           maxRetriesPerRequest: 3, // Redis connection retry
         },
-        concurrency: 3, // Process up to 3 jobs concurrently
+        concurrency: 1, // CRITICAL: Process jobs sequentially to prevent parallel execution
+        lockDuration: 300000, // 5 minutes lock to prevent job stealing by other workers
+        stalledInterval: 60000, // Check for stalled jobs every 60 seconds
+        maxStalledCount: 1, // Maximum times a job can be stalled before being failed
         // Graceful shutdown settings
         removeOnComplete: {
           age: 24 * 3600, // Remove completed jobs after 24 hours

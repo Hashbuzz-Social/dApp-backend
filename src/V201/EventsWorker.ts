@@ -1,7 +1,7 @@
 import {
   handleCampaignPublishTransaction,
   publishCampaignSecondContent,
-  publshCampaignContentHandler,
+  publishCampaignContentHandler,
   publshCampaignErrorHandler,
 } from '@V201/modules/campaigns';
 import type { EventPayloadMap } from '@V201/types';
@@ -14,6 +14,7 @@ import JSONBigInt from 'json-bigint';
 import { processLikeAndRetweetCollection } from './Modules/campaigns/services/campaignClose/OnCloseEngagementService';
 import { onCloseReCalculateRewardsRates } from './Modules/campaigns/services/campaignClose/OnCloseReCalculateRewardRates';
 import { onCloseRewardServices } from './Modules/campaigns/services/campaignClose/onCloseAutoReward';
+import { findEligibleQuestWinners } from './Modules';
 
 /**
  * Enhanced event processor with better error handling and retry logic
@@ -39,7 +40,7 @@ const processEvent = async (
         case CampaignEvents.CAMPAIGN_PUBLISH_CONTENT: {
           const publishContentPayload =
             payload as EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT];
-          await publshCampaignContentHandler(publishContentPayload);
+          await publishCampaignContentHandler(publishContentPayload);
           break;
         }
 
@@ -87,6 +88,20 @@ const processEvent = async (
           );
           // Call the function to recalculate rewards rates
           await onCloseReCalculateRewardsRates(recalculateRewardsRatesPayload);
+          break;
+        }
+
+        case CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS: {
+          const findQuestWinnersPayload =
+            payload as EventPayloadMap[CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS];
+          Logger.info(
+            `Finding quest winners for campaign ID: ${findQuestWinnersPayload.campaignId}`
+          );
+
+          // Call the function to finalize rewards distribution
+          await findEligibleQuestWinners(
+            BigInt(findQuestWinnersPayload.campaignId)
+          );
           break;
         }
 

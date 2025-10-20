@@ -184,6 +184,20 @@ export class EnhancedEventSystem {
         }`
       );
 
+      // Check if this event type should never be retried
+      if (this.isNoRetryEvent(eventType)) {
+        logger.warn(
+          `Event ${eventType} (ID: ${eventId}) is configured for NO RETRY. Moving to dead letter.`
+        );
+        await this.moveToDeadLetter(
+          eventId,
+          eventType,
+          payload,
+          error as Error
+        );
+        return false;
+      }
+
       // Check if this is a Twitter rate limit error
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -232,6 +246,18 @@ export class EnhancedEventSystem {
 
       return false;
     }
+  }
+
+  /**
+   * Check if event type should never be retried
+   * These events collect engagement data and should not retry to avoid duplicate/inconsistent data
+   */
+  private static isNoRetryEvent(eventType: string): boolean {
+    const noRetryEvents = [
+      'CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET',
+      'CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY',
+    ];
+    return noRetryEvents.includes(eventType);
   }
 
   /**

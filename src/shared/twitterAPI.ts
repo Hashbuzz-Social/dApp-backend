@@ -50,6 +50,11 @@ interface EngagementResult {
   quotes: TweetV2[];
 }
 
+interface EnhancedTweetResult {
+  tweets: TweetV2[];
+  users: Map<string, UserV2>;
+}
+
 interface TwitterAPIError extends Error {
   code?: string;
   statusCode?: number;
@@ -442,7 +447,13 @@ export async function getAllUsersWhoQuotedOnTweetId(
     const data: TweetV2[] = [];
     const searchParams: Partial<Tweetv2SearchParams> = {
       expansions: (options?.expansions || ['author_id']) as any,
-      'user.fields': (options?.userFields || ['username']) as any,
+      'user.fields': (options?.userFields || [
+        'username',
+        'created_at',
+        'public_metrics',
+        'verified',
+        'description',
+      ]) as any,
       'tweet.fields': [
         'created_at',
         'public_metrics',
@@ -450,12 +461,8 @@ export async function getAllUsersWhoQuotedOnTweetId(
         'author_id',
       ] as any,
       max_results: options?.maxResults || 100,
-      ...(options?.startTime && {
-        start_time: normalizeTimestamp(options.startTime),
-      }),
-      ...(options?.endTime && {
-        end_time: normalizeTimestamp(options.endTime),
-      }),
+      // NOTE: /quotes endpoint does NOT support start_time/end_time parameters
+      // Filtering is done client-side below
     } as any;
 
     const quotes = await twitterClient.readOnly.v2.quotes(
@@ -594,7 +601,9 @@ export async function getAllReplies(
       ]) as any,
       'user.fields': (options?.userFields || [
         'username',
+        'created_at',
         'public_metrics',
+        'verified',
         'description',
         'location',
       ]) as any,
@@ -784,12 +793,186 @@ export async function sendDMFromHashBuzz(recipient_id: string, text: string) {
   return hbuuzzClient.v1.sendDm({ recipient_id, text });
 }
 
+/**
+ * Get all quotes with user data for bot detection
+ * @param tweetId - Tweet ID
+ * @param user - User credentials
+ * @param options - Search options
+ * @returns Enhanced result with tweets and user map
+ */
+export async function getAllQuotesWithUsers(
+  tweetId: string,
+  user: UserBizXCredentials,
+  options?: QuoteSearchOptions
+): Promise<EnhancedTweetResult> {
+  try {
+    validateTweetId(tweetId);
+    validateTimestampFilter(options);
+
+    const configs = await getConfig();
+    const twitterClient = createTwitterClientWithTokens(
+      user.business_twitter_access_token,
+      user.business_twitter_access_token_secret,
+      configs
+    );
+
+    const tweets: TweetV2[] = [];
+    const users = new Map<string, UserV2>();
+
+    const searchParams: Partial<Tweetv2SearchParams> = {
+      expansions: (options?.expansions || ['author_id']) as any,
+      'user.fields': (options?.userFields || [
+        'username',
+        'created_at',
+        'public_metrics',
+        'verified',
+        'description',
+      ]) as any,
+      'tweet.fields': [
+        'created_at',
+        'public_metrics',
+        'text',
+        'author_id',
+      ] as any,
+      max_results: options?.maxResults || 100,
+      // NOTE: /quotes endpoint does NOT support start_time/end_time parameters
+      // Filtering is done client-side below
+    } as any;
+
+    const quotesResponse = await twitterClient.readOnly.v2.quotes(
+      tweetId,
+      searchParams
+    );
+
+    // Iterate through pages to collect tweets and users
+    for await (const quote of quotesResponse) {
+      tweets.push({ ...quote });
+    }
+
+    // Extract users from the final response metadata
+    // The includes.users data is available in quotesResponse.includes
+    if (quotesResponse.includes?.users) {
+      for (const user of quotesResponse.includes.users) {
+        users.set(user.id, user);
+      }
+    }
+
+    // Apply client-side filtering if timestamp options provided (API doesn't support them natively)
+    let filteredTweets = tweets;
+    if (options?.startTime || options?.endTime) {
+      filteredTweets = filterByTimestamp(tweets, options);
+    }
+
+    return { tweets: filteredTweets, users };
+  } catch (error) {
+    if (error instanceof TwitterAPIError) {
+      throw error;
+    }
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    throw new TwitterAPIError(
+      `Failed to fetch quotes with users: ${errorMsg}`,
+      'QUOTES_WITH_USERS_ERROR'
+    );
+  }
+}
+
+/**
+ * Get all replies with user data for bot detection
+ * @param tweetID - Tweet ID
+ * @param token - Access token
+ * @param secret - Access secret
+ * @param options - Search options
+ * @returns Enhanced result with tweets and user map
+ */
+export async function getAllRepliesWithUsers(
+  tweetID: string,
+  token: string,
+  secret: string,
+  options?: ReplySearchOptions
+): Promise<EnhancedTweetResult> {
+  try {
+    validateTweetId(tweetID);
+    validateTimestampFilter(options);
+
+    const config = await getConfig();
+    const twitterClient = createTwitterClientWithTokens(token, secret, config);
+
+    const tweets: TweetV2[] = [];
+    const users = new Map<string, UserV2>();
+
+    const searchParams: Partial<Tweetv2SearchParams> = {
+      expansions: (options?.expansions || [
+        'author_id',
+        'referenced_tweets.id',
+      ]) as any,
+      'user.fields': (options?.userFields || [
+        'username',
+        'created_at',
+        'public_metrics',
+        'verified',
+        'description',
+        'location',
+      ]) as any,
+      'tweet.fields': (options?.tweetFields || [
+        'created_at',
+        'geo',
+        'public_metrics',
+        'text',
+        'conversation_id',
+        'in_reply_to_user_id',
+      ]) as any,
+      max_results: options?.maxResults || 100,
+      ...(options?.startTime && {
+        start_time: normalizeTimestamp(options.startTime),
+      }),
+      ...(options?.endTime && {
+        end_time: normalizeTimestamp(options.endTime),
+      }),
+    } as any;
+
+    const searchResults = await twitterClient.readOnly.v2.search(
+      `in_reply_to_tweet_id:${tweetID}`,
+      searchParams
+    );
+
+    // Collect tweets from paginator
+    for await (const tweet of searchResults) {
+      tweets.push(tweet);
+    }
+
+    // Extract users from the response includes
+    if (searchResults.includes?.users) {
+      for (const user of searchResults.includes.users) {
+        users.set(user.id, user);
+      }
+    }
+
+    // Apply client-side filtering if timestamp options provided
+    let filteredTweets = tweets;
+    if (options?.startTime || options?.endTime) {
+      filteredTweets = filterByTimestamp(tweets, options);
+    }
+
+    return { tweets: filteredTweets, users };
+  } catch (error) {
+    if (error instanceof TwitterAPIError) {
+      throw error;
+    }
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    throw new TwitterAPIError(
+      `Failed to fetch replies with users: ${errorMsg}`,
+      'REPLIES_WITH_USERS_ERROR'
+    );
+  }
+}
+
 // Export all types for external use
 export {
   PublicMetrics,
   PublicMetricsObject,
   TimestampFilter,
   TwitterCredentials,
+  EnhancedTweetResult,
   EngagementResult,
   TwitterAPIError,
   TwitterTokenError,
@@ -803,6 +986,8 @@ export default {
   // Main API functions with enhanced type safety and timestamp filtering
   getAllReplies,
   getAllUsersWhoQuotedOnTweetId,
+  getAllQuotesWithUsers,
+  getAllRepliesWithUsers,
   getPublicMetrics,
   getEngagementOnCard,
   getAllUsersWhoLikedOnTweetId,

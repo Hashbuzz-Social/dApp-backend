@@ -151,6 +151,118 @@ class CampaignController {
       });
     }
   }
+
+  /**
+   * GET /api/v201/campaigns/admin/list
+   * Get all campaigns (admin only)
+   */
+  async getAllCampaigns(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const status = req.query.status as string | undefined;
+      const campaignType = req.query.campaignType as string | undefined;
+
+      const skip = (page - 1) * limit;
+
+      const prisma = await import('@shared/prisma').then((m) => m.default());
+
+      // Build where clause
+      const where: any = {};
+      if (status) {
+        where.card_status = status;
+      }
+      if (campaignType) {
+        where.campaign_type = campaignType;
+      }
+
+      const [campaigns, totalCount] = await Promise.all([
+        prisma.campaign_twittercard.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { id: 'desc' },
+          include: {
+            user_user: {
+              select: {
+                id: true,
+                name: true,
+                personal_twitter_handle: true,
+                hedera_wallet_id: true,
+              },
+            },
+          },
+        }),
+        prisma.campaign_twittercard.count({ where }),
+      ]);
+
+      const serializedCampaigns = campaigns.map((campaign) =>
+        convertBigIntToString(campaign)
+      );
+
+      return res.success(
+        {
+          campaigns: serializedCampaigns,
+          pagination: {
+            page,
+            limit,
+            total: totalCount,
+            totalPages: Math.ceil(totalCount / limit),
+          },
+        },
+        'Campaigns retrieved successfully'
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return res.badRequest(`Failed to get campaigns: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * GET /api/v201/campaigns/admin/:campaignId/logs
+   * Get campaign timeline logs (admin only)
+   */
+  async getCampaignLogs(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const campaignId = BigInt(req.params.campaignId);
+
+      const prisma = await import('@shared/prisma').then((m) => m.default());
+
+      // Get campaign with logs
+      const campaign = await prisma.campaign_twittercard.findUnique({
+        where: { id: campaignId },
+        include: {
+          campaignLogs: {
+            orderBy: { timestamp: 'asc' },
+          },
+          user_user: {
+            select: {
+              id: true,
+              name: true,
+              personal_twitter_handle: true,
+              hedera_wallet_id: true,
+            },
+          },
+        },
+      });
+
+      if (!campaign) {
+        return res.notFound('Campaign not found', String(campaignId));
+      }
+
+      const serializedCampaign = convertBigIntToString(campaign);
+
+      return res.success(
+        serializedCampaign,
+        'Campaign logs retrieved successfully'
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return res.badRequest(`Failed to get campaign logs: ${errorMessage}`);
+    }
+  }
 }
 
 export default new CampaignController();

@@ -92,7 +92,14 @@ class SchedulerQueue {
   ): Promise<void> {
     const queue = await this.getQueue(jobType);
     const delay = jobData.executeAt.getTime() - Date.now();
+
+    // Create unique job ID to prevent duplicates
+    const jobId = `${jobType}-${JSON.stringify(
+      jobData.data
+    )}-${jobData.executeAt.getTime()}`;
+
     await queue.add(jobData.eventName, safeParsedData(jobData), {
+      jobId, // Add unique job ID to prevent duplicate scheduling
       delay,
       // Prevent infinite retries at the job level
       attempts: 3, // Maximum 3 attempts
@@ -104,7 +111,7 @@ class SchedulerQueue {
       removeOnFail: 100, // Keep 100 failed jobs for debugging
       ...options,
     });
-    // Job added: type=${jobType}, event=${jobData.eventName}, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms
+    // Job added: type=${jobType}, event=${jobData.eventName}, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms, jobId=${jobId}
   }
 }
 
