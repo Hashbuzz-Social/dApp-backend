@@ -31,11 +31,19 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
         'https://dev.hashbuzz.social',
       ].map((domain) => domain.trim());
 
-      // logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
+      logger.info(`CORS check for origin: ${origin || 'no-origin'}`);
 
       if (isDevelopment) return callback(null, true);
       if (!origin) return callback(null, true);
       if (whitelist.includes(origin)) return callback(null, true);
+
+      // Allow devtunnels.ms domains in development
+      if (origin.includes('devtunnels.ms')) {
+        logger.info(`Allowing devtunnels origin: ${origin}`);
+        return callback(null, true);
+      }
+
+      logger.warn(`CORS blocked origin: ${origin}`);
       callback(
         new Error(`API blocked by CORS policy. Origin '${origin}' not allowed.`)
       );
@@ -45,6 +53,9 @@ export const setupCore = (app: express.Express, config: AppConfig) => {
   };
 
   app.use(cors(corsOptions));
+
+  // Handle preflight requests explicitly
+  app.options('*', cors(corsOptions));
 
   // Configure express middleware with proper size limits for media uploads
   app.use(express.json({ limit: '10mb' })); // Increase JSON payload limit for media data

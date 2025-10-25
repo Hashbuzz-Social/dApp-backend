@@ -39,11 +39,16 @@ const getAuthToken = (req: Request): string => {
 const getHeadersData = async (req: Request) => {
   const config = await getConfig();
 
-  let deviceId =
-    req.cookies.device_id ?? (req.headers['x-device-id'] as string);
-  if (!deviceId)
+  const rawDeviceId =
+    req.cookies?.device_id ??
+    (req.headers['x-device-id'] as string | undefined);
+  if (!rawDeviceId)
     throw new UnauthorizeError(AuthError.ERROR_WHILE_FINDING_DEVICE_ID);
-  deviceId = d_encrypt(deviceId, config.encryptions.encryptionKey);
+
+  // Ensure we pass a string to d_encrypt to satisfy the parameter type
+  const deviceIdStr = String(rawDeviceId);
+  const deviceId = d_encrypt(deviceIdStr, config.encryptions.encryptionKey);
+
   return {
     deviceId,
     ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
@@ -161,9 +166,64 @@ const havingValidPayloadToken = async (
   }
 };
 
+/**
+ * Optional authentication middleware for ping endpoint
+ * Attempts to validate token if present, but doesn't throw error if missing
+ */
+const optionalAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Try to get auth token - if not present, just continue without setting user info
+    const authHeader = req.headers.authorization;
+    const cookieToken = req.cookies?.access_token;
+
+    if (!authHeader && !cookieToken) {
+      // No token present - this is OK for ping endpoint
+      return next();
+    }
+
+    // Token exists, try to validate it
+    const bearerToken = getAuthToken(req);
+    const hederaService = await initHederaService();
+    const { payload } = await verifyAccessToken(bearerToken);
+    const { id, ts, accountId, signature } = payload;
+
+    const validSignature = signingService.verifyData(
+      { ts, accountId },
+      hederaService.operatorPublicKey,
+      base64ToUint8Array(signature)
+    );
+
+    if (!validSignature) {
+      // Invalid signature - continue without auth
+      return next();
+    }
+
+    if (!req.deviceId) {
+      const { deviceId, userAgent, ipAddress } = await getHeadersData(req);
+      req.deviceId = deviceId;
+      req.ipAddress = ipAddress;
+      req.userAgent = userAgent;
+    }
+
+    req.accountAddress = AccountId.fromString(accountId).toSolidityAddress();
+    req.userId = Number(id);
+    req.currentUser = { id: BigInt(id) };
+
+    next();
+  } catch (error) {
+    // Any error during optional auth - just continue without user info
+    next();
+  }
+};
+
 export default {
   isAdminRequesting,
   havingValidPayloadToken,
   isHavingValidAst,
   deviceIdIsRequired,
+  optionalAuth,
 } as const;

@@ -1,6 +1,5 @@
 // axios intentionally not used here; auth module handles GitHub checks
 import express from 'express';
-import 'express-async-errors';
 import '../pre-start'; // Must be the first import
 import logger from '../config/logger'; // Use configured logger
 import { logRotationService } from '../services/LogRotationService';
@@ -33,7 +32,7 @@ const initializeApp = async () => {
 const initializeLogRotation = () => {
   // Use the setup function from config
   setupLogRotation();
-  
+
   // Schedule periodic log rotation checks every hour
   setInterval(() => {
     try {
