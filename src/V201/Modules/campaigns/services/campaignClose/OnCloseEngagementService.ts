@@ -9,8 +9,10 @@ import {
   collectQuotesAndReplies,
 } from '@V201/modules/engagements';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
-import SchedulerQueue, { TaskSchedulerJobType } from 'src/V201/schedulerQueue';
+import { publishEvent } from '../../../../eventPublisher';
+import SchedulerQueue, {
+  TaskSchedulerJobType,
+} from '../../../../schedulerQueue';
 import { EventPayloadMap } from '../../../../Types/eventPayload';
 import {
   CampaignLogEventHandler,

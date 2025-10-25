@@ -21,7 +21,7 @@ import UserBalancesModel from '@V201/Modals/UserBalances';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { V201OnCloseAutoRewardService } from '@V201/modules/campaigns/services/campaignClose/onCloseAutoReward';
 import { CampaignScheduledEvents } from '@V201/events/campaign';
-import { TaskSchedulerJobType } from 'src/V201/schedulerQueue';
+import { TaskSchedulerJobType } from '../../../../schedulerQueue';
 
 type CampaignOwner = user_user & {
   user_balances: user_balances[];

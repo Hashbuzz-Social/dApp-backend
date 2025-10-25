@@ -5,8 +5,8 @@ import CampaignTweetEngagementsModel from '@V201/Modals/CampaignTweetEngagements
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import WhiteListedTokensModel from '@V201/Modals/WhiteListedTokens';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
-import { publishEvent } from 'src/V201/eventPublisher';
-import SchedulerQueue from 'src/V201/schedulerQueue';
+import { publishEvent } from '../../../../eventPublisher';
+import SchedulerQueue from '../../../../schedulerQueue';
 import {
   calculateMaxActivityReward,
   getRewardsValues,
