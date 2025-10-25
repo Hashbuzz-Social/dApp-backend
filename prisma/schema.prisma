@@ -59,6 +59,8 @@ model campaign_tweetengagements {
   exprired_at          DateTime?            @db.Timestamptz(6)
   payment_status       payment_status       @default(UNPAID)
   is_valid_timing      Boolean?             @default(true)
+  is_bot_engagement    Boolean?             @default(false)
+  content              String?
   campaign_twittercard campaign_twittercard @relation(fields: [tweet_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -102,6 +104,7 @@ model campaign_twittercard {
   card_status               campaignstatus
   question_options          String[]
   correct_answer            String?
+  campaign_type             campaign_type               @default(awareness)
   campaignLogs              CampaignLog[]
   campaign_media            campaign_media[]
   campaign_participation    campaign_participation[]
@@ -246,33 +249,6 @@ model eventOutBox {
   @@index([status], map: "idx_eventoutbox_status")
 }
 
-model event_processing_stats {
-  id                     BigInt    @id @default(autoincrement())
-  event_type             String    @db.VarChar(100)
-  processed_count        BigInt?   @default(0)
-  failed_count           BigInt?   @default(0)
-  avg_processing_time_ms Int?      @default(0)
-  last_processed_at      DateTime? @db.Timestamptz(6)
-  created_at             DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@index([event_type], map: "idx_event_stats_event_type")
-}
-
-model event_dead_letter {
-  id                BigInt    @id @default(autoincrement())
-  original_event_id BigInt?
-  event_type        String    @db.VarChar(100)
-  payload           Json
-  error_message     String?
-  retry_attempts    Int?      @default(0)
-  moved_at          DateTime? @default(now()) @db.Timestamptz(6)
-  created_at        DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@index([event_type], map: "idx_dead_letter_event_type")
-  @@index([moved_at], map: "idx_dead_letter_moved_at")
-}
-
 model HcsTopics {
   id            BigInt       @id @default(autoincrement())
   topicId       String       @unique
@@ -342,4 +318,9 @@ enum campaignstatus {
   RewardDistributionInProgress
   RewardsDistributed
   InternalError
+}
+
+enum campaign_type {
+  awareness
+  quest
 }
