@@ -12,8 +12,10 @@ import {
 } from '@V201/modules/engagements';
 import { TweetV2, UserV2 } from 'twitter-api-v2';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
-import SchedulerQueue, { TaskSchedulerJobType } from 'src/V201/schedulerQueue';
+import { publishEvent } from '../../../../eventPublisher';
+import SchedulerQueue, {
+  TaskSchedulerJobType,
+} from '../../../../schedulerQueue';
 import { EventPayloadMap } from '../../../../Types/eventPayload';
 import {
   CampaignLogEventHandler,

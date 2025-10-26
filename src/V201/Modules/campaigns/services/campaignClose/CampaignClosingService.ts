@@ -10,7 +10,7 @@ import { closeCampaignSMTransaction } from '@services/transaction-service';
 import createPrismaClient from '@shared/prisma';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import logger from 'jet-logger';
-import { publishEvent } from 'src/V201/eventPublisher';
+import { publishEvent } from '../../../../eventPublisher';
 import { CampaignEvents, CampaignScheduledEvents } from '../../../../AppEvents';
 import {
   CampaignLogEventHandler,

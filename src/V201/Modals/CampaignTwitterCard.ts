@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma, campaignstatus } from '@prisma/client';
-import logger from 'src/config/logger';
+import logger from '../../config/logger';
 
 class CampaignTwitterCardModel {
   private prisma: PrismaClient;
