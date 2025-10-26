@@ -134,7 +134,7 @@ class CampaignMonitoringController {
       const errors: string[] = [];
 
       // Import here to avoid circular dependencies
-      const { publishEvent } = await import('src/V201/eventPublisher');
+      const { publishEvent } = await import('../../../V201/eventPublisher');
 
       for (const event of deadLetterEvents) {
         try {
@@ -204,7 +204,7 @@ class CampaignMonitoringController {
       const originalEventType = String(payload.originalEventType);
       const originalPayload = payload.originalPayload as Record<string, unknown>;
 
-      const { publishEvent } = await import('src/V201/eventPublisher');
+      const { publishEvent } = await import('../../../V201/eventPublisher');
 
       await publishEvent(originalEventType as any, originalPayload as any, {
         useEnhanced: true,

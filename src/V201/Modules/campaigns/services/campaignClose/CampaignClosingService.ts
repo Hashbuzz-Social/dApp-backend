@@ -17,7 +17,7 @@ import {
   CampaignLogLevel,
   CampaignLogEventType,
 } from '../campaignLogs';
-import SchedulerQueue from 'src/V201/schedulerQueue';
+import SchedulerQueue from '../../../../schedulerQueue';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 
 interface ExecutionStep {
