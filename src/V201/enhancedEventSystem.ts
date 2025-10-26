@@ -3,6 +3,7 @@ import logger from 'jet-logger';
 import { EventPayloadMap } from './Types/eventPayload';
 import { eventBus } from './eventBus';
 import { publishToQueue } from './redisQueue';
+import { safeStringifyData } from './Modules/common';
 
 // Enhanced event statuses for better tracking
 export enum EventStatus {
@@ -11,7 +12,7 @@ export enum EventStatus {
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
   RETRY = 'RETRY',
-  DEAD_LETTER = 'DEAD_LETTER'
+  DEAD_LETTER = 'DEAD_LETTER',
 }
 
 export interface EnhancedEvent {
@@ -418,7 +419,8 @@ export class EnhancedEventSystem {
         where: { id: eventId },
         data: {
           event_type: `DEAD_LETTER_${eventType}`,
-          payload: JSON.stringify({
+          // Use safeStringifyData to handle BigInt and similar types reliably
+          payload: safeStringifyData({
             originalEventType: eventType,
             originalPayload: payload,
             error: error.message,

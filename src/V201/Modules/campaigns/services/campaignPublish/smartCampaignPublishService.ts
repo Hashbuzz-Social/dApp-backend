@@ -164,10 +164,17 @@ export class SmartCampaignPublishService {
 
       // Publish error event
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'startFreshPublish',
         message: errorMessage,
-        error,
+        // Serialize Error to plain object to avoid issues when persisting/queueing
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;
@@ -206,10 +213,16 @@ export class SmartCampaignPublishService {
       logger.err(`Error resuming from smart contract: ${errorMessage}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'resumeFromSmartContract',
         message: errorMessage,
-        error: error as Error,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;
@@ -248,10 +261,16 @@ export class SmartCampaignPublishService {
       logger.err(`Error resuming from second tweet: ${errorMessage}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'resumeFromSecondTweet',
         message: errorMessage,
-        error: error as Error,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;

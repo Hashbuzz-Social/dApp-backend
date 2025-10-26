@@ -56,7 +56,10 @@ export const startPublishingCampaign = async (
       campaignMeta: { campaignId, userId },
       atStage: 'startPublishingCampaign',
       message: error.message,
-      error,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
     });
     logger.err('Error in startPublishingCampaign: ' + (error instanceof Error ? error.message : String(error)));
     throw error;

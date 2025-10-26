@@ -86,7 +86,10 @@ const handleSmartContractTransaction = async (
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
       atStage: 'handleSmartContractTransaction',
       message: error.message,
-      error,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
     });
     logger.err(
       'Error in handleSmartContractTransaction:' +
@@ -269,7 +272,10 @@ export const handleCampaignPublishTransaction = async ({
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
       atStage: 'HandleCampaignPublishTransaction',
       message: error.message,
-      error,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
     });
     logger.err(
       `Error in HandleCampaignPublishTransaction: ${
