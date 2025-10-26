@@ -550,13 +550,12 @@ export class TwitterCardService {
       );
     }
 
-      return await this.publishTweetOrThread({
-        tweetText,
-        cardOwner,
-        isThread: true,
-        parentTweetId,
-      });
-
+    return await this.publishTweetOrThread({
+      tweetText,
+      cardOwner,
+      isThread: true,
+      parentTweetId,
+    });
   }
 
   /**
@@ -597,8 +596,14 @@ export class TwitterCardService {
     try {
       return await this.prisma.campaign_twittercard.findMany({
         where: {
-          approve: false,
-          isRejected: null,
+          AND: [
+            {
+              OR: [{ approve: false }, { approve: null }],
+            },
+            {
+              OR: [{ isRejected: false }, { isRejected: null }],
+            },
+          ],
         },
       });
     } catch (error) {
