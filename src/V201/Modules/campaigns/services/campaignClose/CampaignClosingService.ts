@@ -1,5 +1,6 @@
 import {
   campaign_twittercard,
+  campaign_type,
   campaignstatus,
   PrismaClient,
   user_user,
@@ -10,16 +11,28 @@ import createPrismaClient from '@shared/prisma';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import logger from 'jet-logger';
 import { publishEvent } from '../../../../eventPublisher';
-import { CampaignEvents } from '../../../../AppEvents';
+import { CampaignEvents, CampaignScheduledEvents } from '../../../../AppEvents';
 import {
   CampaignLogEventHandler,
   CampaignLogLevel,
   CampaignLogEventType,
 } from '../campaignLogs';
+import SchedulerQueue from 'src/V201/schedulerQueue';
+import { CampaignTypes } from '@services/CampaignLifeCycleBase';
+
+interface ExecutionStep {
+  step: string;
+  status: 'success' | 'failed' | 'skipped';
+  timestamp: Date;
+  message?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
 
 export class CampaignClosingService {
   private prisma: PrismaClient | null = null;
   private campaignLogger: CampaignLogEventHandler | null = null;
+  private executionSteps: ExecutionStep[] = [];
 
   private async initializePrisma(): Promise<PrismaClient> {
     if (!this.prisma) {
@@ -37,11 +50,70 @@ export class CampaignClosingService {
     }
   }
 
+  private addStep(
+    step: string,
+    status: 'success' | 'failed' | 'skipped',
+    message?: string,
+    error?: string,
+    metadata?: Record<string, unknown>
+  ): void {
+    this.executionSteps.push({
+      step,
+      status,
+      timestamp: new Date(),
+      message,
+      error,
+      metadata,
+    });
+  }
+
+  private async logExecutionSummary(campaignId: bigint): Promise<void> {
+    if (!this.campaignLogger) return;
+
+    const successCount = this.executionSteps.filter(
+      (s) => s.status === 'success'
+    ).length;
+    const failedCount = this.executionSteps.filter(
+      (s) => s.status === 'failed'
+    ).length;
+    const skippedCount = this.executionSteps.filter(
+      (s) => s.status === 'skipped'
+    ).length;
+
+    const finalStatus = failedCount > 0 ? 'FAILED' : 'SUCCESS';
+    const level =
+      failedCount > 0 ? CampaignLogLevel.ERROR : CampaignLogLevel.SUCCESS;
+
+    await this.campaignLogger.saveLog({
+      campaignId,
+      status: finalStatus,
+      message: `Campaign closing completed - ${successCount} successful, ${failedCount} failed, ${skippedCount} skipped`,
+      level,
+      eventType: CampaignLogEventType.SYSTEM_EVENT,
+      data: {
+        level,
+        eventType: CampaignLogEventType.SYSTEM_EVENT,
+        metadata: {
+          executionHistory: this.executionSteps,
+          summary: {
+            totalSteps: this.executionSteps.length,
+            successful: successCount,
+            failed: failedCount,
+            skipped: skippedCount,
+          },
+        },
+      },
+    });
+  }
+
   async closeCampaign(campaign: campaign_twittercard): Promise<{
     success: boolean;
     message: string;
     campaignId: number | bigint;
   }> {
+    // Reset execution steps for new closure
+    this.executionSteps = [];
+
     try {
       await this.ensureInitialized();
 
@@ -49,25 +121,9 @@ export class CampaignClosingService {
         throw new Error('Services not properly initialized');
       }
 
-      // Log campaign closing start
-      await this.campaignLogger.saveLog({
-        campaignId: campaign.id,
-        status: 'CLOSING_STARTED',
-        message: `Campaign closing process initiated for ${
-          campaign.type || 'unknown'
-        } campaign`,
-        level: CampaignLogLevel.INFO,
-        eventType: CampaignLogEventType.SYSTEM_EVENT,
-        data: {
-          level: CampaignLogLevel.INFO,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          metadata: {
-            campaignType: campaign.type,
-            contractId: campaign.contract_id,
-          },
-        },
-      });
+      this.addStep('initialization', 'success', 'Services initialized');
 
+      // Validate campaign owner tokens
       const campaignCardModal = new CampaignTwitterCardModel(this.prisma);
       const campaignWithUser = await campaignCardModal.getCampaignsWithUserData(
         campaign.id
@@ -75,39 +131,45 @@ export class CampaignClosingService {
       const campaignOwner = campaignWithUser?.user_user;
 
       if (!this.hasValidAccessTokens(campaignOwner)) {
-        const error = new Error(
-          'Campaign owner has invalid Twitter access tokens'
+        this.addStep(
+          'token_validation',
+          'failed',
+          'Invalid Twitter access tokens'
         );
-        await this.campaignLogger.logError(
-          campaign.id,
-          error,
-          'token_validation'
-        );
-        throw error;
+        await this.logExecutionSummary(campaign.id);
+        throw new Error('Campaign owner has invalid Twitter access tokens');
       }
 
+      this.addStep('token_validation', 'success', 'Tokens validated');
+
+      // Execute campaign type specific closing
       if (campaign.type === 'HBAR') {
         await this.closeHBARCampaign(campaign);
       } else if (campaign.type === 'FUNGIBLE') {
         await this.closeFungibleCampaign(campaign);
+      } else {
+        this.addStep(
+          'campaign_type_check',
+          'skipped',
+          `Unknown campaign type: ${campaign.type || 'unknown'}`
+        );
       }
 
-      // Log successful completion
-      await this.campaignLogger.logCampaignEnded(
-        campaign.id,
-        'successfully_closed',
-        { campaignType: campaign.type, contractId: campaign.contract_id }
-      );
+      // Log final execution summary
+      await this.logExecutionSummary(campaign.id);
 
       return {
         success: true,
-        message: 'V201 campaign closed successfully',
+        message: 'Campaign closed successfully',
         campaignId: campaign.id,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.err(`[V201] Failed to close campaign ${campaign.id}: ${errorMsg}`);
+      logger.err(`Failed to close campaign ${campaign.id}: ${errorMsg}`);
+
+      this.addStep('campaign_closure', 'failed', errorMsg);
       await this.handleClosingError(campaign, errorMsg);
+
       return {
         success: false,
         message: `Campaign closure failed: ${errorMsg}`,
@@ -121,10 +183,39 @@ export class CampaignClosingService {
   ): Promise<void> {
     await this.executeSmartContractClosing(campaign, 'HBAR');
     await this.updateCampaignToClosedAwaitingData(campaign);
-    publishEvent(
-      CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET,
-      { campaignId: campaign.id }
+    this.addStep(
+      'publish_event',
+      'success',
+      'Engagement collection event published'
     );
+    if (campaign.campaign_type === campaign_type.awareness) {
+      publishEvent(
+        CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET,
+        { campaignId: campaign.id }
+      );
+    } else {
+      const scheduler = await SchedulerQueue.getInstance();
+      await scheduler.addJob(
+        CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,
+        {
+          eventName:
+            CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,
+          data: {
+            campaignId: campaign.id,
+            type: campaign?.type as CampaignTypes,
+            createdAt: new Date(),
+          },
+          executeAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes later
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60000, // 1 minute
+          },
+        }
+      );
+    }
   }
 
   private async closeFungibleCampaign(
@@ -132,10 +223,39 @@ export class CampaignClosingService {
   ): Promise<void> {
     await this.executeSmartContractClosing(campaign, 'FUNGIBLE');
     await this.updateCampaignToClosedAwaitingData(campaign);
-    publishEvent(
-      CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET,
-      { campaignId: campaign.id }
+    this.addStep(
+      'publish_event',
+      'success',
+      'Engagement collection event published'
     );
+    if (campaign.campaign_type === campaign_type.awareness) {
+      publishEvent(
+        CampaignEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET,
+        { campaignId: campaign.id }
+      );
+    } else {
+      const scheduler = await SchedulerQueue.getInstance();
+      await scheduler.addJob(
+        CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,
+        {
+          eventName:
+            CampaignScheduledEvents.CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY,
+          data: {
+            campaignId: campaign.id,
+            type: campaign?.type as CampaignTypes,
+            createdAt: new Date(),
+          },
+          executeAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes later
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60000, // 1 minute
+          },
+        }
+      );
+    }
   }
 
   private async executeSmartContractClosing(
@@ -148,21 +268,13 @@ export class CampaignClosingService {
         throw new Error('Campaign contract ID is missing');
       }
 
-      // Log smart contract closing start
-      if (this.campaignLogger) {
-        await this.campaignLogger.saveLog({
-          campaignId: campaign.id,
-          status: 'SMART_CONTRACT_CLOSING',
-          message: `Starting ${type} smart contract closing for contract ${contractId}`,
-          level: CampaignLogLevel.INFO,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          data: {
-            level: CampaignLogLevel.INFO,
-            eventType: CampaignLogEventType.SYSTEM_EVENT,
-            metadata: { contractId, type },
-          },
-        });
-      }
+      this.addStep(
+        'smart_contract_closing',
+        'success',
+        `Closing ${type} contract`,
+        undefined,
+        { contractId, type }
+      );
 
       if (type === 'HBAR') {
         await closeCampaignSMTransaction(contractId);
@@ -170,39 +282,24 @@ export class CampaignClosingService {
         await closeFungibleAndNFTCampaign(contractId);
       }
 
-      if (campaign.contract_id) {
-        // Note: In-memory status update removed as requested
-      }
-
-      // Log successful smart contract closing
-      if (this.campaignLogger) {
-        await this.campaignLogger.saveLog({
-          campaignId: campaign.id,
-          status: 'SMART_CONTRACT_CLOSED',
-          message: `Successfully closed ${type} smart contract for contract ${contractId}`,
-          level: CampaignLogLevel.SUCCESS,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          data: {
-            level: CampaignLogLevel.SUCCESS,
-            eventType: CampaignLogEventType.SYSTEM_EVENT,
-            metadata: { contractId, type },
-          },
-        });
-      }
+      this.addStep(
+        'smart_contract_closed',
+        'success',
+        `${type} contract closed successfully`,
+        undefined,
+        { contractId }
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-
-      // Log smart contract error
-      if (this.campaignLogger) {
-        await this.campaignLogger.logError(
-          campaign.id,
-          error as Error,
-          'smart_contract_closing'
-        );
-      }
-
+      this.addStep(
+        'smart_contract_closing',
+        'failed',
+        'Smart contract transaction failed',
+        errorMsg,
+        { type, contractId: campaign.contract_id }
+      );
       logger.err(
-        `[V201] Smart contract transaction failed for campaign ${campaign.id}: ${errorMsg}`
+        `Smart contract transaction failed for campaign ${campaign.id}: ${errorMsg}`
       );
       throw new Error(`Smart contract transaction failed: ${errorMsg}`);
     }
@@ -228,28 +325,6 @@ export class CampaignClosingService {
         return;
       }
 
-      // Log the closing error to CampaignLog database
-      await this.campaignLogger.saveLog({
-        campaignId: campaign.id,
-        status: 'CLOSING_ERROR',
-        message: `Campaign closing failed: ${errorMsg}`,
-        level: CampaignLogLevel.ERROR,
-        eventType: CampaignLogEventType.ERROR_OCCURRED,
-        data: {
-          level: CampaignLogLevel.ERROR,
-          eventType: CampaignLogEventType.ERROR_OCCURRED,
-          error: {
-            code: 'CAMPAIGN_CLOSING_ERROR',
-            message: errorMsg,
-          },
-          metadata: {
-            campaignType: campaign.type,
-            contractId: campaign.contract_id,
-            context: 'campaign_closing_process',
-          },
-        },
-      });
-
       // Update campaign status to error
       await new CampaignTwitterCardModel(this.prisma).updateCampaign(
         campaign.id,
@@ -258,63 +333,22 @@ export class CampaignClosingService {
         }
       );
 
-      // Log status update
-      await this.campaignLogger.saveLog({
-        campaignId: campaign.id,
-        status: 'STATUS_UPDATED',
-        message:
-          'Campaign status updated to InternalError due to closing failure',
-        level: CampaignLogLevel.WARNING,
-        eventType: CampaignLogEventType.SYSTEM_EVENT,
-        data: {
-          level: CampaignLogLevel.WARNING,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          metadata: {
-            newStatus: 'InternalError',
-            reason: 'closing_error',
-          },
-        },
-      });
+      this.addStep(
+        'error_handling',
+        'success',
+        'Campaign status updated to InternalError',
+        undefined,
+        { newStatus: 'InternalError' }
+      );
 
-      // Update in-memory status if contract ID exists
-      if (campaign.contract_id) {
-        // Note: In-memory status update removed as requested
-      }
+      // Log final execution summary with error
+      await this.logExecutionSummary(campaign.id);
     } catch (error) {
       const nestedErrorMsg =
         error instanceof Error ? error.message : String(error);
       logger.err(
-        `[V201] Failed to handle closing error for campaign ${campaign.id}: ${nestedErrorMsg}. Original error: ${errorMsg}`
+        `Failed to handle closing error for campaign ${campaign.id}: ${nestedErrorMsg}. Original error: ${errorMsg}`
       );
-
-      // Try to log the nested error as well if campaign logger is available
-      if (this.campaignLogger) {
-        try {
-          await this.campaignLogger.saveLog({
-            campaignId: campaign.id,
-            status: 'ERROR_HANDLING_FAILED',
-            message: `Failed to handle closing error: ${nestedErrorMsg}`,
-            level: CampaignLogLevel.ERROR,
-            eventType: CampaignLogEventType.ERROR_OCCURRED,
-            data: {
-              level: CampaignLogLevel.ERROR,
-              eventType: CampaignLogEventType.ERROR_OCCURRED,
-              error: {
-                code: 'ERROR_HANDLING_FAILURE',
-                message: nestedErrorMsg,
-              },
-              metadata: {
-                originalError: errorMsg,
-                context: 'error_handling_process',
-              },
-            },
-          });
-        } catch (logError) {
-          logger.err(
-            `Failed to log error handling failure: ${String(logError)}`
-          );
-        }
-      }
     }
   }
 
@@ -336,38 +370,21 @@ export class CampaignClosingService {
         }
       );
 
-      // Log status update
-      await this.campaignLogger.saveLog({
-        campaignId: campaign.id,
-        status: 'STATUS_UPDATED',
-        message: 'Campaign status updated to RewardDistributionInProgress',
-        level: CampaignLogLevel.SUCCESS,
-        eventType: CampaignLogEventType.SYSTEM_EVENT,
-        data: {
-          level: CampaignLogLevel.SUCCESS,
-          eventType: CampaignLogEventType.SYSTEM_EVENT,
-          metadata: {
-            newStatus: 'RewardDistributionInProgress',
-            reason: 'campaign_closed_awaiting_data',
-          },
-        },
-      });
-
-      // Note: In-memory status update removed as requested
+      this.addStep(
+        'status_update',
+        'success',
+        'Status updated to RewardDistributionInProgress'
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-
-      // Log the error
-      if (this.campaignLogger) {
-        await this.campaignLogger.logError(
-          campaign.id,
-          error as Error,
-          'update_campaign_to_closed_awaiting_data'
-        );
-      }
-
+      this.addStep(
+        'status_update',
+        'failed',
+        'Failed to update status',
+        errorMsg
+      );
       logger.err(
-        `[V201] Failed to update campaign to closed-awaiting-data status for ${campaign.id}: ${errorMsg}`
+        `Failed to update campaign status for ${campaign.id}: ${errorMsg}`
       );
       throw error;
     }

@@ -101,7 +101,7 @@ const isHavingValidAst = async (
     req.userId = +id;
     next();
   } catch (err) {
-    console.error(err);
+    // Don't log here - let the error handler do it to avoid duplicate logs
     // Only call next with a generic error if one hasn't already been thrown
     if (!(err instanceof UnauthorizeError)) {
       next(new UnauthorizeError(AuthError.AUTH_TOKEN_INVALID));
@@ -121,7 +121,7 @@ const isAdminRequesting = (req: Request, res: Response, next: NextFunction) => {
     }
     throw new UnauthorizeError(AuthError.ACCESS_DENIED);
   } catch (error) {
-    console.error(error);
+    // Don't log here - let the error handler do it
     if (!(error instanceof UnauthorizeError)) {
       return next(new UnauthorizeError(AuthError.AUTH_TOKEN_INVALID));
     }
@@ -144,7 +144,7 @@ const havingValidPayloadToken = async (
       appConfig.encryptions.jwtSecretForAccessToken,
       (err, payload) => {
         if (err) {
-          console.error('JWT verification error:', err);
+          // Don't log here - let the error handler do it
           return next(new UnauthorizeError(AuthError.INVALID_SIGNATURE_TOKEN));
         }
         const ts = (payload as { ts: number }).ts;
@@ -153,7 +153,7 @@ const havingValidPayloadToken = async (
       }
     );
   } catch (err) {
-    console.error(err);
+    // Don't log here - let the error handler do it
     if (!(err instanceof UnauthorizeError)) {
       return next(new UnauthorizeError(AuthError.AUTH_TOKEN_INVALID));
     }

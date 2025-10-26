@@ -11,18 +11,24 @@ import { checkSchema, Schema } from 'express-validator';
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
-
-export interface DraftQuestBody {
-  name: string;
-  tweet_text: string;
-  expected_engaged_users: number;
-  campaign_budget: number;
-  type: 'HBAR' | 'FUNGIBLE';
-  fungible_token_id?: string;
-  media?: string[];
-  options?: string[]; // Optional until database schema is updated
-  correct_answers?: string; // Optional until database schema is updated
-}
+ export type S3UploadedFile = {
+   key: string;
+   originalname: string;
+   mimetype: string;
+   size: number;
+ };
+ export interface DraftQuestBody {
+   name: string;
+   tweet_text: string;
+   expected_engaged_users: number;
+   campaign_budget: number;
+   type: 'HBAR' | 'FUNGIBLE';
+   fungible_token_id?: string;
+   media?: string[] | S3UploadedFile[]; // For uploaded image file paths (processed by multer)
+   youtube_url?: string; // For YouTube video URL
+   options?: string[]; // Optional - for quiz-type quests
+   correct_answers?: string; // Optional - for quiz-type quests
+ }
 
 export interface PublishQuestBody {
   questId: string;
@@ -141,6 +147,9 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
     },
     custom: {
       options: (value) => {
+        // Skip validation if not provided
+        if (!value) return true;
+
         if (!Array.isArray(value)) {
           throw new Error('Media must be an array');
         }
@@ -153,6 +162,33 @@ const DraftQuestSchema: Schema = getValidationRules<DraftQuestBody>({
             throw new Error(`Media item at index ${index} must be a string`);
           }
         });
+        return true;
+      },
+    },
+  },
+  youtube_url: {
+    in: ['body'],
+    optional: true,
+    isString: {
+      errorMessage: 'YouTube URL must be a string',
+    },
+    trim: true,
+    custom: {
+      options: (value: unknown) => {
+        // Skip validation if not provided
+        if (!value) return true;
+
+        // Ensure value is a string
+        if (typeof value !== 'string') {
+          throw new Error('YouTube URL must be a string');
+        }
+
+        // Validate YouTube URL format
+        const youtubeRegex =
+          /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
+        if (!youtubeRegex.test(value)) {
+          throw new Error('Invalid YouTube URL format');
+        }
         return true;
       },
     },

@@ -51,13 +51,22 @@ async function testRedisConnection(client: RedisClient) {
  */
 async function gracefulShutdown() {
   logInfo('Shutting down gracefully...');
+
+  try {
+    // Disconnect Prisma client and close connection pool
+    const { disconnectPrisma } = await import('@shared/prisma');
+    await disconnectPrisma();
+    logInfo('Prisma disconnected and connection pool closed.');
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logError(`Error disconnecting Prisma: ${errorMsg}`);
+  }
+
   if (redisClient) {
-    const prisma = await createPrismaClient();
-    await prisma.$disconnect();
-    logInfo('Prisma disconnected.');
     await redisClient.client.quit();
     logInfo('Redis disconnected.');
   }
+
   process.exit(0);
 }
 
@@ -87,56 +96,80 @@ async function init() {
       `Admin addresses configured: ${globalThis.adminAddress.length} addresses`
     );
 
-    // One-time cleanup for legacy campaigns that might be stuck
-    try {
-      const { completeCampaignOperation } = await import(
-        '@services/campaign-service'
-      );
-      const prisma = await createPrismaClient();
-      const now = new Date();
-
-      const stuckCampaigns = await prisma.campaign_twittercard.findMany({
-        where: {
-          OR: [
-            {
-              card_status: 'CampaignRunning' as any,
-              campaign_close_time: { lt: now },
-            },
-            {
-              card_status: 'RewardDistributionInProgress' as any,
-              campaign_expiry: { lt: now },
-            },
-          ],
-        },
-      });
-
-      if (stuckCampaigns.length > 0) {
-        logInfo(
-          `Found ${stuckCampaigns.length} stuck campaigns, processing...`
-        );
-        for (const campaign of stuckCampaigns) {
-          try {
-            await completeCampaignOperation(campaign);
-            logInfo(`✅ Processed stuck campaign: ${campaign.id}`);
-          } catch (error) {
-            logError(`❌ Failed to process campaign ${campaign.id}`, error);
-          }
-        }
-      } else {
-        logInfo('No stuck campaigns found');
-      }
-    } catch (error) {
-      logError('Error during legacy campaign cleanup', error);
-    }
-
-    // DEPRECATED: Pre-start jobs disabled for maintenance. These were used for:
-    // - Setting up environment variables
-    // - Checking token availability
-    // - Scheduling cron jobs and expiry tasks
-    // await preStartJobs();
+    // NOTE: Stuck campaigns and edge cases are handled through the event-based monitoring system.
+    // Use the monitoring API endpoints:
+    // - GET /api/v201/monitoring/campaigns/stuck - View stuck campaigns
+    // - POST /api/v201/monitoring/campaigns/stuck/process - Process stuck campaigns
+    // This ensures all campaign operations go through the proper event flow with idempotency guarantees.
 
     await testPrismaConnection();
     await testRedisConnection(redisClient);
+
+    // ✅ Token Sync: Synchronize whitelisted tokens from network
+    // This ensures local database matches smart contract and network state
+    try {
+      const { TokenSyncService } = await import(
+        './V201/services/TokenSyncService'
+      );
+      const syncResult = await TokenSyncService.syncWhitelistedTokens();
+
+      if (syncResult.synced) {
+        logInfo(
+          `✅ Token Sync: Complete - Local=${syncResult.localTokens}, ` +
+            `Network=${syncResult.networkTokens}, Contract=${syncResult.contractTokens} ` +
+            `(Added=${syncResult.tokensAdded}, Removed=${syncResult.tokensRemoved})`
+        );
+      } else {
+        logInfo(
+          `⚠️  Token Sync: Completed with errors - ` +
+            `Added=${syncResult.tokensAdded}, Removed=${syncResult.tokensRemoved}, ` +
+            `Errors=${syncResult.errors.length}`
+        );
+        syncResult.errors.forEach((err) => logError(`  - ${err}`));
+      }
+    } catch (syncError) {
+      // Non-fatal: Log error but don't block server startup
+      logError(
+        'Token sync service failed to initialize (non-fatal)',
+        syncError
+      );
+    }
+
+    // ✅ Event Recovery: Recover orphaned events from previous server run
+    // This ensures no event loss when server restarts with pending events in Redis queue
+    try {
+      const { EventRecoveryService } = await import(
+        './V201/services/EventRecoveryService'
+      );
+      const recoveryResult = await EventRecoveryService.recoverPendingEvents();
+
+      if (recoveryResult.recovered > 0) {
+        logInfo(
+          `🔄 Event Recovery: Recovered ${recoveryResult.recovered} orphaned events ` +
+            `(${recoveryResult.failed} failed, ${recoveryResult.skipped} skipped)`
+        );
+      } else if (recoveryResult.total > 0) {
+        logInfo(
+          `⚠️  Event Recovery: Found ${recoveryResult.total} orphaned events ` +
+            `but none recovered (${recoveryResult.failed} failed, ${recoveryResult.skipped} skipped)`
+        );
+      }
+
+      // Schedule periodic cleanup of old events (every 6 hours)
+      setInterval(() => {
+        EventRecoveryService.cleanupOldEvents().catch((err) => {
+          logError('Event cleanup failed', err);
+        });
+      }, 6 * 60 * 60 * 1000);
+
+      logInfo('✅ Event recovery service initialized');
+    } catch (recoveryError) {
+      // Non-fatal: Log error but don't block server startup
+      logError(
+        'Event recovery service failed to initialize (non-fatal)',
+        recoveryError
+      );
+    }
 
     // DEPRECATED: After-start jobs disabled for maintenance. These were used for:
     // - Checking previous campaign close times

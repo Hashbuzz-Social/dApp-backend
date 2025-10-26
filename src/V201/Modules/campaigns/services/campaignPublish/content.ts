@@ -9,7 +9,7 @@ import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import { publishEvent } from '../../../../eventPublisher';
 import SchedulerQueue from '../../../../schedulerQueue';
 
-export const publshCampaignContentHandler = async ({
+export const publishCampaignContentHandler = async ({
   cardOwner,
   card,
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]): Promise<void> => {
@@ -30,7 +30,7 @@ export const publshCampaignContentHandler = async ({
     throw new Error('Card owner not found');
   }
 
-  const tweetId = await tweetService.publistFirstTweet(
+  const tweetId = await tweetService.publishFirstTweet(
     freshCard,
     freshCardOwner
   );

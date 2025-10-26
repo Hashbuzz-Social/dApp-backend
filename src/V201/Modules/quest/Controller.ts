@@ -6,6 +6,7 @@ import {
   PublishQuestBody,
   GradeQuestSubmissionsBody,
   CloseQuestBody,
+  S3UploadedFile,
 } from '../../MiddleWare/quest/validators';
 
 /**
@@ -44,9 +45,21 @@ class QuestController {
         type,
         fungible_token_id,
         media,
+        youtube_url,
         options,
         correct_answers,
       } = req.body;
+
+      // Combine media files and youtube_url into single array
+      const mediaArray: string[] = [];
+      if (media && Array.isArray(media)) {
+        mediaArray.push(
+          ...media.map((m) => (typeof m === 'string' ? m : m.key))
+        ); // Assuming media is string URLs after upload
+      }
+      if (youtube_url) {
+        mediaArray.push(youtube_url);
+      }
 
       const result = await draftQuest({
         userId,
@@ -56,7 +69,7 @@ class QuestController {
         campaign_budget, // Already a number from validator
         type,
         fungible_token_id,
-        media: media || [], // Provide empty array if undefined
+        media: mediaArray,
         options,
         correct_answers,
       });
@@ -65,20 +78,28 @@ class QuestController {
       return res.created(result, 'Quest draft created successfully');
     } catch (error: unknown) {
       logger.err(error);
-      const errorMessage = getErrorMessage(error, 'Failed to create quest draft');
-      const errorDetails = error && typeof error === 'object' && 'errors' in error
-        ? error.errors
-        : undefined;
+      const errorMessage = getErrorMessage(
+        error,
+        'Failed to create quest draft'
+      );
+      const errorDetails =
+        error && typeof error === 'object' && 'errors' in error
+          ? error.errors
+          : undefined;
       return res.badRequest(errorMessage, errorDetails);
     }
   }
 
   async publishQuestCampaign(
-    req: Request<Record<string, never>, Record<string, never>, PublishQuestBody>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      PublishQuestBody
+    >,
     res: Response
   ): Promise<Response | void> {
     try {
-      const userId = res.locals.userId;
+      const userId = req.currentUser?.id;
       if (!userId) {
         return res.unauthorized('User authentication required');
       }
@@ -144,13 +165,20 @@ class QuestController {
       );
     } catch (error: unknown) {
       logger.err(error);
-      const errorMessage = getErrorMessage(error, 'Failed to get quest submissions');
+      const errorMessage = getErrorMessage(
+        error,
+        'Failed to get quest submissions'
+      );
       return res.badRequest(errorMessage);
     }
   }
 
   async gradeQuestSubmissions(
-    req: Request<{ questId: string }, Record<string, never>, GradeQuestSubmissionsBody>,
+    req: Request<
+      { questId: string },
+      Record<string, never>,
+      GradeQuestSubmissionsBody
+    >,
     res: Response
   ): Promise<Response | void> {
     try {
@@ -165,21 +193,26 @@ class QuestController {
 
       // Validate ownership and quest state
       // TODO: Implement grading logic
-      logger.info(`Grading ${submissions.length} submissions for quest ${questId}`);
+      logger.info(
+        `Grading ${submissions.length} submissions for quest ${questId}`
+      );
 
       await Promise.resolve();
       return res.success(
         {
           questId,
           processedCount: submissions.length,
-          approvedCount: submissions.filter(s => s.approved).length,
-          rejectedCount: submissions.filter(s => !s.approved).length,
+          approvedCount: submissions.filter((s) => s.approved).length,
+          rejectedCount: submissions.filter((s) => !s.approved).length,
         },
         'Grade quest submissions - to be implemented'
       );
     } catch (error: unknown) {
       logger.err(error);
-      const errorMessage = getErrorMessage(error, 'Failed to grade quest submissions');
+      const errorMessage = getErrorMessage(
+        error,
+        'Failed to grade quest submissions'
+      );
       return res.badRequest(errorMessage);
     }
   }
@@ -199,7 +232,11 @@ class QuestController {
       const { reason, refundRemaining } = req.body;
 
       // TODO: Implement quest closing logic
-      logger.info(`Closing quest ${questId}. Reason: ${reason || 'Not provided'}. Refund: ${String(refundRemaining || false)}`);
+      logger.info(
+        `Closing quest ${questId}. Reason: ${
+          reason || 'Not provided'
+        }. Refund: ${String(refundRemaining || false)}`
+      );
 
       await Promise.resolve();
       return res.success(
@@ -212,13 +249,21 @@ class QuestController {
       );
     } catch (error: unknown) {
       logger.err(error);
-      const errorMessage = getErrorMessage(error, 'Failed to close quest campaign');
+      const errorMessage = getErrorMessage(
+        error,
+        'Failed to close quest campaign'
+      );
       return res.badRequest(errorMessage);
     }
   }
 
   async getAllQuestCampaigns(
-    req: Request<Record<string, never>, Record<string, never>, Record<string, never>, { page?: string; limit?: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { page?: string; limit?: string }
+    >,
     res: Response
   ): Promise<Response | void> {
     try {
@@ -233,7 +278,8 @@ class QuestController {
 
       // Validate parsed values
       const validPage = !isNaN(page) && page > 0 ? page : 1;
-      const validLimit = !isNaN(limit) && limit > 0 && limit <= 100 ? limit : 10;
+      const validLimit =
+        !isNaN(limit) && limit > 0 && limit <= 100 ? limit : 10;
 
       const result = await getAllQuests({
         userId,
@@ -276,12 +322,17 @@ class QuestController {
       const errorMessage = getErrorMessage(error, 'Failed to get quest');
 
       // Handle not found scenario
-      const hasNotFoundError = error && typeof error === 'object' &&
-        ('code' in error && error.code === 'NOT_FOUND' ||
-         errorMessage.toLowerCase().includes('not found'));
+      const hasNotFoundError =
+        error &&
+        typeof error === 'object' &&
+        (('code' in error && error.code === 'NOT_FOUND') ||
+          errorMessage.toLowerCase().includes('not found'));
 
       if (hasNotFoundError) {
-        return res.notFound(errorMessage, `Quest with ID: ${req.params.questId}`);
+        return res.notFound(
+          errorMessage,
+          `Quest with ID: ${req.params.questId}`
+        );
       }
 
       return res.badRequest(errorMessage);

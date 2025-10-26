@@ -3,6 +3,7 @@ import MonitoringService, { TokenSyncStatus } from '../services/healthCheck';
 import { completeCampaignOperation } from '@services/campaign-service';
 import createPrismaClient from '@shared/prisma';
 import logger from 'jet-logger';
+import { convertBigIntToString } from '../../../../utils/bigintSerializer';
 
 /**
  * V201 Monitoring Controller
@@ -60,7 +61,9 @@ class MonitoringController {
             healthy: isHealthy,
             services: {
               bullmq: systemHealth.bullmq.isConnected ? 'healthy' : 'unhealthy',
-              database: systemHealth.database.connected ? 'healthy' : 'unhealthy',
+              database: systemHealth.database.connected
+                ? 'healthy'
+                : 'unhealthy',
               redis: systemHealth.redis.connected ? 'healthy' : 'unhealthy',
             },
           },
@@ -83,23 +86,37 @@ class MonitoringController {
   /**
    * GET /api/v201/monitoring/campaigns/stuck
    * Find campaigns that are stuck and should have been processed
+   *
+   * NOTE: This is the OFFICIAL way to handle stuck campaigns.
+   * All campaign edge cases should be handled through this event-based monitoring system,
+   * not through startup cleanup scripts. This ensures:
+   * - Proper event flow with idempotency guarantees
+   * - Consistent error handling and logging
+   * - Audit trail through campaign logs
+   * - No race conditions with BullMQ workers
    */
   async getStuckCampaigns(req: Request, res: Response) {
     try {
       const stuckCampaigns = await MonitoringService.findStuckCampaigns();
 
-      res.status(200).json({
-        success: true,
-        data: {
-          count: stuckCampaigns.length,
-          campaigns: stuckCampaigns,
-          summary: {
-            overdue_close: stuckCampaigns.filter(c => c.type === 'overdue_close').length,
-            overdue_expiry: stuckCampaigns.filter(c => c.type === 'overdue_expiry').length,
+      res.status(200).json(
+        convertBigIntToString({
+          success: true,
+          data: {
+            count: stuckCampaigns.length,
+            campaigns: stuckCampaigns,
+            summary: {
+              overdue_close: stuckCampaigns.filter(
+                (c) => c.type === 'overdue_close'
+              ).length,
+              overdue_expiry: stuckCampaigns.filter(
+                (c) => c.type === 'overdue_expiry'
+              ).length,
+            },
           },
-        },
-        timestamp: new Date().toISOString(),
-      });
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.err(`Failed to get stuck campaigns: ${errorMsg}`);
@@ -116,24 +133,38 @@ class MonitoringController {
   /**
    * POST /api/v201/monitoring/campaigns/stuck/process
    * Manually process stuck campaigns
+   *
+   * NOTE: This is the OFFICIAL way to process stuck campaigns.
+   * This endpoint:
+   * - Uses the same event-based flow as normal campaign processing
+   * - Respects all idempotency checks
+   * - Integrates with BullMQ job queue
+   * - Provides detailed processing results
+   * - Creates proper audit logs
    */
   async processStuckCampaigns(req: Request, res: Response) {
     try {
       const stuckCampaigns = await MonitoringService.findStuckCampaigns();
 
       if (stuckCampaigns.length === 0) {
-        return res.status(200).json({
-          success: true,
-          message: 'No stuck campaigns found',
-          data: { processed: 0, failed: 0 },
-          timestamp: new Date().toISOString(),
-        });
+        return res.status(200).json(
+          convertBigIntToString({
+            success: true,
+            message: 'No stuck campaigns found',
+            data: { processed: 0, failed: 0 },
+            timestamp: new Date().toISOString(),
+          })
+        );
       }
 
       const results = {
         processed: 0,
         failed: 0,
-        details: [] as Array<{ campaignId: string; status: 'success' | 'failed'; error?: string }>,
+        details: [] as Array<{
+          campaignId: string;
+          status: 'success' | 'failed';
+          error?: string;
+        }>,
       };
 
       const prisma = await createPrismaClient();
@@ -156,23 +187,28 @@ class MonitoringController {
             logger.info(`✅ Processed stuck campaign: ${campaign.id}`);
           }
         } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
           results.failed++;
           results.details.push({
             campaignId: stuckCampaign.id.toString(),
             status: 'failed',
             error: errorMsg,
           });
-          logger.err(`❌ Failed to process stuck campaign ${stuckCampaign.id}: ${errorMsg}`);
+          logger.err(
+            `❌ Failed to process stuck campaign ${stuckCampaign.id}: ${errorMsg}`
+          );
         }
       }
 
-      res.status(200).json({
-        success: true,
-        message: `Processed ${results.processed} campaigns, ${results.failed} failed`,
-        data: results,
-        timestamp: new Date().toISOString(),
-      });
+      res.status(200).json(
+        convertBigIntToString({
+          success: true,
+          message: `Processed ${results.processed} campaigns, ${results.failed} failed`,
+          data: results,
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.err(`Failed to process stuck campaigns: ${errorMsg}`);
@@ -223,20 +259,30 @@ class MonitoringController {
 
     if (syncStatus.syncStatus === 'out_of_sync') {
       if (syncStatus.missingInLocal.length > 0) {
-        recommendations.push(`${syncStatus.missingInLocal.length} tokens exist on network but not in local database`);
+        recommendations.push(
+          `${syncStatus.missingInLocal.length} tokens exist on network but not in local database`
+        );
       }
       if (syncStatus.missingInNetwork.length > 0) {
-        recommendations.push(`${syncStatus.missingInNetwork.length} tokens exist locally but not on network`);
+        recommendations.push(
+          `${syncStatus.missingInNetwork.length} tokens exist locally but not on network`
+        );
       }
-      recommendations.push('Consider running token synchronization to update local database');
+      recommendations.push(
+        'Consider running token synchronization to update local database'
+      );
     }
 
     if (syncStatus.syncStatus === 'never_synced') {
-      recommendations.push('Token synchronization has never been run - consider initial sync');
+      recommendations.push(
+        'Token synchronization has never been run - consider initial sync'
+      );
     }
 
     if (syncStatus.syncStatus === 'error') {
-      recommendations.push('Network connection or API error - check network connectivity and API endpoints');
+      recommendations.push(
+        'Network connection or API error - check network connectivity and API endpoints'
+      );
     }
 
     return recommendations;
