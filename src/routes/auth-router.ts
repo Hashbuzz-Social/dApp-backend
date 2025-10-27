@@ -105,7 +105,11 @@ authRouter.post(
 );
 
 //dAppAccessRoutes
-authRouter.get('/ping', asyncHandler(auth.isHavingValidAst), asyncHandler(handleAuthPing));
+authRouter.get(
+  '/ping',
+  asyncHandler(auth.optionalAuth),
+  asyncHandler(handleAuthPing)
+);
 authRouter.get('/challenge', asyncHandler(handleCreateChallenge));
 authRouter.post(
   '/generate',

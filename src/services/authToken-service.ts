@@ -2,6 +2,7 @@ import { user_user } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { getCurrentKeyPair } from "@shared/KeyManager";
+import { getConfig } from '@appConfig';
 
 /**
  * Parameters for creating an AST token.
@@ -36,9 +37,9 @@ export const generateAdminToken = (user: user_user, accessSecret: string) => {
 
 export const generateSigningToken = (accessSecret: string) => {
   const currentTimeStamp = new Date().getTime();
-  return jwt.sign({ ts: currentTimeStamp }, accessSecret!, {
-    algorithm: "HS512", // or RS256 for asymmetrical keys
-    expiresIn: "5m", // Keep this short for high-security requirements
+  return jwt.sign({ ts: currentTimeStamp }, accessSecret, {
+    algorithm: 'HS512', // or RS256 for asymmetrical keys
+    expiresIn: '5m', // Keep this short for high-security requirements
   });
 };
 
@@ -49,11 +50,11 @@ export const generateSigningToken = (accessSecret: string) => {
  */
 
 export const createAstTokenEx = (params: CreateAstTokenParams, accessSecret: string) => {
-  return jwt.sign(params, accessSecret!, { expiresIn: "24h" });
+  return jwt.sign(params, accessSecret, { expiresIn: '24h' });
 };
 
 export const genrateRefreshTokenEx = (params: CreateAstTokenParams, accessSecret: string) => {
-  return jwt.sign(params, accessSecret!, { expiresIn: "7d" });
+  return jwt.sign(params, accessSecret, { expiresIn: '7d' });
 };
 
 /**
@@ -63,6 +64,7 @@ export const genrateRefreshTokenEx = (params: CreateAstTokenParams, accessSecret
  */
 export const createAstToken = async (payload: CreateAstTokenParams) => {
   const currentKey = await getCurrentKeyPair();
+  const config = await getConfig();
 
   if (currentKey) {
     const token = jwt.sign(
@@ -72,13 +74,13 @@ export const createAstToken = async (payload: CreateAstTokenParams) => {
       },
       currentKey.privateKey,
       {
-        algorithm: "RS256",
-        expiresIn: "24h",
-        issuer: "hashbuzz.social",
-        audience: "hashbuzz-frontend",
+        algorithm: 'RS256',
+        expiresIn: config.encryptions.accessTokenExpiresIn || '24h', // Configurable expiry
+        issuer: 'hashbuzz.social',
+        audience: 'hashbuzz-frontend',
         header: {
           kid: currentKey.kid, // Key Identifier
-          alg: "RS256", // Algorithm
+          alg: 'RS256', // Algorithm
         },
       }
     );
@@ -94,6 +96,7 @@ export const createAstToken = async (payload: CreateAstTokenParams) => {
  */
 export const genrateRefreshToken = async (payload: CreateAstTokenParams) => {
   const currentKey = await getCurrentKeyPair();
+  const config = await getConfig();
 
   if (currentKey) {
     const refreshToken = jwt.sign(
@@ -103,13 +106,13 @@ export const genrateRefreshToken = async (payload: CreateAstTokenParams) => {
       },
       currentKey.privateKey,
       {
-        algorithm: "RS256",
-        expiresIn: "7d",
-        issuer: "hashbuzz.social",
-        audience: "hashbuzz-frontend",
+        algorithm: 'RS256',
+        expiresIn: config.encryptions.refreshTokenExpiresIn || '7d', // Configurable expiry
+        issuer: 'hashbuzz.social',
+        audience: 'hashbuzz-frontend',
         header: {
           kid: currentKey.kid,
-          alg: "RS256", // Algorithm
+          alg: 'RS256', // Algorithm
         },
       }
     );
