@@ -11,21 +11,31 @@ import {
   handleUpdatePasswordReq,
   handleWhiteListToken,
   handleGetTrailsettters,
-  updateTrailsettersData
-} from "@controller/Admin";
+  updateTrailsettersData,
+  // Transaction management handlers
+  handleGetAllTransactions,
+  handleGetTransactionById,
+  handleUpdateTransactionStatus,
+  handleGetTransactionStats,
+  handleGetRecentTransactions,
+  handleDeleteTransaction,
+  handleRetryTransaction,
+} from '@controller/Admin';
 import { handleGetAllUser } from "@controller/User";
 import userInfo from "@middleware/userInfo";
+import auth from '@middleware/auth';
 import { checkErrResponse, checkWalletFormat } from "@validator/userRoutes.validator";
 import { Router } from "express";
 import { body, query } from "express-validator";
 import { IsStrongPasswordOptions } from "express-validator/src/options";
+import asyncHandler from '@shared/asyncHandler';
 
 const router = Router();
 
 const cardTypes = ["Pending", "Completed", "Running"];
 /**
  * Configuration options for checking the strength of a password.
- * 
+ *
  * @property {number} minLength - Minimum length of the password.
  * @property {number} minNumbers - Minimum number of numeric characters required.
  * @property {number} minLowercase - Minimum number of lowercase alphabetic characters required.
@@ -136,5 +146,93 @@ router.patch('/personal-handle', body("userId").isNumeric(), checkErrResponse, h
 
 router.get("/trailsetters", handleGetTrailsettters)
 router.put("/trailsetters", body("accounts").isArray(), checkErrResponse, updateTrailsettersData)
+
+// ============================================================================
+// TRANSACTION MANAGEMENT ROUTES
+// ============================================================================
+
+/**
+ * Get all transactions with filtering and pagination
+ * @api GET /api/admin/transactions
+ * @query {number} page - Page number (default: 1)
+ * @query {number} limit - Items per page (default: 20)
+ * @query {string} status - Filter by status
+ * @query {string} transaction_type - Filter by transaction type
+ * @query {string} network - Filter by network
+ */
+router.get("/transactions",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleGetAllTransactions)
+);
+
+/**
+ * Get transaction statistics
+ * @api GET /api/admin/transactions/stats
+ */
+router.get("/transactions/stats",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleGetTransactionStats)
+);
+
+/**
+ * Get recent transactions
+ * @api GET /api/admin/transactions/recent
+ * @query {number} limit - Number of recent transactions (default: 10)
+ */
+router.get("/transactions/recent",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleGetRecentTransactions)
+);
+
+/**
+ * Get transaction by ID
+ * @api GET /api/admin/transactions/:id
+ * @param {string} id - Transaction ID
+ */
+router.get("/transactions/:id",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleGetTransactionById)
+);
+
+/**
+ * Update transaction status
+ * @api PUT /api/admin/transactions/status
+ * @body {string} id - Transaction ID
+ * @body {string} status - New status (pending, completed, failed, cancelled, processing)
+ */
+router.put("/transactions/status",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  body("id").isNumeric().withMessage("Transaction ID must be numeric"),
+  body("status").isString().isLength({ min: 1 }).withMessage("Status is required"),
+  checkErrResponse,
+  asyncHandler(handleUpdateTransactionStatus)
+);
+
+/**
+ * Retry failed transaction
+ * @api POST /api/admin/transactions/:id/retry
+ * @param {string} id - Transaction ID
+ */
+router.post("/transactions/:id/retry",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleRetryTransaction)
+);
+
+/**
+ * Delete transaction (soft delete)
+ * @api DELETE /api/admin/transactions/:id
+ * @param {string} id - Transaction ID
+ */
+router.delete("/transactions/:id",
+  asyncHandler(auth.isHavingValidAst),
+  asyncHandler(auth.isAdminRequesting),
+  asyncHandler(handleDeleteTransaction)
+);
 
 export default router;

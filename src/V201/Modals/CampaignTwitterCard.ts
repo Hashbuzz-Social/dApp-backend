@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma, campaignstatus } from '@prisma/client';
-import logger from 'src/config/logger';
+import logger from '../../config/logger';
 
 class CampaignTwitterCardModel {
   private prisma: PrismaClient;
@@ -151,6 +151,33 @@ class CampaignTwitterCardModel {
 
   getCampaignTwitterCardModel() {
     return this.prisma.campaign_twittercard;
+  }
+
+  async getQuestCampaignWithEngagements(questId: bigint) {
+    try {
+      return await this.prisma.campaign_twittercard.findUnique({
+        where: { id: questId },
+        select: {
+          id: true,
+          correct_answer: true,
+          campaign_budget: true,
+          campaign_type: true,
+          campaign_tweetengagements: {
+            select: {
+              id: true,
+              user_id: true,
+              engagement_type: true,
+              is_bot_engagement: true,
+              payment_status: true,
+              content: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      logger.err('Error fetching quest campaign with engagements:' + error);
+      throw new Error('Could not fetch quest campaign with engagements.');
+    }
   }
 }
 

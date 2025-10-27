@@ -1,22 +1,19 @@
+import { BalanceEvents } from '@V201/events/balances';
 import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
-import {
-  CampaignPublishErrorPayLoad,
-  CampaignPublishPayLoad,
-  CampaignDraftPayLoad,
-  CampaignCloseJobPayload,
-  CampaignExpiryJobPayload,
-  V201EngagementDataCollectionPayload,
-  CampaignClosedPayload,
-  CampaignBudgetRefundPayload,
-  CampaignRateUpdatedPayload,
-  CampaignClosingErrorPayload,
-  CollectEngagementLikeAndRetweetPayload,
-} from './campaigns';
 import {
   CampaignerFuncgibleBalanceUpdatePayload,
   CampaignerHbarBalUpdatePayload,
 } from './balance';
-import { BalanceEvents } from '@V201/events/balances';
+import {
+  CampaignCloseJobPayload,
+  CampaignClosingErrorPayload,
+  CampaignDraftPayLoad,
+  CampaignExpiryJobPayload,
+  CampaignPublishErrorPayLoad,
+  CampaignPublishPayLoad,
+  CollectEngagementLikeAndRetweetPayload,
+  V201EngagementDataCollectionPayload,
+} from './campaigns';
 
 export type EventPayloadMap = {
   // Campaign publish events
@@ -46,6 +43,11 @@ export type EventPayloadMap = {
 
   // Error Handling
   [CampaignEvents.CAMPAIGN_PUBLISH_ERROR]: CampaignPublishErrorPayLoad;
+
+  // Quest specific events
+  [CampaignEvents.CAMPAIGN_CLOSING_FIND_QUEST_WINNERS]: {
+    campaignId: number | bigint;
+  };
 };
 
 export type ScheduledJobPayloadMap = {

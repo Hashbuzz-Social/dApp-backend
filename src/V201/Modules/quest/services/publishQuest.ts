@@ -2,6 +2,7 @@ import createPrismaClient from '@shared/prisma';
 import { campaignstatus } from '@prisma/client';
 import { publishEvent } from '../../../eventPublisher';
 import { CampaignEvents } from '../../../AppEvents/campaign';
+import { generateRandomString } from '@V201/modules/common';
 
 export interface PublishQuestInput {
   questId: bigint;
@@ -18,8 +19,12 @@ export interface PublishQuestResult {
  * Publish a quest campaign
  * @throws Error if quest not found, not owned by user, or invalid status
  */
-export async function publishQuest(input: PublishQuestInput): Promise<PublishQuestResult> {
+export async function publishQuest(
+  input: PublishQuestInput
+): Promise<PublishQuestResult> {
   const prisma = await createPrismaClient();
+
+  console.log('Starting publish process for quest ID:', input.questId);
 
   // Fetch quest campaign
   const quest = await prisma.campaign_twittercard.findUnique({
@@ -37,7 +42,21 @@ export async function publishQuest(input: PublishQuestInput): Promise<PublishQue
 
   // Check if quest is approved
   if (quest.card_status !== campaignstatus.CampaignApproved) {
-    throw new Error(`Quest campaign must be approved before publishing. Current status: ${quest.card_status}`);
+    throw new Error(
+      `Quest campaign must be approved before publishing. Current status: ${quest.card_status}`
+    );
+  }
+
+  console.log('Publishing quest campaign:', quest.contract_id);
+
+  if (!quest.contract_id) {
+    console.log('Generating new contract ID for quest campaign');
+    await prisma.campaign_twittercard.update({
+      where: { id: quest.id },
+      data: {
+        contract_id: generateRandomString(20),
+      },
+    });
   }
 
   // Publish event to start quest campaign

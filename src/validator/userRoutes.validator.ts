@@ -93,8 +93,13 @@ export const  validateTransactionIdString = (input: string)  => {
 
   // Check if the timestamp is not more than 30 seconds before the current timestamp
   const currentTimestamp = Date.now() / 1000; // Convert milliseconds to seconds
-  if (timestamp > currentTimestamp || currentTimestamp - timestamp > 30) {
-    throw new ParamMissingError("TransactionId is invalid. Time differ is too long");
+  if (
+    timestamp > currentTimestamp ||
+    currentTimestamp - timestamp > 10 * 1000
+  ) {
+    throw new ParamMissingError(
+      'TransactionId is invalid. Time differ is too long'
+    );
   }
 
   // Check if the account format is valid (0.0.[0-9] to 10 digits)

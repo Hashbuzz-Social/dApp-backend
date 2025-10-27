@@ -16,6 +16,19 @@ export interface BullMQHealthStatus {
   failed: number;
   delayed: number;
   paused: boolean;
+  // Frontend-compatible field names
+  waitingJobs: number;
+  activeJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  delayedJobs: number;
+  // Event queue stats (from EnhancedEventSystem)
+  eventQueue?: {
+    pending: number;
+    completed: number;
+    failed: number;
+    deadLetter: number;
+  };
   error?: string;
 }
 
@@ -85,15 +98,36 @@ class MonitoringService {
 
       await queue.close();
 
+      // Get event queue stats from EnhancedEventSystem
+      const { EnhancedEventSystem } = await import(
+        '../../../enhancedEventSystem'
+      );
+      const eventStats = await EnhancedEventSystem.getEventStats();
+
+      const waitingCount = waiting.length;
+      const activeCount = active.length;
+      const completedCount = completed.length;
+      const failedCount = failed.length;
+      const delayedCount = delayed.length;
+
       return {
         isConnected: true,
         queueName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
-        waiting: waiting.length,
-        active: active.length,
-        completed: completed.length,
-        failed: failed.length,
-        delayed: delayed.length,
+        // Legacy field names (for backward compatibility)
+        waiting: waitingCount,
+        active: activeCount,
+        completed: completedCount,
+        failed: failedCount,
+        delayed: delayedCount,
         paused: isPaused,
+        // Frontend-compatible field names
+        waitingJobs: waitingCount,
+        activeJobs: activeCount,
+        completedJobs: completedCount,
+        failedJobs: failedCount,
+        delayedJobs: delayedCount,
+        // Event queue stats with dead letter counts
+        eventQueue: eventStats,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -108,6 +142,11 @@ class MonitoringService {
         failed: 0,
         delayed: 0,
         paused: false,
+        waitingJobs: 0,
+        activeJobs: 0,
+        completedJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 0,
         error: errorMsg,
       };
     }

@@ -14,7 +14,7 @@ import {
 import { network, PrismaClient } from '@prisma/client';
 import createPrismaClient from '@shared/prisma';
 import { Interface, ethers } from 'ethers';
-import logger from 'src/config/logger';
+import logger from '../config/logger';
 import { eventList } from '../contractsV201';
 import intiHederaService, { HederaClientConfig } from './hedera-service';
 import MailerService from './mailer/mailerService';
