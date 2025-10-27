@@ -1,5 +1,6 @@
 import { UserV2 } from 'twitter-api-v2';
 import logger from 'jet-logger';
+import createPrismaClient from '@shared/prisma';
 
 /**
  * Bot detection thresholds
@@ -19,6 +20,7 @@ export interface BotDetectionMetrics {
   tweetRatePerDay: number;
   isBotEngagement: boolean;
   botFlags: string[];
+  skipReason?: string; // Reason why bot detection was skipped
 }
 
 /**
@@ -76,12 +78,110 @@ function calculateTweetRate(
 }
 
 /**
+ * Check if a Twitter user ID is in the bot detection exceptions list
+ * @param twitterUserId - Twitter user ID to check
+ * @returns Promise<boolean> - True if user should be skipped from bot detection
+ */
+async function isUserInExceptionList(twitterUserId: string): Promise<boolean> {
+  try {
+    const prisma = await createPrismaClient();
+
+    const exception = await prisma.bot_detection_exceptions.findFirst({
+      where: {
+        twitter_user_id: twitterUserId,
+        is_active: true,
+      },
+    });
+
+    return !!exception;
+  } catch (error) {
+    logger.err(
+      `Error checking bot detection exceptions: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    // Throw error instead of returning false to ensure proper error handling
+    throw new Error(
+      `Failed to check bot detection exceptions: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
+/**
+ * Check if a Twitter user ID exists in the user_user table (registered users)
+ * @param twitterUserId - Twitter user ID to check
+ * @returns Promise<boolean> - True if user exists in user_user table
+ */
+async function isRegisteredUser(twitterUserId: string): Promise<boolean> {
+  try {
+    const prisma = await createPrismaClient();
+
+    const user = await prisma.user_user.findFirst({
+      where: {
+        personal_twitter_id: twitterUserId,
+      },
+      select: {
+        id: true, // Only select ID for performance
+      },
+    });
+
+    return !!user;
+  } catch (error) {
+    logger.err(
+      `Error checking registered users: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    // Throw error instead of returning false to ensure proper error handling
+    throw new Error(
+      `Failed to check registered users: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
+/**
  * Detect if a user engagement is likely from a bot
  * @param user - Twitter user data (from includes.users in API response)
- * @returns Bot detection metrics
+ * @returns Promise<Bot detection metrics>
  */
-export function detectBotEngagement(user: UserV2): BotDetectionMetrics {
+export async function detectBotEngagement(
+  user: UserV2
+): Promise<BotDetectionMetrics> {
   const botFlags: string[] = [];
+
+  // First, check if user should be skipped from bot detection
+  const isInExceptionList = await isUserInExceptionList(user.id);
+  if (isInExceptionList) {
+    logger.info(
+      `Skipping bot detection for user ${user.id} - found in exception list`
+    );
+    return {
+      accountAgeDays: 0,
+      followerRatio: 0,
+      tweetRatePerDay: 0,
+      isBotEngagement: false,
+      botFlags: [],
+      skipReason: 'EXCEPTION_LIST',
+    };
+  }
+
+  // Check if user is registered in our system
+  const isRegistered = await isRegisteredUser(user.id);
+  if (isRegistered) {
+    logger.info(`Skipping bot detection for user ${user.id} - registered user`);
+    return {
+      accountAgeDays: 0,
+      followerRatio: 0,
+      tweetRatePerDay: 0,
+      isBotEngagement: false,
+      botFlags: [],
+      skipReason: 'REGISTERED_USER',
+    };
+  }
 
   // Get user metrics
   const publicMetrics = user.public_metrics;
@@ -160,8 +260,154 @@ export function getBotDetectionSummary(metrics: BotDetectionMetrics): string {
 /**
  * Update bot detection thresholds (for testing/configuration)
  */
-export function updateBotThresholds(thresholds: Partial<typeof BOT_DETECTION_THRESHOLDS>) {
+export function updateBotThresholds(
+  thresholds: Partial<typeof BOT_DETECTION_THRESHOLDS>
+) {
   Object.assign(BOT_DETECTION_THRESHOLDS, thresholds);
 }
 
 export { BOT_DETECTION_THRESHOLDS };
+
+/**
+ * Bot Detection Exception Management Service
+ */
+export class BotDetectionExceptionService {
+  /**
+   * Add a user to the bot detection exception list
+   * @param twitterUserId - Twitter user ID to add
+   * @param twitterUsername - Twitter username (optional)
+   * @param reason - Reason for adding to exception list
+   * @param addedByAdminId - ID of admin adding the exception
+   * @param notes - Additional notes (optional)
+   * @returns Promise<boolean> - Success status
+   */
+  static async addException(
+    twitterUserId: string,
+    twitterUsername: string | null,
+    reason: string,
+    addedByAdminId: bigint | null = null,
+    notes: string | null = null
+  ): Promise<boolean> {
+    try {
+      const prisma = await createPrismaClient();
+
+      await prisma.bot_detection_exceptions.create({
+        data: {
+          twitter_user_id: twitterUserId,
+          twitter_username: twitterUsername,
+          reason,
+          added_by_admin_id: addedByAdminId,
+          notes,
+          is_active: true,
+        },
+      });
+
+      logger.info(
+        `Added bot detection exception for user ${twitterUserId} (${
+          twitterUsername || 'N/A'
+        }) - Reason: ${reason}`
+      );
+      return true;
+    } catch (error) {
+      logger.err(
+        `Error adding bot detection exception: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Throw error instead of returning false
+      throw new Error(
+        `Failed to add bot detection exception: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  /**
+   * Remove a user from the bot detection exception list (deactivate)
+   * @param twitterUserId - Twitter user ID to remove
+   * @returns Promise<boolean> - Success status
+   */
+  static async removeException(twitterUserId: string): Promise<boolean> {
+    try {
+      const prisma = await createPrismaClient();
+
+      await prisma.bot_detection_exceptions.updateMany({
+        where: {
+          twitter_user_id: twitterUserId,
+          is_active: true,
+        },
+        data: {
+          is_active: false,
+          updated_at: new Date(),
+        },
+      });
+
+      logger.info(`Removed bot detection exception for user ${twitterUserId}`);
+      return true;
+    } catch (error) {
+      logger.err(
+        `Error removing bot detection exception: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Throw error instead of returning false
+      throw new Error(
+        `Failed to remove bot detection exception: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  /**
+   * Get all active bot detection exceptions
+   * @returns Promise<any[]> - List of active exceptions
+   */
+  static async getActiveExceptions(): Promise<any[]> {
+    try {
+      const prisma = await createPrismaClient();
+
+      const exceptions = await prisma.bot_detection_exceptions.findMany({
+        where: {
+          is_active: true,
+        },
+        include: {
+          added_by_admin: {
+            select: {
+              id: true,
+              name: true,
+              business_twitter_handle: true,
+            },
+          },
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+
+      return exceptions;
+    } catch (error) {
+      logger.err(
+        `Error getting bot detection exceptions: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Throw error instead of returning empty array
+      throw new Error(
+        `Failed to get bot detection exceptions: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  /**
+   * Check if a user is in the exception list (exposed for external use)
+   * @param twitterUserId - Twitter user ID to check
+   * @returns Promise<boolean> - True if user is in exception list
+   */
+  static async isUserExcepted(twitterUserId: string): Promise<boolean> {
+    return await isUserInExceptionList(twitterUserId);
+  }
+}

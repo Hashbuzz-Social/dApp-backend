@@ -170,6 +170,7 @@ model user_user {
   user_sessions                        user_sessions[]
   user_twitterlogintemp                user_twitterlogintemp[]
   whiteListedTokens                    whiteListedTokens[]
+  bot_detection_exceptions             bot_detection_exceptions[]
 
   @@unique([id, hedera_wallet_id, accountAddress])
 }
@@ -263,6 +264,23 @@ model trailsetters {
   id        BigInt   @id @default(autoincrement())
   walletId  String   @unique
   createdAt DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model bot_detection_exceptions {
+  id                   BigInt   @id @default(autoincrement())
+  twitter_user_id      String   @unique @db.VarChar(50)
+  twitter_username     String?  @db.VarChar(50)
+  reason               String   @db.VarChar(200)
+  added_by_admin_id    BigInt?
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+  is_active            Boolean  @default(true)
+  notes                String?  @db.Text
+  added_by_admin       user_user? @relation(fields: [added_by_admin_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "bot_detection_exceptions_admin_fk")
+
+  @@index([twitter_user_id], map: "idx_bot_exceptions_twitter_user_id")
+  @@index([is_active], map: "idx_bot_exceptions_is_active")
+  @@index([created_at], map: "idx_bot_exceptions_created_at")
 }
 
 enum TopicPurpose {

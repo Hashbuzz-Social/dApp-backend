@@ -2,6 +2,7 @@ import { Router } from "express";
 import { campaignRouter, monitoringRoutes, questRouter } from './Modules';
 import userInfo from '@middleware/userInfo';
 import asyncHandler from '@shared/asyncHandler';
+import botExceptionsRouter from './routes/botExceptions';
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use(
   monitoringRoutes
 );
 router.use('/quest', questRouter);
+router.use('/bot-exceptions', botExceptionsRouter);
 
 export default router;
