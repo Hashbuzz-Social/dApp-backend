@@ -31,29 +31,31 @@ export const verifyAccessToken = async (token: string) => {
 };
 
 // Function to verify Refresh Token (similar to Access Token)
-export const verifyRefreshToken = async (token: string): Promise<JwtPayload | string> => {
-    // Decode token header to get kid
-    const decodedHeader = jwt.decode(token, { complete: true });
-    if (!decodedHeader || typeof decodedHeader === "string") {
-        throw new Error("Invalid token format");
-    }
+export const verifyRefreshToken = async (
+  token: string
+): Promise<{ payload: JwtPayload | string; kid: string }> => {
+  // Decode token header to get kid
+  const decodedHeader = jwt.decode(token, { complete: true });
+  if (!decodedHeader || typeof decodedHeader === 'string') {
+    throw new Error('Invalid token format');
+  }
 
-    const kid = decodedHeader.header.kid;
-    if (!kid) {
-        throw new Error("No kid found in token");
-    }
+  const kid = decodedHeader.header.kid;
+  if (!kid) {
+    throw new Error('No kid found in token');
+  }
 
-    const publicKey = await getPublicKey(kid);
-    if (!publicKey) {
-        throw new Error(`Public key not found for kid: ${kid}`);
-    }
+  const publicKey = await getPublicKey(kid);
+  if (!publicKey) {
+    throw new Error(`Public key not found for kid: ${kid}`);
+  }
 
-    // Verify token with the corresponding public key
-    const payload = jwt.verify(token, publicKey, {
-        algorithms: ["RS256"],
-        issuer: "hashbuzz.social",
-        audience: "hashbuzz-frontend",
-    });
+  // Verify token with the corresponding public key
+  const payload = jwt.verify(token, publicKey, {
+    algorithms: ['RS256'],
+    issuer: 'hashbuzz.social',
+    audience: 'hashbuzz-frontend',
+  });
 
-    return { payload, kid };
+  return { payload, kid };
 };

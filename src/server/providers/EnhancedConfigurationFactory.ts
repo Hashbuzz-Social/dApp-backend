@@ -95,6 +95,11 @@ export class EnhancedConfigurationFactory {
             ),
             encryptionKey: await this.getSecret('ENCRYPTION_KEY'),
             sessionSecret: await this.getSecret('SESSION_SECRET'),
+            accessTokenExpiresIn: this.getEnv('ACCESS_TOKEN_EXPIRES_IN', '2m'),
+            refreshTokenExpiresIn: this.getEnv(
+              'REFRESH_TOKEN_EXPIRES_IN',
+              '24h'
+            ),
           },
           repo: {
             repo: this.getEnv('REPO'),

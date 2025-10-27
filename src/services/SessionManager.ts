@@ -22,6 +22,29 @@ import userService from './user-service';
 const { OK, BAD_REQUEST, UNAUTHORIZED, INTERNAL_SERVER_ERROR } =
   HttpStatusCodes;
 
+/**
+ * Helper function to parse JWT expiry format (e.g., '2m', '15m', '24h', '7d')
+ * and convert to milliseconds
+ */
+function parseExpiryToMs(expiry: string): number {
+  const match = expiry.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    throw new Error(`Invalid expiry format: ${expiry}`);
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  const multipliers: Record<string, number> = {
+    s: 1000,           // seconds
+    m: 1000 * 60,      // minutes
+    h: 1000 * 60 * 60, // hours
+    d: 1000 * 60 * 60 * 24, // days
+  };
+
+  return value * multipliers[unit];
+}
+
 class SessionManager {
   private redisclinet: RedisClient;
   private secureCookie: boolean;
@@ -35,7 +58,8 @@ class SessionManager {
       process.env.BACKEND_URL?.includes('https://') ||
         process.env.API_URL?.includes('https://')
     );
-    this.secureCookie = isProduction || (process.env.NODE_ENV !== 'development' && isHttpsEnv);
+    this.secureCookie =
+      isProduction || (process.env.NODE_ENV !== 'development' && isHttpsEnv);
   }
 
   static async create(): Promise<SessionManager> {
@@ -184,13 +208,21 @@ class SessionManager {
 
       console.log('=== END COOKIE CONFIG DEBUG ===');
 
+      // Get configurable token expiry times
+      const accessTokenMaxAge = parseExpiryToMs(
+        config.encryptions.accessTokenExpiresIn || '15m'
+      );
+      const refreshTokenMaxAge = parseExpiryToMs(
+        config.encryptions.refreshTokenExpiresIn || '7d'
+      );
+
       // Access token cookie - with strict security controls
       res.cookie('access_token', token, {
         httpOnly: true,
         secure: cookieSettings.secure,
         sameSite: cookieSettings.sameSite as any,
         path: '/',
-        maxAge: 1000 * 60 * 15, // 15 minutes
+        maxAge: accessTokenMaxAge, // Configurable access token expiry
         domain: cookieSettings.domain,
       });
 
@@ -200,9 +232,12 @@ class SessionManager {
         secure: cookieSettings.secure,
         sameSite: cookieSettings.sameSite as any,
         path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        maxAge: refreshTokenMaxAge, // Configurable refresh token expiry
         domain: cookieSettings.domain,
       });
+
+      // Calculate the actual expiry timestamp for the access token
+      const tokenExpiresAt = Date.now() + accessTokenMaxAge;
 
       res.status(OK).json({
         message: 'Login Successfully',
@@ -211,6 +246,7 @@ class SessionManager {
         user: JSONBigInt.parse(
           JSONBigInt.stringify(sanitizeUserCoreData(user))
         ),
+        expiresAt: tokenExpiresAt, // Send token expiry to frontend
       });
     } catch (err) {
       next(err);
@@ -220,24 +256,28 @@ class SessionManager {
   /** Public Methods
    * @description Generate auth AST token for the user (v1)
    */
-  async handleGenerateAuthAst(req: Request, res: Response, next: NextFunction) {
+  async handleGenerateAuthAst(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     await this.handleGenerateAuthAstCommon(req, res, next, {
       getSignatureValidation: async () => {
         const { payload, clientPayload, signatures } = req.body;
         const { server, wallet } = signatures;
         const { value, accountId } = wallet;
         const clientAccountPublicKey = await this.fetchAndVerifyPublicKey(
-          accountId
+          accountId as string
         );
         return this.validateSignatures(
-          payload,
-          clientPayload,
-          server,
-          value,
+          payload as object,
+          clientPayload as object,
+          server as string,
+          value as string,
           clientAccountPublicKey
         );
       },
-      getAccountId: () => req.body.signatures.wallet.accountId,
+      getAccountId: () => req.body.signatures.wallet.accountId as string,
     });
   }
 
@@ -518,10 +558,13 @@ class SessionManager {
 
   async tokenResolver(token: string) {
     const verifiedData = await verifyRefreshToken(token);
-    //@ts-ignore
+
+    if (typeof verifiedData.payload === 'string') {
+      throw new Error('Invalid token payload');
+    }
+
     const id = verifiedData.payload.id as string;
-    //@ts-ignore
-    const kid = verifiedData.kid as string;
+    const kid = verifiedData.kid;
 
     return { id, kid };
   }
@@ -543,7 +586,7 @@ class SessionManager {
 
       const prisma = await createPrismaClient();
 
-      const { id, kid } = await this.tokenResolver(refreshToken);
+      const { id, kid } = await this.tokenResolver(refreshToken as string);
 
       if (!id || !kid) {
         return res
@@ -591,18 +634,23 @@ class SessionManager {
       );
       const isDevelopment = process.env.NODE_ENV === 'development';
 
+      // Get configurable access token expiry
+      const accessTokenMaxAge = parseExpiryToMs(
+        refreshConfig.encryptions.accessTokenExpiresIn || '15m'
+      );
+
       // Set new access token cookie with enhanced cross-domain settings
       res.cookie('access_token', newToken, {
         httpOnly: true,
         secure: this.secureCookie || isDevServer,
         sameSite: isDevServer || !isDevelopment ? 'none' : 'lax',
         path: '/',
-        maxAge: 1000 * 60 * 15, // 15 minutes
+        maxAge: accessTokenMaxAge, // Configurable access token expiry
         domain: isDevServer ? '.hashbuzz.social' : undefined,
       });
 
-      // Calculate the actual expiry timestamp for the token (15 minutes from now)
-      const tokenExpiresAt = Date.now() + 15 * 60 * 1000;
+      // Calculate the actual expiry timestamp for the token
+      const tokenExpiresAt = Date.now() + accessTokenMaxAge;
 
       return res.status(OK).json({
         message: 'Token refreshed successfully',
@@ -622,17 +670,24 @@ class SessionManager {
     try {
       const deviceId = req.deviceId;
       const userId = req.userId;
-      if (!deviceId || !userId)
-        throw new ErrorWithCode('Invalid request', BAD_REQUEST);
+
+      // Handle unauthenticated users (no userId/deviceId from optionalAuth middleware)
+      if (!deviceId || !userId) {
+        return res.status(UNAUTHORIZED).json({
+          isAuthenticated: false,
+          message: 'No active session found. Please initiate authentication.',
+        });
+      }
 
       // check if any existing  session for the user is exist or not
       const session = await this.findSession(userId, deviceId);
       const config = await getConfig();
 
       if (!session) {
-        return res.unauthorized(
-          'No active session found. Please intitate authentication.'
-        );
+        return res.status(UNAUTHORIZED).json({
+          isAuthenticated: false,
+          message: 'No active session found. Please initiate authentication.',
+        });
       }
 
       // Get user data with proper include to ensure we have user_user relation
