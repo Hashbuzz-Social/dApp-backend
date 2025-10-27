@@ -1,4 +1,8 @@
-import { parseRedisURL, safeParsedData } from '@V201/modules/common';
+import {
+  parseRedisURL,
+  safeParsedData,
+  safeStringifyData,
+} from '@V201/modules/common';
 import { ScheduledJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
 import { ScheduledEvent } from './AppEvents';
@@ -94,7 +98,7 @@ class SchedulerQueue {
     const delay = jobData.executeAt.getTime() - Date.now();
 
     // Create unique job ID to prevent duplicates
-    const jobId = `${jobType}-${JSON.stringify(
+    const jobId = `${jobType}-${safeStringifyData(
       jobData.data
     )}-${jobData.executeAt.getTime()}`;
 

@@ -268,6 +268,11 @@ export const handleCampaignPublishTransaction = async ({
 
     throw new Error('Unsupported card type for smart contract transaction');
   } catch (error) {
+    const errorStack =
+      error instanceof Error
+        ? error.stack || 'No stack trace available'
+        : 'No stack trace available';
+
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId: card.id, userId: cardOwner.id },
       atStage: 'HandleCampaignPublishTransaction',
@@ -282,6 +287,7 @@ export const handleCampaignPublishTransaction = async ({
         error instanceof Error ? error.message : String(error)
       }`
     );
+    logger.err(`Stack trace: ${errorStack}`);
     throw error;
   }
 };

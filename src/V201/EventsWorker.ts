@@ -154,8 +154,20 @@ const processEvent = async (
           break;
         }
 
+        // Handle dead letter events - log only, do not reprocess to avoid error loops
         default:
-          Logger.warn(`Unhandled event type: ${eventType}`);
+          if (eventType.startsWith('DEAD_LETTER_')) {
+            Logger.warn(`Dead letter event received: ${eventType}`);
+            Logger.info(
+              `Dead letter event stored for manual review. Original event: ${String(
+                payload.originalEventType
+              )}, Error: ${String(payload.error)}`
+            );
+            // Dead letter events are stored in the database for manual review
+            // They should NOT be automatically reprocessed to avoid infinite error loops
+          } else {
+            Logger.warn(`Unhandled event type: ${eventType}`);
+          }
           break;
       }
     }

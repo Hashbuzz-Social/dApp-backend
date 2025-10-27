@@ -52,6 +52,11 @@ export const startPublishingCampaign = async (
       card,
     });
   } catch (error) {
+    const errorStack =
+      error instanceof Error
+        ? error.stack || 'No stack trace available'
+        : 'No stack trace available';
+
     publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
       campaignMeta: { campaignId, userId },
       atStage: 'startPublishingCampaign',
@@ -62,6 +67,7 @@ export const startPublishingCampaign = async (
           : error,
     });
     logger.err('Error in startPublishingCampaign: ' + (error instanceof Error ? error.message : String(error)));
+    logger.err(`Stack trace: ${errorStack}`);
     throw error;
   }
 };

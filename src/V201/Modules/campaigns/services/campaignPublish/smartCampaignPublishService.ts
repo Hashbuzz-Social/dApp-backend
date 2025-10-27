@@ -111,7 +111,12 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error in smart campaign publish: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       return {
         success: false,
@@ -160,7 +165,13 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
+
       logger.err(`Error in fresh publish: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       // Publish error event
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
@@ -210,7 +221,12 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error resuming from smart contract: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
         campaignMeta: {
@@ -258,7 +274,12 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error resuming from second tweet: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
         campaignMeta: {

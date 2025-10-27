@@ -29,74 +29,7 @@ export interface EnhancedEvent {
 }
 
 export class EnhancedEventSystem {
-  private static readonly MAX_RETRIES = 3;
-  private static readonly RETRY_DELAY_MS = 5000;
-
-  // Circuit breaker state tracking
-  private static readonly circuitBreakerMap = new Map<
-    string,
-    {
-      failures: number;
-      lastFailure: number;
-      isOpen: boolean;
-    }
-  >();
-
-  /**
-   * Check if circuit breaker should prevent retry for this error pattern
-   */
-  private static isCircuitBreakerOpen(
-    eventType: string,
-    errorMessage: string
-  ): boolean {
-    const key = `${eventType}:${errorMessage.substring(0, 50)}`;
-    const circuitState = this.circuitBreakerMap.get(key);
-
-    if (!circuitState) return false;
-
-    const now = Date.now();
-    const resetTime = 30 * 60 * 1000; // 30 minutes
-
-    // Reset circuit breaker after timeout
-    if (circuitState.isOpen && now - circuitState.lastFailure > resetTime) {
-      circuitState.isOpen = false;
-      circuitState.failures = 0;
-      return false;
-    }
-
-    return circuitState.isOpen;
-  }
-
-  /**
-   * Update circuit breaker state on failure
-   */
-  private static updateCircuitBreaker(
-    eventType: string,
-    errorMessage: string
-  ): void {
-    const key = `${eventType}:${errorMessage.substring(0, 50)}`;
-    const circuitState = this.circuitBreakerMap.get(key) || {
-      failures: 0,
-      lastFailure: 0,
-      isOpen: false,
-    };
-
-    circuitState.failures++;
-    circuitState.lastFailure = Date.now();
-
-    // Open circuit breaker after 5 consecutive failures
-    if (circuitState.failures >= 5) {
-      circuitState.isOpen = true;
-      logger.warn(
-        `Circuit breaker opened for ${eventType} with error: ${errorMessage.substring(
-          0,
-          100
-        )}`
-      );
-    }
-
-    this.circuitBreakerMap.set(key, circuitState);
-  }
+  // No retry logic - all failed events go directly to dead letter
 
   /**
    * Enhanced event publishing with better error handling and status tracking
@@ -117,10 +50,11 @@ export class EnhancedEventSystem {
       const savedEvent = await prisma.eventOutBox.create({
         data: {
           event_type: eventType as string,
-          payload: JSON.stringify({
+          payload: safeStringifyData({
             ...payload,
             _metadata: {
-              maxRetries: options?.maxRetries ?? this.MAX_RETRIES,
+              // No retries - events that fail go directly to dead letter
+              maxRetries: 0,
               priority: options?.priority ?? 'normal',
               delayMs: options?.delayMs ?? 0,
               createdAt: new Date().toISOString(),
@@ -146,11 +80,17 @@ export class EnhancedEventSystem {
       logger.info(`Event published: ${eventType} (ID: ${savedEvent.id})`);
       return savedEvent.id;
     } catch (error) {
+      const publishErrorMessage =
+        error instanceof Error ? error.message : String(error);
+      const publishErrorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
+
       logger.err(
-        `Failed to publish event ${eventType}: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Failed to publish event ${eventType}: ${publishErrorMessage}`
       );
+      logger.err(`Publish error stack trace: ${publishErrorStack}`);
       return null;
     }
   }
@@ -179,11 +119,17 @@ export class EnhancedEventSystem {
       );
       return true;
     } catch (error) {
+      const eventErrorMessage =
+        error instanceof Error ? error.message : String(error);
+      const eventErrorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
+
       logger.err(
-        `Error processing event ${eventType} (ID: ${eventId}): ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Error processing event ${eventType} (ID: ${eventId}): ${eventErrorMessage}`
       );
+      logger.err(`Stack trace: ${eventErrorStack}`);
 
       // Check if this event type should never be retried
       if (this.isNoRetryEvent(eventType)) {
@@ -199,51 +145,20 @@ export class EnhancedEventSystem {
         return false;
       }
 
-      // Check if this is a Twitter rate limit error
-      const errorMessage =
+      // ALL ERRORS go directly to dead letter - no retries
+      const deadLetterErrorMessage =
         error instanceof Error ? error.message : String(error);
-      if (this.isTwitterRateLimitError(errorMessage)) {
-        logger.warn(
-          `Twitter rate limit detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`
-        );
-        await this.moveToDeadLetter(
-          eventId,
-          eventType,
-          payload,
-          error as Error
-        );
-        return false;
-      }
+      const deadLetterErrorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
 
-      // Check if this is a smart contract failure
-      if (this.isSmartContractError(errorMessage)) {
-        logger.warn(
-          `Smart contract error detected for event ${eventType} (ID: ${eventId}). Moving to dead letter without retry.`
-        );
-        await this.moveToDeadLetter(
-          eventId,
-          eventType,
-          payload,
-          error as Error
-        );
-        return false;
-      }
-
-      // Handle retry logic for other errors
-      const shouldRetry = await this.handleEventFailure(
-        eventId,
-        eventType,
-        payload,
-        error as Error
+      logger.warn(
+        `Event ${eventType} (ID: ${eventId}) failed. Moving to dead letter for manual review. Error: ${deadLetterErrorMessage}`
       );
+      logger.err(`Full stack trace: ${deadLetterErrorStack}`);
 
-      if (shouldRetry) {
-        // NO LONGER SCHEDULING RECURSIVE RETRIES VIA TIMEOUT
-        // Instead, the event will be requeued through the proper event queue mechanism
-        logger.info(
-          `Event ${eventType} (ID: ${eventId}) will be retried via queue mechanism`
-        );
-      }
+      await this.moveToDeadLetter(eventId, eventType, payload, error as Error);
 
       return false;
     }
@@ -282,124 +197,6 @@ export class EnhancedEventSystem {
       errorMessage.includes('Contract ID is undefined') ||
       errorMessage.includes('Failed to update contract state')
     );
-  }
-
-  /**
-   * Handle event failure with retry logic
-   */
-  private static async handleEventFailure(
-    eventId: bigint,
-    eventType: string,
-    payload: any,
-    error: Error
-  ): Promise<boolean> {
-    const prisma = await createPrismaClient();
-
-    try {
-      const event = await prisma.eventOutBox.findUnique({
-        where: { id: eventId },
-      });
-
-      if (!event) {
-        logger.warn(`Event ${eventId} not found for retry handling`);
-        return false;
-      }
-
-      const payloadData = JSON.parse(event.payload as string);
-      const metadata = payloadData._metadata || {};
-      const retryCount = (metadata.retryCount || 0) + 1;
-      const maxRetries = metadata.maxRetries || this.MAX_RETRIES;
-
-      if (retryCount <= maxRetries) {
-        // Check circuit breaker before allowing retry
-        if (this.isCircuitBreakerOpen(eventType, error.message)) {
-          logger.warn(
-            `Circuit breaker is open for ${eventType}. Moving to dead letter without retry.`
-          );
-          await this.moveToDeadLetter(eventId, eventType, payload, error);
-          return false;
-        }
-
-        // Update circuit breaker state
-        this.updateCircuitBreaker(eventType, error.message);
-
-        // Calculate exponential backoff delay
-        const baseDelayMs = 5000; // 5 seconds
-        const delayMs = Math.min(
-          baseDelayMs * Math.pow(2, retryCount - 1), // Exponential backoff
-          300000 // Max 5 minutes
-        );
-
-        // Update retry count and status
-        await prisma.eventOutBox.update({
-          where: { id: eventId },
-          data: {
-            payload: JSON.stringify({
-              ...payloadData,
-              _metadata: {
-                ...metadata,
-                retryCount,
-                lastError: error.message,
-                lastRetryAt: new Date().toISOString(),
-                nextRetryAt: new Date(Date.now() + delayMs).toISOString(),
-              },
-            }),
-          },
-        });
-
-        // Requeue the event with delay (instead of setTimeout recursion)
-        const { publishToQueue } = await import('./redisQueue');
-        setTimeout(() => {
-          (async () => {
-            try {
-              await publishToQueue('event-queue', {
-                eventType,
-                payload: {
-                  ...payload,
-                  _retryAttempt: retryCount,
-                },
-                eventId: Number(eventId),
-                priority: 'low', // Lower priority for retries
-              });
-              logger.info(
-                'Requeued event for retry - EventType: ' +
-                  eventType +
-                  ', ID: ' +
-                  eventId +
-                  ', Attempt: ' +
-                  retryCount +
-                  '/' +
-                  maxRetries +
-                  ', Delay: ' +
-                  delayMs +
-                  'ms'
-              );
-            } catch (requeueError) {
-              logger.err(
-                `Failed to requeue event ${String(eventId)}: ${
-                  requeueError instanceof Error
-                    ? requeueError.message
-                    : String(requeueError)
-                }`
-              );
-            }
-          })();
-        }, delayMs);
-
-        return true; // Should retry
-      } else {
-        // Move to dead letter queue
-        await this.moveToDeadLetter(eventId, eventType, payload, error);
-        return false; // Don't retry
-      }
-    } catch (err) {
-      logger.err(
-        `Failed to handle event failure for ${eventId}: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
-      return false;
-    }
   }
 
   /**
@@ -511,7 +308,10 @@ export class EnhancedEventSystem {
   }
 
   /**
-   * Reprocess dead letter events (for recovery)
+   * Reprocess dead letter events (for MANUAL recovery only)
+   * WARNING: This should only be used for manual recovery by administrators.
+   * Automatic reprocessing of dead letter events can create infinite error loops.
+   * Use with caution and only after fixing the underlying issue that caused the dead letter.
    */
   static async reprocessDeadLetterEvents(limit = 10): Promise<number> {
     const prisma = await createPrismaClient();
@@ -534,11 +334,10 @@ export class EnhancedEventSystem {
           const originalEventType = payloadData.originalEventType;
           const originalPayload = payloadData.originalPayload;
 
-          // Republish the event
+          // Republish the event (no retries, will go to dead letter again if it fails)
           const newEventId = await this.publishEvent(
             originalEventType,
-            originalPayload,
-            { maxRetries: 1 }
+            originalPayload
           );
 
           if (newEventId) {
