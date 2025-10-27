@@ -46,7 +46,7 @@ export class EnhancedEventSystem {
     const prisma = await createPrismaClient();
 
     try {
-      // Save event with PENDING status
+      // Save event with PENDING status and zero retry policy
       const savedEvent = await prisma.eventOutBox.create({
         data: {
           event_type: eventType as string,
@@ -60,9 +60,11 @@ export class EnhancedEventSystem {
               createdAt: new Date().toISOString(),
             },
           }),
+          // Explicitly set zero retry policy
+          max_retries: 0,
+          retry_count: 0,
           // Add status field (requires schema update)
           // status: EventStatus.PENDING,
-          // retry_count: 0
         },
       });
 
@@ -131,49 +133,17 @@ export class EnhancedEventSystem {
       );
       logger.err(`Stack trace: ${eventErrorStack}`);
 
-      // Check if this event type should never be retried
-      if (this.isNoRetryEvent(eventType)) {
-        logger.warn(
-          `Event ${eventType} (ID: ${eventId}) is configured for NO RETRY. Moving to dead letter.`
-        );
-        await this.moveToDeadLetter(
-          eventId,
-          eventType,
-          payload,
-          error as Error
-        );
-        return false;
-      }
-
-      // ALL ERRORS go directly to dead letter - no retries
-      const deadLetterErrorMessage =
-        error instanceof Error ? error.message : String(error);
-      const deadLetterErrorStack =
-        error instanceof Error
-          ? error.stack || 'No stack trace available'
-          : 'No stack trace available';
-
+      // NO RETRY POLICY: All errors go directly to dead letter
+      // This ensures failed events are logged for manual review without automatic retries
       logger.warn(
-        `Event ${eventType} (ID: ${eventId}) failed. Moving to dead letter for manual review. Error: ${deadLetterErrorMessage}`
+        `Event ${eventType} (ID: ${eventId}) failed. Moving to dead letter for manual review. Error: ${eventErrorMessage}`
       );
-      logger.err(`Full stack trace: ${deadLetterErrorStack}`);
+      logger.err(`Full stack trace: ${eventErrorStack}`);
 
       await this.moveToDeadLetter(eventId, eventType, payload, error as Error);
 
       return false;
     }
-  }
-
-  /**
-   * Check if event type should never be retried
-   * These events collect engagement data and should not retry to avoid duplicate/inconsistent data
-   */
-  private static isNoRetryEvent(eventType: string): boolean {
-    const noRetryEvents = [
-      'CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_LIKE_AND_RETWEET',
-      'CAMPAIGN_CLOSING_COLLECT_ENGAGEMENT_DATA_QUOTE_AND_REPLY',
-    ];
-    return noRetryEvents.includes(eventType);
   }
 
   /**
@@ -211,33 +181,89 @@ export class EnhancedEventSystem {
     const prisma = await createPrismaClient();
 
     try {
-      // Create dead letter record
-      await prisma.eventOutBox.update({
+      // First check if the event exists
+      const existingEvent = await prisma.eventOutBox.findUnique({
         where: { id: eventId },
-        data: {
-          event_type: `DEAD_LETTER_${eventType}`,
-          // Use safeStringifyData to handle BigInt and similar types reliably
-          payload: safeStringifyData({
-            originalEventType: eventType,
-            originalPayload: payload,
-            error: error.message,
-            movedAt: new Date().toISOString(),
-          }),
-        },
       });
 
-      logger.warn(
-        `Event moved to dead letter queue: ${eventType} (ID: ${eventId})`
-      );
+      if (existingEvent) {
+        // Update existing event to dead letter
+        await prisma.eventOutBox.update({
+          where: { id: eventId },
+          data: {
+            event_type: `DEAD_LETTER_${eventType}`,
+            // Use safeStringifyData to handle BigInt and similar types reliably
+            payload: safeStringifyData({
+              originalEventType: eventType,
+              originalPayload: payload,
+              error: error.message,
+              errorStack: error.stack,
+              movedAt: new Date().toISOString(),
+            }),
+          },
+        });
+        logger.warn(
+          `Event moved to dead letter queue: ${eventType} (ID: ${eventId})`
+        );
+      } else {
+        // Create new dead letter record if original event doesn't exist
+        const deadLetterEvent = await prisma.eventOutBox.create({
+          data: {
+            event_type: `DEAD_LETTER_${eventType}`,
+            payload: safeStringifyData({
+              originalEventType: eventType,
+              originalPayload: payload,
+              error: error.message,
+              errorStack: error.stack,
+              movedAt: new Date().toISOString(),
+              note: 'Created as dead letter - original event record not found',
+            }),
+          },
+        });
+        logger.warn(
+          `Created new dead letter event: ${eventType} (New ID: ${deadLetterEvent.id}, Original ID: ${eventId})`
+        );
+      }
 
       // Optionally notify administrators about dead letter events
       // await this.notifyDeadLetterEvent(eventId, eventType, error);
     } catch (err) {
+      const deadLetterError = err instanceof Error ? err.message : String(err);
+      const deadLetterStack =
+        err instanceof Error
+          ? err.stack || 'No stack trace available'
+          : 'No stack trace available';
+
       logger.err(
-        `Failed to move event ${eventId} to dead letter queue: ${
-          err instanceof Error ? err.message : String(err)
-        }`
+        `Failed to move event ${eventId} to dead letter queue: ${deadLetterError}`
       );
+      logger.err(`Dead letter creation stack trace: ${deadLetterStack}`);
+
+      // Try to create a dead letter record about this failure
+      try {
+        await prisma.eventOutBox.create({
+          data: {
+            event_type: `DEAD_LETTER_SYSTEM_ERROR`,
+            payload: safeStringifyData({
+              originalEventType: eventType,
+              originalPayload: payload,
+              originalError: error.message,
+              deadLetterCreationError: deadLetterError,
+              movedAt: new Date().toISOString(),
+              note: 'Dead letter creation failed - this is a system error record',
+            }),
+          },
+        });
+        logger.warn(
+          'Created system error dead letter record for failed dead letter creation'
+        );
+      } catch (finalErr) {
+        const finalError =
+          finalErr instanceof Error ? finalErr.message : String(finalErr);
+        logger.err(
+          `Complete failure: Could not even create system error record: ${finalError}`
+        );
+      }
     }
   }
 

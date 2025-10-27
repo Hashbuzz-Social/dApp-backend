@@ -321,8 +321,9 @@ export class CampaignClosingService {
       await this.ensureInitialized();
 
       if (!this.prisma || !this.campaignLogger) {
-        logger.err('Services not initialized for error handling');
-        return;
+        const errorMsg = 'Services not initialized for error handling';
+        logger.err(errorMsg);
+        throw new Error(errorMsg);
       }
 
       // Update campaign status to error

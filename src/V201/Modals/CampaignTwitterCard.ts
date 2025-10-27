@@ -162,6 +162,8 @@ class CampaignTwitterCardModel {
           correct_answer: true,
           campaign_budget: true,
           campaign_type: true,
+          owner_id: true,
+          type: true,
           campaign_tweetengagements: {
             select: {
               id: true,

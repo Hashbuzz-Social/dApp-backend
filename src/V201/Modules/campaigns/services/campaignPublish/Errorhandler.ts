@@ -25,15 +25,15 @@ export const publshCampaignErrorHandler = async ({
   });
 
   if (!campaign) {
-    logger.err(
-      `Campaign ${campaignMeta.campaignId} not found in error handler`
-    );
-    return;
+    const errorMsg = `Campaign ${campaignMeta.campaignId} not found in error handler`;
+    logger.err(errorMsg);
+    throw new Error(errorMsg);
   }
 
   if (!user) {
-    logger.err(`User ${campaignMeta.userId} not found in error handler`);
-    return;
+    const errorMsg = `User ${campaignMeta.userId} not found in error handler`;
+    logger.err(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const errorContext = {

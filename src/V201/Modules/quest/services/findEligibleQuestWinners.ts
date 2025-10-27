@@ -3,7 +3,10 @@ import { payment_status, PrismaClient } from '@prisma/client';
 import logger from 'jet-logger';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { publishEvent } from '../../../eventPublisher';
-import { CampaignEvents } from '@V201/events/campaign';
+import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
+import SchedulerQueue from 'src/V201/schedulerQueue';
+import { getConfig } from '@appConfig';
+import { CampaignTypes } from '@V201/types';
 
 /**
  * Result interface for eligible quest winners
@@ -392,7 +395,33 @@ export class QuestWinnerService {
         campaignId: questId,
       });
 
-      // 8. Return summary result
+      // 9. Add Expiry Schedule
+
+      // Schedule Closing Event for the campaign with retry policies
+      const scheduler = await SchedulerQueue.getInstance();
+      const config = await getConfig();
+
+      const currentTime = new Date();
+      const campaignExpiryTime =
+        currentTime.getTime() +
+        config.app.defaultRewardClaimDuration * 60 * 1000;
+
+      await scheduler.addJob(
+        CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+        {
+          eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+          data: {
+            cardId: quest.id,
+            userId: quest.owner_id,
+            type: quest.type as CampaignTypes,
+            createdAt: currentTime,
+            expiryAt: new Date(campaignExpiryTime),
+          },
+          executeAt: new Date(campaignExpiryTime),
+        }
+      );
+
+      // 9. Return summary result
       return {
         questId,
         totalResponses,

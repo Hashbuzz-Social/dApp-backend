@@ -1,3 +1,4 @@
+import { getConfig } from '@appConfig';
 import {
   parseRedisURL,
   safeParsedData,
@@ -5,9 +6,8 @@ import {
 } from '@V201/modules/common';
 import { ScheduledJobPayloadMap } from '@V201/types';
 import { JobScheduler, JobsOptions, Queue } from 'bullmq';
-import { ScheduledEvent } from './AppEvents';
-import { getConfig } from '@appConfig';
 import { AppConfig } from 'src/@types/AppConfig';
+import { ScheduledEvent } from './AppEvents';
 
 /**
  * Defines the structure of a task scheduler job.
@@ -55,10 +55,6 @@ class SchedulerQueue {
     if (!this.queues.has(jobType)) {
       if (!this.configs) await this.initializeConfigs();
 
-      const redisConfig = parseRedisURL(
-        String(this.configs?.db?.redisServerURI || '')
-      );
-
       const queue = new Queue(jobType, {
         connection: {
           host: parseRedisURL(this.configs?.db?.redisServerURI ?? '').host,
@@ -105,14 +101,10 @@ class SchedulerQueue {
     await queue.add(jobData.eventName, safeParsedData(jobData), {
       jobId, // Add unique job ID to prevent duplicate scheduling
       delay,
-      // Prevent infinite retries at the job level
-      attempts: 3, // Maximum 3 attempts
-      backoff: {
-        type: 'exponential' as const,
-        delay: 5000, // Start with 5 second delay
-      },
+      // Zero retry policy - failed jobs go directly to dead letter
+      attempts: 1, // No retries - single attempt only
       removeOnComplete: 50, // Keep 50 successful jobs
-      removeOnFail: 100, // Keep 100 failed jobs for debugging
+      removeOnFail: false, // Keep all failed jobs for dead letter analysis
       ...options,
     });
     // Job added: type=${jobType}, event=${jobData.eventName}, executeAt=${jobData.executeAt.toISOString()}, delay=${delay}ms, jobId=${jobId}
