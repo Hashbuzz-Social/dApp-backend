@@ -21,6 +21,7 @@ import { Request, Response } from 'express';
 import statusCodes from 'http-status-codes';
 import JSONBigInt from 'json-bigint';
 import { CreateTranSactionEntity } from 'src/@types/custom';
+import { safeJsonStringify } from '../utils/bigintSerializer';
 import logger from '../config/logger';
 
 const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } =
@@ -143,7 +144,9 @@ export const handleTopUp = async (req: Request, res: Response) => {
       response,
     };
     logger.err(
-      `Error while processing top-up request: ${JSON.stringify(errorDetails)}`
+      `Error while processing top-up request: ${safeJsonStringify(
+        errorDetails
+      )}`
     );
 
     // Optionally, you can send an error response to the client
