@@ -7,28 +7,52 @@ dotenv.config();
 
 (async () => {
     try {
-        // Define paths and filenames
-        const distPath = "./dist/";
-        const packageJson = await fs.readJson('./package.json');
-        const version = packageJson.version;
-        const logFileName = `build_${version}_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
-        const logFilePath = path.join(distPath, logFileName);
+      // Define paths and filenames
+      const distPath = './dist/';
+      const packageJson = await fs.readJson('./package.json');
+      const version = packageJson.version;
+      const logFileName = `build_${version}_${new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')}.log`;
+      const logFilePath = path.join(distPath, logFileName);
 
-        await setupLogging();
+      await setupLogging();
 
-        // Remove current build
-        await logAndExecute("Removing current build", remove, distPath);
+      // Remove current build
+      await logAndExecute('Removing current build', remove, distPath);
 
-        // Copy front-end files
-        await logAndExecute("Copying front-end files", copy, "./src/public", path.join(distPath, "public"));
-        await logAndExecute("Copying front-end views", copy, "./src/views", path.join(distPath, "views"));
+      // Copy front-end files
+      await logAndExecute(
+        'Copying front-end files',
+        copy,
+        './src/public',
+        path.join(distPath, 'public')
+      );
+      await logAndExecute(
+        'Copying front-end views',
+        copy,
+        './src/views',
+        path.join(distPath, 'views')
+      );
 
-        // Copy back-end files
-        await logAndExecute("Compiling TypeScript files", exec, "tsc --build tsconfig.prod.json", "./");
+      // Copy back-end files
+      await logAndExecute(
+        'Compiling TypeScript files',
+        exec,
+        'tsc --build tsconfig.prod.json',
+        './'
+      );
 
-        // Log the build
-        await logBuild(logFilePath);
+      // Transform path aliases to relative paths
+      await logAndExecute(
+        'Transforming path aliases',
+        exec,
+        'tsc-alias -p tsconfig.prod.json',
+        './'
+      );
 
+      // Log the build
+      await logBuild(logFilePath);
     } catch (err) {
         console.error("Build failed:", err);
     }
