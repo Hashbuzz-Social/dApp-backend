@@ -467,7 +467,7 @@ export class TwitterCardService {
       const options =
         Array.isArray(card.question_options) && card.question_options.length > 0
           ? card.question_options
-              .map((opt, i) => `${i + 1}. ${String(opt)}`)
+              .map((opt, i) => `${String.fromCharCode(65 + i)}. ${String(opt)}`)
               .join('\n')
           : '';
       tweetText = `${card.tweet_text}${options ? `\n\n${options}` : ''}`.trim();
