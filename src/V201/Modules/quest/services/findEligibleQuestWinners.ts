@@ -80,9 +80,9 @@ export class QuestWinnerService {
     if (!content) return '';
 
     // Remove @mentions (including the account being replied to)
-    // Pattern matches @username followed by optional space
+    // Pattern matches @username (letters, numbers, underscores) followed by at least one space
     const withoutMentions = content
-      .replace(/@\w+\s*/g, '') // Remove @mentions
+      .replace(/@[A-Za-z0-9_]+\s+/g, '') // Remove @mentions
       .trim() // Remove leading/trailing whitespace
       .toLowerCase(); // Convert to lowercase for comparison
 
