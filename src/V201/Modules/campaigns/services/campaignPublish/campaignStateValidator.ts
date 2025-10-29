@@ -71,11 +71,16 @@ export class CampaignPublishStateValidator {
         data: log.data,
       }));
     } catch (error) {
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(
         `Failed to fetch campaign logs for campaign ${String(
           campaignId
         )}: ${String(error)}`
       );
+      logger.err(`Stack trace: ${errorStack}`);
       return [];
     }
   }
@@ -162,11 +167,16 @@ export class CampaignPublishStateValidator {
 
       return stateInfo;
     } catch (error) {
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(
         `Error analyzing campaign state: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
+      logger.err(`Stack trace: ${errorStack}`);
       throw error;
     }
   }
@@ -351,11 +361,16 @@ export class CampaignPublishStateValidator {
         validationMessage,
       };
     } catch (error) {
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(
         `Validation error: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
+      logger.err(`Stack trace: ${errorStack}`);
       throw error;
     }
   }

@@ -8,6 +8,7 @@ import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
 import { CampaignTypes, EventPayloadMap } from '@V201/types';
 import { publishEvent } from '../../../../eventPublisher';
 import SchedulerQueue from '../../../../schedulerQueue';
+import logger from '../../../../../config/logger';
 
 export const publishCampaignContentHandler = async ({
   cardOwner,
@@ -15,38 +16,60 @@ export const publishCampaignContentHandler = async ({
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_CONTENT]): Promise<void> => {
   const prisma = await createPrismaClient();
 
-  // Fetch fresh data from database
-  const freshCard = await prisma.campaign_twittercard.findUnique({
-    where: { id: card.id },
-  });
-  const freshCardOwner = await prisma.user_user.findUnique({
-    where: { id: cardOwner.id },
-  });
+  try {
+    // Fetch fresh data from database
+    const freshCard = await prisma.campaign_twittercard.findUnique({
+      where: { id: card.id },
+    });
+    const freshCardOwner = await prisma.user_user.findUnique({
+      where: { id: cardOwner.id },
+    });
 
-  if (!freshCard) {
-    throw new Error('Campaign card not found');
-  }
-  if (!freshCardOwner) {
-    throw new Error('Card owner not found');
-  }
-
-  const tweetId = await tweetService.publishFirstTweet(
-    freshCard,
-    freshCardOwner
-  );
-  if (freshCard.contract_id) {
-    // Note: In-memory status update removed as requested
-  }
-  const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
-    freshCard.id,
-    {
-      tweet_id: tweetId,
+    if (!freshCard) {
+      throw new Error('Campaign card not found');
     }
-  );
-  publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION, {
-    cardOwner: freshCardOwner,
-    card: updatedCard,
-  });
+    if (!freshCardOwner) {
+      throw new Error('Card owner not found');
+    }
+
+    const tweetId = await tweetService.publishFirstTweet(
+      freshCard,
+      freshCardOwner
+    );
+    if (freshCard.contract_id) {
+      // Note: In-memory status update removed as requested
+    }
+    const updatedCard = await new CampaignTwitterCardModel(
+      prisma
+    ).updateCampaign(freshCard.id, {
+      tweet_id: tweetId,
+    });
+    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_DO_SM_TRANSACTION, {
+      cardOwner: freshCardOwner,
+      card: updatedCard,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack =
+      error instanceof Error
+        ? error.stack || 'No stack trace available'
+        : 'No stack trace available';
+
+    // Log the full error with stack trace
+    logger.err(`Error in publishCampaignContentHandler: ${errorMessage}`);
+    logger.err(`Stack trace: ${errorStack}`);
+
+    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
+      campaignMeta: { campaignId: card.id, userId: cardOwner.id },
+      atStage: 'publishCampaignContentHandler',
+      message: errorMessage,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
+    });
+    throw error;
+  }
 };
 
 export const publishCampaignSecondContent = async ({
@@ -55,69 +78,91 @@ export const publishCampaignSecondContent = async ({
 }: EventPayloadMap[CampaignEvents.CAMPAIGN_PUBLISH_SECOND_CONTENT]): Promise<void> => {
   const prisma = await createPrismaClient();
 
-  // Fetch fresh data from database
-  const freshCard = await prisma.campaign_twittercard.findUnique({
-    where: { id: card.id },
-  });
-  const freshCardOwner = await prisma.user_user.findUnique({
-    where: { id: cardOwner.id },
-  });
+  try {
+    // Fetch fresh data from database
+    const freshCard = await prisma.campaign_twittercard.findUnique({
+      where: { id: card.id },
+    });
+    const freshCardOwner = await prisma.user_user.findUnique({
+      where: { id: cardOwner.id },
+    });
 
-  if (!freshCard) {
-    throw new Error('Campaign card not found');
-  }
-  if (!freshCardOwner) {
-    throw new Error('Card owner not found');
-  }
+    if (!freshCard) {
+      throw new Error('Campaign card not found');
+    }
+    if (!freshCardOwner) {
+      throw new Error('Card owner not found');
+    }
 
-  if (!freshCard.tweet_id) {
-    throw new Error('First tweet not published');
-  }
-  const currentTime = new Date();
-  const configs = await getConfig();
+    if (!freshCard.tweet_id) {
+      throw new Error('First tweet not published');
+    }
+    const currentTime = new Date();
+    const configs = await getConfig();
 
-  const campaignDurationInMin = configs.app.defaultCampaignDuration;
+    const campaignDurationInMin = configs.app.defaultCampaignDuration;
 
-  // publish second tweet
-  const lastTweetThreadId = await tweetService.publishSecondThread(
-    freshCard,
-    freshCardOwner,
-    freshCard.tweet_id
-  );
+    // publish second tweet
+    const lastTweetThreadId = await tweetService.publishSecondThread(
+      freshCard,
+      freshCardOwner,
+      freshCard.tweet_id
+    );
 
-  // update campaign status
-  if (freshCard.contract_id) {
-    // Note: In-memory status update removed as requested
-  }
+    // update campaign status
+    if (freshCard.contract_id) {
+      // Note: In-memory status update removed as requested
+    }
 
-  const campaignCloseTime = addMinutesToTime(
-    currentTime.toISOString(),
-    campaignDurationInMin
-  );
+    const campaignCloseTime = addMinutesToTime(
+      currentTime.toISOString(),
+      campaignDurationInMin
+    );
 
-  // update campaign status in db
-  const updatedCard = await new CampaignTwitterCardModel(prisma).updateCampaign(
-    freshCard.id,
-    {
+    // update campaign status in db
+    const updatedCard = await new CampaignTwitterCardModel(
+      prisma
+    ).updateCampaign(freshCard.id, {
       card_status: campaignstatus.CampaignRunning,
       last_thread_tweet_id: lastTweetThreadId,
       campaign_start_time: currentTime.toISOString(),
       campaign_close_time: campaignCloseTime,
-    }
-  );
+    });
 
-  // Schedule Closing Event for the campaign with retry policies
-  const scheduler = await SchedulerQueue.getInstance();
+    // Schedule Closing Event for the campaign with retry policies
+    const scheduler = await SchedulerQueue.getInstance();
 
-  await scheduler.addJob(CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
-    eventName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
-    data: {
-      cardId: updatedCard.id,
-      userId: freshCardOwner.id,
-      type: updatedCard.type as CampaignTypes,
-      createdAt: currentTime,
-      tweetId: updatedCard.tweet_id || '',
-    },
-    executeAt: new Date(campaignCloseTime),
-  });
+    await scheduler.addJob(CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION, {
+      eventName: CampaignScheduledEvents.CAMPAIGN_CLOSE_OPERATION,
+      data: {
+        cardId: updatedCard.id,
+        userId: freshCardOwner.id,
+        type: updatedCard.type as CampaignTypes,
+        createdAt: currentTime,
+        tweetId: updatedCard.tweet_id || '',
+      },
+      executeAt: new Date(campaignCloseTime),
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack =
+      error instanceof Error
+        ? error.stack || 'No stack trace available'
+        : 'No stack trace available';
+
+    // Log the full error with stack trace
+    logger.err(`Error in publishCampaignSecondContent: ${errorMessage}`);
+    logger.err(`Stack trace: ${errorStack}`);
+
+    publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
+      campaignMeta: { campaignId: card.id, userId: cardOwner.id },
+      atStage: 'publishCampaignSecondContent',
+      message: errorMessage,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
+    });
+    throw error;
+  }
 };

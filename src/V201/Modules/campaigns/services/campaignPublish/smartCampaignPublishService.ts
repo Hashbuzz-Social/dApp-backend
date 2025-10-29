@@ -111,7 +111,12 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error in smart campaign publish: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       return {
         success: false,
@@ -160,14 +165,27 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
+
       logger.err(`Error in fresh publish: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       // Publish error event
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'startFreshPublish',
         message: errorMessage,
-        error,
+        // Serialize Error to plain object to avoid issues when persisting/queueing
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;
@@ -203,13 +221,24 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error resuming from smart contract: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'resumeFromSmartContract',
         message: errorMessage,
-        error: error as Error,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;
@@ -245,13 +274,24 @@ export class SmartCampaignPublishService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack =
+        error instanceof Error
+          ? error.stack || 'No stack trace available'
+          : 'No stack trace available';
       logger.err(`Error resuming from second tweet: ${errorMessage}`);
+      logger.err(`Stack trace: ${errorStack}`);
 
       publishEvent(CampaignEvents.CAMPAIGN_PUBLISH_ERROR, {
-        campaignMeta: { campaignId: stateInfo.campaign.id, userId: stateInfo.campaign.owner_id },
+        campaignMeta: {
+          campaignId: stateInfo.campaign.id,
+          userId: stateInfo.campaign.owner_id,
+        },
         atStage: 'resumeFromSecondTweet',
         message: errorMessage,
-        error: error as Error,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
       });
 
       throw error;

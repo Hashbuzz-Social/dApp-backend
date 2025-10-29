@@ -306,7 +306,7 @@ export const processQuoteAndReplyCollection = async (
     let botDetectedCount = 0;
     let validEngagementCount = 0;
 
-    const toEngagement = (
+    const toEngagement = async (
       tweet: TweetV2,
       usersMap: Map<string, UserV2>,
       type: 'quote' | 'reply'
@@ -321,7 +321,7 @@ export const processQuoteAndReplyCollection = async (
 
       const user = usersMap.get(authorId);
       if (user) {
-        const botMetrics = detectBotEngagement(user);
+        const botMetrics = await detectBotEngagement(user);
         isBotEngagement = !!botMetrics.isBotEngagement;
         if (isBotEngagement) {
           botDetectedCount++;
@@ -359,12 +359,12 @@ export const processQuoteAndReplyCollection = async (
       };
     };
 
-    const quoteEngagements = (quotes.tweets || []).map((t) =>
-      toEngagement(t, quotes.users, 'quote')
+    const quoteEngagements = await Promise.all(
+      (quotes.tweets || []).map((t) => toEngagement(t, quotes.users, 'quote'))
     );
 
-    const replyEngagements = (replies.tweets || []).map((t) =>
-      toEngagement(t, replies.users, 'reply')
+    const replyEngagements = await Promise.all(
+      (replies.tweets || []).map((t) => toEngagement(t, replies.users, 'reply'))
     );
 
     const allEngagements = [...quoteEngagements, ...replyEngagements];

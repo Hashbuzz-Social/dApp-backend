@@ -25,15 +25,15 @@ export const publshCampaignErrorHandler = async ({
   });
 
   if (!campaign) {
-    logger.err(
-      `Campaign ${campaignMeta.campaignId} not found in error handler`
-    );
-    return;
+    const errorMsg = `Campaign ${campaignMeta.campaignId} not found in error handler`;
+    logger.err(errorMsg);
+    throw new Error(errorMsg);
   }
 
   if (!user) {
-    logger.err(`User ${campaignMeta.userId} not found in error handler`);
-    return;
+    const errorMsg = `User ${campaignMeta.userId} not found in error handler`;
+    logger.err(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const errorContext = {
@@ -45,11 +45,24 @@ export const publshCampaignErrorHandler = async ({
     timestamp: new Date().toISOString(),
   };
 
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === 'object' && 'message' in (error as any)
+      ? (error as any).message
+      : String(error);
+
+  const errorStack =
+    error instanceof Error
+      ? error.stack
+      : error && typeof error === 'object' && 'stack' in (error as any)
+      ? (error as any).stack
+      : undefined;
+
   logger.err(
-    `Error in campaign publish event at stage ${atStage}:${errorMessage} | ${JSON.stringify(
-      errorContext
-    )}`
+    `Error in campaign publish event at stage ${String(atStage)}: ${String(
+      errorMessage
+    )} | ${JSON.stringify(errorContext)}`
   );
 
   // Log the error for debugging
@@ -57,7 +70,7 @@ export const publshCampaignErrorHandler = async ({
     campaign: { connect: { id: campaign.id } },
     status: campaignstatus.InternalError,
     message: `Campaign publish error at stage ${atStage}: ${message}`,
-    data: { message, error: errorMessage, stage: atStage },
+    data: { message, error: errorMessage, stack: errorStack, stage: atStage },
   });
 
   // Update campaign status to failed if it's a critical failure

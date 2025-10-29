@@ -2,8 +2,11 @@ import createPrismaClient from '@shared/prisma';
 import { payment_status, PrismaClient } from '@prisma/client';
 import logger from 'jet-logger';
 import CampaignTwitterCardModel from '@V201/Modals/CampaignTwitterCard';
-import { publishEvent } from 'src/V201/eventPublisher';
-import { CampaignEvents } from '@V201/events/campaign';
+import { publishEvent } from '../../../eventPublisher';
+import { CampaignEvents, CampaignScheduledEvents } from '@V201/events/campaign';
+import SchedulerQueue from 'src/V201/schedulerQueue';
+import { getConfig } from '@appConfig';
+import { CampaignTypes } from '@V201/types';
 
 /**
  * Result interface for eligible quest winners
@@ -67,6 +70,23 @@ export class QuestWinnerService {
     if (!quest.correct_answer) {
       throw new Error(`Quest campaign ${questId} has no correct answer set`);
     }
+  }
+
+  /**
+   * Extract actual answer from Twitter content by removing @mentions
+   * Example: "@hashbuzzAfrica A" -> "A"
+   */
+  private extractAnswerFromContent(content: string): string {
+    if (!content) return '';
+
+    // Remove @mentions (including the account being replied to)
+    // Pattern matches @username (letters, numbers, underscores) followed by at least one space
+    const withoutMentions = content
+      .replace(/@[A-Za-z0-9_]+\s+/g, '') // Remove @mentions
+      .trim() // Remove leading/trailing whitespace
+      .toLowerCase(); // Convert to lowercase for comparison
+
+    return withoutMentions;
   }
 
   /**
@@ -144,9 +164,17 @@ export class QuestWinnerService {
       const engagementId = BigInt(String(engagement.id));
 
       // Get user's answer from content field (the actual reply/quote text)
-      const userAnswer = String(engagement.content || '')
-        .trim()
-        .toLowerCase();
+      // Remove @mentions and extract the actual answer
+      const rawContent = String(engagement.content || '').trim();
+      const userAnswer = this.extractAnswerFromContent(rawContent);
+
+      // Debug logging for content parsing
+      if (rawContent !== userAnswer) {
+        logger.info(
+          `[QuestWinnerService] Engagement ${String(engagementId)}: ` +
+              `Raw content: "${rawContent}" -> Parsed answer: "${userAnswer}"`
+        );
+      }
 
       // Skip engagements without user_id
       if (!userId) {
@@ -165,7 +193,7 @@ export class QuestWinnerService {
         logger.warn(
           `[QuestWinnerService] Engagement ${String(
             engagementId
-          )} (User: ${userId}) has no content - SUSPENDED`
+          )} (User: ${userId}) has no content/answer after parsing - SUSPENDED`
         );
         continue;
       }
@@ -392,7 +420,33 @@ export class QuestWinnerService {
         campaignId: questId,
       });
 
-      // 8. Return summary result
+      // 9. Add Expiry Schedule
+
+      // Schedule Closing Event for the campaign with retry policies
+      const scheduler = await SchedulerQueue.getInstance();
+      const config = await getConfig();
+
+      const currentTime = new Date();
+      const campaignExpiryTime =
+        currentTime.getTime() +
+        config.app.defaultRewardClaimDuration * 60 * 1000;
+
+      await scheduler.addJob(
+        CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+        {
+          eventName: CampaignScheduledEvents.CAMPAIGN_EXPIRATION_OPERATION,
+          data: {
+            cardId: quest.id,
+            userId: quest.owner_id,
+            type: quest.type as CampaignTypes,
+            createdAt: currentTime,
+            expiryAt: new Date(campaignExpiryTime),
+          },
+          executeAt: new Date(campaignExpiryTime),
+        }
+      );
+
+      // 9. Return summary result
       return {
         questId,
         totalResponses,

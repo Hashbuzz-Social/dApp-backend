@@ -17,10 +17,12 @@ import userService from '@services/user-service';
 import { ErrorWithCode } from '@shared/errors';
 import { waitFor } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import statusCodes from 'http-status-codes';
 import JSONBigInt from 'json-bigint';
 import { CreateTranSactionEntity } from 'src/@types/custom';
+import { safeJsonStringify } from '../utils/bigintSerializer';
+import logger from '../config/logger';
 
 const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } =
   statusCodes;
@@ -31,11 +33,7 @@ const { OK, CREATED, BAD_REQUEST, NON_AUTHORITATIVE_INFORMATION, ACCEPTED } =
  * Step 2. Then get the entity type and validate with the transaction too.
  */
 
-export const handleTopUp = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const handleTopUp = async (req: Request, res: Response) => {
   const accountId = req.currentUser?.hedera_wallet_id;
   const userId = req.currentUser?.id;
   const entity: CreateTranSactionEntity = req.body.entity;
@@ -134,7 +132,7 @@ export const handleTopUp = async (
       'unhandled'
     );
     // Improved error logging
-    console.error('Error while processing top-up request:', {
+    const errorDetails = {
       error: err instanceof Error ? err.message : err,
       stack: err instanceof Error ? err.stack : undefined,
       transactionId,
@@ -144,7 +142,13 @@ export const handleTopUp = async (
       amounts,
       address,
       response,
-    });
+    };
+    logger.err(
+      `Error while processing top-up request: ${safeJsonStringify(
+        errorDetails
+      )}`
+    );
+
     // Optionally, you can send an error response to the client
     if (!res.headersSent) {
       res.status(BAD_REQUEST).json({
@@ -195,9 +199,14 @@ const handleValidatedTransaction = async (
   entity: CreateTranSactionEntity,
   accountId: string,
   address: string,
-  amounts: any,
+  amounts: { value: number; fee: number; total: number },
   userId: number | bigint,
-  validate: any,
+  validate: {
+    validated: true;
+    amount: number;
+    transferFrom: string;
+    token_id?: string;
+  },
   tokenDetails: any
 ) => {
   if (entity.entityType === 'HBAR') {
@@ -231,11 +240,7 @@ const handleValidatedTransaction = async (
  *@description Check active contract and return to the user.
  */
 
-export const handleGetActiveContract = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const handleGetActiveContract = async (req: Request, res: Response) => {
   const activeContract = await provideActiveContract();
   return res.status(OK).json(activeContract);
 };
@@ -244,11 +249,7 @@ export const handleGetActiveContract = async (
  *@description this function is handling crete topup transaction
  */
 
-export const handleCrateToupReq = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const handleCrateToupReq = async (req: Request, res: Response) => {
   const entity: CreateTranSactionEntity = req.body.entity;
   const connectedAccountId = req.currentUser?.hedera_wallet_id;
 
@@ -259,15 +260,15 @@ export const handleCrateToupReq = async (
     );
     return res.status(CREATED).json(transactionBytes);
   } else {
-    next(new ErrorWithCode('Error while processing request', BAD_REQUEST));
+    return res.status(BAD_REQUEST).json({
+      error: true,
+      message: 'Error while processing request',
+      details: 'Connected account ID is required',
+    });
   }
 };
 
-export const handleCampaignFundAllocation = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const handleCampaignFundAllocation = async (req: Request, res: Response) => {
   const campaignId: number = req.body.campaignId;
 
   //! get campaignById
@@ -313,11 +314,7 @@ export const handleCampaignFundAllocation = async (
     .json({ error: true, message: 'CampaignIs is not correct' });
 };
 
-export const handleReimbursement = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const handleReimbursement = async (req: Request, res: Response) => {
   // try {
   //   (async () => {
   const amount: number = req.body.amount;

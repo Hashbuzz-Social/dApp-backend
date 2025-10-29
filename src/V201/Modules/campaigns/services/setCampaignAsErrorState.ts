@@ -110,17 +110,15 @@ export const setCampaignAsErrorState = async (
 		const campaign = await campaignModel.getCampaignById(campaignId);
 
 		if (!campaign) {
-			logger.err(
-				`[${requestId}] Campaign ${campaignId.toString()} not found while setting error state`
-			);
-			return;
+			const errorMsg = `[${requestId}] Campaign ${campaignId.toString()} not found while setting error state`;
+      logger.err(errorMsg);
+      throw new Error(errorMsg);
 		}
 
 		if (campaign.card_status === campaignstatus.InternalError) {
-			logger.info(
-				`[${requestId}] Campaign ${campaignId.toString()} already marked as InternalError`
-			);
-			return;
+			const errorMsg = `[${requestId}] Campaign ${campaignId.toString()} already marked as InternalError`;
+      logger.info(errorMsg);
+      throw new Error(errorMsg);
 		}
 
 		const formattedError = serializeUnknown(params.error);

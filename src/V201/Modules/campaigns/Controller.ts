@@ -173,7 +173,7 @@ class CampaignController {
         where.card_status = status;
       }
       if (campaignType) {
-        where.campaign_type = campaignType;
+        where.type = campaignType;
       }
 
       const [campaigns, totalCount] = await Promise.all([

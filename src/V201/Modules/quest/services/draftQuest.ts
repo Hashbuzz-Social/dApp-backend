@@ -1,5 +1,5 @@
 import createPrismaClient from '@shared/prisma';
-import { campaignstatus } from '@prisma/client';
+import { campaign_type, campaignstatus } from '@prisma/client';
 import { generateRandomString } from '@V201/modules/common';
 
 export interface DraftQuestInput {
@@ -80,7 +80,7 @@ export async function draftQuest(
       amount_spent: 0,
       question_options: input.options || [],
       correct_answer: input.correct_answers || null,
-      campaign_type: 'quest',
+      campaign_type: campaign_type.quest,
       approve: false,
       contract_id: generateRandomString(20),
     },

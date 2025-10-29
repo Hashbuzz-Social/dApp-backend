@@ -41,7 +41,7 @@ export class EventRecoveryService {
         where: {
           status: 'PENDING',
           created_at: { lt: cutoffTime }, // Only old events, not fresh ones
-          retry_count: { lt: 3 }, // Only if not exceeded max retries
+          // Zero retry policy: No retry_count check needed
         },
         orderBy: { created_at: 'asc' }, // Process oldest first
         take: 100, // Limit to prevent overload on startup
@@ -105,20 +105,18 @@ export class EventRecoveryService {
             priority: 'normal',
           });
 
-          // Update retry count to track recovery attempts
+          // Update timestamp to track recovery attempts (zero retry policy)
           await prisma.eventOutBox.update({
             where: { id: event.id },
             data: {
-              retry_count: (event.retry_count || 0) + 1,
               updated_at: new Date(),
+              // Note: retry_count not incremented due to zero-retry policy
             },
           });
 
           recovered++;
           logger.info(
-            `✅ Recovered event ${event.event_type} (ID: ${event.id}, retry: ${
-              (event.retry_count || 0) + 1
-            })`
+            `✅ Recovered event ${event.event_type} (ID: ${event.id}, recovery attempt)`
           );
         } catch (error) {
           failed++;
@@ -244,7 +242,7 @@ export class EventRecoveryService {
     totalPending: number;
     oldPending: number; // > 5 minutes
     veryOldPending: number; // > 1 hour
-    maxRetryExceeded: number;
+    eventsWithRetryAttempts: number; // Should be 0 under zero-retry policy
   }> {
     const prisma = await createPrismaClient();
 
@@ -257,7 +255,7 @@ export class EventRecoveryService {
         totalPending,
         oldPending,
         veryOldPending,
-        maxRetryExceeded,
+        eventsWithRetryAttempts,
       ] = await Promise.all([
         prisma.eventOutBox.count({
           where: { status: 'PENDING' },
@@ -274,10 +272,12 @@ export class EventRecoveryService {
             created_at: { lt: oneHourAgo },
           },
         }),
+        // Zero retry policy: No events should exceed max retries
         prisma.eventOutBox.count({
           where: {
             status: 'PENDING',
-            retry_count: { gte: 3 },
+            // Under zero-retry policy, this should always be 0
+            retry_count: { gte: 1 }, // Events with any retry attempts (should be 0)
           },
         }),
       ]);
@@ -286,7 +286,7 @@ export class EventRecoveryService {
         totalPending,
         oldPending,
         veryOldPending,
-        maxRetryExceeded,
+        eventsWithRetryAttempts,
       };
     } catch (error) {
       logger.err(
@@ -298,7 +298,7 @@ export class EventRecoveryService {
         totalPending: 0,
         oldPending: 0,
         veryOldPending: 0,
-        maxRetryExceeded: 0,
+        eventsWithRetryAttempts: 0,
       };
     }
   }

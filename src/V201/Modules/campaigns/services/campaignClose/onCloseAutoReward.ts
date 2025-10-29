@@ -4,6 +4,7 @@ import {
   campaign_twittercard,
   campaign_type,
   payment_status,
+  user_user,
 } from '@prisma/client';
 import { checkTokenAssociation, formattedDateTime } from '@shared/helper';
 import createPrismaClient from '@shared/prisma';
@@ -330,10 +331,7 @@ export class V201OnCloseAutoRewardService {
   private async publishRewardAnnouncementTweet(
     card: campaign_twittercard,
     cardType: string,
-    campaigner: {
-      business_twitter_access_token: string | null;
-      business_twitter_access_token_secret: string | null;
-    }
+    campaigner: user_user
   ): Promise<void> {
     try {
       const tweetText = await this.getRewardAnnouncementTweetText(
@@ -351,14 +349,8 @@ export class V201OnCloseAutoRewardService {
         );
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await (twitterCardService.publishTweetORThread as any)({
-        cardOwner: {
-          business_twitter_access_token:
-            campaigner.business_twitter_access_token,
-          business_twitter_access_token_secret:
-            campaigner.business_twitter_access_token_secret,
-        },
+      await twitterCardService.publishTweetORThread({
+        cardOwner: campaigner,
         isThread: true,
         tweetText,
         parentTweetId: card.last_thread_tweet_id,
@@ -441,10 +433,7 @@ export class V201OnCloseAutoRewardService {
     cardType: string,
     card: campaign_twittercard,
     tokenId: string | undefined,
-    campaigner: {
-      hedera_wallet_id: string;
-      business_twitter_handle: string | null;
-    }
+    campaigner: user_user
   ): Promise<{ successful: number; failed: number }> {
     let successful = 0;
     let failed = 0;
@@ -593,52 +582,43 @@ export class V201OnCloseAutoRewardService {
         }
       );
 
+      // Continue processing even if no engaged users for announcement tweet
+      let userWithWallet: UserRecord[] = [];
+
       if (engagedUsers.length === 0) {
         this.addStep('user_validation', 'skipped', 'No engaged users found');
-        await this.logExecutionSummary(cardId);
-        return {
-          success: true,
-          totalDistributed: 0,
-          usersRewarded: 0,
-        };
-      }
-
-      if (!this.userModel) {
-        throw new Error('User model not initialized');
-      }
-
-      // Get user records with wallet information using user model
-      const usersRecords: UserRecord[] = await this.getUsersByTwitterIds(
-        engagedUsers
-      );
-
-      const userWithWallet = usersRecords.filter((user: UserRecord) =>
-        Boolean(user.hedera_wallet_id)
-      );
-
-      this.addStep(
-        'fetch_users',
-        'success',
-        `Found ${userWithWallet.length} users with wallets out of ${usersRecords.length} total users`,
-        undefined,
-        {
-          totalUsers: usersRecords.length,
-          usersWithWallets: userWithWallet.length,
+      } else {
+        if (!this.userModel) {
+          throw new Error('User model not initialized');
         }
-      );
 
-      if (userWithWallet.length === 0) {
-        this.addStep(
-          'wallet_validation',
-          'skipped',
-          'No users with wallets found'
+        // Get user records with wallet information using user model
+        const usersRecords: UserRecord[] = await this.getUsersByTwitterIds(
+          engagedUsers
         );
-        await this.logExecutionSummary(cardId);
-        return {
-          success: true,
-          totalDistributed: 0,
-          usersRewarded: 0,
-        };
+
+        userWithWallet = usersRecords.filter((user: UserRecord) =>
+          Boolean(user.hedera_wallet_id)
+        );
+
+        this.addStep(
+          'fetch_users',
+          'success',
+          `Found ${userWithWallet.length} users with wallets out of ${usersRecords.length} total users`,
+          undefined,
+          {
+            totalUsers: usersRecords.length,
+            usersWithWallets: userWithWallet.length,
+          }
+        );
+
+        if (userWithWallet.length === 0) {
+          this.addStep(
+            'wallet_validation',
+            'skipped',
+            'No users with wallets found'
+          );
+        }
       }
 
       // Get campaign details
@@ -663,101 +643,107 @@ export class V201OnCloseAutoRewardService {
         throw new Error('Campaign type not specified');
       }
 
-      // Calculate total rewards for all users
+      // Initialize reward distribution variables
       let totalDistributableReward = 0;
-      const totalRewardMappedWithUser: UserWithReward[] = await Promise.all(
-        userWithWallet.map(async (user: UserRecord) => {
-          if (!user.personal_twitter_id) {
-            throw new Error(
-              `User ${String(user.id)} has no personal_twitter_id`
+      let totalRewardMappedWithUser: UserWithReward[] = [];
+      let distributionResult = { successful: 0, failed: 0 };
+
+      // Only calculate and distribute rewards if there are users with wallets
+      if (userWithWallet.length > 0) {
+        // Calculate total rewards for all users
+        totalRewardMappedWithUser = await Promise.all(
+          userWithWallet.map(async (user: UserRecord) => {
+            if (!user.personal_twitter_id) {
+              throw new Error(
+                `User ${String(user.id)} has no personal_twitter_id`
+              );
+            }
+            const totalReward = await this.calculateTotalRewardForUser(
+              rewards,
+              user.personal_twitter_id,
+              cardId
             );
-          }
-          const totalReward = await this.calculateTotalRewardForUser(
-            rewards,
-            user.personal_twitter_id,
-            cardId
-          );
-          totalDistributableReward += totalReward.total;
-          return {
-            ...user,
-            reward: totalReward,
-          } as UserWithReward;
-        })
-      );
-
-      this.addStep(
-        'calculate_rewards',
-        'success',
-        `Calculated total rewards for ${userWithWallet.length} users`,
-        undefined,
-        { totalDistributableReward, userCount: userWithWallet.length }
-      );
-
-      if (totalDistributableReward <= 0) {
-        this.addStep(
-          'reward_validation',
-          'skipped',
-          'No rewards to distribute'
+            totalDistributableReward += totalReward.total;
+            return {
+              ...user,
+              reward: totalReward,
+            } as UserWithReward;
+          })
         );
-        await this.logExecutionSummary(cardId);
-        return {
-          success: true,
-          totalDistributed: 0,
-          usersRewarded: 0,
-        };
+
+        this.addStep(
+          'calculate_rewards',
+          'success',
+          `Calculated total rewards for ${userWithWallet.length} users`,
+          undefined,
+          { totalDistributableReward, userCount: userWithWallet.length }
+        );
+
+        // Only proceed with reward distribution if there are rewards > 0
+        if (totalDistributableReward > 0) {
+          // Adjust total reward in smart contract
+          await this.adjustTotalReward(
+            cardType,
+            campaigner,
+            card,
+            tokenId,
+            totalDistributableReward
+          );
+
+          this.addStep(
+            'adjust_contract_reward',
+            'success',
+            `Adjusted smart contract total reward to ${totalDistributableReward}`,
+            undefined,
+            { totalAmount: totalDistributableReward, cardType }
+          );
+
+          // Distribute rewards to users
+          distributionResult = await this.distributeRewardsToUsers(
+            totalRewardMappedWithUser,
+            cardType,
+            card,
+            tokenId,
+            campaigner
+          );
+
+          this.addStep(
+            'distribute_rewards',
+            'success',
+            `Distributed rewards to ${distributionResult.successful} users`,
+            undefined,
+            {
+              successful: distributionResult.successful,
+              failed: distributionResult.failed,
+              totalDistributed: totalDistributableReward,
+            }
+          );
+
+          await incrementClaimAmount(cardId, totalDistributableReward);
+
+          this.addStep(
+            'update_claim_amount',
+            'success',
+            `Updated campaign claim amount by ${totalDistributableReward}`,
+            undefined,
+            { claimAmountIncrement: totalDistributableReward }
+          );
+        } else {
+          this.addStep(
+            'reward_validation',
+            'skipped',
+            'No rewards to distribute - calculated rewards are 0'
+          );
+        }
+      } else {
+        this.addStep(
+          'reward_distribution',
+          'skipped',
+          'No reward distribution - no users with wallets'
+        );
       }
 
-      // Adjust total reward in smart contract
-      await this.adjustTotalReward(
-        cardType,
-        campaigner,
-        card,
-        tokenId,
-        totalDistributableReward
-      );
-
-      this.addStep(
-        'adjust_contract_reward',
-        'success',
-        `Adjusted smart contract total reward to ${totalDistributableReward}`,
-        undefined,
-        { totalAmount: totalDistributableReward, cardType }
-      );
-
-      // Distribute rewards to users
-      const distributionResult = await this.distributeRewardsToUsers(
-        totalRewardMappedWithUser,
-        cardType,
-        card,
-        tokenId,
-        campaigner
-      );
-
-      this.addStep(
-        'distribute_rewards',
-        'success',
-        `Distributed rewards to ${distributionResult.successful} users`,
-        undefined,
-        {
-          successful: distributionResult.successful,
-          failed: distributionResult.failed,
-          totalDistributed: totalDistributableReward,
-        }
-      );
-
-      // Update campaign claim amount
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await(incrementClaimAmount as any)(cardId, totalDistributableReward);
-
-      this.addStep(
-        'update_claim_amount',
-        'success',
-        `Updated campaign claim amount by ${totalDistributableReward}`,
-        undefined,
-        { claimAmountIncrement: totalDistributableReward }
-      );
-
-      // Publish reward announcement tweet thread
+      // ALWAYS publish reward announcement tweet thread regardless of reward distribution
       try {
         await this.publishRewardAnnouncementTweet(card, cardType, campaigner);
 
@@ -776,10 +762,11 @@ export class V201OnCloseAutoRewardService {
           'Failed to publish reward announcement tweet',
           errorMsg
         );
-        // Don't fail the entire process if tweet fails
+        // Log warning but don't fail the entire process if tweet fails
         logger.warn(
           `Tweet announcement failed for campaign ${cardId}: ${errorMsg}`
         );
+        // Tweet failure should be logged but not throw - this is a non-critical step
       }
 
       // Log execution summary
@@ -855,14 +842,17 @@ export const onCloseRewardServices = async (
         `Auto reward completed successfully for campaign ${campaignId}. Distributed: ${result.totalDistributed} to ${result.usersRewarded} users`
       );
     } else {
-      logger.err(
-        `Auto reward failed for campaign ${campaignId}: ${
-          result.errors ? result.errors.join(', ') : 'Unknown error'
-        }`
-      );
+      const errorMessage = `Auto reward failed for campaign ${campaignId}: ${
+        result.errors ? result.errors.join(', ') : 'Unknown error'
+      }`;
+      logger.err(errorMessage);
+      // Do not throw; just log the error to avoid breaking the campaign flow
     }
   } catch (error) {
-    logger.err(`Error in onCloseRewardServices: ${(error as Error).message}`);
+    const errorMessage = `Error in onCloseRewardServices: ${
+      (error as Error).message
+    }`;
+    logger.err(errorMessage);
     throw error;
   }
 };

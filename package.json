@@ -14,6 +14,7 @@
   "scripts": {
     "build": "npx ts-node build.ts",
     "build:server": "ts-node build.ts",
+    "compile": "tsc --build tsconfig.prod.json && tsc-alias -p tsconfig.prod.json",
     "lint": "eslint . --ext .ts",
     "start": "node -r module-alias/register ./dist --env=production",
     "dev": "nodemon",
@@ -58,7 +59,8 @@
     "@V201/modules": "dist/V201/Modules",
     "@V201/events": "dist/V201/AppEvents",
     "@V201/middleware": "dist/V201/Middleware",
-    "@V201/Modals": "dist/V201/Modals"
+    "@V201/Modals": "dist/V201/Modals",
+    "src": "dist"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -210,6 +212,7 @@
     "prettier": "^2.7.1",
     "prisma": "^6.0.0",
     "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^4.7.4",
     "uuid": "^8.3.2"

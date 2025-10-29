@@ -467,7 +467,7 @@ export class TwitterCardService {
       const options =
         Array.isArray(card.question_options) && card.question_options.length > 0
           ? card.question_options
-              .map((opt, i) => `${i + 1}. ${String(opt)}`)
+              .map((opt, i) => `${String.fromCharCode(65 + i)}. ${String(opt)}`)
               .join('\n')
           : '';
       tweetText = `${card.tweet_text}${options ? `\n\n${options}` : ''}`.trim();
@@ -550,13 +550,12 @@ export class TwitterCardService {
       );
     }
 
-      return await this.publishTweetOrThread({
-        tweetText,
-        cardOwner,
-        isThread: true,
-        parentTweetId,
-      });
-
+    return await this.publishTweetOrThread({
+      tweetText,
+      cardOwner,
+      isThread: true,
+      parentTweetId,
+    });
   }
 
   /**
@@ -597,8 +596,14 @@ export class TwitterCardService {
     try {
       return await this.prisma.campaign_twittercard.findMany({
         where: {
-          approve: false,
-          isRejected: null,
+          AND: [
+            {
+              OR: [{ approve: false }, { approve: null }],
+            },
+            {
+              OR: [{ isRejected: false }, { isRejected: null }],
+            },
+          ],
         },
       });
     } catch (error) {

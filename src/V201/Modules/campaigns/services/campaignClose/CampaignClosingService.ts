@@ -17,7 +17,7 @@ import {
   CampaignLogLevel,
   CampaignLogEventType,
 } from '../campaignLogs';
-import SchedulerQueue from 'src/V201/schedulerQueue';
+import SchedulerQueue from '../../../../schedulerQueue';
 import { CampaignTypes } from '@services/CampaignLifeCycleBase';
 
 interface ExecutionStep {
@@ -321,7 +321,8 @@ export class CampaignClosingService {
       await this.ensureInitialized();
 
       if (!this.prisma || !this.campaignLogger) {
-        logger.err('Services not initialized for error handling');
+        const errorMsg = 'Services not initialized for error handling';
+        logger.err(errorMsg);
         return;
       }
 
