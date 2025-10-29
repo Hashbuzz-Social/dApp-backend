@@ -846,7 +846,7 @@ export const onCloseRewardServices = async (
         result.errors ? result.errors.join(', ') : 'Unknown error'
       }`;
       logger.err(errorMessage);
-      throw new Error(errorMessage);
+      // Do not throw; just log the error to avoid breaking the campaign flow
     }
   } catch (error) {
     const errorMessage = `Error in onCloseRewardServices: ${
