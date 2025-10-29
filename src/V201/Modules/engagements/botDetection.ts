@@ -100,12 +100,8 @@ async function isUserInExceptionList(twitterUserId: string): Promise<boolean> {
         error instanceof Error ? error.message : String(error)
       }`
     );
-    // Throw error instead of returning false to ensure proper error handling
-    throw new Error(
-      `Failed to check bot detection exceptions: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+    // Return false (with logging) to allow bot detection to proceed if exception check fails
+    return false;
   }
 }
 
