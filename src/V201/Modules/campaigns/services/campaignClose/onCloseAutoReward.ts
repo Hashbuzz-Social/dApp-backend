@@ -349,12 +349,23 @@ export class V201OnCloseAutoRewardService {
         );
       }
 
-      await twitterCardService.publishTweetORThread({
+      const lastThreadId = await twitterCardService.publishTweetORThread({
         cardOwner: campaigner,
         isThread: true,
         tweetText,
         parentTweetId: card.last_thread_tweet_id,
       });
+
+      // Update the campaign card's last_thread_tweet_id using the campaign modal
+      if (lastThreadId && this.campaignModel) {
+        await this.campaignModel.updateCampaign(card.id, {
+          last_thread_tweet_id: lastThreadId,
+        });
+
+        logger.info(
+          `Updated campaign ${card.id} last_thread_tweet_id to: ${lastThreadId}`
+        );
+      }
 
       logger.info(
         `Successfully published reward announcement tweet thread for card ID: ${card.id}`
