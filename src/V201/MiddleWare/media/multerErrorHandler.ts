@@ -12,12 +12,29 @@ export const multerErrorHandler = (
   next: NextFunction
 ) => {
   if (error instanceof multer.MulterError) {
+    // Enhanced logging for debugging file upload issues
     logger.warn(
-      `Multer error: ${error.message} | Code: ${error.code} | Field: ${error.field || 'unknown'} | User: ${req.currentUser?.id || 'unknown'}`
+      `Multer error: ${error.message} | Code: ${error.code} | Field: ${
+        error.field || 'unknown'
+      } | User: ${req.currentUser?.id || 'unknown'}`
+    );
+
+    // Log request details for debugging
+    const contentLength = req.get('content-length');
+    const contentType = req.get('content-type');
+    logger.warn(
+      `Request details - Content-Length: ${
+        contentLength ?? 'unknown'
+      }, Content-Type: ${contentType ?? 'unknown'}`
     );
 
     switch (error.code) {
       case 'LIMIT_FILE_SIZE':
+        logger.err(
+          `File size exceeded limit. Content-Length header: ${
+            contentLength ?? 'unknown'
+          } bytes`
+        );
         return res.status(413).json({
           success: false,
           message: 'File too large. Maximum file size is 10MB per file.',
@@ -25,6 +42,7 @@ export const multerErrorHandler = (
           details: {
             maxSize: '10MB',
             field: error.field,
+            receivedSize: contentLength ? `${contentLength} bytes` : 'unknown',
           },
         });
 

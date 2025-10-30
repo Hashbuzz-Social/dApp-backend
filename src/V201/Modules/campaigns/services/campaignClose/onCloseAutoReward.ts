@@ -434,9 +434,14 @@ export class V201OnCloseAutoRewardService {
     card: campaign_twittercard,
     tokenId: string | undefined,
     campaigner: user_user
-  ): Promise<{ successful: number; failed: number }> {
+  ): Promise<{
+    successful: number;
+    failed: number;
+    actualAmountDistributed: number;
+  }> {
     let successful = 0;
     let failed = 0;
+    let actualAmountDistributed = 0;
 
     for (const user of totalRewardMappedWithUser) {
       try {
@@ -474,6 +479,7 @@ export class V201OnCloseAutoRewardService {
                 'increment'
               );
               successful++;
+              actualAmountDistributed += total; // Track actual distributed amount
               logger.info(
                 `Successfully distributed ${total} tokens to ${user.hedera_wallet_id}`
               );
@@ -502,6 +508,7 @@ export class V201OnCloseAutoRewardService {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             await (userService.totalReward as any)(user.id, total, 'increment');
             successful++;
+            actualAmountDistributed += total; // Track actual distributed amount
             logger.info(
               `Successfully distributed ${total} HBAR to ${user.hedera_wallet_id}`
             );
@@ -520,7 +527,7 @@ export class V201OnCloseAutoRewardService {
       }
     }
 
-    return { successful, failed };
+    return { successful, failed, actualAmountDistributed };
   }
 
   /**
@@ -646,7 +653,11 @@ export class V201OnCloseAutoRewardService {
       // Initialize reward distribution variables
       let totalDistributableReward = 0;
       let totalRewardMappedWithUser: UserWithReward[] = [];
-      let distributionResult = { successful: 0, failed: 0 };
+      let distributionResult = {
+        successful: 0,
+        failed: 0,
+        actualAmountDistributed: 0,
+      };
 
       // Only calculate and distribute rewards if there are users with wallets
       if (userWithWallet.length > 0) {
@@ -715,19 +726,34 @@ export class V201OnCloseAutoRewardService {
             {
               successful: distributionResult.successful,
               failed: distributionResult.failed,
-              totalDistributed: totalDistributableReward,
+              totalDistributed: distributionResult.actualAmountDistributed,
             }
           );
 
-          await incrementClaimAmount(cardId, totalDistributableReward);
+          // Update campaign amount_claimed with the actual distributed amount
+          if (distributionResult.actualAmountDistributed > 0) {
+            await incrementClaimAmount(
+              cardId,
+              distributionResult.actualAmountDistributed
+            );
 
-          this.addStep(
-            'update_claim_amount',
-            'success',
-            `Updated campaign claim amount by ${totalDistributableReward}`,
-            undefined,
-            { claimAmountIncrement: totalDistributableReward }
-          );
+            this.addStep(
+              'update_claim_amount',
+              'success',
+              `Updated campaign claim amount by ${distributionResult.actualAmountDistributed}`,
+              undefined,
+              {
+                claimAmountIncrement:
+                  distributionResult.actualAmountDistributed,
+              }
+            );
+          } else {
+            this.addStep(
+              'update_claim_amount',
+              'skipped',
+              'No claim amount update - no rewards were actually distributed'
+            );
+          }
         } else {
           this.addStep(
             'reward_validation',
@@ -774,7 +800,7 @@ export class V201OnCloseAutoRewardService {
 
       return {
         success: true,
-        totalDistributed: totalDistributableReward,
+        totalDistributed: distributionResult.actualAmountDistributed,
         usersRewarded: distributionResult.successful,
       };
     } catch (error) {

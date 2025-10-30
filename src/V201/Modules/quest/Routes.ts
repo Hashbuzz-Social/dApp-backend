@@ -2,9 +2,10 @@ import userInfo from '@middleware/userInfo';
 import asyncHandler from '@shared/asyncHandler';
 import express from 'express';
 import {
-    multerErrorHandler,
-    storeMediaToS3,
-    tempStoreMediaOnDisk,
+  multerErrorHandler,
+  storeMediaToS3,
+  tempStoreMediaOnDisk,
+  logUploadDetails,
 } from '../../MiddleWare';
 import {
   validateDraftQuestBody,
@@ -53,6 +54,7 @@ const questRouter = express.Router();
 questRouter.post(
   '/draft',
   tempStoreMediaOnDisk,
+  logUploadDetails,
   multerErrorHandler,
   validateDraftQuestBody,
   handleValidationErrors,
