@@ -1,6 +1,7 @@
 import {
   campaign_twittercard,
   campaignstatus as CampaignStatus,
+  campaign_type,
   user_balances,
   user_user,
   whiteListedTokens,
@@ -51,6 +52,31 @@ const setCampaignCompleted = async (
   });
 };
 
+const generateExpiryMessage = (
+  card: campaign_twittercard,
+  tokenSymbol = 'HBAR',
+  divisor = 1e8
+) => {
+  const currentTime = new Date();
+  const timeString = currentTime.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const amountClaimed = (card.amount_claimed ?? 0) / divisor;
+  const formattedAmount = amountClaimed.toFixed(2);
+
+  if (card.campaign_type === campaign_type.quest) {
+    return `✅ Allocation ended ${timeString} -> ${formattedAmount} ${tokenSymbol} distributed to quest winners!`;
+  } else {
+    // Default awareness campaign format
+    return `Reward allocation concluded on ${formattedDateTime(
+      currentTime.toISOString()
+    )}. A total of ${formattedAmount} ${tokenSymbol} was given out for this promo.`;
+  }
+};
+
 const expireHbarCampaign = async (
   campaignModel: CampaignTwitterCardModel,
   card: campaign_twittercard,
@@ -70,11 +96,7 @@ const expireHbarCampaign = async (
     await userService.topUp(owner.id, balances, 'update');
   }
 
-  const expiryMessage = `Reward allocation concluded on ${formattedDateTime(
-    new Date().toISOString()
-  )}. A total of ${((card.amount_claimed ?? 0) / 1e8).toFixed(
-    2
-  )} HBAR was given out for this promo.`;
+  const expiryMessage = generateExpiryMessage(card);
 
   const lastTweetId = await twitterCardService.publishTweetORThread({
     tweetText: expiryMessage,
@@ -132,11 +154,11 @@ const expireFungibleCampaign = async (
 
   const decimals = card.decimals ? Number(card.decimals) : 0;
   const divisor = decimals > 0 ? 10 ** decimals : 1;
-  const tweetMessage = `Reward allocation concluded on ${formattedDateTime(
-    new Date().toISOString()
-  )}. A total of ${((card.amount_claimed ?? 0) / divisor).toFixed(2)} ${
-    tokenData?.token_symbol ?? 'HBAR'
-  } was given out for this promo.`;
+  const tweetMessage = generateExpiryMessage(
+    card,
+    tokenData?.token_symbol ?? 'HBAR',
+    divisor
+  );
 
   const lastTweetId = await twitterCardService.publishTweetORThread({
     tweetText: tweetMessage,

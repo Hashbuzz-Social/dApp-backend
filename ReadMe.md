@@ -8,7 +8,18 @@
 ![Prisma](https://img.shields.io/badge/Prisma-5.0+-2D3748.svg)
 ![Hedera](https://img.shields.io/badge/Hedera-Hashgraph-purple.svg)
 
-## 📋 Table of Contents
+## � Documentation for Judges & Evaluators
+
+> **🎯 For Complete Setup Guide**: See **[../frontend/TECHNICAL_DOCUMENTATION.md](../frontend/TECHNICAL_DOCUMENTATION.md)**
+>
+> This document contains:
+> - Complete environment setup for both frontend & backend
+> - Data flow diagrams and system architecture
+> - Step-by-step testing instructions
+> - Troubleshooting guide
+> - All required environment variables with examples
+
+## �📋 Table of Contents
 
 - [🚀 Quick Start](#-quick-start)
 - [🏗️ Architecture Overview](#️-architecture-overview)
@@ -589,15 +600,15 @@ services:
   api:          # Main backend application (Port 4000)
   postgres:     # Primary database (Port 5432)
   redis:        # Cache and sessions (Port 6379)
-  
+
   # Development tools (--profile dev)
   prisma-studio: # Database browser (Port 5555)
-  
+
   # Monitoring stack (--profile monitoring)
   prometheus:   # Metrics collection (Port 9090)
   grafana:      # Dashboards (Port 3001)
   loki:         # Log aggregation (Port 3100)
-  
+
   # Production features
   backup:       # Automated DB backups
   nginx:        # Reverse proxy (Port 80/443)
